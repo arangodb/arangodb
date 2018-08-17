@@ -436,6 +436,9 @@ functions:
   of the query, and finally show the query's execution plan with actual runtime information.
   This is very useful for debugging AQL query performance and optimizing queries.
 
+For more information please refer to the [Query Profiling](../../AQL/ExecutionAndPerformance/QueryProfiler.html)
+page.
+
 ### Revised cluster-internal AQL protocol
 
 When running an AQL query in a cluster, the coordinator has to distribute the
@@ -478,7 +481,10 @@ The following AQL functions have been added in ArangoDB 3.4:
 * `SORTED_UNIQUE`: same as `SORTED`, but additionally removes duplicates
 * `COUNT_DISTINCT`: counts the number of distinct / unique items in an array
 * `LEVENSHTEIN_DISTANCE`: calculates the Levenshtein distance between two string values
+* `REGEX_MATCHES`: finds matches in a string using a regular expression
 * `REGEX_SPLIT`: splits a string using a regular expression
+* `UUID`: generates a universally unique identifier value
+* `TOKENS`: splits a string into tokens using a language-specific text analyzer
  
 The following AQL functions have been added to make working with geographical 
 data easier:

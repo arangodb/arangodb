@@ -15,15 +15,11 @@ if [ "x$@" == "x" ] ; then
     `find ./js/client/tests -name "*.js"` \
     `find ./UnitTests -name "*.js"` \
     \
-    `find ./js/apps/system/_api/gharial/APP -name "*.js"` \
-    \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/models -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/views -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/collections -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/routers -name "*.js"` \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/arango -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/test/specs -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/test/clusterSpecs -name "*.js"` \
     \
     `find ./scripts -name "*.js"` \
     \

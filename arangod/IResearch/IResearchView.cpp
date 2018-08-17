@@ -1126,7 +1126,6 @@ bool IResearchView::apply(arangodb::transaction::Methods& trx) {
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
-  std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex mutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
   auto cid_itr = _metaState._collections.find(cid);
@@ -1155,38 +1154,48 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   }
 
   mutex.unlock(true); // downgrade to a read-lock
+  // ...........................................................................
+  // if an errors occurs below than a drop retry would most likely happen
+  // ...........................................................................
+  return truncateUnlocked(cid);
+}
+     
+int IResearchView::truncate(TRI_voc_cid_t cid) {
+ ReadMutex mutex(_mutex);
+ SCOPED_LOCK(mutex);
+ return truncateUnlocked(cid);
+}
 
-  // ...........................................................................
-  // if an exception occurs below than a drop retry would most likely happen
-  // ...........................................................................
+int IResearchView::truncateUnlocked(TRI_voc_cid_t cid) {
+  std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   try {
     // FIXME TODO remove from in-progress transactions, i.e. ViewStateWrite ???
     // FIXME TODO remove from '_toFlush' memory-store ???
     auto& memoryStore = activeMemoryStore();
     memoryStore._writer->remove(shared_filter);
-
+    
     if (_storePersisted) {
       _storePersisted._writer->remove(shared_filter);
     }
-
+    
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "': " << e.code() << " " << e.what();
+    << "caught exception while removing from iResearch view '" << id()
+    << "', collection '" << cid << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "': " << e.what();
+    << "caught exception while removing from iResearch view '" << id()
+    << "', collection '" << cid << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "'";
+    << "caught exception while removing from iResearch view '" << id()
+    << "', collection '" << cid << "'";
     IR_LOG_EXCEPTION();
   }
-
+  
   return TRI_ERROR_INTERNAL;
 }
 
@@ -1207,8 +1216,8 @@ arangodb::Result IResearchView::dropImpl() {
 
   if (!res.ok()) {
     return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to remove links while removing IResearch view '") + std::to_string(id()) + "'"
+      res.errorNumber(),
+      std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
     );
   }
 

@@ -39,7 +39,7 @@ namespace velocypack {
 template <typename T>
 class Buffer {
  public:
-  Buffer() : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
+  Buffer() noexcept : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
     poison(_buffer, _capacity);
     initWithNone();
   }
@@ -120,7 +120,11 @@ class Buffer {
     return *this;
   }
 
-  ~Buffer() { clear(); }
+  ~Buffer() { 
+    if (_buffer != _local) {
+      delete[] _buffer;
+    }
+  }
 
   inline T* data() noexcept { return _buffer; }
   inline T const* data() const noexcept { return _buffer; }
@@ -168,14 +172,14 @@ class Buffer {
   }
 
   void clear() noexcept {
-    reset();
+    _size = 0;
     if (_buffer != _local) {
       delete[] _buffer;
       _buffer = _local;
       _capacity = sizeof(_local);
       poison(_buffer, _capacity);
-      initWithNone();
     }
+    initWithNone();
   }
 
   inline T& operator[](size_t position) noexcept {

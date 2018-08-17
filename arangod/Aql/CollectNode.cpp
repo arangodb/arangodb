@@ -301,7 +301,7 @@ double CollectNode::estimateCost(size_t& nrItems) const {
   // Nevertheless, the optimizer does not do much with CollectNodes
   // and thus this potential overestimation does not really matter.
 
-  if (_count && _groupVariables.empty()) {
+  if (_groupVariables.empty()) {
     // we are known to only produce a single output row
     nrItems = 1;
   } else {

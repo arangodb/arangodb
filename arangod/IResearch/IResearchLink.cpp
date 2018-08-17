@@ -155,6 +155,21 @@ int IResearchLink::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
+void IResearchLink::afterTruncate() {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+  
+  if (!_view) {
+    return;
+    //return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+  
+  int res = _view->truncate(_view->id());
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+
 bool IResearchLink::hasBatchInsert() const {
   return true;
 }

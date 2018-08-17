@@ -91,7 +91,8 @@ bool equalStorageEngines() {
 } // namespace
 
 EngineEqualityCheckFeature::EngineEqualityCheckFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "EngineEqualityCheck") {
   setOptional(false);
   startsAfter("DatabasePhase");

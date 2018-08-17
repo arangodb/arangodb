@@ -45,8 +45,9 @@
 
 struct IResearchFeatureSetup {
   StorageEngineMock engine;
+  arangodb::application_features::ApplicationServer server;
 
-  IResearchFeatureSetup() {
+  IResearchFeatureSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -57,6 +58,7 @@ struct IResearchFeatureSetup {
 
   ~IResearchFeatureSetup() {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
@@ -74,9 +76,18 @@ TEST_CASE("IResearchFeatureTest", "[iresearch][iresearch-feature]") {
   UNUSED(s);
 
 SECTION("test_start") {
+  // create a new instance of an ApplicationServer and fill it with the required features
+  // cannot use the existing server since its features already have some state
+  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+    arangodb::application_features::ApplicationServer::server,
+    [](arangodb::application_features::ApplicationServer* ptr)->void {
+      arangodb::application_features::ApplicationServer::server = ptr;
+    }
+  );
+  arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  auto* functions = new arangodb::aql::AqlFunctionFeature(&server);
-  arangodb::iresearch::IResearchFeature iresearch(&server);
+  auto* functions = new arangodb::aql::AqlFunctionFeature(server);
+  arangodb::iresearch::IResearchFeature iresearch(server);
   auto cleanup = irs::make_finally([functions]()->void{ functions->unprepare(); });
 
   enum class FunctionType {
@@ -129,9 +140,18 @@ SECTION("IResearch_version") {
 SECTION("test_async") {
   // schedule task (null resource mutex)
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     bool deallocated = false;
     std::condition_variable cond;
@@ -149,9 +169,18 @@ SECTION("test_async") {
 
   // schedule task (null resource mutex value)
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(nullptr);
     bool deallocated = false;
@@ -170,9 +199,18 @@ SECTION("test_async") {
 
   // schedule task (null functr)
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     std::condition_variable cond;
@@ -186,9 +224,18 @@ SECTION("test_async") {
 
   // schedule task (wait indefinite)
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     bool deallocated = false;
     std::condition_variable cond;
@@ -209,9 +256,18 @@ SECTION("test_async") {
 
   // single-run task
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -230,9 +286,18 @@ SECTION("test_async") {
 
   // multi-run task
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -264,9 +329,18 @@ SECTION("test_async") {
 
   // trigger task by notify
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -296,9 +370,18 @@ SECTION("test_async") {
 
   // trigger by timeout
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -331,17 +414,35 @@ SECTION("test_async") {
 
   // deallocate empty
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
 
     {
-      arangodb::iresearch::IResearchFeature feature(&server);
-      server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+      arangodb::iresearch::IResearchFeature feature(server);
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
       feature.prepare(); // start thread pool
     }
   }
 
   // deallocate with running tasks
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated = false;
@@ -350,8 +451,8 @@ SECTION("test_async") {
     SCOPED_LOCK_NAMED(mutex, lock);
 
     {
-      arangodb::iresearch::IResearchFeature feature(&server);
-      server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+      arangodb::iresearch::IResearchFeature feature(server);
+      server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
       feature.prepare(); // start thread pool
       std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
 
@@ -364,9 +465,18 @@ SECTION("test_async") {
 
   // multiple tasks with same resourceMutex + resourceMutex reset (sequential creation)
   {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchFeature feature(&server);
-    server.addFeature(new arangodb::ViewTypesFeature(&server)); // required for IResearchFeature::prepare()
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
     feature.prepare(); // start thread pool
     auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
     bool deallocated0 = false;
@@ -407,6 +517,53 @@ SECTION("test_async") {
     CHECK((true == deallocated0));
     CHECK((true == deallocated1));
     thread.join();
+  }
+
+  // schedule task (resize pool)
+  {
+    // create a new instance of an ApplicationServer and fill it with the required features
+    // cannot use the existing server since its features already have some state
+    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
+      arangodb::application_features::ApplicationServer::server,
+      [](arangodb::application_features::ApplicationServer* ptr)->void {
+        arangodb::application_features::ApplicationServer::server = ptr;
+      }
+    );
+    arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
+    arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+    arangodb::iresearch::IResearchFeature feature(server);
+    server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    arangodb::options::ProgramOptions options("", "", "", nullptr);
+    auto optionsPtr = std::shared_ptr<arangodb::options::ProgramOptions>(&options, [](arangodb::options::ProgramOptions*)->void {});
+    feature.collectOptions(optionsPtr);
+    options.get<arangodb::options::UInt64Parameter>("arangosearch.threads")->set("8");
+    auto resourceMutex = std::make_shared<arangodb::iresearch::ResourceMutex>(&server);
+    bool deallocated = false;
+    std::condition_variable cond;
+    std::mutex mutex;
+    size_t count = 0;
+    auto last = std::chrono::system_clock::now();
+    std::chrono::system_clock::duration diff;
+    SCOPED_LOCK_NAMED(mutex, lock);
+
+    {
+      std::shared_ptr<bool> flag(&deallocated, [](bool* ptr)->void { *ptr = true; });
+      feature.async(resourceMutex, [&cond, &mutex, flag, &count, &last, &diff](size_t& timeoutMsec, bool)->bool {
+        diff = std::chrono::system_clock::now() - last;
+        last = std::chrono::system_clock::now();
+        timeoutMsec = 100;
+        if (++count <= 1) return true;
+        SCOPED_LOCK(mutex);
+        cond.notify_all();
+        return false;
+      });
+    }
+    feature.prepare(); // start thread pool after a task has been scheduled, to trigger resize with a task
+    CHECK((std::cv_status::timeout != cond.wait_for(lock, std::chrono::milliseconds(1000))));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK((true == deallocated));
+    CHECK((2 == count));
+    CHECK((std::chrono::milliseconds(100) < diff));
   }
 }
 

@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,32 +17,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+#include <fuerte/api/collection.h>
+#include <fuerte/api/database.h>
 
-#ifndef ARANGOD_VOCBASE_GRAPHS_H
-#define ARANGOD_VOCBASE_GRAPHS_H 1
+namespace arangodb { namespace fuerte { inline namespace v1 {
+using namespace arangodb::fuerte::detail;
 
-#include "VocBase/vocbase.h"
-
-namespace arangodb {
-namespace aql {
-class Graph;
-}
-
-namespace transaction {
-class Context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
-///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
-
-}  // namespace arangodb
-
-#endif
-
+Collection::Collection(std::shared_ptr<Database> const& db,
+                       std::string const& name)
+    : _db(db), _name(name) {}
+}}}  // namespace arangodb::fuerte::v1

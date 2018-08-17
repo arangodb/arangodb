@@ -84,21 +84,22 @@ class GeneralServerFeature final
 
     return GENERAL_SERVER->_accessControlAllowOrigins;
   }
-      
+
  private:
   static GeneralServerFeature* GENERAL_SERVER;
 
  public:
-  explicit GeneralServerFeature(application_features::ApplicationServer*);
+  explicit GeneralServerFeature(
+    application_features::ApplicationServer& server
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
   void unprepare() override final;
-  
+
  private:
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
@@ -115,12 +116,14 @@ class GeneralServerFeature final
   void buildServers();
   void defineHandlers();
 
- private:
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
+  std::unique_ptr<
+      std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>
+      _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
 };
+
 }
 
 #endif

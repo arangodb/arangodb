@@ -81,17 +81,9 @@ var findOrCreateCollectionByName = function (name, type, noCreate, options) {
   let res = false;
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
-      if (options) {
-        col = db._create(name, options);
-      } else {
-        col = db._create(name);
-      }
+      col = db._create(name, options);
     } else {
-      if (options) {
-        col = db._createEdgeCollection(name, options);
-      } else {
-        col = db._createEdgeCollection(name);
-      }
+      col = db._createEdgeCollection(name, options);
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
@@ -320,10 +312,18 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // / internal helper to sort a graph's edge definitions
 // //////////////////////////////////////////////////////////////////////////////
 
-var sortEdgeDefinition = function (edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
+var sortEdgeDefinitionInplace = function (edgeDefinition) {
+  edgeDefinition.from.sort();
+  edgeDefinition.to.sort();
   return edgeDefinition;
+};
+
+var sortEdgeDefinition = function (edgeDefinition) {
+  return {
+    collection: edgeDefinition.collection,
+    from: edgeDefinition.from.slice().sort(),
+    to: edgeDefinition.to.slice().sort(),
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -731,6 +731,13 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   return result;
 };
 
+const edgeDefinitionsEqual = function (leftEdgeDef, rightEdgeDef) {
+  leftEdgeDef = sortEdgeDefinition(leftEdgeDef);
+  rightEdgeDef = sortEdgeDefinition(rightEdgeDef);
+  const stringify = obj => JSON.stringify(obj, Object.keys(obj).sort());
+  return stringify(leftEdgeDef) === stringify(rightEdgeDef);
+};
+
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
   constructor (info) {
@@ -762,7 +769,7 @@ class Graph {
     var self = this;
     // Create Hidden Properties
     createHiddenProperty(this, '__useBuiltIn', useBuiltIn);
-    createHiddenProperty(this, '__name', info._key);
+    createHiddenProperty(this, '__name', info._key || info.name);
     createHiddenProperty(this, '__vertexCollections', vertexCollections);
     createHiddenProperty(this, '__edgeCollections', edgeCollections);
     createHiddenProperty(this, '__edgeDefinitions', info.edgeDefinitions);
@@ -779,7 +786,7 @@ class Graph {
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
-    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinition);
+    createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinitionInplace);
     updateBindCollections(self);
   }
 
@@ -1552,226 +1559,6 @@ class Graph {
   }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__extendEdgeDefinitions
-// //////////////////////////////////////////////////////////////////////////////
-
-  _extendEdgeDefinitions (edgeDefinition) {
-    edgeDefinition = sortEdgeDefinition(edgeDefinition);
-    var self = this;
-    var err;
-    // check if edgeCollection not already used
-    var eC = edgeDefinition.collection;
-    // ... in same graph
-    if (this.__edgeCollections[eC] !== undefined) {
-      err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
-      throw err;
-    }
-    // in different graph
-    db._graphs.toArray().forEach(
-      function (singleGraph) {
-        var sGEDs = singleGraph.edgeDefinitions;
-        sGEDs.forEach(
-          function (sGED) {
-            var col = sGED.collection;
-            if (col === eC) {
-              if (JSON.stringify(sGED) !== JSON.stringify(edgeDefinition)) {
-                err = new ArangoError();
-                err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
-                err.errorMessage = col + ' ' +
-                                   arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
-                throw err;
-              }
-            }
-          }
-        );
-      }
-    );
-
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
-
-    this.__edgeDefinitions.push(edgeDefinition);
-    db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
-    this.__edgeCollections[edgeDefinition.collection] = db[edgeDefinition.collection];
-    edgeDefinition.from.forEach(
-      function (vc) {
-        self[vc] = db[vc];
-        // remove from __orphanCollections
-        var orphanIndex = self.__orphanCollections.indexOf(vc);
-        if (orphanIndex !== -1) {
-          self.__orphanCollections.splice(orphanIndex, 1);
-        }
-        // push into __vertexCollections
-        if (self.__vertexCollections[vc] === undefined) {
-          self.__vertexCollections[vc] = db[vc];
-        }
-      }
-    );
-    edgeDefinition.to.forEach(
-      function (vc) {
-        self[vc] = db[vc];
-        // remove from __orphanCollections
-        var orphanIndex = self.__orphanCollections.indexOf(vc);
-        if (orphanIndex !== -1) {
-          self.__orphanCollections.splice(orphanIndex, 1);
-        }
-        // push into __vertexCollections
-        if (self.__vertexCollections[vc] === undefined) {
-          self.__vertexCollections[vc] = db[vc];
-        }
-      }
-    );
-    updateBindCollections(this);
-  }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__editEdgeDefinition
-// //////////////////////////////////////////////////////////////////////////////
-
-  _editEdgeDefinitions (edgeDefinition) {
-    edgeDefinition = sortEdgeDefinition(edgeDefinition);
-    var self = this;
-
-    // check, if in graphs edge definition
-    if (this.__edgeCollections[edgeDefinition.collection] === undefined) {
-      var err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
-      throw err;
-    }
-
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
-
-    // evaluate collections to add to orphanage
-    var possibleOrphans = [];
-    var currentEdgeDefinition;
-    this.__edgeDefinitions.forEach(
-      function (ed) {
-        if (edgeDefinition.collection === ed.collection) {
-          currentEdgeDefinition = ed;
-        }
-      }
-    );
-
-    var currentCollections = _.union(currentEdgeDefinition.from, currentEdgeDefinition.to);
-    var newCollections = _.union(edgeDefinition.from, edgeDefinition.to);
-    currentCollections.forEach(
-      function (colName) {
-        if (newCollections.indexOf(colName) === -1) {
-          possibleOrphans.push(colName);
-        }
-      }
-    );
-    // change definition for ALL graphs
-    var graphs = exports._listObjects();
-    graphs.forEach(
-      function (graph) {
-        changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self);
-      }
-    );
-    updateBindCollections(this);
-  }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__deleteEdgeDefinition
-// //////////////////////////////////////////////////////////////////////////////
-
-  _deleteEdgeDefinition (edgeCollection, dropCollection) {
-    // check, if in graphs edge definition
-    if (this.__edgeCollections[edgeCollection] === undefined) {
-      var err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
-      throw err;
-    }
-    if (dropCollection) {
-      checkRWPermission(edgeCollection);
-    }
-
-    let edgeDefinitions = this.__edgeDefinitions;
-    let self = this;
-    let usedVertexCollections = [];
-    let possibleOrphans = [];
-    let index;
-
-    edgeDefinitions.forEach(
-      function (edgeDefinition, idx) {
-        if (edgeDefinition.collection === edgeCollection) {
-          index = idx;
-          possibleOrphans = edgeDefinition.from;
-          possibleOrphans = _.union(possibleOrphans, edgeDefinition.to);
-        } else {
-          usedVertexCollections = _.union(usedVertexCollections, edgeDefinition.from);
-          usedVertexCollections = _.union(usedVertexCollections, edgeDefinition.to);
-        }
-      }
-    );
-    this.__edgeDefinitions.splice(index, 1);
-    possibleOrphans.forEach(
-      function (po) {
-        if (usedVertexCollections.indexOf(po) === -1) {
-          self.__orphanCollections.push(po);
-        }
-      }
-    );
-
-    updateBindCollections(this);
-    let gdb = getGraphCollection();
-    gdb.update(
-      this.__name,
-      {
-        orphanCollections: this.__orphanCollections,
-        edgeDefinitions: this.__edgeDefinitions
-      }
-    );
-
-    if (dropCollection) {
-      db._drop(edgeCollection);
-    }
-  }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__addVertexCollection
-// //////////////////////////////////////////////////////////////////////////////
-
-  _addVertexCollection (vertexCollectionName, createCollection) {
-    // check edgeCollection
-    var ec = db._collection(vertexCollectionName);
-    var err;
-    if (ec === null) {
-      if (createCollection !== false) {
-        db._create(vertexCollectionName);
-      } else {
-        err = new ArangoError();
-        err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-        err.errorMessage = vertexCollectionName + arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
-        throw err;
-      }
-    } else if (ec.type() !== 2) {
-      err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX.message;
-      throw err;
-    }
-    if (this.__vertexCollections[vertexCollectionName] !== undefined) {
-      err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
-      throw err;
-    }
-    if (_.includes(this.__orphanCollections, vertexCollectionName)) {
-      err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.message;
-      throw err;
-    }
-    this.__orphanCollections.push(vertexCollectionName);
-    updateBindCollections(this);
-    db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
-  }
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_general_graph__orphanCollections
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -2013,6 +1800,9 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
     throw err;
   }
+
+  edgeDefinitions = _.cloneDeep(edgeDefinitions);
+
   // check, if a collection is already used in a different edgeDefinition
   let tmpCollections = [];
   let tmpEdgeDefinitions = {};
@@ -2039,7 +1829,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
         (sGED) => {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
-            if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
+            if (!edgeDefinitionsEqual(sGED, tmpEdgeDefinitions[col])) {
               let err = new ArangoError();
               err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
               err.errorMessage = col + ' ' +
@@ -2076,12 +1866,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     }
   );
 
-  edgeDefinitions.forEach(
-    (eD, index) => {
-      var tmp = sortEdgeDefinition(eD);
-      edgeDefinitions[index] = tmp;
-    }
-  );
+  edgeDefinitions.forEach(sortEdgeDefinitionInplace);
   orphanCollections = orphanCollections.sort();
 
   var data = gdb.save({
@@ -2089,7 +1874,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     'edgeDefinitions': edgeDefinitions,
     '_key': graphName,
     'numberOfShards': options.numberOfShards || 1,
-    'replicationFactor': options.replicationFactor || 1
+    'replicationFactor': options.replicationFactor || 1,
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;
@@ -2257,82 +2042,82 @@ exports._listObjects = function () {
 exports._registerCompatibilityFunctions = function () {
   const aqlfunctions = require('@arangodb/aql/functions');
   aqlfunctions.register('arangodb::GRAPH_EDGES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._edges(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_VERTICES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._vertices(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_NEIGHBORS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._neighbors(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_COMMON_NEIGHBORS', function (graphName, vertex1Example, vertex2Example, options1, options2) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._commonNeighbors(vertex1Example, vertex2Example, options1, options2);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_COMMON_PROPERTIES', function (graphName, vertex1Example, vertex2Example, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._commonProperties(vertex1Example, vertex2Example, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_PATHS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._paths(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_SHORTEST_PATH', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._shortestPath(startVertexExample, edgeVertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_DISTANCE_TO', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._distanceTo(startVertexExample, edgeVertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_ECCENTRICITY', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._absoluteEccentricity(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ECCENTRICITY', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._eccentricity(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_CLOSENESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._farness(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_CLOSENESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._closeness(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_BETWEENNESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._absoluteBetweenness(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_BETWEENNESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._betweenness(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_RADIUS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._radius(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_DIAMETER', function (graphName, options) {
-    var gm = require('@arangodb/general-graph');
+    var gm = require('@arangodb/general-graph-common');
     var g = gm._graph(graphName);
     return g._diameter(options);
   }, false);

@@ -369,16 +369,12 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
+  auto res = _vocbase.dropView(view->id(), allowDropSystem);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
-  } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   } else {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "problem dropping view");
+    generateError(res);
   }
 }
 

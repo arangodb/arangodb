@@ -35,13 +35,16 @@
 #include "ProgramOptions/Section.h"
 #include "ProgramOptions/Translator.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
-                             std::string const& progname,
-                             std::string const& configFilename)
+namespace arangodb {
+
+ConfigFeature::ConfigFeature(
+    application_features::ApplicationServer& server,
+    std::string const& progname,
+    std::string const& configFilename
+)
     : ApplicationFeature(server, "Config"),
       _file(configFilename),
       _checkConfiguration(false),
@@ -237,3 +240,5 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     exit(EXIT_FAILURE);
   }
 }
+
+} // arangodb

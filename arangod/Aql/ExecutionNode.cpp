@@ -1551,8 +1551,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan, plan->getAst(), base)),
-      _canRemoveIfThrows(false) {}
+      _expression(new Expression(plan, plan->getAst(), base)) {}
 
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -1564,7 +1563,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
-  nodes.add("canThrow", VPackValue(_expression->canThrow()));
+  nodes.add("canThrow", VPackValue(false));
 
   if (_conditionVariable != nullptr) {
     nodes.add(VPackValue("conditionVariable"));
@@ -1590,7 +1589,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic", VPackValue(func->isDeterministic));
             nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
-            nodes.add("usesV8", VPackValue(false));
+            nodes.add("usesV8", VPackValue(func->implementation == nullptr));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1640,7 +1639,6 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
 
   auto c = std::make_unique<CalculationNode>(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
-  c->_canRemoveIfThrows = _canRemoveIfThrows;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1876,27 +1874,6 @@ void SubqueryNode::getVariablesUsedHere(
   }
 }
 
-/// @brief can the node throw? We have to find whether any node in the
-/// subquery plan can throw.
-struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
-  bool _canThrow;
-
-  CanThrowFinder() : _canThrow(false) {}
-  ~CanThrowFinder() = default;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
-  }
-
-  bool before(ExecutionNode* node) override final {
-    if (node->canThrow()) {
-      _canThrow = true;
-      return true;
-    }
-    return false;
-  }
-};
-
 /// @brief is the node determistic?
 struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
@@ -1916,12 +1893,6 @@ struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
     return false;
   }
 };
-
-bool SubqueryNode::canThrow() {
-  CanThrowFinder finder;
-  _subquery->walk(finder);
-  return finder._canThrow;
-}
 
 bool SubqueryNode::isDeterministic() {
   IsDeterministicFinder finder;

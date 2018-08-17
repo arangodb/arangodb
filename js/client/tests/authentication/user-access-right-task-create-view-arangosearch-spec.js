@@ -207,6 +207,12 @@ function hasIResearch (db) {
               return view != null;
             };
 
+            const rootTestViewLinksEmpty = (viewName = testViewName) => {
+              helper.switchUser('root', dbName);
+              var view = db._view(viewName);
+              return Object.keys(view.properties().links).length === 0;
+            };
+
             const rootDropView = () => {
               helper.switchUser('root', dbName);
               try {
@@ -215,11 +221,9 @@ function hasIResearch (db) {
               helper.switchUser(name, dbName);
             };
 
-            // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
-            const checkRESTCodeOnly = (e) => {
+            const checkError = (e) => {
               expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-              // FIXME: uncomment to see unexpected codes
-              // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+              expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
             };
 
             describe('create a', () => {
@@ -256,11 +260,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
-                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -287,29 +294,28 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+                  if (colLevel['rw'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
                     expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
                   } else {
-                    try {
-                      tasks.register(task);
-                      wait(keySpaceId, name);
-                    } catch (e) {
-                      checkRESTCodeOnly(e);
-                    }
-                    if(!dbLevel['rw'].has(name)) {
-                      expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                    }
+                    tasks.register(task);
+                    wait(keySpaceId, name);
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was unable to create a view with sufficent rights`);
+                    expect(rootTestViewLinksEmpty(testViewName)).to.equal(true, 'View links expected to be empty, but were created afterwards with insufficent rights');
                   }
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
             });

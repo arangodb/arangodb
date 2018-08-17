@@ -290,7 +290,7 @@ class Index {
   virtual int drop();
 
   // called after the collection was truncated
-  virtual int afterTruncate();
+  virtual void afterTruncate() = 0;
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
