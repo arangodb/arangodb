@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #5831: custom queries in the ui could not be loaded if the user
+  only has read access to the _system database.
+
 * fixed issue #6128: ArangoDb Cluster: Task moved from DBS to Coordinator
 
 * fixed some web ui action events related to Running Queries view and Slow
