@@ -381,6 +381,13 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
       0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
       0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
 
+- the internal AQL function `PASSTHRU` (which simply returns its call argument)
+  has been changed from being non-deterministic to being deterministic, provided its
+  call argument is also deterministic. This change should not affect end users, as
+  `PASSTHRU` is intended to be used for internal testing only. Should end users use
+  this AQL function in any query and need a wrapper to make query parts non-deterministic,
+  the `NOOPT` AQL function can stand in as a non-deterministic variant of `PASSTHRU`
+  
 
 Usage of V8
 -----------
@@ -558,6 +565,17 @@ removed in future versions of ArangoDB:
   For cluster mode there is `/_api/cluster/endpoints` to find all current 
   coordinator endpoints.
 
+* accessing collections via their numeric IDs instead of their names. This mostly
+  affects the REST APIs at
+
+  - `/_api/collection/<collection-id>`
+  - `/_api/document/<collection-id>`
+  - `/_api/simple`
+
+  Note that in ArangoDB 3.4 it is still possible to access collections via
+  their numeric ID, but the preferred way to access a collections is by its
+  user-defined name.
+
 * the REST API for WAL tailing at `/_api/replication/logger-follow`:
 
   The `logger-follow` WAL tailing API has several limitations. A better API
@@ -565,6 +583,12 @@ removed in future versions of ArangoDB:
 
   Client applications using the old tailing API at `/_api/replication/logger-follow`
   should switch to the new API eventually.
+
+* the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
+
+  The legacy mode is described in more detail in the [Foxx manual](https://docs.arangodb.com/3.3/Manual/Foxx/LegacyMode.html).
+  To upgrade an existing Foxx application that still uses the legacy mode, please
+  follow the steps described in [the manual](https://docs.arangodb.com/3.3/Manual/Foxx/Migrating2x/).
 
 * the AQL geo functions `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `IS_IN_POLYGON`:
 
