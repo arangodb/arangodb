@@ -124,6 +124,10 @@ class V8ClientConnection {
                                      std::unique_ptr<fuerte::Response> response,
                                      fuerte::ErrorCondition ec);
 
+  /// @brief shuts down the connection _connection and resets the pointer
+  /// to a nullptr
+  void shutdownConnection();
+
  private:
   std::string _databaseName;
   std::string _username;

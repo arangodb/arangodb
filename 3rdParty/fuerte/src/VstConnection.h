@@ -47,6 +47,8 @@ class VstConnection final : public Connection {
   explicit VstConnection(EventLoopService& loop,
                          detail::ConnectionConfiguration const&);
 
+  ~VstConnection();
+
  public:
   // this function prepares the request for sending
   // by creating a RequestItem and setting:
