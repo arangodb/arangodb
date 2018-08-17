@@ -36,9 +36,9 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "StorageEngine/TransactionState.h"
-#include "Basics/StringUtils.h"
 
 #include "velocypack/Iterator.h"
 

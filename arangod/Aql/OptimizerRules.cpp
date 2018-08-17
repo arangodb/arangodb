@@ -347,7 +347,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
                                      OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
+  plan->findNodesOfType(nodes, EN::FILTER, true);
 
   bool modified = false;
 
@@ -618,8 +618,6 @@ void arangodb::aql::removeRedundantSortsRule(
           }
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
-        } else if (current->getType() == EN::SEARCH) {
-          // ok: a search does not depend on sort order
         } else if (current->getType() == EN::CALCULATION) {
           // ok: a calculation does not depend on sort order only if it is deterministic
           if (!current->isDeterministic()) {
@@ -682,7 +680,7 @@ void arangodb::aql::removeUnnecessaryFiltersRule(
     OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
+  plan->findNodesOfType(nodes, EN::FILTER, true);
 
   bool modified = false;
   std::unordered_set<ExecutionNode*> toUnlink;
@@ -849,7 +847,7 @@ class PropagateConstantAttributesHelper {
   void propagateConstants(ExecutionPlan* plan) {
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
     SmallVector<ExecutionNode*> nodes{a};
-    plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
+    plan->findNodesOfType(nodes, EN::FILTER, true);
 
     for (auto const& node : nodes) {
       auto fn = ExecutionNode::castTo<FilterNode*>(node);
@@ -1213,7 +1211,6 @@ void arangodb::aql::moveCalculationsDownRule(
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::SEARCH || // FIXME ???
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         shouldMove = false;
@@ -1481,9 +1478,8 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
       auto current = stack.back();
       stack.pop_back();
 
-      if (current->getType() == EN::LIMIT
-          || current->getType() == EN::SEARCH) {
-        // cannot push a filter beyond a LIMIT or SEARCH node
+      if (current->getType() == EN::LIMIT) {
+        // cannot push a filter beyond a LIMIT node
         break;
       }
 
@@ -1604,11 +1600,6 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
       case EN::FILTER: {
         replaceInVariable<FilterNode>(en);
-        break;
-      }
-
-      case EN::SEARCH: {
-        replaceInVariable<SearchNode>(en);
         break;
       }
 
@@ -2348,7 +2339,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
-      case EN::SEARCH:
         return false;  // skip. we don't care.
 
       case EN::CALCULATION: {
@@ -3925,7 +3915,6 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
-        case EN::SEARCH:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
@@ -4857,7 +4846,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
                                         OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
+  plan->findNodesOfType(nodes, EN::FILTER, true);
 
   bool modified = false;
   for (auto const& n : nodes) {
@@ -5044,7 +5033,7 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
                                           OptimizerRule const* rule) {
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, { EN::FILTER, EN::SEARCH }, true);
+  plan->findNodesOfType(nodes, EN::FILTER, true);
 
   bool modified = false;
   for (auto const& n : nodes) {

@@ -439,7 +439,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
   // explicit collection and view with the same 'collection' name
   {
-    std::string const query = "LET c=5 FOR x IN collection_1 SEARCH x.seq == c FOR d IN  collection_1 SEARCH x.seq == d.seq RETURN x";
+    std::string const query = "LET c=5 FOR x IN collection_1 SEARCH x.seq == c FOR d IN collection_1 SEARCH x.seq == d.seq RETURN x";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
 
     CHECK((arangodb::tests::assertRules(vocbase, query, {}, boundParameters)));

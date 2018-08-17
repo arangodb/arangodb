@@ -180,6 +180,8 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
       // in all these cases we better abort
       return true;
 
+#warning @gnusi, FIXME
+#if 0
     case EN::SEARCH: {
       std::vector<Variable const*> invars(en->getVariablesUsedHere());
       TRI_ASSERT(invars.size() == 1);
@@ -187,6 +189,7 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
       _filters.emplace(invars[0]->id);
       break;
     }
+#endif
 
     case EN::SORT: {
       // register which variables are used in a SORT
@@ -425,6 +428,8 @@ void handleViewsRule(
     node = nullptr;
   }
 
+#warning @gnusi, FIXME
+#if 0
   if (!changes.empty()) {
     std::unordered_set<ExecutionNode*> toUnlink;
 
@@ -482,6 +487,7 @@ void handleViewsRule(
 
     plan->unlinkNodes(toUnlink);
   }
+#endif
 
   opt->addPlan(std::move(plan), rule, !changes.empty());
 }

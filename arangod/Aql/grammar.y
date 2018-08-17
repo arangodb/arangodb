@@ -187,7 +187,6 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_FOR "FOR declaration"
 %token T_LET "LET declaration"
 %token T_FILTER "FILTER declaration"
-%token T_SEARCH "SEARCH declaration"
 %token T_RETURN "RETURN declaration"
 %token T_COLLECT "COLLECT declaration"
 %token T_SORT "SORT declaration"
@@ -322,6 +321,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
+%type <node> search;
 %type <node> object;
 %type <node> options;
 %type <node> optional_object_elements;
@@ -441,8 +441,6 @@ statement_block_statement:
     }
   | filter_statement {
     }
-  | search_statement {
-    }
   | collect_statement {
     }
   | sort_statement {
@@ -463,14 +461,33 @@ statement_block_statement:
 
 for_statement:
     T_FOR variable_name T_IN expression {
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      // first create an out variable for the FOR statement
+      // now we can handle the optional search condition, which may
+      // or may not refer to the FOR's variable
+      parser->pushStack(parser->ast()->createNodeVariable($2.value, $2.length, true));
 
-      auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
-      parser->ast()->addOperation(node);
+      // open a new scope
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+    } search {
+      // now we can handle the optional search condition, which may
+      // or may not refer to the FOR's variable
+      AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      TRI_ASSERT(variableNode != nullptr);
+      Variable* variable = static_cast<Variable*>(variableNode->getData());
+      
+      if ($6 == nullptr) {
+        // no SEARCH clause. this is a regular FOR loop for a collection or an arbitrary expression
+        auto node = parser->ast()->createNodeFor(variable, $4);
+        parser->ast()->addOperation(node);
+      } else {
+        // we got a SEARCH clause. this is always a view.
+        auto node = parser->ast()->createNodeForView(variable, $4, $6);
+        parser->ast()->addOperation(node);
+      }
     }
-    | T_FOR traversal_statement {
+  | T_FOR traversal_statement {
     }
-    | T_FOR shortest_path_statement {
+  | T_FOR shortest_path_statement {
     }
   ;
 
@@ -515,14 +532,6 @@ filter_statement:
     T_FILTER expression {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter($2);
-      parser->ast()->addOperation(node);
-    }
-  ;
-
-search_statement:
-    T_SEARCH expression {
-      // operand is a reference. can use it directly
-      auto node = parser->ast()->createNodeSearch($2);
       parser->ast()->addOperation(node);
     }
   ;
@@ -1297,6 +1306,23 @@ array_elements_list:
     }
   | array_elements_list T_COMMA expression {
       parser->pushArrayElement($3);
+    }
+  ;
+
+search:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING expression {
+      if ($2 == nullptr) {
+        ABORT_OOM
+      }
+
+      if (!TRI_CaseEqualString($1.value, "SEARCH")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = $2;
     }
   ;
 

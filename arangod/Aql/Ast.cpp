@@ -184,7 +184,7 @@ AstNode* Ast::createNodeSubquery() {
   return createNode(NODE_TYPE_SUBQUERY);
 }
 
-/// @brief create an AST for node
+/// @brief create an AST for (non-view) node
 AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
                             AstNode const* expression,
                             bool isUserDefinedVariable) {
@@ -203,7 +203,7 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   return node;
 }
 
-/// @brief create an AST for node, using an existing output variable
+/// @brief create an AST for (non-view) node, using an existing output variable
 AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -217,6 +217,27 @@ AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
 
   node->addMember(v);
   node->addMember(expression);
+
+  return node;
+}
+
+/// @brief create an AST for (view) node, using an existing output variable
+AstNode* Ast::createNodeForView(Variable* variable,
+                                AstNode const* expression,
+                                AstNode const* search) {
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  AstNode* variableNode = createNode(NODE_TYPE_VARIABLE);
+  variableNode->setData(static_cast<void*>(variable));
+
+  AstNode* node = createNode(NODE_TYPE_FOR_VIEW);
+  node->reserve(3);
+
+  node->addMember(variableNode);
+  node->addMember(expression);
+  node->addMember(search);
 
   return node;
 }
@@ -278,14 +299,6 @@ AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
 /// @brief create an AST filter node
 AstNode* Ast::createNodeFilter(AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
-  node->addMember(expression);
-
-  return node;
-}
-
-/// @brief create an AST search node
-AstNode* Ast::createNodeSearch(AstNode const* expression) {
-  AstNode* node = createNode(NODE_TYPE_SEARCH);
   node->addMember(expression);
 
   return node;
@@ -1837,8 +1850,7 @@ void Ast::validateAndOptimize() {
       ++ctx->filterDepth;
     }
 
-    if (node->type == NODE_TYPE_FILTER || 
-        node->type == NODE_TYPE_SEARCH) {
+    if (node->type == NODE_TYPE_FILTER) {
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
     } else if (node->type == NODE_TYPE_FCALL) {
@@ -1885,8 +1897,7 @@ void Ast::validateAndOptimize() {
       --ctx->filterDepth;
     }
 
-    if (node->type == NODE_TYPE_FILTER ||
-        node->type == NODE_TYPE_SEARCH) {
+    if (node->type == NODE_TYPE_FILTER) {
       ctx->filterDepth = -1;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
       --ctx->nestingLevel;
@@ -2037,9 +2048,8 @@ void Ast::validateAndOptimize() {
       return this->optimizeLet(node);
     }
 
-    // FILTER or SEARCH
-    if (node->type == NODE_TYPE_FILTER ||
-        node->type == NODE_TYPE_SEARCH) {
+    // FILTER 
+    if (node->type == NODE_TYPE_FILTER) {
       return this->optimizeFilter(node);
     }
 
@@ -3288,7 +3298,7 @@ AstNode* Ast::optimizeLet(AstNode* node) {
 /// @brief optimizes the FILTER or SEARCH statement
 AstNode* Ast::optimizeFilter(AstNode* node) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FILTER || node->type == NODE_TYPE_SEARCH);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
 
   AstNode* expression = node->getMember(0);

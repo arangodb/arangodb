@@ -153,12 +153,15 @@ class Ast {
 
   /// @brief create an AST subquery node
   AstNode* createNodeSubquery();
-
+  
   /// @brief create an AST for node
-  AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
+  AstNode* createNodeFor(char const* variableName, size_t nameLength, AstNode const* expression, bool isUserDefinedVariable);
 
-  /// @brief create an AST for node, using an existing output variable
-  AstNode* createNodeFor(Variable*, AstNode const*);
+  /// @brief create an AST for (non-view) node, using an existing output variable
+  AstNode* createNodeFor(Variable* variable, AstNode const* expression);
+  
+  /// @brief create an AST for (view) node, using an existing out variable
+  AstNode* createNodeForView(Variable* variable, AstNode const* expression, AstNode const* search);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
@@ -172,9 +175,6 @@ class Ast {
   /// @brief create an AST filter node
   AstNode* createNodeFilter(AstNode const*);
   
-  /// @brief create an AST search node
-  AstNode* createNodeSearch(AstNode const*);
-
   /// @brief create an AST filter node for an UPSERT query
   AstNode* createNodeUpsertFilter(AstNode const*, AstNode const*);
 

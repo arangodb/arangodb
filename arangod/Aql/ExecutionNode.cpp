@@ -86,7 +86,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE), "SingleRemoteOperationNode"},
-    {static_cast<int>(ExecutionNode::SEARCH), "SearchNode"},
 #ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
 #endif
@@ -1111,7 +1110,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
     case ExecutionNode::SINGLETON:
     case ExecutionNode::FILTER:
-    case ExecutionNode::SEARCH:
     case ExecutionNode::LIMIT:
     case ExecutionNode::SCATTER:
     case ExecutionNode::DISTRIBUTE:
