@@ -168,13 +168,16 @@ void HeartbeatThread::runBackgroundJob() {
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
     TRI_ASSERT(_backgroundJobScheduledOrRunning);
+
     if (_launchAnotherBackgroundJob) {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
       _launchAnotherBackgroundJob = false;
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
+      _lastSyncTime = TRI_microtime();
+      SchedulerFeature::SCHEDULER->post(
+          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -262,7 +265,7 @@ void HeartbeatThread::runDBServer() {
     }
 
     if (doSync) {
-      syncDBServerStatusQuo();
+      syncDBServerStatusQuo(true);
     }
 
     return true;
@@ -286,8 +289,16 @@ void HeartbeatThread::runDBServer() {
   int const currentCountStart = 1;  // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
 
+  // Loop priorities / goals
+  // 0. send state to agency server
+  // 1. schedule handlePlanChange immediately when agency callback occurs
+  // 2. poll for plan change, schedule handlePlanChange immediately if change detected
+  // 3. force handlePlanChange every 7.4 seconds just in case
+  //     (7.4 seconds is just less than half the 15 seconds agency uses to declare dead server)
+  // 4. if handlePlanChange runs long (greater than 7.4 seconds), have another start immediately after
 
   while (!isStopping()) {
+    logThreadDeaths();
 
     try {
       auto const start = std::chrono::steady_clock::now();
@@ -1100,7 +1111,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// and every few heartbeats if the Current/Version has changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::syncDBServerStatusQuo() {
+void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   bool shouldUpdate = false;
   bool becauseOfPlan = false;
   bool becauseOfCurrent = false;
@@ -1123,7 +1134,7 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   }
 
   double now = TRI_microtime();
-  if (now > _lastSyncTime + 7.4) {
+  if (now > _lastSyncTime + 7.4 || asyncPush) {
     shouldUpdate = true;
   }
 
@@ -1239,7 +1250,7 @@ void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
 void HeartbeatThread::logThreadDeaths(bool force) {
 
   bool doLogging(force);
-    
+
   MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
 
   if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
@@ -1252,7 +1263,7 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
-  
+
     for (auto const& it : deadThreads) {
       std::ostringstream oss;
       auto tm = *std::gmtime(&it.first);
