@@ -686,11 +686,11 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
+  auto views = ci->getViews(dbName);
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
-  resultBuilder.add(VPackValue("collections"));
-  resultBuilder.openArray();
+  resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     // We want to check if the collection is usable and all followers
     // are in sync:
@@ -714,9 +714,16 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady, allInSync);
   }
   resultBuilder.close();  // collections
+  resultBuilder.add("views", VPackValue(VPackValueType::Array));
+  for (auto const& view : views) {
+    resultBuilder.openObject();
+    view->toVelocyPack(resultBuilder, /*details*/false, /*forPersistence*/true);
+    resultBuilder.close();
+  }
+  resultBuilder.close();  // views
+
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-  auto tickString = std::to_string(tick);
-  resultBuilder.add("tick", VPackValue(tickString));
+  resultBuilder.add("tick", VPackValue(std::to_string(tick)));
   resultBuilder.add("state", VPackValue("unused"));
   resultBuilder.close();  // base
   generateResult(rest::ResponseCode::OK, resultBuilder.slice());
@@ -902,6 +909,8 @@ Result RestReplicationHandler::processRestoreCollection(
 
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
+        trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
 
         if (!res.ok()) {
@@ -1757,6 +1766,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     return;
   }
   
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
+    << nameSlice.copyString();
   auto view = _vocbase.lookupView(nameSlice.copyString());
 
   if (view) {

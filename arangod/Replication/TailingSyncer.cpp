@@ -60,6 +60,32 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
+  
+namespace {
+
+bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response, std::string const& name) {
+  return response->hasHeaderField(name);
+}
+
+bool getBoolHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response, std::string const& name) {
+  bool found = false;
+  std::string header = response->getHeaderField(name, found);
+  if (found) {
+    return StringUtils::boolean(header);
+  }
+  return false;
+}
+
+uint64_t getUIntHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response, std::string const& name) {
+  bool found = false;
+  std::string header = response->getHeaderField(name, found);
+  if (found) {
+    return StringUtils::uint64(header);
+  }
+  return 0;
+}
+
+} // namespace
 
 /// @brief base url of the replication API
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
@@ -77,7 +103,8 @@ TailingSyncer::TailingSyncer(
       _requireFromPresent(configuration._requireFromPresent),
       _supportsSingleOperations(false),
       _ignoreRenameCreateDrop(false),
-      _ignoreDatabaseMarkers(true) {
+      _ignoreDatabaseMarkers(true),
+      _workInParallel(false) {
   if (barrierId > 0) {
     _state.barrier.id = barrierId;
     _state.barrier.updateTime = TRI_microtime();
@@ -641,6 +668,46 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   return guard.collection()->updateProperties(data, doSync);
 }
 
+/// @brief truncate a collections. Assumes no trx are running
+Result TailingSyncer::truncateCollection(arangodb::velocypack::Slice const& slice) {
+  if (!slice.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  "collection slice is no object");
+  }
+  
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  auto* col = resolveCollection(*vocbase, slice).get();
+  if (col == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+  
+  if (!_ongoingTransactions.empty()) {
+    const char* msg = "Encountered truncate but still have ongoing transactions";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << msg;
+    return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, msg);
+  }
+  
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+                                  *col, AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return res;
+  }
+  
+  OperationOptions opts;
+  OperationResult opRes = trx.truncate(col->name(), opts);
+  
+  if (opRes.fail()) {
+    return opRes.result;
+  }
+  
+  return trx.finish(opRes.result);
+}
 
 /// @brief changes the properties of a view,
 /// based on the VelocyPack provided
@@ -787,6 +854,8 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     return renameCollection(slice);
   } else if (type == REPLICATION_COLLECTION_CHANGE) {
     return changeCollection(slice);
+  } else if (type == REPLICATION_COLLECTION_TRUNCATE) {
+    return truncateCollection(slice);
   }
 
   else if (type == REPLICATION_INDEX_CREATE) {
@@ -1226,8 +1295,8 @@ void TailingSyncer::getLocalState() {
 
 /// @brief perform a continuous sync with the master
 Result TailingSyncer::runContinuousSync() {
-  static uint64_t const MinWaitTime = 300 * 1000;        //  0.30 seconds
-  static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60    seconds
+  constexpr uint64_t MinWaitTime = 300 * 1000;        //  0.30 seconds
+  constexpr uint64_t MaxWaitTime = 60 * 1000 * 1000;  // 60    seconds
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
 
@@ -1235,7 +1304,7 @@ Result TailingSyncer::runContinuousSync() {
   // ---------------------------------------
   TRI_voc_tick_t fromTick = 0;
   TRI_voc_tick_t safeResumeTick = 0;
-
+  
   {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
@@ -1271,6 +1340,8 @@ Result TailingSyncer::runContinuousSync() {
   if (fromTick == 0) {
     return Result(TRI_ERROR_REPLICATION_NO_START_TICK);
   }
+ 
+  checkParallel(); 
 
   // get the applier into a sensible start state by fetching the list of
   // open transactions from the master
@@ -1282,6 +1353,7 @@ Result TailingSyncer::runContinuousSync() {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
     Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
+
     if (res.fail()) {
       return res;
     }
@@ -1292,22 +1364,39 @@ Result TailingSyncer::runContinuousSync() {
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  std::string const progress =
-      "starting with from tick " + StringUtils::itoa(fromTick) +
+  setProgress(std::string("starting with from tick ") + StringUtils::itoa(fromTick) +
       ", fetch tick " + StringUtils::itoa(fetchTick) +
-      ", open transactions: " + StringUtils::itoa(_ongoingTransactions.size());
-  setProgress(progress);
+      ", open transactions: " + StringUtils::itoa(_ongoingTransactions.size()) +
+      ", parallel: " + (_workInParallel ? "yes" : "no"));
+  
+  // the shared status will wait in its destructor until all posted 
+  // requests have been completed/canceled!
+  auto self = shared_from_this();
+  auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+  
+  bool worked = false;
+  bool mustFetchBatch = true;
 
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (true) {
-    bool worked = false;
-    bool masterActive = false;
+    // fetchTick, worked and mustFetchBatch are passed by reference and are
+    // updated by processMasterLog!
 
-    // fetchTick is passed by reference!
-    Result res =
-        followMasterLog(fetchTick, fromTick, _state.applier._ignoreErrors,
-                        worked, masterActive);
+    // passing "mustFetchBatch = true" to processMasterLog will make it initially
+    // fetch the next batch from the master 
+    // passing "mustFetchBatch = false" to processMasterLog requires that processMasterLog
+    // has already requested the next batch in the background on the previous invocation
+    TRI_ASSERT(mustFetchBatch || _workInParallel);
+    
+    Result res = processMasterLog(
+        sharedStatus, 
+        fetchTick, 
+        fromTick, 
+        _state.applier._ignoreErrors, 
+        worked,
+        mustFetchBatch 
+    );
 
     uint64_t sleepTime;
 
@@ -1387,8 +1476,7 @@ Result TailingSyncer::runContinuousSync() {
     }
 
     LOG_TOPIC(TRACE, Logger::REPLICATION)
-        << "master active: " << masterActive << ", worked: " << worked
-        << ", sleepTime: " << sleepTime;
+        << "worked: " << worked << ", sleepTime: " << sleepTime;
 
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancelation
@@ -1514,57 +1602,103 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   return Result();
 }
 
-/// @brief run the continuous synchronization
-Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
-                                      TRI_voc_tick_t firstRegularTick,
-                                      uint64_t& ignoreCount, bool& worked,
-                                      bool& masterActive) {
-  std::string const baseUrl =
-      tailingBaseUrl("tail") +
-      "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
-      "&barrier=" + StringUtils::itoa(_state.barrier.id);
+/// @brief fetch data for the continuous synchronization
+void TailingSyncer::fetchMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                                   TRI_voc_tick_t fetchTick,
+                                   TRI_voc_tick_t firstRegularTick) {
+  try {
+    std::string const url =
+        tailingBaseUrl("tail") +
+        "chunkSize=" + StringUtils::itoa(_state.applier._chunkSize) +
+        "&barrier=" + StringUtils::itoa(_state.barrier.id) +
+        "&from=" + StringUtils::itoa(fetchTick) +
+        "&firstRegular=" + StringUtils::itoa(firstRegularTick) +
+        "&serverId=" + _state.localServerIdString +
+        "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false");
+
+    // send request
+    setProgress(std::string("fetching master log from tick ") + StringUtils::itoa(fetchTick) +
+        ", first regular tick " + StringUtils::itoa(firstRegularTick) +
+        ", barrier: " + StringUtils::itoa(_state.barrier.id) +
+        ", open transactions: " + std::to_string(_ongoingTransactions.size()) +
+        ", chunk size " + std::to_string(_state.applier._chunkSize));
+
+    // stringify list of open transactions
+    VPackBuilder builder;
+    builder.openArray();
+
+    if (!_workInParallel) {
+      // we must not access the list of ongoing transactions here
+      // if we are in parallel mode. the reason is that another
+      // thread may modify the list too, and this is not safe
+      // note that we have made sure we do not need to send the list
+      // of transactions when we are in parallel mode, as the parallel
+      // mode is only supported for the RocksDB engine
+      for (auto& it : _ongoingTransactions) {
+        builder.add(VPackValue(StringUtils::itoa(it.first)));
+      }
+    }
+    builder.close();
+    
+    std::string body = builder.slice().toJson();
+
+    std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
+        rest::RequestType::PUT, url, body.c_str(), body.size()));
+
+    if (replutils::hasFailed(response.get())) {
+      // failure
+      sharedStatus->gotResponse(replutils::buildHttpError(response.get(), url, _state.connection));
+    } else {
+      // success!
+      sharedStatus->gotResponse(std::move(response));
+    }
+  } catch (basics::Exception const& ex) {
+    sharedStatus->gotResponse(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    sharedStatus->gotResponse(Result(TRI_ERROR_INTERNAL, ex.what()));
+  }
+}
+
+/// @brief apply continuous synchronization data from a batch
+Result TailingSyncer::processMasterLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                                       TRI_voc_tick_t& fetchTick,
+                                       TRI_voc_tick_t firstRegularTick,
+                                       uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch) {
+  LOG_TOPIC(TRACE, Logger::REPLICATION) 
+      << "entering processMasterLog. fetchTick: " << fetchTick 
+      << ", worked: " << worked 
+      << ", mustFetchBatch: " << mustFetchBatch;
+
+  // we either need to fetch a new batch here, or a batch must have been
+  // request before (this is only possible in parallel mode)
+  TRI_ASSERT(mustFetchBatch || _workInParallel);
+
+  if (mustFetchBatch) {
+    fetchMasterLog(sharedStatus, fetchTick, firstRegularTick);
+  }
+  
+  // make sure that on the next invocation we will fetch a new batch
+  // note that under some conditions we will fetch the next batch in the
+  // background and will reset this value to false a bit more below
+  mustFetchBatch = true; 
+  
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+
+  // block until we either got a response or were shut down
+  Result res = sharedStatus->waitForResponse(response);
+
+  if (res.fail()) {
+    // no response or error or shutdown
+    return res;
+  }
+    
+  // now we have got a response!
+  TRI_ASSERT(response != nullptr);
+    
+  worked = false;
   TRI_voc_tick_t const originalFetchTick = fetchTick;
 
-  worked = false;
-
-  std::string const url =
-      baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
-      "&firstRegular=" + StringUtils::itoa(firstRegularTick) +
-      "&serverId=" + _state.localServerIdString +
-      "&includeSystem=" + (_state.applier._includeSystem ? "true" : "false");
-
-  // send request
-  std::string const progress =
-      "fetching master log from tick " + StringUtils::itoa(fetchTick) +
-      ", first regular tick " + StringUtils::itoa(firstRegularTick) +
-      ", barrier: " + StringUtils::itoa(_state.barrier.id) +
-      ", open transactions: " + std::to_string(_ongoingTransactions.size()) +
-      ", chunk size " + std::to_string(_state.applier._chunkSize);
-
-  setProgress(progress);
-
-  // stringify list of open transactions
-  VPackBuilder builder;
-  builder.openArray();
-  for (auto& it : _ongoingTransactions) {
-    builder.add(VPackValue(StringUtils::itoa(it.first)));
-  }
-  builder.close();
-  
-  std::string body = builder.slice().toJson();
-
-  std::unique_ptr<SimpleHttpResult> response(_state.connection.client->request(
-      rest::RequestType::PUT, url, body.c_str(), body.size()));
-
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _state.connection);
-  }
-
-  bool found;
-  std::string header = response->getHeaderField(
-      StaticStrings::ReplicationHeaderCheckMore, found);
-
-  if (!found) {
+  if (!hasHeader(response, StaticStrings::ReplicationHeaderCheckMore)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
                       _state.master.endpoint + ": required header " +
@@ -1572,48 +1706,21 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                       " is missing");
   }
 
-  bool checkMore = StringUtils::boolean(header);
+  bool checkMore = getBoolHeader(response, StaticStrings::ReplicationHeaderCheckMore);
 
   // was the specified from value included the result?
-  bool fromIncluded = false;
+  bool const fromIncluded = getBoolHeader(response, StaticStrings::ReplicationHeaderFromPresent);
+  TRI_voc_tick_t const lastScannedTick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastScanned);
 
-  header = response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent,
-                                    found);
-
-  if (found) {
-    fromIncluded = StringUtils::boolean(header);
-  }
-
-  bool active = false;
-
-  header =
-      response->getHeaderField(StaticStrings::ReplicationHeaderActive, found);
-
-  if (found) {
-    active = StringUtils::boolean(header);
-  }
-
-  TRI_voc_tick_t lastScannedTick = 0;
-
-  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastScanned,
-                                    found);
-
-  if (found) {
-    lastScannedTick = StringUtils::uint64(header);
-  }
-
-  header = response->getHeaderField(
-      StaticStrings::ReplicationHeaderLastIncluded, found);
-
-  if (!found) {
+  if (!hasHeader(response, StaticStrings::ReplicationHeaderLastIncluded)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
                       _state.master.endpoint + ": required header " +
                       StaticStrings::ReplicationHeaderLastIncluded +
                       " is missing in logger-follow response");
   }
-
-  TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
+  
+  TRI_voc_tick_t lastIncludedTick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastIncluded);
 
   if (lastIncludedTick == 0 && lastScannedTick > 0 &&
       lastScannedTick > fetchTick) {
@@ -1630,10 +1737,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     checkMore = false;
   }
 
-  header =
-      response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
-
-  if (!found) {
+  if (!hasHeader(response, StaticStrings::ReplicationHeaderLastTick)) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
                       _state.master.endpoint + ": required header " +
@@ -1642,7 +1746,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   }
 
   bool bumpTick = false;
-  TRI_voc_tick_t tick = StringUtils::uint64(header);
+  TRI_voc_tick_t tick = getUIntHeader(response, StaticStrings::ReplicationHeaderLastTick);
 
   if (!checkMore && tick > lastIncludedTick) {
     // the master has a tick value which is not contained in this result
@@ -1669,6 +1773,19 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                       "'. It may be required to do a full resync and increase "
                       "the number " +
                       "of historic logfiles/WAL file timeout on the master");
+  }
+ 
+  // already fetch next batch of data in the background... 
+  if (_workInParallel && checkMore && !isAborted()) {
+    TRI_ASSERT(worked);
+
+    // do not fetch the same batch next time we enter processMasterLog
+    // (that would be duplicate work)
+    mustFetchBatch = false;
+    auto self = shared_from_this();
+    sharedStatus->request([this, self, sharedStatus, fetchTick, firstRegularTick]() {
+      fetchMasterLog(sharedStatus, fetchTick, firstRegularTick);
+    });
   }
 
   TRI_voc_tick_t lastAppliedTick;
@@ -1737,8 +1854,6 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     return r;
   }
 
-  masterActive = active;
-
   if (!worked) {
     if (checkMore) {
       worked = true;
@@ -1746,4 +1861,27 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   }
 
   return Result();
+}
+  
+void TailingSyncer::checkParallel() {
+  // the default is to not work in parallel
+  _workInParallel = false;
+
+  if (_state.master.majorVersion < 3 ||
+      (_state.master.majorVersion == 3 && _state.master.minorVersion < 4)) {
+    // requires ArangoDB 3.4 or higher
+    return;
+  }
+
+  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  if (engineName == "rocksdb" && _state.master.engine == engineName) {
+    // master and slave are both on RocksDB... that means we do not need
+    // to post the list of open transactions every time, and we can
+    // also make the WAL tailing work in parallel on master and slave
+    // in this case, the slave will post the next WAL tailing request
+    // to the master in the background while it is applying the already
+    // received WAL data from the master. this is only thread-safe if
+    // we do not access the list of ongoing transactions in parallel
+    _workInParallel = true;
+  }
 }

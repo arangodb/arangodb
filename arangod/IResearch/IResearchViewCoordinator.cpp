@@ -454,13 +454,13 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-        meta.json(builder);
+      meta.json(builder);
 
-        auto result = toVelocyPack(builder, false, true);
+      auto result = toVelocyPack(builder, false, true);
 
-        if (!result.ok()) {
-          return result;
-        }
+      if (!result.ok()) {
+        return result;
+      }
 
       builder.close();
       result = engine->setViewPropertiesCoordinator(
@@ -573,7 +573,10 @@ Result IResearchViewCoordinator::drop() {
     );
 
     if (!res.ok()) {
-      return res;
+      return arangodb::Result(
+        res.errorNumber(),
+        std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+      );
     }
   }
 

@@ -433,7 +433,8 @@ bool syncStore(
     arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicies const& policies,
     bool forceCommit,
     bool runCleanupAfterCommit,
-    std::string const& viewName
+    std::string const& viewName,
+    const char* storeName
 ) {
   char runId = 0; // value not used
 
@@ -448,32 +449,32 @@ bool syncStore(
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "registering consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << entry.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
+      << "registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << entry.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
     try {
       writer.consolidate(entry.policy(), false);
       forceCommit = true; // a consolidation policy was found requiring commit
     } catch (arangodb::basics::Exception& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "': " << e.what();
+        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "'";
+        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "'";
       IR_LOG_EXCEPTION();
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished registering consolidation policy '" << size_t(entry.type()) << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+      << "finished registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
   }
 
   if (!forceCommit) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "skipping store sync since no consolidation policies matched and sync not forced for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+      << "skipping store sync since no consolidation policies matched and sync not forced for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
 
     return false; // commit not done
   }
@@ -483,7 +484,7 @@ bool syncStore(
   // ...........................................................................
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
+    << "starting '" << storeName << "' store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
 
   try {
     segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
@@ -492,20 +493,20 @@ bool syncStore(
     segmentCount += reader.size(); // add commited segments
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of IResearch view '" << viewName << "': " << e.what();
+      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of IResearch view '" << viewName << "'";
+      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << viewName << "'";
     IR_LOG_EXCEPTION();
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
+    << "finished '" << storeName << "' store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
 
   if (!runCleanupAfterCommit) {
     return true; // commit done
@@ -516,26 +517,26 @@ bool syncStore(
   // ...........................................................................
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+    << "starting '" << storeName << "' store cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
 
   try {
     irs::directory_utils::remove_all_unreferenced(directory);
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of IResearch view '" << viewName << "': " << e.what();
+      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of IResearch view '" << viewName << "'";
+      << "caught exception during cleanup of '" << storeName << "' of IResearch view '" << viewName << "'";
     IR_LOG_EXCEPTION();
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+    << "finished '" << storeName << "' store cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
 
   return true;
 }
@@ -788,20 +789,24 @@ IResearchView::IResearchView(
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
     };
 
+    typedef std::pair<DataStore*, const char*> DataStoreEntry;
+
     #if defined(__APPLE__)
-      std::vector<DataStore*> dataStores = {
+      std::vector<DataStoreEntry> dataStores = {
     #else
-      std::array<DataStore*, 3> dataStores = {
+      std::array<DataStoreEntry, 3> dataStores = {
     #endif
-      &(_memoryNode[0]._store),
-      &(_memoryNode[1]._store),
-      &_storePersisted
+      DataStoreEntry{ &(_memoryNode[0]._store), "memory store 0" },
+      DataStoreEntry{ &(_memoryNode[1]._store), "memory store 1" },
+      DataStoreEntry{ &_storePersisted, "persistent store" }
     };
 
     State state;
 
-    for (auto* store: dataStores) {
-      auto task = [this, store, state](size_t& timeoutMsec, bool) mutable ->bool {
+    for (auto& storeEntry: dataStores) {
+      auto task = [this, storeEntry, state](size_t& timeoutMsec, bool) mutable ->bool {
+        auto* store = storeEntry.first;
+
         if (_asyncTerminate.load()) {
           return false; // termination requested
         }
@@ -850,7 +855,8 @@ IResearchView::IResearchView(
                          state._consolidationPolicies,
                          true,
                          runCleanupAfterCommit,
-                         name()
+                         name(),
+                         storeEntry.second
                         )
             && state._cleanupIntervalStep
             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
@@ -1120,7 +1126,6 @@ bool IResearchView::apply(arangodb::transaction::Methods& trx) {
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
-  std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   WriteMutex mutex(_mutex); // '_meta' and '_storeByTid' can be asynchronously updated
   SCOPED_LOCK(mutex);
   auto cid_itr = _metaState._collections.find(cid);
@@ -1149,38 +1154,48 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   }
 
   mutex.unlock(true); // downgrade to a read-lock
+  // ...........................................................................
+  // if an errors occurs below than a drop retry would most likely happen
+  // ...........................................................................
+  return truncateUnlocked(cid);
+}
+     
+int IResearchView::truncate(TRI_voc_cid_t cid) {
+ ReadMutex mutex(_mutex);
+ SCOPED_LOCK(mutex);
+ return truncateUnlocked(cid);
+}
 
-  // ...........................................................................
-  // if an exception occurs below than a drop retry would most likely happen
-  // ...........................................................................
+int IResearchView::truncateUnlocked(TRI_voc_cid_t cid) {
+  std::shared_ptr<irs::filter> shared_filter(iresearch::FilterFactory::filter(cid));
   try {
     // FIXME TODO remove from in-progress transactions, i.e. ViewStateWrite ???
     // FIXME TODO remove from '_toFlush' memory-store ???
     auto& memoryStore = activeMemoryStore();
     memoryStore._writer->remove(shared_filter);
-
+    
     if (_storePersisted) {
       _storePersisted._writer->remove(shared_filter);
     }
-
+    
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "': " << e.code() << " " << e.what();
+    << "caught exception while removing from iResearch view '" << id()
+    << "', collection '" << cid << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "': " << e.what();
+    << "caught exception while removing from iResearch view '" << id()
+    << "', collection '" << cid << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "'";
+    << "caught exception while removing from iResearch view '" << id()
+    << "', collection '" << cid << "'";
     IR_LOG_EXCEPTION();
   }
-
+  
   return TRI_ERROR_INTERNAL;
 }
 
@@ -1201,8 +1216,8 @@ arangodb::Result IResearchView::dropImpl() {
 
   if (!res.ok()) {
     return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to remove links while removing IResearch view '") + std::to_string(id()) + "'"
+      res.errorNumber(),
+      std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
     );
   }
 

@@ -187,15 +187,19 @@ int ClusterCommResult::getErrorCode() const {
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
     case CL_COMM_ERROR:
-      return TRI_ERROR_INTERNAL;
-
     case CL_COMM_DROPPED:
+      if (errorCode != TRI_ERROR_NO_ERROR) {
+        return errorCode;
+      }
       return TRI_ERROR_INTERNAL;
 
     case CL_COMM_BACKEND_UNAVAILABLE:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
+  if (errorCode != TRI_ERROR_NO_ERROR) {
+    return errorCode;
+  }
   return TRI_ERROR_INTERNAL;
 }
 
@@ -440,8 +444,8 @@ OperationID ClusterComm::asyncRequest(
             << "' at endpoint '" << result->endpoint << "'";
         }
       }
-      bool ret = ((*callback.get())(result.get()));
-      TRI_ASSERT(ret == true);
+      /*bool ret =*/ ((*callback.get())(result.get()));
+      // TRI_ASSERT(ret == true);
     };
     callbacks._onSuccess = [callback, result, this](std::unique_ptr<GeneralResponse> response) {
       {
@@ -450,8 +454,8 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
-      bool ret = ((*callback.get())(result.get()));
-      TRI_ASSERT(ret == true);
+      /*bool ret =*/ ((*callback.get())(result.get()));
+      //TRI_ASSERT(ret == true);
     };
   } else {
     callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {

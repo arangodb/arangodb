@@ -95,7 +95,7 @@ LogicalView::LogicalView(
     PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
   auto const* viewTypes =
-    application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
+    application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
 
   if (!viewTypes) {
     LOG_TOPIC(ERR, Logger::VIEWS)
@@ -257,37 +257,15 @@ arangodb::Result LogicalViewStorageEngine::appendVelocyPack(
 ) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to get storage engine during storage engine persistance of view '") + view.name() + "'"
+    );
+  }
 
   try {
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // during recovery entry is being played back from the engine
-      if (!engine->inRecovery()) {
-        arangodb::velocypack::Builder builder;
-        auto res = engine->getViews(view.vocbase(), builder);
-        TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
-        auto slice  = builder.slice();
-        TRI_ASSERT(slice.isArray());
-        auto viewId = std::to_string(view.id());
-
-        // We have not yet persisted this view
-        for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
-          auto id = arangodb::basics::VelocyPackHelper::getStringRef(
-            entry,
-            StaticStrings::DataSourceId,
-            arangodb::velocypack::StringRef()
-          );
-
-          if (!id.compare(viewId)) {
-            return arangodb::Result(
-              TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-              std::string("view id '") + viewId + "already exists in the sotrage engine"
-            );
-          }
-        }
-      }
-    #endif
-
     return engine->createView(view.vocbase(), view.id(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(

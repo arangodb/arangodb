@@ -224,7 +224,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "TOKENS", // name
     ".,.", // positional arguments (data,analyzer)
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
-    true, // can throw
     true, // can be run on server
     aqlFnTokens // function implementation
   });
@@ -296,7 +295,7 @@ IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(
 bool IResearchAnalyzerFeature::AnalyzerPool::init(
     irs::string_ref const& type,
     irs::string_ref const& properties,
-    irs::flags const& additionalFeatures /*= irs::flags::empty_instance()*/
+    irs::flags const& features /*= irs::flags::empty_instance()*/
 ) {
   try {
     _cache.clear(); // reset for new type/properties
@@ -318,8 +317,7 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
         _properties = irs::string_ref(&(_config[0]) + _type.size(), properties.size());
       }
 
-      _features = instance->attributes().features();
-      _features |= additionalFeatures;
+      _features = features ; // store only requested features
 
       return true;
     }
@@ -401,10 +399,10 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 
 std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept {
   return _name;
-};
+}
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    arangodb::application_features::ApplicationServer* server
+    arangodb::application_features::ApplicationServer& server
 ): ApplicationFeature(server, IResearchAnalyzerFeature::name()),
   _analyzers(getStaticAnalyzers()), // load static analyzers
   _started(false) {
@@ -418,22 +416,24 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
   irs::string_ref const& name,
   irs::string_ref const& type,
-  irs::string_ref const& properties
+  irs::string_ref const& properties,
+  irs::flags const& features /*= irs::flags::empty_instance()*/
 ) noexcept {
-  return emplace(name, type, properties, true);
+  return emplace(name, type, properties, true, features);
 }
 
 std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFeature::emplace(
   irs::string_ref const& name,
   irs::string_ref const& type,
   irs::string_ref const& properties,
-  bool initAndPersist
+  bool initAndPersist,
+  irs::flags const& features /*= irs::flags::empty_instance()*/
 ) noexcept {
   try {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    static auto generator = [](
+    auto generator = [](
         irs::hashed_string_ref const& key,
         AnalyzerPool::ptr const& value
     )->irs::hashed_string_ref {
@@ -483,7 +483,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
         return std::make_pair(AnalyzerPool::ptr(), false);
       }
 
-      if (!pool->init(type, properties)) {
+      if (!pool->init(type, properties, features)) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
         TRI_set_errno(TRI_ERROR_BAD_PARAMETER);

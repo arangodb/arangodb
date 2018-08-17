@@ -197,7 +197,7 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
           << ", but no key information was specified to decrypt the dump";
       LOG_TOPIC(WARN, Logger::RESTORE)
           << "it is recommended to specify either "
-             "`--encryption.key-file` or `--encryption.key-generator` "
+             "`--encryption.keyfile` or `--encryption.key-generator` "
              "when invoking arangorestore with an encrypted dump";
     } else {
       LOG_TOPIC(INFO, Logger::RESTORE)
@@ -514,7 +514,6 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string url = "/_api/replication/restore-view?overwrite=" +
     std::string(options.overwrite ? "true" : "false") +
     "&force=" + std::string(options.force ? "true" : "false");
-  
 
   std::string const body = viewDefinition.toJson();
   std::unique_ptr<SimpleHttpResult> response(httpClient.request(arangodb::rest::RequestType::PUT,
@@ -642,8 +641,10 @@ arangodb::Result processInputDirectory(
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
     
+    LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
     // Step 2: recreate all views
     for (VPackBuilder viewDefinition : views) {
+      LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
       Result res = ::restoreView(httpClient, options, viewDefinition.slice());
       if (res.fail()) {
         return res;
@@ -733,8 +734,10 @@ RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
                                  RestoreFeature::Stats& s, VPackSlice const& c)
     : directory{d}, feature{f}, options{o}, stats{s}, collection{c} {}
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
-                               int& exitCode)
+RestoreFeature::RestoreFeature(
+    application_features::ApplicationServer& server,
+    int& exitCode
+)
     : ApplicationFeature(server, RestoreFeature::featureName()),
       _clientManager{Logger::RESTORE},
       _clientTaskQueue{::processJob, ::handleJobResult},
@@ -967,11 +970,11 @@ void RestoreFeature::start() {
     result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
                                      _options, *_directory, _stats);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
     result = {TRI_ERROR_INTERNAL};
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
-        << "Error: caught unknown exception";
+        << "caught unknown exception";
     result = {TRI_ERROR_INTERNAL};
   }
 

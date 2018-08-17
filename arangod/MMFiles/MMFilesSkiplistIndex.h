@@ -174,7 +174,6 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
  private:
   TRI_Skiplist const* _skiplistIndex;
-  ManagedDocumentResult* _mmdr;
   IndexLookupContext _context;
   size_t _numPaths;
   bool _reverse;

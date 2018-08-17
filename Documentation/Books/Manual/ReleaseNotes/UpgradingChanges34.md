@@ -132,6 +132,16 @@ that replicates the original data; once the replication has reached completion,
 you can switch the instances.
 
 
+RocksDB intermediate commits
+-----------------------------
+
+Intermediate commits in the rocksdb engine are now only enabled in standalone AQL queries 
+(not within a JS transaction), standalone truncate as well as for the "import" API.
+
+The options `intermediateCommitCount` and `intermediateCommitSize` will have no affect
+anymore on transactions started via `/_api/transaction`, or `db._executeTransaction()`.
+
+
 Threading and request handling
 ------------------------------
 
@@ -165,8 +175,16 @@ HTTP REST API
 The following incompatible changes were made in context of ArangoDB's HTTP REST
 APIs:
 
+- The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
+
+  - `GET /_admin/test`
+  - `GET /_admin/clusterCheckPort`
+  - `GET /_admin/cluster-test` 
+  - `GET /_admin/statistics/short`
+  - `GET /_admin/statistics/long`
+
 - `GET /_api/index` will now return type `geo` for geo indexes, not type `geo1`
-  or `geo2`.
+  or `geo2` as previous versions did.
 
   For geo indexes, the index API will not return the attributes `constraint` and
   `ignoreNull` anymore. These attributes were initially deprecated in ArangoDB 2.5
@@ -192,12 +210,6 @@ APIs:
   In previous versions, this REST API returned only the list of available
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
-
-- `GET /_admin/status` now returns the attribute `operationMode` in addition to
-  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
-  attribute `readOnly`, which is has an inverted value compared to the original
-  attribute. In future releases the old attributes will be deprecated in favor
-  of the new ones.
 
 - if authentication is turned on, requests to databases by users with insufficient 
   access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
@@ -236,6 +248,44 @@ The following APIs have been added or augmented:
   }
   ```
 
+- `GET /_admin/status` now returns the attribute `operationMode` in addition to
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  attribute `readOnly`, which is has an inverted value compared to the original
+  attribute. In future releases the old attributes will be deprecated in favor
+  of the new ones.
+
+- `POST /_api/collection` now will process the optional `shardingStrategy` 
+  attribute in the response body in cluster mode. 
+
+  This attribute specifies the name of the sharding strategy to use for the 
+  collection. Since ArangoDB 3.4 there are different sharding strategies to 
+  select from when creating a new collection. The selected *shardingStrategy* 
+  value will remain fixed for the collection and cannot be changed afterwards. 
+  This is important to make the collection keep its sharding settings and 
+  always find documents already distributed to shards using the same initial 
+  sharding algorithm.
+
+  The available sharding strategies are:
+  - `community-compat`: default sharding used by ArangoDB community
+    versions before ArangoDB 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB enterprise
+    versions before ArangoDB 3.4
+  - `enterprise-smart-edge-compat`: default sharding used by smart edge
+    collections in ArangoDB enterprise versions before ArangoDB 3.4
+  - `hash`: default sharding used by ArangoDB 3.4 for new collections
+    (excluding smart edge collections)
+  - `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+    for new smart edge collections
+
+  If no sharding strategy is specified, the default will be `hash` for
+  all collections, and `enterprise-hash-smart-edge` for all smart edge
+  collections (requires the *Enterprise Edition* of ArangoDB). 
+  Manually overriding the sharding strategy does not yet provide a 
+  benefit, but it may later in case other sharding strategies are added.
+
+  In single-server mode, the *shardingStrategy* attribute is meaningless and
+  will be ignored.
+
 - APIs for view management have been added at endpoint `/_api/view`.
 
 - The REST APIs for modifying graphs at endpoint `/_api/gharial` now support returning
@@ -251,14 +301,6 @@ The following APIs have been added or augmented:
 
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible.
-
-The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
-
-- `GET /_admin/test`
-- `GET /_admin/clusterCheckPort`
-- `GET /_admin/cluster-test` 
-- `GET /_admin/statistics/short`
-- `GET /_admin/statistics/long`
 
 
 AQL
@@ -325,6 +367,27 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 
   Using any of these functions from inside AQL will now produce an error.
 
+- in previous versions, the AQL optimizer used two different ways of converting 
+  strings into numbers. The two different ways have been unified into a single
+  way that behaves like the `TO_NUMBER` AQL function, which is also the documented
+  behavior.
+
+  The change affects arithmetic operations with strings that contain numbers and
+  other trailing characters, e.g.
+
+      expression         3.3 result          3.4 result       TO_NUMBER()
+      0 + "1a"           0 + 1 = 1           0 + 0 = 0        TO_NUMBER("1a") = 0
+      0 + "1 "           0 + 1 = 1           0 + 1 = 1        TO_NUMBER("1 ") = 1
+      0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
+      0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
+
+- the internal AQL function `PASSTHRU` (which simply returns its call argument)
+  has been changed from being non-deterministic to being deterministic, provided its
+  call argument is also deterministic. This change should not affect end users, as
+  `PASSTHRU` is intended to be used for internal testing only. Should end users use
+  this AQL function in any query and need a wrapper to make query parts non-deterministic,
+  the `NOOPT` AQL function can stand in as a non-deterministic variant of `PASSTHRU`
+  
 
 Usage of V8
 -----------
@@ -471,3 +534,84 @@ to "MMFilesCompactor".
 
 This change will be visible only on systems which allow assigning names to
 threads.
+
+
+Deprecated features
+===================
+
+The following features and APIs are deprecated in ArangoDB 3.4, and will be 
+removed in future versions of ArangoDB:
+
+* the JavaScript-based traversal REST API at `/_api/traversal`:
+
+  This API has several limitations (including low result set sizes) and has 
+  effectively been unmaintained since the introduction of AQL's general 
+  *TRAVERSAL* clause.
+
+  It is recommended to migrate client applications that use the REST API at
+  `/_api/traversal` to use AQL-based traversal queries instead.
+
+* the REST API for simple queries at `/_api/simple`:
+
+  The simple queries provided by the `/_api/simple` endpoint are limited in
+  functionality and will internally resort to AQL queries anyway. It is advised
+  that client applications also use the equivalent AQL queries instead of 
+  using the simple query API, because that is more flexible and allows greater 
+  control of how the queries are executed.
+
+* the REST API for querying endpoints at `/_api/endpoints`:
+
+  The API `/_api/endpoint` is deprecated since ArangoDB version 3.1. 
+  For cluster mode there is `/_api/cluster/endpoints` to find all current 
+  coordinator endpoints.
+
+* accessing collections via their numeric IDs instead of their names. This mostly
+  affects the REST APIs at
+
+  - `/_api/collection/<collection-id>`
+  - `/_api/document/<collection-id>`
+  - `/_api/simple`
+
+  Note that in ArangoDB 3.4 it is still possible to access collections via
+  their numeric ID, but the preferred way to access a collections is by its
+  user-defined name.
+
+* the REST API for WAL tailing at `/_api/replication/logger-follow`:
+
+  The `logger-follow` WAL tailing API has several limitations. A better API
+  was introduced at endpoint `/_api/wal/tail` in ArangoDB 3.3.
+
+  Client applications using the old tailing API at `/_api/replication/logger-follow`
+  should switch to the new API eventually.
+
+* the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
+
+  The legacy mode is described in more detail in the [Foxx manual](https://docs.arangodb.com/3.3/Manual/Foxx/LegacyMode.html).
+  To upgrade an existing Foxx application that still uses the legacy mode, please
+  follow the steps described in [the manual](https://docs.arangodb.com/3.3/Manual/Foxx/Migrating2x/).
+
+* the AQL geo functions `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `IS_IN_POLYGON`:
+
+  The special purpose `NEAR` AQL function can be substituted with the
+  following AQL (provided there is a geo index present on the `doc.latitude`
+  and `doc.longitude` attributes) since ArangoDB 3.2:
+
+      FOR doc in geoSort
+        SORT DISTANCE(doc.latitude, doc.longitude, 0, 0)
+        LIMIT 5
+        RETURN doc
+
+  `WITHIN` can be substituted with the following AQL since ArangoDB 3.2:
+
+      FOR doc in geoFilter
+        FILTER DISTANCE(doc.latitude, doc.longitude, 0, 0) < 2000
+        RETURN doc
+
+  Compared to using the special purpose AQL functions this approach has the
+  advantage that it is more composable, and will also honor any `LIMIT` values
+  used in the AQL query.
+
+  In ArangoDB 3.4, `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `IS_IN_POLYGON` 
+  will still work and automatically be rewritten by the AQL query optimizer 
+  to the above forms. However, AQL queries using the deprecated AQL functions
+  should eventually be adjusted.

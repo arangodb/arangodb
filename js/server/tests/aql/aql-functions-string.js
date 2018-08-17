@@ -588,7 +588,95 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
       });
     },
+    
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexSplit
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexSplitValues: function () {
+      [ 
+        [ "hypertext language, programming", "[\s, ]+", true, 1, ["hypertext"] ],
+        [ "hypertext language, programming", "[\s, ]+", true, 2, ["hypertext", "language"] ],
+        [ "hypertext language, programming", "[\s, ]+", true, 3, ["hypertext", "language", "programming"] ],
+        [ "this|is|a|text", "[|]", true, 1, ["this"] ],
+        [ "this|is|a|text", "[|]", true, 2, ["this", "is"] ],
+        [ "this|is|a|text", "[|]", true, 3, ["this", "is", "a"] ],
+        [ "this|is|a|text", "[|]", true, 4, ["this", "is", "a", "text"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 1, ["c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 2, ["c", "c,"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 3, ["c", "c,", "c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 4, ["c", "c,", "c", "c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 5, ["c", "c,", "c", "c", "c"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 1, ["This is a line"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 2, ["This is a line", "\n"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 3, ["This is a line", "\n", " This is yet another lin"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 4, ["This is a line", "\n", " This is yet another lin", "\r"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 5, ["This is a line", "\n", " This is yet another lin", "\r", ""] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 6, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 7, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 8, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 9, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r", " Mac line "] ],
+      ].forEach(function(test) {
+        assertEqual([ test[4] ], getQueryResults('RETURN REGEX_SPLIT(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ', ' + JSON.stringify(test[3]) + ')'), test);
+      });
+    },
 
+    testRegexSplitInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test", "meow", "foo", "bar", "git")');
+    },
+
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexMatches
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexMatchesValues: function () {
+      [ 
+        ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
+        ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
+        ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
+        ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["th1s1s-wayt00_l0ngt0beausername", "^[a-z0-9_-]{3,16}$", true, null ],
+        ["th1s1s-wayt00_l0ngt0beausername", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["myp4ssw0rd", "^[a-z0-9_-]{6,18}$", true, ["myp4ssw0rd"] ],
+        ["myp4ssw0rd", "^[a-z0-9_-]{6,18}$", false, ["myp4ssw0rd"] ],
+        ["myP4ssw0rD", "^[a-z0-9_-]{6,18}$", true, ["myP4ssw0rD"] ],
+        ["myP4ssw0rD", "^[a-z0-9_-]{6,18}$", false, null ],
+        ["mypa$$w0rd", "^[a-z0-9_-]{6,18}$", true, null ],
+        ["mypa$$w0rd", "^[a-z0-9_-]{6,18}$", false, null ],
+        ["#a3c113", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true, ["#a3c113", "a3c113"] ],
+        ["#a3c113", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", false, ["#a3c113", "a3c113"] ],
+        ["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true, null ],
+        ["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", false, null ],
+        ["my-title-here", "^[a-z0-9-]+$", true, ["my-title-here"] ],
+        ["my-title-here", "^[a-z0-9-]+$", false, ["my-title-here"] ],
+        ["my-Title-Here", "^[a-z0-9-]+$", true, ["my-Title-Here"] ],
+        ["my-Title-Here", "^[a-z0-9-]+$", false, null ],
+        ["john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", true, ["john@doe.com", "john", "doe.", "om"] ],
+        ["john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false, ["john@doe.com", "john", "doe.", "om"] ],
+        ["jOhn@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", true, ["jOhn@doe.com", "jOhn", "doe.", "om"] ],
+        ["jOhn@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false, null ],
+        ["http://www.google.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.google.com", "http://", "www.google.", "om", ""] ],
+        ["http://www.google.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", false, ["http://www.google.com", "http://", "www.google.", "om", ""] ],
+        ["http://www.gOoGle.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.gOoGle.com", "http://", "www.gOoGle.", "om", ""] ],
+        ["http://www.gOoGle.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.gOoGle.com", "http://", "www.gOoGle.", "om", ""] ],
+        ["http://google.com/some/file!.html", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, null ],
+        ["http://google.com/some/file!.html", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", false, null ],
+        ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, ["73.60.124.136"] ],
+        ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, ["73.60.124.136"] ],
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, null ],
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, null ],
+      ].forEach(function(test) {
+        assertEqual([ test[3] ], getQueryResults('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
+      });
+    },
+
+    testRegexMatchesInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test", "meow", "foo", "bar")');
+    },
+    
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test like function, invalid arguments
 // //////////////////////////////////////////////////////////////////////////////

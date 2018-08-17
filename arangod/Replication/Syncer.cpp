@@ -32,6 +32,8 @@
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -225,13 +227,41 @@ Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> const& sy
     : _syncer(syncer), 
       _gotResponse(false),
       _jobsInFlight(0) {}
+  
+
+Syncer::JobSynchronizer::~JobSynchronizer() {
+  // signal that we have got something
+  try {
+    gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
+  } catch (...) {
+    // must not throw from here
+  }
+
+  // wait until all posted jobs have been completed/canceled
+  while (hasJobInFlight()) { 
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::yield(); 
+  }
+}
 
 /// @brief will be called whenever a response for the job comes in
-void Syncer::JobSynchronizer::gotResponse(arangodb::Result const& res, 
-                                          std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) {
+void Syncer::JobSynchronizer::gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept {
   CONDITION_LOCKER(guard, _condition);
-  _res = res;
+  _res.reset(); // no error!
   _response = std::move(response);
+  _gotResponse = true;
+
+  guard.signal();
+}
+
+/// @brief will be called whenever an error occurred
+/// expects "res" to be an error!
+void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res) noexcept {
+  TRI_ASSERT(res.fail());
+
+  CONDITION_LOCKER(guard, _condition);
+  _res = std::move(res);
+  _response.reset();
   _gotResponse = true;
 
   guard.signal();
@@ -272,6 +302,30 @@ Result Syncer::JobSynchronizer::waitForResponse(std::unique_ptr<arangodb::httpcl
       
   return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
 }
+
+void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
+  // by indicating that we have posted an async job, the caller
+  // will block on exit until all posted jobs have finished
+  jobPosted();
+
+  try {
+    auto self = shared_from_this();
+    SchedulerFeature::SCHEDULER->post([this, self, cb]() {
+      // whatever happens next, when we leave this here, we need to indicate
+      // that there is no more posted job.
+      // otherwise the calling thread may block forever waiting on the posted jobs
+      // to finish
+      auto guard = scopeGuard([this]() {
+        jobDone();
+      });
+
+      cb();
+    }, false);
+  } catch (...) {
+    // will get here only if Scheduler::post threw
+    jobDone();
+  }
+}
     
 /// @brief notifies that a job was posted
 void Syncer::JobSynchronizer::jobPosted() {
@@ -290,7 +344,7 @@ void Syncer::JobSynchronizer::jobDone() {
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
-bool Syncer::JobSynchronizer::hasJobInFlight() const {
+bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   CONDITION_LOCKER(guard, _condition);
 
   TRI_ASSERT(_jobsInFlight <= 1);
@@ -543,6 +597,8 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
         *col,
         AccessMode::Type::WRITE
       );
+      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
 
       if (!res.ok()) {

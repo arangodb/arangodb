@@ -38,7 +38,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -59,17 +58,16 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
     return Result();
   }
   
-  // first chunk
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(col->vocbase()),
     *col,
     AccessMode::Type::EXCLUSIVE
   );
 
-  trx.addHint(
-      transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-  trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+  trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+  // turn on intermediate commits as the number of keys to delete can be huge here
+  trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
   Result res = trx.begin();
 
@@ -150,20 +148,21 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
 Result syncChunkRocksDB(
     DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
     InitialSyncerIncrementalSyncStats& stats,
-    std::string const& keysId, uint64_t chunkId, std::string const& lowString,
+    std::string const& keysId, 
+    uint64_t chunkId, 
+    std::string const& lowString,
     std::string const& highString,
-    std::vector<std::pair<std::string, uint64_t>> const& markers) {
+    std::vector<std::string> const& markers) {
 
-  // first thing we do is extend the batch lifetime
+  // first thing we do is extend the barrier's lifetime
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress);
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
-  PhysicalCollection* physical = trx->documentCollection()->getPhysical();
+  RocksDBCollection* physical = static_cast<RocksDBCollection*>(trx->documentCollection()->getPhysical());
   OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
@@ -231,10 +230,6 @@ Result syncChunkRocksDB(
                       syncer._state.master.endpoint + ": response is no array");
   }
 
-  transaction::BuilderLeaser keyBuilder(trx);
-
-  std::vector<size_t> toFetch;
-
   size_t const numKeys = static_cast<size_t>(responseBody.length());
   if (numKeys == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -245,7 +240,8 @@ Result syncChunkRocksDB(
   }
   TRI_ASSERT(numKeys > 0);
 
-  ManagedDocumentResult mmdr;
+  transaction::BuilderLeaser keyBuilder(trx);
+  std::vector<size_t> toFetch;
   size_t i = 0;
   size_t nextStart = 0;
 
@@ -278,16 +274,13 @@ Result syncChunkRocksDB(
 
     // remove keys not present anymore
     while (nextStart < markers.size()) {
-      std::string const& localKey = markers[nextStart].first;
+      std::string const& localKey = markers[nextStart];
 
       int res = keySlice.compareString(localKey);
       if (res > 0) {
         // we have a local key that is not present remotely
         keyBuilder->clear();
-        keyBuilder->openObject();
-        keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
-        keyBuilder->close();
-
+        keyBuilder->add(VPackValue(localKey));
         trx->remove(collectionName, keyBuilder->slice(), options);
         ++stats.numDocsRemoved;
 
@@ -307,24 +300,17 @@ Result syncChunkRocksDB(
       toFetch.emplace_back(i);
     } else {
       // see if key exists
-      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
-      if (!documentId.isSet()) {
+      TRI_voc_rid_t currentRevisionId = 0;
+      if (!physical->lookupRevision(trx, keySlice, currentRevisionId)) { 
         // key not found locally
         toFetch.emplace_back(i);
       } else {
-        TRI_voc_rid_t currentRevisionId = 0;
-        if (physical->readDocument(trx, documentId, mmdr)) {
-          currentRevisionId = transaction::helpers::extractRevFromDocument(
-              VPackSlice(mmdr.vpack()));
-        }
+        // key found locally. now compare revisions
         if (!pair.at(1).isEqualString(TRI_RidToString(currentRevisionId))) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
-          ++nextStart;
-        } else {
-          // a match - nothing to do!
-          ++nextStart;
         }
+        ++nextStart;
       }
     }
 
@@ -333,15 +319,12 @@ Result syncChunkRocksDB(
 
   // delete all keys at end of the range
   while (nextStart < markers.size()) {
-    std::string const& localKey = markers[nextStart].first;
+    std::string const& localKey = markers[nextStart];
 
     if (localKey.compare(highString) > 0) {
       // we have a local key that is not present remotely
       keyBuilder->clear();
-      keyBuilder->openObject(true);
-      keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
-      keyBuilder->close();
-
+      keyBuilder->add(VPackValue(localKey));
       trx->remove(collectionName, keyBuilder->slice(), options);
       ++stats.numDocsRemoved;
     }
@@ -354,21 +337,20 @@ Result syncChunkRocksDB(
   }
 
   if (!syncer._state.isChildSyncer) {
-    syncer._batch.extend(syncer._state.connection, syncer._progress);
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "will refetch " << toFetch.size() << " documents for this chunk";
 
-  VPackBuilder keysBuilder;
-  keysBuilder.openArray(false);
+  keyBuilder->clear();
+  keyBuilder->openArray(false);
   for (auto const& it : toFetch) {
-    keysBuilder.add(VPackValue(it));
+    keyBuilder->add(VPackValue(it));
   }
-  keysBuilder.close();
+  keyBuilder->close();
 
-  std::string const keyJsonString(keysBuilder.slice().toJson());
+  std::string const keyJsonString(keyBuilder->slice().toJson());
 
   size_t offsetInChunk = 0;
 
@@ -388,7 +370,7 @@ Result syncChunkRocksDB(
       double t = TRI_microtime();
 
       response.reset(syncer._state.connection.client->retryRequest(
-            rest::RequestType::PUT, url, keyJsonString.c_str(),
+            rest::RequestType::PUT, url, keyJsonString.data(),
             keyJsonString.size(), replutils::createHeaders()));
 
       stats.waitedForDocs += TRI_microtime() - t;
@@ -414,8 +396,9 @@ Result syncChunkRocksDB(
               response->getHttpReturnMessage());
     }
 
-    VPackBuilder builder;
-    Result r = replutils::parseResponse(builder, response.get());
+    transaction::BuilderLeaser docsBuilder(trx);
+    docsBuilder->clear();
+    Result r = replutils::parseResponse(*docsBuilder.get(), response.get());
 
     if (r.fail()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -424,7 +407,7 @@ Result syncChunkRocksDB(
                         ": response is no array");
     }
 
-    VPackSlice const slice = builder.slice();
+    VPackSlice const slice = docsBuilder->slice();
     if (!slice.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
@@ -464,26 +447,28 @@ Result syncChunkRocksDB(
                           ": document revision is invalid");
       }
 
-      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
-
       auto removeConflict =
-          [&](std::string const& conflictingKey) -> OperationResult {
-        VPackBuilder conflict;
-        conflict.add(VPackValue(conflictingKey));
-        LocalDocumentId conflictId = physical->lookupKey(trx, conflict.slice());
+          [&](std::string const& conflictingKey) -> Result {
+        Result res(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+
+        keyBuilder->clear();
+        keyBuilder->add(VPackValue(conflictingKey));
+
+        LocalDocumentId conflictId = physical->lookupKey(trx, keyBuilder->slice());
+
         if (conflictId.isSet()) {
-          ManagedDocumentResult mmdr;
-          bool success = physical->readDocument(trx, conflictId, mmdr);
-          if (success) {
-            VPackSlice conflictingKey(mmdr.vpack());
-            return trx->remove(collectionName, conflictingKey, options);
-          }
+          physical->readDocumentWithCallback(trx, conflictId, [&](LocalDocumentId const&, VPackSlice doc) {
+            res = trx->remove(collectionName, doc, options).result;
+          });
         }
-        return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+        return res;
       };
 
+      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
       if (!documentId.isSet()) {
         // INSERT
+        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+
         OperationResult opRes = trx->insert(collectionName, it, options);
         if (opRes.fail()) {
           if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
@@ -497,12 +482,15 @@ Result syncChunkRocksDB(
             if (opRes.fail()) {
               return opRes.result;
             }
+            // fall-through
           } else {
             return opRes.result;
           }
         }
       } else {
         // REPLACE
+        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        
         OperationResult opRes = trx->replace(collectionName, it, options);
         if (opRes.fail()) {
           if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
@@ -516,6 +504,7 @@ Result syncChunkRocksDB(
             if (opRes.fail()) {
               return opRes.result;
             }
+            // fall-through
           } else {
             return opRes.result;
           }
@@ -606,7 +595,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                       syncer._state.master.endpoint + ": response is no array");
   }
 
-  ManagedDocumentResult mmdr;
   OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
@@ -638,10 +626,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       AccessMode::Type::EXCLUSIVE
     );
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
-    trx.addHint(transaction::Hints::Hint::NO_TRACKING);
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::NO_INDEXING);
+    // turn on intermediate commits as the number of operations can be huge here
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
     Result res = trx.begin();
 
@@ -653,7 +641,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
-    // Neither it nor it's indexes can be invalidated
+    // Neither it nor its indexes can be invalidated
 
     size_t currentChunkId = 0;
 
@@ -661,8 +649,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     std::string highKey;
     std::string hashString;
     uint64_t localHash = 0x012345678;
-    // chunk keys + revisionId
-    std::vector<std::pair<std::string, uint64_t>> markers;
+    // chunk keys 
+    std::vector<std::string> markers;
     bool foundLowKey = false;
 
     auto resetChunk = [&]() -> void {
@@ -676,8 +664,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
       // read remote chunk
       TRI_ASSERT(chunkSlice.isArray());
-      TRI_ASSERT(chunkSlice.length() >
-                 0);  // chunkSlice.at will throw otherwise
+      TRI_ASSERT(chunkSlice.length() > 0);  // chunkSlice.at will throw otherwise
       VPackSlice chunk = chunkSlice.at(currentChunkId);
       if (!chunk.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -717,32 +704,34 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
          &syncer, &currentChunkId, &numChunks, &keysId, &resetChunk,
          &compareChunk, &lowKey, &highKey, 
          &tempBuilder, &stats](std::string const& docKey, std::uint64_t docRev) {
-          bool rangeUnequal = false;
-          bool nextChunk = false;
 
-          tempBuilder.clear(); 
-          tempBuilder.add(VPackValue(docKey));
-          VPackSlice docKeySlice(tempBuilder.slice());
           int cmp1 = docKey.compare(lowKey);
-          int cmp2 = docKey.compare(highKey);
 
           if (cmp1 < 0) {
             // smaller values than lowKey mean they don't exist remotely
-            trx.remove(col->name(), docKeySlice, options);
+            tempBuilder.clear(); 
+            tempBuilder.add(VPackValue(docKey));
+            trx.remove(col->name(), tempBuilder.slice(), options);
             ++stats.numDocsRemoved;
             return;
           }
+          
+          bool rangeUnequal = false;
+          bool nextChunk = false;
+          int cmp2 = docKey.compare(highKey);
            
           if (cmp1 >= 0 && cmp2 <= 0) {
-            // we only need to hash we are in the range
+            // we only need to hash if we are in the range
             if (cmp1 == 0) {
               foundLowKey = true;
             }
 
-            markers.emplace_back(docKey, docRev);  // revision as uint64
+            markers.emplace_back(docKey);
             // don't bother hashing if we have't found lower key
             if (foundLowKey) {
-              localHash ^= docKeySlice.hashString();
+              tempBuilder.clear(); 
+              tempBuilder.add(VPackValue(docKey));
+              localHash ^= tempBuilder.slice().hashString();
   
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
@@ -796,12 +785,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(
                 rocksValue);  // we want probably to do this instead
-            if (col->readDocument(&trx, documentId, mmdr) == false) {
-              TRI_ASSERT(false);
-              return true;
-            }
-            VPackSlice doc(mmdr.vpack());
-            docRev = TRI_ExtractRevisionId(doc);
+            col->readDocumentWithCallback(&trx, documentId, [&docRev](LocalDocumentId const&, VPackSlice doc) {
+              docRev = TRI_ExtractRevisionId(doc);
+            });
           }
           compareChunk(docKey, docRev);
           return true;

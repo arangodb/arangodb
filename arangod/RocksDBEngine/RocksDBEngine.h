@@ -78,7 +78,7 @@ struct Options;
 class RocksDBEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit RocksDBEngine(application_features::ApplicationServer*);
+  explicit RocksDBEngine(application_features::ApplicationServer& server);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -378,6 +378,8 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  bool canUseRangeDeleteInWal() const;
 
   rocksdb::Options const& rocksDBOptions() const {
     return _options;

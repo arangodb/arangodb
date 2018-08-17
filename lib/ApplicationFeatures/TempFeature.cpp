@@ -29,11 +29,14 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
 
-TempFeature::TempFeature(application_features::ApplicationServer* server,
-                         std::string const& appname)
+namespace arangodb {
+
+TempFeature::TempFeature(
+    application_features::ApplicationServer& server,
+    std::string const& appname
+)
     : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -69,3 +72,5 @@ void TempFeature::start() {
     context->createMiniDumpFilename();
   }
 }
+
+} // arangodb

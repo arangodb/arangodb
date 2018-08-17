@@ -34,6 +34,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -840,7 +841,7 @@ void ClusterInfo::loadCurrent() {
           << "Attention: /arango/Current/Version in the agency is not set or "
              "not a positive number.";
       }
-      { 
+      {
         READ_LOCKER(guard, _currentProt.lock);
         if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
           LOG_TOPIC(DEBUG, Logger::CLUSTER)
@@ -1221,14 +1222,12 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(
 
   // iterate over all collections
   DatabaseViews::const_iterator it2 = (*it).second.begin();
-  while (it2 != (*it).second.end()) {
-    char c = (*it2).first[0];
-
-    if (c < '0' || c > '9') {
-      // skip collections indexed by id
-      result.push_back((*it2).second);
+  while (it2 != it->second.end()) {
+    char c = it2->first[0];
+    if (c >= '0' && c <= '9') {
+      // skip views indexed by name
+      result.emplace_back(it2->second);
     }
-
     ++it2;
   }
 
@@ -1379,7 +1378,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     return TRI_ERROR_FORBIDDEN;
   }
-  
+
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1747,7 +1746,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
-      
+
       if (application_features::ApplicationServer::isStopping()) {
         events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
         return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
@@ -2287,10 +2286,35 @@ int ClusterInfo::ensureIndexCoordinator(
   }
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
 
+  AgencyComm ac;
   int errorCode;
   try {
-    errorCode = ensureIndexCoordinatorWithoutRollback(
-      databaseName, collectionID, idString, slice, create, compare, resultBuilder, errorMsg, timeout);
+    auto start = std::chrono::steady_clock::now();
+    // Keep trying for 2 minutes, if it's preconditions, which are stopping us
+    while (true) { 
+      resultBuilder.clear();
+      errorCode = ensureIndexCoordinatorWithoutRollback(
+        databaseName, collectionID, idString, slice, create, compare,
+        resultBuilder, errorMsg, timeout);
+
+      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) { 
+        if (std::chrono::duration_cast<std::chrono::seconds>(
+              std::chrono::steady_clock::now()-start).count() < 120) {
+          std::chrono::duration<size_t, std::milli>
+            waitTime(RandomGenerator::interval(0, 1000));
+          std::this_thread::sleep_for(waitTime);
+          continue;
+        } else {
+          AgencyCommResult ag = ac.getValues("/");
+          if (ag.successful()) {
+            LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n" << ag.slice().toJson();
+          } else {
+            LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+          }
+        }
+      }
+      break;
+    }
   } catch (basics::Exception const& ex) {
     errorCode = ex.code();
   } catch (...) {
@@ -2606,13 +2630,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
   if (!result.successful()) {
     if (result.httpCode() ==
         (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      AgencyCommResult ag = ac.getValues("/");
-      if (ag.successful()) {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                        << ag.slice().toJson();
-      } else {
-        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-      }
+      return (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED;
     } else {
       errorMsg += " Failed to execute ";
       errorMsg += trx.toJson();

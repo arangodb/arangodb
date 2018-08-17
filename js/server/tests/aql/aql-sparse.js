@@ -75,6 +75,24 @@ function optimizerSparseTestSuite () {
       assertEqual(-1, index);
     },
     
+    testSparseHashNeNull : function () {
+      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      if (db._engine().name !== "rocksdb") {
+        assertEqual(-1, index);
+      } else {
+        assertNotEqual(-1, index);
+        assertTrue(nodes[index].indexes[0].sparse);
+      }
+    },
+    
     testSparseHashEqFunc : function () {
       c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
       
@@ -88,7 +106,7 @@ function optimizerSparseTestSuite () {
       assertEqual(-1, index);
     },
     
-    testSparseHashEqFuncAndNotNull : function () {
+    testSparseHashEqFuncNeNull : function () {
       c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 != null RETURN doc";
@@ -100,6 +118,33 @@ function optimizerSparseTestSuite () {
       let index = nodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, index);
       assertTrue(nodes[index].indexes[0].sparse);
+    },
+    
+    testSparseHashEqFuncGtNull : function () {
+      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 > null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, index);
+      assertTrue(nodes[index].indexes[0].sparse);
+    },
+    
+    testSparseHashEqFuncGeNull : function () {
+      c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 >= null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertEqual(-1, index);
     },
     
     testSparseSkiplistEq : function () {
@@ -170,7 +215,7 @@ function optimizerSparseTestSuite () {
       assertEqual(-1, index);
     },
     
-    testSparseSkiplistLeNotNull : function () {
+    testSparseSkiplistLeNeNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 <= 10 && doc.value1 != null RETURN doc";
@@ -184,7 +229,7 @@ function optimizerSparseTestSuite () {
       assertTrue(nodes[index].indexes[0].sparse);
     },
     
-    testSparseSkiplistLtNotNull : function () {
+    testSparseSkiplistLtNeNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 < 10 && doc.value1 != null RETURN doc";
@@ -211,7 +256,7 @@ function optimizerSparseTestSuite () {
       assertEqual(-1, index);
     },
     
-    testSparseSkiplistGeNullRangeNotNull : function () {
+    testSparseSkiplistGeNullRangeNeNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 >= null && doc.value1 <= 10 && doc.value1 != null RETURN doc";
@@ -252,6 +297,47 @@ function optimizerSparseTestSuite () {
       assertEqual(-1, index);
     },
     
+    testSparseSkiplistNeNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, index);
+      assertTrue(nodes[index].indexes[0].sparse);
+    },
+    
+    testSparseSkiplistGtNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 > null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, index);
+      assertTrue(nodes[index].indexes[0].sparse);
+    },
+    
+    testSparseSkiplistGeNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 >= null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(2000, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertEqual(-1, index);
+    },
+    
     testSparseSkiplistEqFunc : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
@@ -265,7 +351,7 @@ function optimizerSparseTestSuite () {
       assertEqual(-1, index);
     },
     
-    testSparseSkiplistEqFuncAndNotNull : function () {
+    testSparseSkiplistEqFuncNeNull : function () {
       c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
       
       let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 != null RETURN doc";
@@ -277,6 +363,114 @@ function optimizerSparseTestSuite () {
       let index = nodeTypes.indexOf("IndexNode");
       assertNotEqual(-1, index);
       assertTrue(nodes[index].indexes[0].sparse);
+    },
+    
+    testSparseSkiplistEqFuncGtNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 > null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, index);
+      assertTrue(nodes[index].indexes[0].sparse);
+    },
+    
+    testSparseSkiplistEqFuncGeNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 == NOOPT(10) && doc.value1 >= null RETURN doc";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertEqual(-1, index);
+    },
+    
+    testSparseJoin : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == 10 FILTER doc1.value1 == doc2.value1 RETURN doc1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(2, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[1].indexes[0].sparse);
+    },
+    
+    testSparseJoinFunc : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 RETURN doc1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(n) { return n.type; });
+      let index = nodeTypes.indexOf("IndexNode");
+      assertEqual(-1, index);
+    },
+    
+    testSparseJoinFuncNeNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 != null RETURN doc1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+    },
+    
+    testSparseJoinFuncNeNullNeNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 != null FILTER doc2.value1 != null RETURN doc1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(2, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[1].indexes[0].sparse);
+    },
+    
+    testSparseJoinFuncGtNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 > null RETURN doc1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+    },
+    
+    testSparseJoinFuncGtNullGtNull : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      
+      let query = "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " FILTER doc1.value1 == NOOPT(10) FILTER doc1.value1 == doc2.value1 FILTER doc1.value1 > null FILTER doc2.value1 > null RETURN doc1";
+      let results = AQL_EXECUTE(query).json;
+      assertEqual(1, results.length);
+
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(2, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[1].indexes[0].sparse);
     },
   };
 }

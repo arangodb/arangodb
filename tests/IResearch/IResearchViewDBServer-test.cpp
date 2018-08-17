@@ -79,7 +79,7 @@ struct IResearchViewDBServerSetup {
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchViewDBServerSetup(): server(nullptr, nullptr) {
+  IResearchViewDBServerSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true); // need 2 connections or Agency callbacks will fail
@@ -103,23 +103,23 @@ struct IResearchViewDBServerSetup {
       features.emplace(name, std::make_pair(ftr, start));
     };
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
 
     // setup required application features
-    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
-    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
-    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
-    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
-    buildFeatureEntry(new arangodb::ShardingFeature(&server), false); // required for TRI_vocbase_t instantiation
-    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
-    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
-    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false); // required for AgencyComm::send(...)
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::renameView(...)
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false); // required for TRI_vocbase_t instantiation
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), false); // required for instantiating IResearchView*
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.second.first);

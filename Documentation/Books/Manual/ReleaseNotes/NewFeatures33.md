@@ -64,10 +64,10 @@ Trying to restore the encrypted dump without specifying the key will fail:
 
 arangorestore will complain with:
 
-> the dump data seems to be encrypted with aes-256-ctr, but no key information
-> was specified to decrypt the dump it is recommended to specify either
-> `--encryption.key-file` or `--encryption.key-generator` when invoking
-> arangorestore with an encrypted dump
+```
+the dump data seems to be encrypted with aes-256-ctr, but no key information was specified to decrypt the dump
+it is recommended to specify either `--encryption.keyfile` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump
+```
 
 It is required to use the exact same key when restoring the data. Again this is
 done by providing the `--encryption.keyfile` parameter:

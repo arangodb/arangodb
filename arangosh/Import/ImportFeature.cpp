@@ -36,13 +36,16 @@
 #include <iostream>
 #include <regex>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ImportFeature::ImportFeature(application_features::ApplicationServer* server,
-                             int* result)
+namespace arangodb {
+
+ImportFeature::ImportFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
@@ -542,11 +545,10 @@ void ImportFeature::start() {
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what()
-                                            << " during import";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Got an unknown exception during import";
+        << "caught unknown exception";
   }
 
   *_result = ret;
@@ -594,3 +596,5 @@ int ImportFeature::tryCreateDatabase(ClientFeature* client,
                                false);
   return TRI_ERROR_INTERNAL;
 }
+
+} // arangodb

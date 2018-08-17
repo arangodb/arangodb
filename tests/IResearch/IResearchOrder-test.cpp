@@ -221,7 +221,7 @@ struct IResearchOrderSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchOrderSetup(): server(nullptr, nullptr) {
+  IResearchOrderSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -231,12 +231,12 @@ struct IResearchOrderSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for IResearchFeature
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -256,14 +256,14 @@ struct IResearchOrderSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function invalid("INVALID", "|.", false, true, true);
+    arangodb::aql::Function invalid("INVALID", "|.", false, true);
 
     functions.add(invalid);
   }
 
   ~IResearchOrderSetup() {
-    arangodb::aql::AqlFunctionFeature(&server).unprepare(); // unset singleton instance
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::aql::AqlFunctionFeature(server).unprepare(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;

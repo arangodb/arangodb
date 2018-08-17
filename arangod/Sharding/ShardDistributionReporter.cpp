@@ -64,6 +64,9 @@ static inline bool TestIsShardInSync(
     std::vector<ServerID> realServers) {
   // The leader at [0] must be the same, while the order of the followers must
   // be ignored.
+  TRI_ASSERT(!plannedServers.empty());
+  TRI_ASSERT(!realServers.empty());
+
   std::sort(plannedServers.begin() + 1, plannedServers.end());
   std::sort(realServers.begin() + 1, realServers.end());
 
@@ -306,7 +309,10 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         OperationID leaderOpId = 0;
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
-        if (TestIsShardInSync(s.second, curServers)) {
+        if (curServers.empty() || s.second.empty()) {
+          // either of the two vectors is empty...
+          entry.insync = false;
+        } else if (TestIsShardInSync(s.second, curServers)) {
           entry.insync = true;
         } else {
           entry.followers = curServers;
@@ -487,7 +493,9 @@ bool ShardDistributionReporter::testAllShardsInSync(
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);
 
-    if (!TestIsShardInSync(s.second, curServers)) {
+    if (s.second.empty() ||
+        curServers.empty() ||
+        !TestIsShardInSync(s.second, curServers)) {
       return false;
     }
   }
