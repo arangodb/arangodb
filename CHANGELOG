@@ -1,6 +1,13 @@
 devel
 -----
 
+* added `uuidv4` and `genRandomBytes` methods to crypto module
+
+* added `hexSlice` methods `hexWrite` to JS Buffer type
+
+* added `Buffer.from`, `Buffer.of`, `Buffer.alloc` and `Buffer.allocUnsafe`
+  for improved compatibility with Node.js
+
 * Foxx HTTP API errors now log stacktraces
 
 * fixed issue #5831: custom queries in the ui could not be loaded if the user
