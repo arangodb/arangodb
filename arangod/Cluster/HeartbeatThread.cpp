@@ -1132,9 +1132,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
 void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
-  /*TRY_MUTEX_LOCKER(mutexLocker, *_statusLock);
-    if (mutexLocker == true) {*/
-
   MUTEX_LOCKER(mutexLocker, *_statusLock);
   bool shouldUpdate = false;
     
