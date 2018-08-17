@@ -166,67 +166,63 @@ During view modification the following directives apply:
 
 ### View properties (updatable)
 
-* commit: (optional; default: use defaults for all values)
-  configure ArangoSearch View commit policy for single-item inserts/removals,
-  e.g. when adding removing documents from a linked ArangoDB collection
+* cleanupIntervalStep: (optional; default: `10`; to disable use: `0`)
+  wait at least this many commits between removing unused files in the
+  ArangoSearch data directory
+  for the case where the consolidation policies merge segments often (i.e. a
+  lot of commit+consolidate), a lower value will cause a lot of disk space to
+  be wasted
+  for the case where the consolidation policies rarely merge segments (i.e.
+  few inserts/deletes), a higher value will impact performance without any
+  added benefits
 
-  * cleanupIntervalStep: (optional; default: `10`; to disable use: `0`)
-    wait at least this many commits between removing unused files in the
-    ArangoSearch data directory
-    for the case where the consolidation policies merge segments often (i.e. a
-    lot of commit+consolidate), a lower value will cause a lot of disk space to
-    be wasted
-    for the case where the consolidation policies rarely merge segments (i.e.
-    few inserts/deletes), a higher value will impact performance without any
-    added benefits
+* commitIntervalMsec: (optional; default: `60000`; to disable use: `0`)
+  wait at least *count* milliseconds between committing view data store
+  changes and making documents visible to queries
+  for the case where there are a lot of inserts/updates, a lower value will
+  cause the view not to account for them, (unlit commit), and memory usage
+  would continue to grow
+  for the case where there are a few inserts/updates, a higher value will
+  impact performance and waste disk space for each commit call without any
+  added benefits
 
-  * commitIntervalMsec: (optional; default: `60000`; to disable use: `0`)
-    wait at least *count* milliseconds between committing view data store
-    changes and making documents visible to queries
-    for the case where there are a lot of inserts/updates, a lower value will
-    cause the view not to account for them, (unlit commit), and memory usage
-    would continue to grow
-    for the case where there are a few inserts/updates, a higher value will
-    impact performance and waste disk space for each commit call without any
-    added benefits
+* consolidate: (optional; default: `none`)
+  a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
+  store segment merge candidates, if specified then only the listed policies
+  are used, keys are any of:
 
-  * consolidate: (optional; default: `none`)
-    a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
-    store segment merge candidates, if specified then only the listed policies
-    are used, keys are any of:
+  * bytes: (optional; for default values use an empty object: `{}`)
 
-    * bytes: (optional; for default values use an empty object: `{}`)
+    * segmentThreshold: (optional, default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
 
-      * segmentThreshold: (optional, default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
 
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
+  * bytes_accum: (optional; for default values use: `{}`)
 
-    * bytes_accum: (optional; for default values use: `{}`)
+    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
 
-      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
 
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
+  * count: (optional; for default values use: `{}`)
 
-    * count: (optional; for default values use: `{}`)
+    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
 
-      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
 
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
+  * fill: (optional)
+    if specified, use empty object for default values, i.e. `{}`
 
-    * fill: (optional)
-      if specified, use empty object for default values, i.e. `{}`
+    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
 
-      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
 ### Link properties
 
