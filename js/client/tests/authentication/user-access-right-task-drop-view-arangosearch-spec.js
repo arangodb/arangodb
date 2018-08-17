@@ -194,7 +194,6 @@ function hasIResearch (db) {
               };
 
             const rootTestView = (viewName = testViewName, switchBack = true) => {
-              db._unregisterView(viewName); // FIXME: Issue for cached views
               helper.switchUser('root', dbName);
               let view = db._view(viewName);
               if (switchBack) {
