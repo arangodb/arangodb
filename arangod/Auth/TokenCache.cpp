@@ -92,9 +92,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
       return checkAuthenticationJWT(secret);
 
     default:
-      if (_userManager == nullptr) { // no auth enabled
-        return auth::TokenCache::Entry("", true, 0);
-      }
       return auth::TokenCache::Entry::Unauthenticated();
   }
 }

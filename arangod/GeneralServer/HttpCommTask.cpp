@@ -312,8 +312,6 @@ bool HttpCommTask::processRead(double startTime) {
       // request context for that request
       _incompleteRequest.reset(
           new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-      //GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
-      //    _incompleteRequest.get());
       _incompleteRequest->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -748,8 +746,11 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
   bool found;
   std::string const& authStr = req->header(StaticStrings::Authorization, found);
   if (!found) {
-    events::CredentialsMissing(req);
-    return rest::ResponseCode::UNAUTHORIZED;
+    if (_auth->isActive()) {
+      events::CredentialsMissing(req);
+      return rest::ResponseCode::UNAUTHORIZED;
+    }
+    return rest::ResponseCode::OK;
   }
 
   size_t methodPos = authStr.find_first_of(' ');
@@ -760,8 +761,8 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
       ++auth;
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\"" << (void*)this << "\",\""
-        << authStr << "\"";
+    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\""
+      << (void*)this << "\",\"" << authStr << "\"";
     try {
       // note that these methods may throw in case of an error
       AuthenticationMethod authMethod = AuthenticationMethod::NONE;
@@ -771,16 +772,17 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
         authMethod = AuthenticationMethod::JWT;
       }
 
+      req->setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
-        req->setAuthenticationMethod(authMethod);
         auto entry = _auth->tokenCache().checkAuthentication(authMethod, auth);
         req->setAuthenticated(entry.authenticated());
         req->setUser(std::move(entry._username));
-
-        if (req->authenticated()) {
-          events::Authenticated(req, authMethod);
-          return rest::ResponseCode::OK;
-        }
+      }
+      
+      if (req->authenticated() || !_auth->isActive()) {
+        events::Authenticated(req, authMethod);
+        return rest::ResponseCode::OK;
+      } else if (_auth->isActive()) {
         events::CredentialsBad(req, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }

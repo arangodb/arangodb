@@ -1882,7 +1882,8 @@ SECTION("test_update_links_partial_add") {
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto* origExecContext = ExecContext::CURRENT;
     auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
@@ -3158,7 +3159,8 @@ SECTION("test_drop_link") {
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto* origExecContext = ExecContext::CURRENT;
     auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
