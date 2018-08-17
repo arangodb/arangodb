@@ -1,6 +1,8 @@
 devel
 -----
 
+* Foxx HTTP API errors now log stacktraces
+
 * fixed issue #5831: custom queries in the ui could not be loaded if the user
   only has read access to the _system database.
 
