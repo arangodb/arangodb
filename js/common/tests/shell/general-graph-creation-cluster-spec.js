@@ -303,6 +303,7 @@ describe('General graph creation', function () {
 
       before(function() {
         let rel = graph._relation(en2, vn2, vn2);
+        g = graph._graph(g.__name);
         g._extendEdgeDefinitions(rel);
         g._addVertexCollection(on2);
 
