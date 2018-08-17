@@ -461,13 +461,13 @@ statement_block_statement:
 
 for_statement:
     T_FOR variable_name T_IN expression {
-      // first create an out variable for the FOR statement
+      // first open a new scope
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+
+      // now create an out variable for the FOR statement
       // now we can handle the optional search condition, which may
       // or may not refer to the FOR's variable
       parser->pushStack(parser->ast()->createNodeVariable($2.value, $2.length, true));
-
-      // open a new scope
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
     } search {
       // now we can handle the optional search condition, which may
       // or may not refer to the FOR's variable

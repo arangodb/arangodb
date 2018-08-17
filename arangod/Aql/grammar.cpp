@@ -2329,13 +2329,13 @@ yyreduce:
   case 31:
 #line 463 "Aql/grammar.y" /* yacc.c:1646  */
     {
-      // first create an out variable for the FOR statement
+      // first open a new scope
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+
+      // now create an out variable for the FOR statement
       // now we can handle the optional search condition, which may
       // or may not refer to the FOR's variable
       parser->pushStack(parser->ast()->createNodeVariable((yyvsp[-2].strval).value, (yyvsp[-2].strval).length, true));
-
-      // open a new scope
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
     }
 #line 2341 "Aql/grammar.cpp" /* yacc.c:1646  */
     break;
