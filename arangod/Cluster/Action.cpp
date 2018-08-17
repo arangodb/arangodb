@@ -30,6 +30,7 @@
 #include "Cluster/DropDatabase.h"
 #include "Cluster/DropIndex.h"
 #include "Cluster/EnsureIndex.h"
+#include "Cluster/NonAction.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
 #include "Cluster/UpdateCollection.h"
@@ -87,8 +88,7 @@ void Action::create(
   } else if (name == "UpdateCollection") {
     _action.reset(new UpdateCollection(feature, description));
   } else {
-    // We should never get here
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
+    _action.reset(new NonAction(feature, description));
   }
 }
 
