@@ -52,9 +52,9 @@ function endpoints (options) {
     'tcpv4': function () {
       return 'tcp://127.0.0.1:' + pu.findFreePort(options.minPort, options.maxPort);
     },
-    'tcpv6': function () {
-      return 'tcp://[::1]:' + pu.findFreePort(options.minPort, options.maxPort);
-    },
+    // 'tcpv6': function () {
+    //  return 'tcp://[::1]:' + pu.findFreePort(options.minPort, options.maxPort);
+    // },
     'unix': function () {
       if (platform.substr(0, 3) === 'win') {
         return undefined;
