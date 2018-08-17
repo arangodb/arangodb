@@ -4,6 +4,9 @@ v3.3.15 (XXXX-XX-XX)
 * fixed some web ui action events related to Running Queries view and Slow
   Queries History view
 
+* Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
+  on VMs with limited disk throughput
+
 
 v3.3.14 (2018-08-15)
 --------------------
@@ -39,7 +42,7 @@ v3.3.14 (2018-08-15)
 
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
 
-* fixed issue #6031: Broken LIMIT in nested list iterations 
+* fixed issue #6031: Broken LIMIT in nested list iterations
 
 * fixed internal issue #2812: Cluster fails to create many indexes in parallel
 
@@ -52,7 +55,7 @@ v3.3.13 (2018-07-26)
 --------------------
 
 * fixed internal issue #2567: the Web UI was showing the possibility to move a
-  shard from a follower to the current leader 
+  shard from a follower to the current leader
 
 * fixed issue #5977: Unexpected execution plan when subquery contains COLLECT
 
@@ -69,9 +72,9 @@ v3.3.13 (2018-07-26)
 
   The new version will only scan up to 500 documents, so it produces a less
   random result, but will be a lot faster especially for large collections.
-  
+
   The implementation of `any()` for the MMFiles engine remains unchanged. The
-  MMFiles engine will pick a random document from the entire range of the 
+  MMFiles engine will pick a random document from the entire range of the
   in-memory primary index without performing scans.
 
 * return an empty result set instead of an "out of memory" exception when
@@ -96,10 +99,10 @@ v3.3.13 (2018-07-26)
 
 * added configuration option `--rocksdb.sync-interval`
 
-  This option specifies interval (in milliseconds) that ArangoDB will use to 
-  automatically synchronize data in RocksDB's write-ahead log (WAL) files to 
-  disk. Automatic syncs will only be performed for not-yet synchronized data, 
-  and only for operations that have been executed without the *waitForSync* 
+  This option specifies interval (in milliseconds) that ArangoDB will use to
+  automatically synchronize data in RocksDB's write-ahead log (WAL) files to
+  disk. Automatic syncs will only be performed for not-yet synchronized data,
+  and only for operations that have been executed without the *waitForSync*
   attribute.
 
   Automatic synchronization is performed by a background thread. The default

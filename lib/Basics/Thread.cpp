@@ -72,7 +72,7 @@ void Thread::startThread(void* arg) {
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
-  
+
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   if (0 <= ptr->_affinity) {
@@ -111,7 +111,7 @@ TRI_pid_t Thread::currentProcessId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
@@ -200,7 +200,7 @@ Thread::~Thread() {
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
-  
+
   LOCAL_THREAD_NAME = nullptr;
 }
 
@@ -229,7 +229,7 @@ void Thread::beginShutdown() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called from the destructor
+/// @brief derived class MUST call from its destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::shutdown() {
