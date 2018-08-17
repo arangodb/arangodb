@@ -1,6 +1,8 @@
 v3.3.15 (XXXX-XX-XX)
 --------------------
 
+* cluster nodes should retry registering in agency until successful
+
 * fixed some web ui action events related to Running Queries view and Slow
   Queries History view
 
