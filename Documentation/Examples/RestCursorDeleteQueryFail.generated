@@ -1,6 +1,6 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor</span> &lt;&lt;EOF
 { 
-  "query" : "REMOVE 'foo' IN products" 
+  <span class="hljs-string">"query"</span> : <span class="hljs-string">"REMOVE 'foo' IN products"</span> 
 }
 EOF
 

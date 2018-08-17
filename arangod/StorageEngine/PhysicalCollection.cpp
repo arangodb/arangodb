@@ -43,10 +43,12 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
+namespace arangodb {
 
-PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
-                                       VPackSlice const& info)
+PhysicalCollection::PhysicalCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
   : _logicalCollection(collection),
     _isDBServer(ServerState::instance()->isDBServer()),
     _indexes() {}
@@ -72,11 +74,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   // validate id string    
   VPackValueLength len;
   char const* docId = slice.getString(len);
-  if (len < 3) {
-    return false;
-  }
-  size_t split;
-  return TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split);
+  return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
@@ -192,8 +190,10 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    b.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -270,23 +270,26 @@ Result PhysicalCollection::newObjectForInsert(
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    std::string keyString =
-        _logicalCollection->keyGenerator()->generate();
+    auto keyString = _logicalCollection.keyGenerator()->generate();
+
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
     }
+
     builder.add(StaticStrings::KeyString, VPackValue(keyString));
   } else if (!s.isString()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
     VPackValueLength l;
     char const* p = s.getString(l);
+
     // validate and track the key just used
-    int res =
-        _logicalCollection->keyGenerator()->validate(p, l, isRestore);
+    auto res = _logicalCollection.keyGenerator()->validate(p, l, isRestore);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
+
     builder.add(StaticStrings::KeyString, s);
   }
 
@@ -296,31 +299,35 @@ Result PhysicalCollection::newObjectForInsert(
 
   *p++ = 0xf3;  // custom type for _id
 
-  if (_isDBServer && !_logicalCollection->system()) {
+  if (_isDBServer && !_logicalCollection.system()) {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
     // must not be treated as shards but as local collections
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->planId(),
-                                    sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(
+      p, _logicalCollection.planId(), sizeof(uint64_t)
+    );
   } else {
     // local server
     encoding::storeNumber<uint64_t>(
-      p, _logicalCollection->id(), sizeof(uint64_t)
+      p, _logicalCollection.id(), sizeof(uint64_t)
     );
   }
 
   // _from and _to
   if (isEdgeCollection) {
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
+
     if (!isValidEdgeAttribute(fromSlice)) {
       return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
-  
+
     VPackSlice toSlice = value.get(StaticStrings::ToString);
+
     if (!isValidEdgeAttribute(toSlice)) {
       return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
     }
+
     TRI_ASSERT(fromSlice.isString());
     TRI_ASSERT(toSlice.isString());
     builder.add(StaticStrings::FromString, fromSlice);
@@ -341,8 +348,10 @@ Result PhysicalCollection::newObjectForInsert(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -366,8 +375,11 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
+    
+  // temporary buffer for stringifying revision ids
+  char ridBuffer[21];
   revisionId = newRevisionId();
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+  builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   builder.close();
 }
 
@@ -424,8 +436,10 @@ Result PhysicalCollection::newObjectForReplace(
     }
   }
   if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[21];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
+    builder.add(StaticStrings::RevString, TRI_RidToValuePair(revisionId, &ridBuffer[0]));
   }
 
   // add other attributes after the system attributes
@@ -499,3 +513,5 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();
   return builder;
 }
+
+} // arangodb

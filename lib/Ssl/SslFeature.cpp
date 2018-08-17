@@ -27,7 +27,6 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -38,17 +37,17 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 const asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 
-SslFeature::SslFeature(application_features::ApplicationServer* server)
+SslFeature::SslFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
-  startsAfter("Logger");
-  startsAfter("Greetings");
+  startsAfter("GreetingsPhase");
 }
 
 void SslFeature::prepare() {
@@ -56,3 +55,5 @@ void SslFeature::prepare() {
 
 void SslFeature::unprepare() {
 }
+
+} // arangodb

@@ -44,17 +44,17 @@ bool equalConsolidationPolicies(
 
   typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
   struct PtrEquals {
-    bool operator()(ConsolidationPolicy const * const& lhs, ConsolidationPolicy const * const& rhs) const {
+    bool operator()(ConsolidationPolicy const* lhs, ConsolidationPolicy const* rhs) const noexcept {
       return *lhs == *rhs;
     }
   };
   struct PtrHash {
-    size_t operator()(ConsolidationPolicy const * const& value) const {
+    size_t operator()(ConsolidationPolicy const* value) const noexcept {
       return ConsolidationPolicy::Hash()(*value);
     }
   };
 
-  std::unordered_multiset<ConsolidationPolicy const *, PtrHash, PtrEquals> expected;
+  std::unordered_multiset<ConsolidationPolicy const*, PtrHash, PtrEquals> expected;
 
   for (auto& entry: lhs) {
     expected.emplace(&entry);
@@ -246,7 +246,7 @@ NS_BEGIN(iresearch)
 
 size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& value
-) const {
+) const noexcept {
   auto segmentThreshold = value.segmentThreshold();
   auto threshold = value.threshold();
   auto type = value.type();
@@ -378,7 +378,7 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type IResearchViewMeta::Comm
 
 bool IResearchViewMeta::CommitMeta::operator==(
   CommitMeta const& other
-) const noexcept {
+) const {
   return _cleanupIntervalStep == other._cleanupIntervalStep
       && _commitIntervalMsec == other._commitIntervalMsec
       && equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies);
@@ -386,7 +386,7 @@ bool IResearchViewMeta::CommitMeta::operator==(
 
 bool IResearchViewMeta::CommitMeta::operator!=(
   CommitMeta const& other
-  ) const noexcept {
+  ) const {
   return !(*this == other);
 }
 
@@ -523,8 +523,7 @@ bool IResearchViewMeta::init(
       try {
         // use UTF-8 encoding since that is what JSON objects use
         _locale = std::locale::classic().name() == locale
-          ? std::locale::classic()
-          : irs::locale_utils::locale(locale, true);
+          ? std::locale::classic() : irs::locale_utils::locale(locale);
       } catch(...) {
         errorField = fieldName;
 
@@ -646,7 +645,7 @@ bool IResearchViewMetaState::init(
   std::string& errorField,
   IResearchViewMetaState const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
-) noexcept {
+) {
   if (!slice.isObject()) {
     errorField = "not an object";
     return false;

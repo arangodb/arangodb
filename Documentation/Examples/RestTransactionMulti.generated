@@ -1,12 +1,12 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transaction</span> &lt;&lt;EOF
 { 
-  "collections" : { 
-    "write" : [ 
-      "products", 
-      "materials" 
+  <span class="hljs-string">"collections"</span> : { 
+    <span class="hljs-string">"write"</span> : [ 
+      <span class="hljs-string">"products"</span>, 
+      <span class="hljs-string">"materials"</span> 
     ] 
   }, 
-  "action" : "function () {var db = require('@arangodb').db;db.products.save({});db.materials.save({});return 'worked!';}" 
+  <span class="hljs-string">"action"</span> : <span class="hljs-string">"function () {var db = require('@arangodb').db;db.products.save({});db.materials.save({});return 'worked!';}"</span> 
 }
 EOF
 

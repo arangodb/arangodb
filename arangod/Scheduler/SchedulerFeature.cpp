@@ -42,60 +42,61 @@
 #include <chrono>
 #include <thread>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
+  startsAfter("GreetingsPhase");
+
   startsAfter("FileDescriptors");
-  startsAfter("Logger");
-  startsAfter("Random");
 }
 
 SchedulerFeature::~SchedulerFeature() {}
 
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("scheduler", "Configure the I/O scheduler");
+  options->addSection("server", "Server features");
 
-  options->addOption("--server.threads", "number of threads",
+  // max / min number of threads
+  options->addOption("--server.maximal-threads", std::string("maximum number of request handling threads to run (0 = use system-specific default of ") + std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads));
 
+  options->addHiddenOption("--server.minimal-threads",
+                           "minimum number of request handling threads to run",
+                           new UInt64Parameter(&_nrMinimalThreads));
+
+  options->addOption("--server.maximal-queue-size", "size of the priority 2 fifo",
+                     new UInt64Parameter(&_fifo2Size));
+
   options->addHiddenOption(
-      "--server.queue-size",
-      "number of simultaneously queues requests inside the scheduler",
+      "--server.scheduler-queue-size",
+      "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize));
 
   options->addHiddenOption("--server.prio1-size", "size of the priority 1 fifo",
                            new UInt64Parameter(&_fifo1Size));
 
-  options->addHiddenOption("--server.prio2-size", "size of the priority 2 fifo",
-                           new UInt64Parameter(&_fifo2Size));
-
-  options->addHiddenOption("--server.minimal-threads",
-                           "minimal number of threads",
-                           new UInt64Parameter(&_nrMinimalThreads));
-
   // obsolete options
-  options->addObsoleteOption("--server.maximal-threads",
-                             "maximal number of threads", true);
+  options->addObsoleteOption("--server.threads", "number of threads", true);
 
   // renamed options
-  options->addOldOption("scheduler.threads", "server.threads");
-  options->addOldOption("server.maximal-queue-size", "server.queue-size");
+  options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
   if (_nrMaximalThreads == 0) {
-    _nrMaximalThreads = TRI_numberProcessors();
+    _nrMaximalThreads = defaultNumberOfThreads();
   }
 
   if (_queueSize == 0) {
@@ -117,10 +118,10 @@ void SchedulerFeature::start() {
   LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
 
-  if (_nrMaximalThreads > 2 * N) {
+  if (_nrMaximalThreads > 8 * N) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
         << "--server.threads (" << _nrMaximalThreads
-        << ") is more than twice the number of cores (" << N
+        << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
   }
 
@@ -210,6 +211,17 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
+    
+/// @brief return the default number of threads to use (upper bound)
+size_t SchedulerFeature::defaultNumberOfThreads() const {
+  // use two times the number of hardware threads as the default
+  size_t result = TRI_numberProcessors() * 2;
+  // but only if higher than 64. otherwise use a default minimum value of 64
+  if (result < 64) {
+    result = 64;
+  }
+  return result;
+}
 
 #ifdef _WIN32
 bool CtrlHandler(DWORD eventType) {
@@ -371,3 +383,5 @@ void SchedulerFeature::buildHangupHandler() {
   _hangupSignals->async_wait(_hangupHandler);
 #endif
 }
+
+} // arangodb

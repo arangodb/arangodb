@@ -32,9 +32,10 @@
 #include "IResearch/IResearchViewOptimizerRules.h"
 #endif
 
-using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::aql;
+
+namespace arangodb {
+namespace aql {
 
 // @brief list of all rules
 std::map<int, OptimizerRule> OptimizerRulesFeature::_rules;
@@ -48,12 +49,13 @@ constexpr bool CanBeDisabled = true;
 constexpr bool CanNotBeDisabled = false;
 
 OptimizerRulesFeature::OptimizerRulesFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
+
   startsAfter("Aql");
-  startsAfter("Cluster");
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -267,6 +269,10 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
+
+    registerRule("optimize-cluster-single-document-operations", substituteClusterSingleDocumentOperations,
+                 OptimizerRule::substituteSingleDocumentOperations_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
                  OptimizerRule::optimizeClusterSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
@@ -407,3 +413,6 @@ std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
 
   return disabled;
 }
+
+} // aql
+} // arangodb

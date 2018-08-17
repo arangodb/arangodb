@@ -219,10 +219,10 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 3 SORT i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, PASSTHRU(1) RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, NOOPT(1) RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value2 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value3, i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT PASSTHRU(1) RETURN i.value2"
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT NOOPT(1) RETURN i.value2"
       ];
 
       queries.forEach(function(query) {
@@ -251,10 +251,10 @@ function optimizerIndexesSortTestSuite () {
                      "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 3 SORT i.value3 RETURN i.value2",
                      "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, i.value3 RETURN i.value2",
                      "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 RETURN i.value2",
-                     "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, PASSTHRU(1) RETURN i.value2",
+                     "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, NOOPT(1) RETURN i.value2",
                      "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value2 RETURN i.value2",
                      "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value3, i.value2 RETURN i.value2",
-                     "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT PASSTHRU(1) RETURN i.value2"
+                     "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT NOOPT(1) RETURN i.value2"
                      ];
 
       queries.forEach(function(query) {
@@ -293,8 +293,8 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 3 SORT i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && PASSTHRU(1) SORT i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER PASSTHRU(1) && i.value2 == 2 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && NOOPT(1) SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER NOOPT(1) && i.value2 == 2 SORT i.value2 RETURN i.value2",
         "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
       ];
 
@@ -325,7 +325,7 @@ function optimizerIndexesSortTestSuite () {
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2, i.value3 RETURN i.value2", false ],
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 DESC RETURN i.value2", false ],
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && PASSTHRU(1) SORT i.value2 RETURN i.value2", false ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && NOOPT(1) SORT i.value2 RETURN i.value2", false ],
         [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2, i.value4 RETURN i.value2", true ]
       ];
 
@@ -362,8 +362,14 @@ function optimizerIndexesSortTestSuite () {
           return node.type;
         });
 
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+        assertTrue(
+          (
+            ( nodeTypes.indexOf("IndexNode") !== -1) ||
+              ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
+          ), query);
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(['test1'], results.json, query);
       });
     },
 
@@ -534,8 +540,8 @@ function optimizerIndexesSortTestSuite () {
       c.ensureHashIndex("value2", "value3");
 
       var queries = [
-        "LET docs = PASSTHRU([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2 RETURN i.value2",
-        "LET docs = PASSTHRU([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2, i.value3 RETURN i.value2"
+        "LET docs = NOOPT([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2 RETURN i.value2",
+        "LET docs = NOOPT([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2, i.value3 RETURN i.value2"
       ];
 
       queries.forEach(function(query) {

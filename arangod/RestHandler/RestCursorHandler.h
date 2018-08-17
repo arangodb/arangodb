@@ -61,10 +61,11 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
  public:
   virtual RestStatus execute() override;
-  virtual RestStatus continueExecute() override;
   char const* name() const override { return "RestCursorHandler"; }
-  RequestLane lane() const override { return RequestLane::CLIENT_AQL; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
 
+  virtual RestStatus continueExecute() override;
+  
 #ifdef USE_ENTERPRISE
   void shutdownExecute(bool isFinalized) noexcept override;
 #endif
@@ -78,7 +79,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// this method is also used by derived classes
   //////////////////////////////////////////////////////////////////////////////
 
-  bool registerQueryOrCursor(arangodb::velocypack::Slice const& body);
+  RestStatus registerQueryOrCursor(arangodb::velocypack::Slice const& body);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Process the query registered in _query.
@@ -88,6 +89,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   RestStatus processQuery();
 
+  /// @brief returns the short id of the server which should handle this request
   virtual uint32_t forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -100,7 +102,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief handle the result returned by the query. This function is guaranteed
   ///        to not be interrupted and is guaranteed to get a complete queryResult.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void handleQueryResult();
+  virtual RestStatus handleQueryResult();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query was canceled
@@ -130,9 +132,11 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
+  /// this function will also take care of the cursor and return it to the
+  /// registry if required
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
+  RestStatus generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -172,6 +176,11 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::aql::QueryRegistry* _queryRegistry;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief leased query cursor, may be set by query continuation
+  //////////////////////////////////////////////////////////////////////////////
+  Cursor* _leasedCursor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query
@@ -206,6 +215,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<arangodb::velocypack::Builder> _options;
 
+  
 };
 }
 

@@ -38,6 +38,7 @@
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
+#include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -125,15 +126,20 @@ arangodb::Result handleMasterStateResponse(
                       connection.localServerId() + ")" + endpointString +
                       " as the local applier server's id");
   }
-
-  int major = 0;
-  int minor = 0;
-  std::string const versionString(version.copyString());
-  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE,
-                  std::string("invalid master version info") + endpointString +
-                      ": '" + versionString + "'");
+  
+  // server."engine"
+  std::string engineString = "unknown";
+  Slice const engine = server.get("engine");
+  if (engine.isString()) {
+    // the attribute "engine" is optional, as it was introduced later
+    engineString = engine.copyString();
   }
+
+
+  std::string const versionString(version.copyString());
+  auto v = arangodb::rest::Version::parseVersionString(versionString);
+  int major = v.first;
+  int minor = v.second;
 
   if (major != 3) {
     // we can connect to 3.x only
@@ -147,11 +153,13 @@ arangodb::Result handleMasterStateResponse(
   master.serverId = masterId;
   master.lastLogTick = lastLogTick;
   master.active = running;
+  master.engine = engineString;
 
   LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
       << "connected to master at " << master.endpoint << ", id "
       << master.serverId << ", version " << master.majorVersion << "."
-      << master.minorVersion << ", last log tick " << master.lastLogTick;
+      << master.minorVersion << ", last log tick " << master.lastLogTick << ", engine " 
+      << master.engine;
 
   return Result();
 }
@@ -200,6 +208,7 @@ Connection::Connection(Syncer* syncer,
     }
     params.setLocationRewriter(syncer, &(syncer->rewriteLocation));
     client.reset(new httpclient::SimpleHttpClient(connection, params));
+//    client->checkForGlobalAbort(true);
   }
 }
 
@@ -289,8 +298,14 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
   }
 
   std::string const url = ReplicationUrl + "/barrier/" + itoa(id);
-  std::string const body =
-      "{\"ttl\":" + itoa(ttl) + ",\"tick\"" + itoa(tick) + "\"}";
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("ttl", VPackValue(ttl));
+  builder.add("tick", VPackValue(itoa(tick)));
+  builder.close();
+
+  std::string const body = builder.slice().toJson();
 
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -308,6 +323,8 @@ Result BarrierInfo::extend(Connection& connection, TRI_voc_tick_t tick) {
 
   return Result();
 }
+  
+constexpr double BatchInfo::DefaultTimeout;
 
 Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress) {

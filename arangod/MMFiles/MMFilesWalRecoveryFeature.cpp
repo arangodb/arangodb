@@ -30,25 +30,24 @@
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
+namespace arangodb {
+
+MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
 
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
-  startsAfter("Scheduler");
   startsAfter("ServerId");
-  
-  startsBefore("Agency");
-  startsBefore("Server");
-  startsBefore("Upgrade");
-  startsBefore("V8Dealer");
 
   onlyEnabledWith("MMFilesEngine");
   onlyEnabledWith("MMFilesLogfileManager");
@@ -80,3 +79,4 @@ void MMFilesWalRecoveryFeature::start() {
   databaseFeature->recoveryDone();
 }
 
+} // arangodb

@@ -34,6 +34,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -89,7 +90,8 @@ class V8GcThread : public Thread {
 }
 
 V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -105,13 +107,10 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(true);
+  startsAfter("ClusterPhase");
+
   startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("Temp");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -167,7 +166,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addHiddenOption(
       "--javascript.enabled",
-      "enable or disable the V8 JS engine entirely",
+      "enable the V8 JavaScript engine",
       new BooleanParameter(&_enableJS));
 }
 
@@ -176,8 +175,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
       "Script", "FoxxQueues", "Frontend"});
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
-      << " experimental option, some features may be missing or broken !";
     return;
   }
   
@@ -216,6 +213,12 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+}
+
+void V8DealerFeature::prepare() {
+  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  TRI_ASSERT(cluster != nullptr);
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
 }
 
 void V8DealerFeature::start() {

@@ -1,5 +1,5 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query &amp;lt;&amp;lt;EOF
-{ <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n"</span> }
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query</span> &lt;&lt;EOF
+{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
@@ -39,6 +39,7 @@ x-content-type-options: nosniff
           <span class="hljs-string">"subNodes"</span> : [ 
             { 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"compare =="</span>, 
+              <span class="hljs-string">"excludesNull"</span> : <span class="hljs-literal">false</span>, 
               <span class="hljs-string">"subNodes"</span> : [ 
                 { 
                   <span class="hljs-string">"type"</span> : <span class="hljs-string">"attribute access"</span>, 

@@ -1,7 +1,7 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_admin/wal/properties &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_admin/wal/properties</span> &lt;&lt;EOF
 { 
-  "logfileSize" : 33554432, 
-  "allowOversizeEntries" : true 
+  <span class="hljs-string">"logfileSize"</span> : <span class="hljs-number">33554432</span>, 
+  <span class="hljs-string">"allowOversizeEntries"</span> : <span class="hljs-literal">true</span> 
 }
 EOF
 

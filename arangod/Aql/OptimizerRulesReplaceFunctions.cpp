@@ -43,7 +43,7 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
-  
+
 bool isValueTypeCollection(AstNode const* node) {
   return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
 }
@@ -237,6 +237,10 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   auto* query = ast->query();
   NearOrWithinParams params(funAstNode,isNear);
 
+  if(isNear && (!params.limit || params.limit->isNullValue())){
+    params.limit = ast->createNodeValueInt(100);
+  }
+
   // RETURN (
   //  FOR d IN col
   //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon) // NEAR
@@ -351,22 +355,22 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
     //// wrap plan part into subquery
     return createSubqueryWithLimit(plan, calcNode, eEnumerate, eCalcMerge, calcMergeOutVariable, params.limit);
-  }
+  } //merge
 
   //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode,
                                  eEnumerate /* first */, eSortOrFilter /* last */,
                                  enumerateOutVariable, params.limit);
 }
-  
+
 /// @brief replace WITHIN_RECTANGLE
 AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan) {
   auto* ast = plan->getAst();
-  
+
   TRI_ASSERT(funAstNode->type == AstNodeType::NODE_TYPE_FCALL);
   AstNode* fargs = funAstNode->getMember(0);
   TRI_ASSERT(fargs->type == AstNodeType::NODE_TYPE_ARRAY);
-       
+
   if (fargs->numMembers() < 5) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN_RECTANGLE", 5, 5);
   }
@@ -380,7 +384,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
   if (!::isValueTypeCollection(coll)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-  
+
   // check for suitable indexes
   std::string cname = coll->getString();
   std::shared_ptr<arangodb::Index> index;
@@ -395,13 +399,13 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
                                   cname.c_str());
   }
-  
+
   if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
    aql::addCollectionToQuery(ast->query(), cname, false);
    coll = ast->createNodeCollection(coll->getStringValue(),
                                     AccessMode::Type::READ);
   }
-  
+
   // FOR part
   Variable* collVar = ast->variables()->createTemporaryVariable();
   AstNode* forNode = ast->createNodeFor(collVar, coll);
@@ -455,7 +459,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
 
   // create an on-the-fly subquery for a full collection access
   AstNode* rootNode = ast->createNodeSubquery();
-  
+
   // add nodes to subquery
   rootNode->addMember(forNode);
   rootNode->addMember(filterNode);
@@ -572,9 +576,9 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
       return astnode;
     };
 
-    CalculationNode* calc = static_cast<CalculationNode*>(node);
+    CalculationNode* calc = ExecutionNode::castTo<CalculationNode*>(node);
     auto* original = getAstNode(calc);
-    auto* replacement = Ast::traverseAndModify(original,visitor);
+    auto* replacement = Ast::traverseAndModify(original, visitor);
 
     // replace root node if it was modified
     // TraverseAndModify has no access to roots parent

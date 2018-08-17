@@ -5,9 +5,9 @@ Multiple ArangoDB instances can be deployed as a fault-tolerant distributed stat
 
 What is a fault-tolerant state machine in the first place?
 
-In many service deployments consisting of arbitrary components distributed over multiple machines one is faced with the challenge of creating a dependable centralised knowledge base or configuration. Implementation of such a service turns out to be one of the most fundamental problems in information engineering. While it may seem as if the realisation of such a service is easily conceivable, dependablity formulates a paradoxon on computer networks per se. On the one hand, one needs a distributed system to avoid a single point of failure. On the other hand, one has to establish consensus among the computers involved.
+In many service deployments consisting of arbitrary components distributed over multiple machines one is faced with the challenge of creating a dependable centralized knowledge base or configuration. Implementation of such a service turns out to be one of the most fundamental problems in information engineering. While it may seem as if the realization of such a service is easily conceivable, dependability formulates a paradox on computer networks per se. On the one hand, one needs a distributed system to avoid a single point of failure. On the other hand, one has to establish consensus among the computers involved.
 
-Consensus is the keyword here and its realisation on a network proves to be far from trivial. Many papers and conference proceedings have discussed and evaluated this key challenge. Two algorithms, historically far apart, have become widely popular, namely Paxos and its derivatives and Raft. Discussing them and their differences, although highly enjoyable, must remain far beyond the scope of this document. Find the references to the main publications at the bottom of this page.
+Consensus is the keyword here and its realization on a network proves to be far from trivial. Many papers and conference proceedings have discussed and evaluated this key challenge. Two algorithms, historically far apart, have become widely popular, namely Paxos and its derivatives and Raft. Discussing them and their differences, although highly enjoyable, must remain far beyond the scope of this document. Find the references to the main publications at the bottom of this page.
 
 At ArangoDB, we decided to implement Raft as it is arguably the easier to understand and thus implement. In simple terms, Raft guarantees that a linear stream of transactions, is replicated in realtime among a group of machines through an elected leader, who in turn must have access to and project leadership upon an overall majority of participating instances. In ArangoDB we like to call the entirety of the components of the replicated transaction log, that is the machines and the ArangoDB instances, which constitute the replicated log, the agency.
 
@@ -16,13 +16,13 @@ Startup
 
 The agency must consists of an odd number of agents in order to be able to establish an overall majority and some means for the agents to be able to find one another at startup. 
 
-The most obvious way would be to inform all agents of the addresses and ports of the rest. This however, is more information than needed. For example, it would suffice, if all agents would know the address and port of the next agent in a cyclic fashion. Another straitforward solution would be to inform all agents of the address and port of say the first agent.
+The most obvious way would be to inform all agents of the addresses and ports of the rest. This however, is more information than needed. For example, it would suffice, if all agents would know the address and port of the next agent in a cyclic fashion. Another straightforward solution would be to inform all agents of the address and port of say the first agent.
 
 Clearly all cases, which would form disjunct subsets of agents would break or in the least impair the functionality of the agency. From there on the agents will gossip the missing information about their peers.
 
 Typically, one achieves fairly high fault-tolerance with low, odd number of agents while keeping the necessary network traffic at a minimum. It seems that the typical agency size will be in range of 3 to 7 agents.
 
-The below commands start up a 3-host agency on one physical/logical box with ports 8529, 8530 and 8531 for demonstration purposes. The adress of the first instance, port 8529, is known to the other two. After atmost 2 rounds of gossipping, the last 2 agents will have a complete picture of their surrounding and persist it for the next restart.
+The below commands start up a 3-host agency on one physical/logical box with ports 8529, 8530 and 8531 for demonstration purposes. The address of the first instance, port 8529, is known to the other two. After at most 2 rounds of gossipping, the last 2 agents will have a complete picture of their surrounding and persist it for the next restart.
 
 ```
 ./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8529 --server.authentication false --server.endpoint tcp://0.0.0.0:8529 agency-8529
@@ -76,7 +76,7 @@ curl -s localhost:8529/_api/agency/config
 }
 ```
 
-To highlight some details in the above output look for `"term"` and `"leaderId"`. Both are key information about the current state of the Raft algorithm. You may have noted that the first election term has established a random leader for the agency, who is in charge of replication of the state machine and for all external read and write requests until such time that the process gets isolated from the other two subsequenctly losing its leadership.
+To highlight some details in the above output look for `"term"` and `"leaderId"`. Both are key information about the current state of the Raft algorithm. You may have noted that the first election term has established a random leader for the agency, who is in charge of replication of the state machine and for all external read and write requests until such time that the process gets isolated from the other two subsequently losing its leadership.
 
 Read and Write APIs
 -------------------
@@ -174,5 +174,5 @@ curl -L localhost:8529/_api/agency/write -d '[[{"foo":["bar","baz","qux"]}]]'
 
 are equivalent for example and will create and fill an array at `/foo`. Here, again, the outermost array is the container for the transaction arrays.
 
-We documented a complete guide of the API in the [API section](../../../HTTP/Agency/index.html).
+A complete guide of the API can be found in the [API section](../../../HTTP/Agency/index.html).
 

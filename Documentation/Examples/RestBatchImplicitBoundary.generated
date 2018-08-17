@@ -1,13 +1,13 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch</span> &lt;&lt;EOF
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 
-DELETE /_api/collection/notexisting1 HTTP/<span class="hljs-number">1.1</span>
+DELETE /_api/collection/notexisting1 HTTP/1.1
 
 --SomeBoundaryValue
 Content-Type: application/x-arango-batchpart
 
-DELETE _api/collection/notexisting2 HTTP/<span class="hljs-number">1.1</span>
+DELETE _api/collection/notexisting2 HTTP/1.1
 --SomeBoundaryValue--
 
 EOF

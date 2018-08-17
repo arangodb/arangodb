@@ -62,7 +62,7 @@ $map=@{
         "count"= $CoordinatorCount;
         "startport"= $CoordinatorStartPort
     }
-    "PRIMARY"= @{
+    "DBSERVER"= @{
         "count"= $DBServerCount;
         "startport"= $DBServerStartPort
     }

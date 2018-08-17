@@ -92,19 +92,15 @@ QueryResult Parser::parse(bool withDetails) {
   TRI_ASSERT(_scanner != nullptr);
   Aqlset_extra(this, _scanner);
 
-  try {
-    // parse the query string
-    if (Aqlparse(this)) {
-      // lexing/parsing failed
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
-    }
+  auto guard = scopeGuard([this]() {
+    Aqllex_destroy(_scanner);
+    _scanner = nullptr;
+  });
 
-    Aqllex_destroy(_scanner);
-    _scanner = nullptr;
-  } catch (...) {
-    Aqllex_destroy(_scanner);
-    _scanner = nullptr;
-    throw;
+  // parse the query string
+  if (Aqlparse(this)) {
+    // lexing/parsing failed
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
   }
 
   // end main scope

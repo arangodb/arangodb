@@ -93,7 +93,7 @@ std::vector<arangodb::iresearch::IResearchSort> buildSort(
     } else {
       auto const* setter = plan.getVarSetBy(varId);
       if (setter && EN::CALCULATION == setter->getType()) {
-        auto const* expr = static_cast<CalculationNode const*>(setter)->expression();
+        auto const* expr = ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
 
         if (expr) {
           rootNode = expr->node();
@@ -301,7 +301,7 @@ bool IResearchViewConditionFinder::handleFilterCondition(
     if (_filters.find(it.first) != _filters.end()) {
       // a variable used in a FILTER
       AstNode* var = const_cast<AstNode*>(it.second);
-      if (!var->canThrow() && var->isDeterministic() && var->isSimple()) {
+      if (var->isDeterministic() && var->isSimple()) {
         // replace all variables inside the FILTER condition with the
         // expressions represented by the variables
         var = it.second->clone(_plan->getAst());
@@ -317,8 +317,7 @@ bool IResearchViewConditionFinder::handleFilterCondition(
                 auto s = EN::castTo<CalculationNode*>(setter);
                 auto filterExpression = s->expression();
                 AstNode* inNode = filterExpression->nodeForModification();
-                if (!inNode->canThrow() && inNode->isDeterministic() &&
-                    inNode->isSimple()) {
+                if (inNode->isDeterministic() && inNode->isSimple()) {
                   return inNode;
                 }
               }
@@ -453,7 +452,6 @@ void handleViewsRule(
       if (it != noMatch) {
         toUnlink.emplace(node);
         toUnlink.emplace(setter);
-        EN::castTo<CalculationNode*>(setter)->canRemoveIfThrows(true);
       }
     }
 
@@ -479,7 +477,6 @@ void handleViewsRule(
         }
 
         toUnlink.emplace(setter);
-        EN::castTo<CalculationNode*>(setter)->canRemoveIfThrows(true);
       }
     }
 
@@ -510,7 +507,6 @@ void handleViewsRule(
 ////        if (!(*it)->isInInnerLoop()) {
 ////          toUnlink.emplace(node);
 ////        }
-//          static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
 //        }
 //      }
 //    }

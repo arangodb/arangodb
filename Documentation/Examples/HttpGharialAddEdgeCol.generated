@@ -1,12 +1,12 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge</span> &lt;&lt;EOF
 { 
-  "collection" : "works_in", 
-  "from" : [ 
-    "female", 
-    "male" 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"works_in"</span>, 
+  <span class="hljs-string">"from"</span> : [ 
+    <span class="hljs-string">"female"</span>, 
+    <span class="hljs-string">"male"</span> 
   ], 
-  "to" : [ 
-    "city" 
+  <span class="hljs-string">"to"</span> : [ 
+    <span class="hljs-string">"city"</span> 
   ] 
 }
 EOF
@@ -14,7 +14,7 @@ EOF
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XEUem5y--_
+etag: _XPb9lfy--_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -50,6 +50,6 @@ etag: _XEUem5y--_
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUem5y--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9lfy--_"</span> 
   } 
 }

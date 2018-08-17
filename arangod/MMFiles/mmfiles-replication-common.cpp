@@ -45,7 +45,6 @@ bool MustReplicateWalMarkerType(MMFilesMarker const* marker, bool allowDBMarkers
                               type == TRI_DF_MARKER_VPACK_DROP_DATABASE)) ||
           type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
           type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
-          type == TRI_DF_MARKER_VPACK_RENAME_VIEW ||
           type == TRI_DF_MARKER_VPACK_CHANGE_VIEW);
 }
 
@@ -90,8 +89,6 @@ TRI_replication_operation_e TranslateType(MMFilesMarker const* marker) {
       return REPLICATION_VIEW_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_VIEW:
       return REPLICATION_VIEW_DROP;
-    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
-      return REPLICATION_VIEW_RENAME;
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       return REPLICATION_VIEW_CHANGE;
       

@@ -40,6 +40,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
+  REG_ERROR(ERROR_DISABLED, "disabled");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -186,6 +187,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
   REG_ERROR(ERROR_QUERY_SCRIPT, "runtime error '%s'");
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number out of range");
+  REG_ERROR(ERROR_QUERY_INVALID_GEO_VALUE, "invalid geo coordinate value");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
   REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
@@ -212,7 +214,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, "invalid aggregate expression");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
-  REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, "collection '%s' used as expression operand");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
   REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
@@ -284,6 +285,10 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS, "collection used in orphans");
   REG_ERROR(ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST, "edge collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_GRAPH_EMPTY, "empty graph");
+  REG_ERROR(ERROR_GRAPH_INTERNAL_DATA_CORRUPT, "internal graph data corrupt");
+  REG_ERROR(ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET, "edge collection already set");
+  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST, "malformed orphan list");
+  REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
@@ -314,6 +319,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CANNOT_DROP_SMART_COLLECTION, "cannot drop this smart collection");
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
+  REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");

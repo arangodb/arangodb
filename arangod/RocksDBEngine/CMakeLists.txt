@@ -69,6 +69,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestReplicationHandler.cpp
   RocksDBEngine/RocksDBRestWalHandler.cpp
   RocksDBEngine/RocksDBSettingsManager.cpp
+  RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBThrottle.cpp

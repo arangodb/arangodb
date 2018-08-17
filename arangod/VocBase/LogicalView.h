@@ -184,11 +184,37 @@ class LogicalView : public LogicalDataSource {
 }; // LogicalView
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class DBServerLogicalView
+/// @brief a LogicalView base class for ClusterInfo view implementations
 ////////////////////////////////////////////////////////////////////////////////
-class DBServerLogicalView : public LogicalView {
+class LogicalViewClusterInfo: public LogicalView {
+ protected:
+  LogicalViewClusterInfo(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+  );
+
+  virtual Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a View object implementation
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result appendVelocyPackDetailed(
+    velocypack::Builder& builder,
+    bool forPersistence
+  ) const = 0;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a LogicalView base class for StorageEngine view implementations
+////////////////////////////////////////////////////////////////////////////////
+class LogicalViewStorageEngine: public LogicalView {
  public:
-  ~DBServerLogicalView() override;
+  ~LogicalViewStorageEngine() override;
 
   arangodb::Result drop() override final;
 
@@ -204,7 +230,7 @@ class DBServerLogicalView : public LogicalView {
   ) override final;
 
  protected:
-  DBServerLogicalView(
+  LogicalViewStorageEngine(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& definition,
     uint64_t planVersion
@@ -217,23 +243,23 @@ class DBServerLogicalView : public LogicalView {
   ) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a View object implementation
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result appendVelocyPackDetailed(
+    velocypack::Builder& builder,
+    bool forPersistence
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief called by view factories during view creation to persist the view
   ///        to the storage engine
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result create(DBServerLogicalView const& view);
+  static arangodb::Result create(LogicalViewStorageEngine const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view
   //////////////////////////////////////////////////////////////////////////////
   virtual arangodb::Result dropImpl() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a jSON description of a View object implementation
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void getPropertiesVPack(
-    velocypack::Builder& builder,
-    bool forPersistence
-  ) const = 0;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
@@ -242,7 +268,7 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Slice const& slice,
     bool partialUpdate
   ) = 0;
-}; // LogicalView
+};
 
 }  // namespace arangodb
 

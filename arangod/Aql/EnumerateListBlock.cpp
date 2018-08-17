@@ -179,7 +179,6 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
     _inflight = 0;
     return {ExecutionState::DONE, skipped};
   }
-
   while (_inflight < atMost) {
     size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
     BufferState bufferState = getBlockIfNeeded(toFetch);
@@ -224,6 +223,7 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
       _inflight += atMost;
     } else {
       // eat the whole of the current inVariable and proceed . . .
+      atMost -= (sizeInVar - _index);
       _inflight += (sizeInVar - _index);
       _index = 0;
       if (++_pos == cur->size()) {

@@ -167,6 +167,7 @@ void HeartbeatThread::runBackgroundJob() {
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
     TRI_ASSERT(_backgroundJobScheduledOrRunning);
+
     if (_launchAnotherBackgroundJob) {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
@@ -174,7 +175,8 @@ void HeartbeatThread::runBackgroundJob() {
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+      SchedulerFeature::SCHEDULER->post(
+          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -797,7 +799,7 @@ void HeartbeatThread::runCoordinator() {
             // We won the race we are the master
             ServerState::instance()->setFoxxmaster(state->getId());
           }
-
+          _agency.increment("Current/Version");
         }
 
         VPackSlice versionSlice =
@@ -901,7 +903,7 @@ void HeartbeatThread::runCoordinator() {
         updateServerMode(readOnlySlice);
       }
 
-      // the foxx stuff needs an updated list of coordinators
+      // the Foxx stuff needs an updated list of coordinators
       // and this is only updated when current version has changed
       if (invalidateCoordinators) {
         ClusterInfo::instance()->invalidateCurrentCoordinators();
@@ -1002,7 +1004,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
     }
   }
   if (doSleep) {
-    // Sleep a little longer, since this might be due to some synchronisation
+    // Sleep a little longer, since this might be due to some synchronization
     // of shards going on in the background
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
@@ -1131,8 +1133,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
 void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   bool shouldUpdate = false;
-  bool becauseOfPlan = false;
-  bool becauseOfCurrent = false;
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
 
@@ -1141,14 +1141,12 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
         << "Plan version " << _currentVersions.plan
         << " is lower than desired version " << _desiredVersions->plan;
     shouldUpdate = true;
-    becauseOfPlan = true;
   }
   if (_desiredVersions->current > _currentVersions.current) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "Current version " << _currentVersions.current
         << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
-    becauseOfCurrent = true;
   }
 
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
@@ -1164,10 +1162,10 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
-  if (becauseOfPlan) {
+  if (_desiredVersions->plan > ci->getPlanVersion()) {
     ci->invalidatePlan();
   }
-  if (becauseOfCurrent) {
+  if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
 
@@ -1183,8 +1181,8 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
-
+  SchedulerFeature::SCHEDULER->post(
+      HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1245,6 +1243,8 @@ void HeartbeatThread::logThreadDeaths(bool force) {
 
   bool doLogging(force);
 
+  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
+
   if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
     doLogging = true;
   } // if
@@ -1252,9 +1252,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
   if (doLogging) {
     deadThreadsPosted = std::chrono::system_clock::now();
 
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
+    
     for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 

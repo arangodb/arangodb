@@ -1,9 +1,9 @@
-shell> curl --dump - http://localhost:8529/_api/gharial/myGraph
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/gharial/myGraph</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XEUeqQu--_
+etag: _XPb9l2C--_
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -27,6 +27,6 @@ etag: _XEUeqQu--_
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"smartGraphAttribute"</span> : <span class="hljs-string">""</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/myGraph"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUeqQu--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9l2C--_"</span> 
   } 
 }

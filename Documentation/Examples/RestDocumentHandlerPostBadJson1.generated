@@ -1,5 +1,5 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products &amp;lt;&amp;lt;EOF
-{ <span class="hljs-number">1</span>: <span class="hljs-string">"World"</span> }
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products</span> &lt;&lt;EOF
+{ 1: "World" }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request

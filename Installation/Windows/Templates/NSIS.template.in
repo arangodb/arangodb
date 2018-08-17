@@ -664,7 +664,7 @@ continueUI:
   ${NSD_CreateLabel} 35% 50 40% 6% "Password (Again)"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the stogare engine to use for this ArangoDB Installation"
+  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the storage engine to use for this ArangoDB installation"
   Pop $0 ; Don't care...
 
   ${NSD_CreateDropList} 5, 110, 30% 6% ""
@@ -1131,7 +1131,7 @@ Done:
   StrCmp $PURGE_DB "0" dontDeleteDatabases
   DetailPrint 'Removing database files from $DATADIR: '
   RMDir /r "$DATADIR"
-  DetailPrint 'Removing foxx services files from $APPDIR: '
+  DetailPrint 'Removing Foxx services files from $APPDIR: '
   RMDir /r "$APPDIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"

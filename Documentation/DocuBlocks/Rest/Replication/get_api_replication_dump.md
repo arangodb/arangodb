@@ -11,7 +11,7 @@ The name or id of the collection to dump.
 
 @RESTQUERYPARAM{chunkSize,number,optional} Approximate maximum size of the returned result.
 
-@RESTQUERYPARAM{batchId,string,required}
+@RESTQUERYPARAM{batchId,number,required}
 rocksdb only - The id of the snapshot to use
 
 @RESTQUERYPARAM{from,number,optional}

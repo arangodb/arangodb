@@ -67,6 +67,8 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
       return REPLICATION_COLLECTION_RENAME;
     case RocksDBLogType::CollectionChange:
       return REPLICATION_COLLECTION_CHANGE;
+    case RocksDBLogType::CollectionTruncate:
+      return REPLICATION_COLLECTION_TRUNCATE;
     case RocksDBLogType::IndexCreate:
       return REPLICATION_INDEX_CREATE;
     case RocksDBLogType::IndexDrop:
@@ -183,6 +185,27 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         }
         break;
       }
+      case RocksDBLogType::CollectionTruncate: {
+        resetTransientState(); // finish ongoing trx
+        TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
+        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        if (shouldHandleCollection(dbid, cid)) {
+          TRI_ASSERT(_vocbase->id() == dbid);
+          LogicalCollection* coll = loadCollection(cid);
+          TRI_ASSERT(coll != nullptr);
+          {
+            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(tick)));
+            marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
+            marker->add("database", VPackValue(std::to_string(dbid)));
+            marker->add("cuid", VPackValue(coll->guid()));
+            marker->add("cid", VPackValue(std::to_string(cid)));
+          }
+          updateLastEmittedTick(_currentSequence);
+        }
+        break;
+      }
       case RocksDBLogType::IndexCreate: {
         resetTransientState(); // finish ongoing trx
 
@@ -238,10 +261,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::ViewCreate:
       case RocksDBLogType::ViewDrop:
-      case RocksDBLogType::ViewChange:
-      case RocksDBLogType::ViewRename: {
+      case RocksDBLogType::ViewChange: {
         resetTransientState(); // finish ongoing trx
-        // TODO
         break;
       }
       case RocksDBLogType::BeginTransaction: {

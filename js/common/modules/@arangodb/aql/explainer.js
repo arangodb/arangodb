@@ -8,12 +8,15 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
+let uniqueValue = 0;
+
 const anonymize = function(doc) {
   if (Array.isArray(doc)) {
     return doc.map(anonymize);
   }
   if (typeof doc === 'string') {
-    return Array(doc.length + 1).join("X");
+    // make unique values because of unique indexes
+    return Array(doc.length + 1).join('X') + uniqueValue++;
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
@@ -21,7 +24,7 @@ const anonymize = function(doc) {
   if (typeof doc === 'object') {
     let result = {};
     Object.keys(doc).forEach(function(key) {
-      if (key.startsWith("_") || key.startsWith("@")) {
+      if (key.startsWith('_') || key.startsWith('@')) {
         // This excludes system attributes in examples
         // and collections in bindVars
         result[key] = doc[key];
@@ -239,7 +242,7 @@ function printStats (stats) {
   var maxSILen = String('Scan Index').length;
   var maxFLen = String('Filtered').length;
   var maxETen = String('Exec Time [s]').length;
-  stats.executionTime = stats.executionTime.toFixed(5) + "s";
+  stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
                            header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
                          
@@ -260,14 +263,18 @@ function printProfile (profile) {
 
   stringBuilder.appendLine(section('Query Profile:'));
   let maxHeadLen = 0;
+  let maxDurLen = 'Duration [s]'.length;
   Object.keys(profile).forEach(key => {
     if (key.length > maxHeadLen) {
       maxHeadLen = key.length;
     }
+    if (profile[key].toFixed(5).length > maxDurLen) {
+      maxDurLen = profile[key].toFixed(5).length;
+    }
   });
-  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + header('Duration [s]'));
+  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
   Object.keys(profile).forEach(key => {
-    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + profile[key].toFixed(5));
+    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
   });
   stringBuilder.appendLine();
 }
@@ -472,7 +479,7 @@ function printTraversalDetails (traversals) {
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
-    } else if (node.hasOwnProperty("traversalFlags")) {
+    } else if (node.hasOwnProperty('traversalFlags')) {
       // Backwards compatibility for < 3.2
       let opts = optify(node.traversalFlags);
       if (opts.length > maxOptionsLen) {
@@ -606,7 +613,7 @@ function processQuery (query, explain) {
     stats = explain.stats;
 
   /// mode with actual runtime stats per node
-  let profileMode = stats && stats.hasOwnProperty("nodes");
+  let profileMode = stats && stats.hasOwnProperty('nodes');
 
   var isCoordinator = false;
   if (typeof ArangoClusterComm === 'object') {
@@ -723,12 +730,6 @@ function processQuery (query, explain) {
     return variable(node.name);
   };
 
-  var addHint = function () {};
-  // uncomment this to show "style" hints
-  // var addHint = function (dst, currentNode, msg) {
-  //   dst.push({ code: "Hint", message: "Node #" + currentNode + ": " + msg })
-  // }
-
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       var lhs = buildExpression(node.subNodes[0]);
@@ -744,18 +745,6 @@ function processQuery (query, explain) {
     };
 
     isConst = isConst && ([ 'value', 'object', 'object element', 'array' ].indexOf(node.type) !== -1);
-
-    if (node.type !== 'attribute access' &&
-      node.hasOwnProperty('subNodes')) {
-      for (var i = 0; i < node.subNodes.length; ++i) {
-        if (node.subNodes[i].type === 'reference' &&
-          collectionVariables.hasOwnProperty(node.subNodes[i].id)) {
-          addHint(explain.warnings, currentNode, "reference to collection document variable '" +
-            node.subNodes[i].name + "' used in potentially non-working way");
-          break;
-        }
-      }
-    }
 
     switch (node.type) {
       case 'reference':
@@ -780,7 +769,6 @@ function processQuery (query, explain) {
         }
         return variableName(node);
       case 'collection':
-        addHint(explain.warnings, currentNode, "using all documents from collection '" + node.name + "' in expression");
         return collection(node.name) + '   ' + annotation('/* all collection documents */');
       case 'value':
         return value(JSON.stringify(node.value));
@@ -815,21 +803,6 @@ function processQuery (query, explain) {
       case 'array limit':
         return buildExpression(node.subNodes[0]) + ', ' + buildExpression(node.subNodes[1]);
       case 'attribute access':
-        if (node.subNodes[0].type === 'reference' &&
-          collectionVariables.hasOwnProperty(node.subNodes[0].id)) {
-          // top-level attribute access
-          var collectionName = collectionVariables[node.subNodes[0].id],
-            collectionObject = db._collection(collectionName);
-          if (collectionObject !== null) {
-            var isEdgeCollection = (collectionObject.type() === 3),
-              isSystem = (node.name[0] === '_');
-
-            if ((isSystem && [ '_key', '_id', '_rev'].concat(isEdgeCollection ? [ '_from', '_to' ] : []).indexOf(node.name) === -1) ||
-              (!isSystem && isEdgeCollection && [ 'from', 'to' ].indexOf(node.name) !== -1)) {
-              addHint(explain.warnings, currentNode, "reference to potentially non-existing attribute '" + node.name + "'");
-            }
-          }
-        }
         return buildExpression(node.subNodes[0]) + '.' + attribute(node.name);
       case 'indexed access':
         return buildExpression(node.subNodes[0]) + '[' + buildExpression(node.subNodes[1]) + ']';
@@ -1006,9 +979,10 @@ function processQuery (query, explain) {
     } else {
       if (variable !== false) {
         idx.condition = variable;
-      } else {
-        idx.condition = '*'; // empty condition. this is likely an index used for sorting only
       }
+    }
+    if (idx.condition === '') {
+      idx.condition = '*'; // empty condition. this is likely an index used for sorting or scanning only
     }
     indexes.push(idx);
   };
@@ -1329,6 +1303,118 @@ function processQuery (query, explain) {
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
+      case 'SingleRemoteOperationNode': {
+        switch (node.mode) {
+          case "IndexNode": {
+            collectionVariables[node.outVariable.id] = node.collection;
+            let indexRef = `${variable(JSON.stringify(node.key))}`;
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
+            // `
+          }
+          case 'InsertNode': {
+            modificationFlags = node.modificationFlags;
+            collectionVariables[node.inVariable.id] = node.collection;
+            let indexRef = `${variableName(node.inVariable)}`;
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            return `${keyword('INSERT')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)}`;
+          }
+          case 'UpdateNode': {
+            modificationFlags = node.modificationFlags;
+            let OLD="";
+            if (node.hasOwnProperty('inVariable')) {
+              collectionVariables[node.inVariable.id] = node.collection;
+              OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
+            }
+            let indexRef;
+            let keyCondition = "";
+            let filterCondition;
+            if (node.hasOwnProperty('key')) {
+              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              indexRef = `${variable(JSON.stringify(node.key))} `;
+              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+            } else if (node.hasOwnProperty('inVariable')) {
+              keyCondition = `${variableName(node.inVariable)} `;
+              indexRef = `${variableName(node.inVariable)}`;
+            } else {
+              keyCondition = "<UNSUPPORTED>";
+              indexRef = "<UNSUPPORTED>";
+            }
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            let forStatement = "";
+            if (node.replaceIndexNode) {
+              forStatement = `${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
+              keyCondition = `${variable('doc')} `;
+            }
+            return `${forStatement}${keyword('UPDATE')} ${keyCondition}${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          }
+          case 'ReplaceNode': {
+            modificationFlags = node.modificationFlags;
+            let OLD="";
+            if (node.hasOwnProperty('inVariable')) {
+              collectionVariables[node.inVariable.id] = node.collection;
+              OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
+            }
+            let indexRef;
+            let keyCondition = "";
+            let filterCondition;
+            if (node.hasOwnProperty('key')) {
+              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              indexRef = `${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+            } else if (node.hasOwnProperty('inVariable')) {
+              keyCondition = `${variableName(node.inVariable)} `;
+              indexRef = `${variableName(node.inVariable)}`;
+            } else {
+              keyCondition = "<UNSUPPORTED>";
+              indexRef = "<UNSUPPORTED>";
+            }
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            let forStatement = "";
+            if (node.replaceIndexNode) {
+              forStatement = `${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
+              keyCondition = `${variable('doc')} `;
+            }
+            return `${forStatement}${keyword('REPLACE')} ${keyCondition}${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          }
+          case 'RemoveNode': {
+            modificationFlags = node.modificationFlags;
+            if (node.hasOwnProperty('inVariable')) {
+              collectionVariables[node.inVariable.id] = node.collection;
+            }
+            let indexRef;
+            let keyCondition;
+            let filterCondition;
+            if (node.hasOwnProperty('key')) {
+              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              indexRef = `${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+            } else if (node.hasOwnProperty('inVariable')) {
+              keyCondition = `${variableName(node.inVariable)} `;
+              indexRef = `${variableName(node.inVariable)}`;
+            } else {
+              keyCondition = "<UNSUPPORTED>";
+              indexRef = "<UNSUPPORTED>";
+            }
+            if (node.hasOwnProperty('indexes')) {
+              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            }
+            let forStatement = "";
+            if (node.replaceIndexNode) {
+              forStatement = `${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
+              keyCondition = `${variable('doc')} `;
+            }
+            return `${forStatement}${keyword('REMOVE')} ${keyCondition}${keyword('IN')} ${collection(node.collection)}`;
+          }
+        }
+      }
+      break;
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
@@ -1413,7 +1499,7 @@ function processQuery (query, explain) {
     if (profileMode) {
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
               pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(4)).length) + value(node.runtime.toFixed(4)) + '   ' +
+              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
               indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
@@ -1512,7 +1598,7 @@ function explain(data, options, shouldPrint) {
 
 
 /* the exposed profile query function */
-function profileQuery(data) {
+function profileQuery(data, shouldPrint) {
   'use strict';
   if (!(data instanceof Object) || !data.hasOwnProperty("options")) {
     throw 'ArangoStatement needs initial data';
@@ -1525,7 +1611,12 @@ function profileQuery(data) {
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
   processQuery(data.query, extra);
-  print(stringBuilder.getOutput());
+
+  if (shouldPrint === undefined || shouldPrint) {
+    print(stringBuilder.getOutput());
+  } else {
+    return stringBuilder.getOutput();
+  }
 }
 
 /* the exposed debug function */
@@ -1558,7 +1649,7 @@ function debug(query, bindVars, options) {
     collections: {}
   };
 
-  result.fancy = require("@arangodb/aql/explainer").explain(input, { colors: false }, false);
+  result.fancy = require('@arangodb/aql/explainer').explain(input, { colors: false }, false);
 
   let stmt = db._createStatement(input);
   result.explain = stmt.explain(input.options);
@@ -1642,12 +1733,17 @@ function debug(query, bindVars, options) {
 
 function debugDump(filename, query, bindVars, options) {
   let result = debug(query, bindVars, options);
-  require("fs").write(filename, JSON.stringify(result));
-  require("console").log("stored query debug information in file '" + filename + "'");
+  require('fs').write(filename, JSON.stringify(result));
+  require('console').log("stored query debug information in file '" + filename + "'");
 }
 
-function inspectDump(filename) {
-  let data = JSON.parse(require("fs").read(filename));
+function inspectDump(filename, outfile) {
+  let internal = require('internal');
+  if (outfile !== undefined) {
+    internal.startCaptureMode();
+  }
+
+  let data = JSON.parse(require('fs').read(filename));
   if (data.database) {
     print("/* original data gathered from database '" + data.database + "' */");
   }
@@ -1718,6 +1814,12 @@ function inspectDump(filename) {
   }
   print("db._explain(" + JSON.stringify(data.query) + ");");
   print();
+
+  if (outfile !== undefined) {
+    require('fs').write(outfile, internal.stopCaptureMode());
+    require('console').log("stored query restore script in file '" + outfile + "'");
+    require('console').log("to run it, execute  require('internal').load('" + outfile + "');");
+  }
 }
 
 exports.explain = explain;
