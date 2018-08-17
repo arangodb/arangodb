@@ -1,6 +1,9 @@
 v3.2.17 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5648: fixed error message when saving unsupported document
+  types
+
 * fixed issue #5943: misplaced database ui icon and wrong cursor type were used
 
 
