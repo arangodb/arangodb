@@ -522,7 +522,7 @@ class Ast {
   /// @brief optimizes the LET statement
   AstNode* optimizeLet(AstNode*);
 
-  /// @brief optimizes the FILTER or SEARCH statement
+  /// @brief optimizes the FILTER statement
   AstNode* optimizeFilter(AstNode*);
 
   /// @brief optimizes the FOR statement

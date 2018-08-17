@@ -228,6 +228,8 @@ AstNode* Ast::createNodeForView(Variable* variable,
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+
+  TRI_ASSERT(search != nullptr);
   
   AstNode* variableNode = createNode(NODE_TYPE_VARIABLE);
   variableNode->setData(static_cast<void*>(variable));
@@ -237,7 +239,7 @@ AstNode* Ast::createNodeForView(Variable* variable,
 
   node->addMember(variableNode);
   node->addMember(expression);
-  node->addMember(search);
+  node->addMember(createNodeFilter(search));
 
   return node;
 }
@@ -3295,7 +3297,7 @@ AstNode* Ast::optimizeLet(AstNode* node) {
   return node;
 }
 
-/// @brief optimizes the FILTER or SEARCH statement
+/// @brief optimizes the FILTER statement
 AstNode* Ast::optimizeFilter(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FILTER);

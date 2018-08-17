@@ -974,9 +974,12 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
       "no view for EnumerateView"
     );
   }
+  
+  TRI_ASSERT(search->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(search->numMembers() == 1);
 
   en = registerNode(new iresearch::IResearchViewNode(
-    *this, nextId(), vocbase, view, *v, search, {}
+    *this, nextId(), vocbase, view, *v, search->getMember(0), {}
   ));
 #else
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
