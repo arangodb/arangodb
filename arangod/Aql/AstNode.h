@@ -545,6 +545,12 @@ struct AstNode {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.erase(members.begin() + i);
   }
+  
+  /// @brief remove all members from the node at once
+  void removeMembers() {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    members.clear();
+  }
 
   /// @brief return a member of the node
   inline AstNode* getMember(size_t i) const {

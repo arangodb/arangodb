@@ -51,7 +51,7 @@ class EventLoopService {
  public:
   // Initialize an EventLoopService with a given number of threads
   //  and a given number of io_context
-  EventLoopService(unsigned int threadCount = 1);
+  explicit EventLoopService(unsigned int threadCount = 1);
   virtual ~EventLoopService();
 
   // Prevent copying

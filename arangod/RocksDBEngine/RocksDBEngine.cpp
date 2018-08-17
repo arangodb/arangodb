@@ -36,6 +36,7 @@
 #include "Basics/build.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -141,16 +142,16 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(180.0),
       _releasedTick(0),
+#ifdef _WIN32
+      // background syncing is not supported on Windows
+      _syncInterval(0),
+#else
       _syncInterval(100),
+#endif
       _useThrottle(true),
       _debugLogging(false) {
+
   startsAfter("BasicsPhase");
-
-#ifdef _WIN32
-  // background syncing is not supported on Windows
-  _syncInterval = 0;
-#endif
-
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
@@ -1195,8 +1196,8 @@ arangodb::Result RocksDBEngine::dropCollection(
     LogicalCollection& collection
 ) {
   auto* coll = toRocksDBCollection(collection);
-  const bool prefix_same_as_start = true;
-  const bool rangeDelete = coll->numberDocuments() >= 32 * 1024;
+  bool const prefixSameAsStart = true;
+  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
   
   rocksdb::WriteOptions wo;
 
@@ -1253,8 +1254,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // delete documents
   RocksDBKeyBounds bounds =
       RocksDBKeyBounds::CollectionDocuments(coll->objectId());
-  auto result = rocksutils::removeLargeRange(_db, bounds, prefix_same_as_start,
-                                             rangeDelete);
+  auto result = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
 
   if (result.fail()) {
     // We try to remove all documents.
@@ -1297,7 +1297,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // amount of documents. otherwise don't run compaction, because it will
   // slow things down a lot, especially during tests that create/drop LOTS
   // of collections
-  if (rangeDelete) {
+  if (useRangeDelete) {
     coll->compact();
   }
 
@@ -1703,11 +1703,11 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
     
-    const uint64_t objectId =
+    uint64_t const objectId =
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
-    const auto cnt = _settingsManager->loadCounter(objectId);
-    const uint64_t numberDocuments = cnt.added() - cnt.removed();
-    const bool rangeDelete = numberDocuments >= 32 * 1024;
+    auto const cnt = _settingsManager->loadCounter(objectId);
+    uint64_t const numberDocuments = cnt.added() - cnt.removed();
+    bool const useRangeDelete = numberDocuments >= 32 * 1024;
 
     // remove indexes
     VPackSlice indexes = value.slice().get("indexes");
@@ -1725,9 +1725,8 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
-        bool prefix_same_as_start = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-        res = rocksutils::removeLargeRange(_db, bounds, prefix_same_as_start,
-                                           rangeDelete);
+        bool const prefixSameAsStart = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
+        res = rocksutils::removeLargeRange(_db, bounds, prefixSameAsStart, useRangeDelete);
         if (res.fail()) {
           return;
         }
@@ -1735,7 +1734,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // check if documents have been deleted
         numDocsLeft += rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                                 bounds, prefix_same_as_start);
+                                                 bounds, prefixSameAsStart);
 #endif
       }
     }
@@ -1743,7 +1742,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
-    res = rocksutils::removeLargeRange(_db, bounds, true, rangeDelete);
+    res = rocksutils::removeLargeRange(_db, bounds, true, useRangeDelete);
     if (res.fail()) {
       return;
     }
@@ -2200,6 +2199,10 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
+}
+
+bool RocksDBEngine::canUseRangeDeleteInWal() const {
+  return ServerState::instance()->isSingleServer();
 }
 
 }  // namespace arangodb

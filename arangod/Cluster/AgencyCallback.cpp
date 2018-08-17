@@ -125,7 +125,8 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
+  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))
+    && application_features::ApplicationServer::isRetryOK()) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure

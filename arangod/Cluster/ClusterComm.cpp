@@ -187,15 +187,19 @@ int ClusterCommResult::getErrorCode() const {
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
     case CL_COMM_ERROR:
-      return TRI_ERROR_INTERNAL;
-
     case CL_COMM_DROPPED:
+      if (errorCode != TRI_ERROR_NO_ERROR) {
+        return errorCode;
+      }
       return TRI_ERROR_INTERNAL;
 
     case CL_COMM_BACKEND_UNAVAILABLE:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
+  if (errorCode != TRI_ERROR_NO_ERROR) {
+    return errorCode;
+  }
   return TRI_ERROR_INTERNAL;
 }
 

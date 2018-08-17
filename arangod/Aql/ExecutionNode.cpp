@@ -1589,7 +1589,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic", VPackValue(func->isDeterministic));
             nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
-            nodes.add("usesV8", VPackValue(false));
+            nodes.add("usesV8", VPackValue(func->implementation == nullptr));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {

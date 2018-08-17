@@ -58,7 +58,6 @@ V8ClientConnection::V8ClientConnection()
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
-      _connection(nullptr),
       _loop(1),
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
@@ -66,7 +65,7 @@ V8ClientConnection::V8ClientConnection()
 }
 
 V8ClientConnection::~V8ClientConnection() {
-  _connection.reset();
+  shutdownConnection();
   _loop.forceStop();
 }
 
@@ -89,8 +88,8 @@ void V8ClientConnection::init(ClientFeature* client) {
     _lastHttpReturnCode = 505;
     _lastErrorMessage = msg;
   });
-  
-  _connection.reset();
+ 
+  shutdownConnection(); 
   _connection = builder.connect(_loop);
   
   fuerte::StringMap params{{"details","true"}};
@@ -132,14 +131,14 @@ void V8ClientConnection::init(ClientFeature* client) {
         if (version.first < 3) {
           // major version of server is too low
           //_client->disconnect();
-          _connection.reset();
+          shutdownConnection(); 
           _lastErrorMessage = "Server version number ('" + versionString +
           "') is too low. Expecting 3.0 or higher";
           return;
         }
       }
     }
-  } catch(fuerte::ErrorCondition const& e) { // connection error
+  } catch (fuerte::ErrorCondition const& e) { // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 505;
   }
@@ -148,7 +147,7 @@ void V8ClientConnection::init(ClientFeature* client) {
 void V8ClientConnection::setInterrupted(bool interrupted) {
   if (_connection) {
     if (interrupted) {
-      _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
+      shutdownConnection(); 
     } else {
       if (_connection->state() == fuerte::Connection::State::Disconnected) {
         _connection->startConnection();
@@ -1753,4 +1752,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_ARANGO"),
                                WrapV8ClientConnection(isolate, this));
+}
+
+void V8ClientConnection::shutdownConnection() {
+  if (_connection) {
+    _connection->shutdownConnection(fuerte::ErrorCondition::Canceled); 
+    _connection.reset();
+  }
 }

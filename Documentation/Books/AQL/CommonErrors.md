@@ -1,6 +1,17 @@
 Common Errors
 =============
 
+Trailing semicolons in query strings
+------------------------------------
+
+Many SQL databases allow sending multiple queries at once. In this case, multiple
+queries are seperated using the semicolon character. Often it is also supported to
+execute a single query that has a semicolon at its end.
+
+AQL does not support this, and it is a parse error to use a semicolon at the end
+of an AQL query string.
+
+
 String concatenation
 --------------------
 
