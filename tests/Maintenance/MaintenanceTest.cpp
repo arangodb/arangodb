@@ -33,6 +33,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <fstream>
+#include <iterator>
 #include <iostream>
 #include <random>
 #include <typeinfo>
@@ -105,6 +107,7 @@ std::mt19937 g(rd());
 
 // Relevant agency
 auto plan = createNode(planStr);
+auto originalPlan = plan;
 auto supervision = createNode(supervisionStr);
 auto current = createNode(currentStr);
 
@@ -472,7 +475,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
     std::string dbname("db3"), colname("x");
     
-    plan = createNode(planStr);
+    plan = originalPlan;
     createPlanDatabase(dbname, plan);
     createPlanCollection(dbname, colname, 1, 3, plan);
     
@@ -502,7 +505,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
     std::string dbname("db3"), colname1("x"), colname2("y");
 
-    plan = createNode(planStr);
+    plan = originalPlan;
     createPlanDatabase(dbname, plan);
     createPlanCollection(dbname, colname1, 1, 3, plan);
     createPlanCollection(dbname, colname2, 1, 3, plan);
@@ -531,7 +534,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   
   SECTION("Add an index to _queues") {
 
-    plan = createNode(planStr);
+    plan = originalPlan;
     auto cid = collectionMap(plan).at("_system/_queues");
     auto shards = plan({"Collections","_system",cid,"shards"}).children();
     
@@ -570,7 +573,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     std::string dbname("_system");
     std::string indexes("indexes");
 
-    plan = createNode(planStr);
+    plan = originalPlan;
     auto cid = collectionMap(plan).at("_system/bar");
     auto shards = plan({"Collections",dbname,cid,"shards"}).children();
     
@@ -606,8 +609,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   SECTION("Add one collection to local") {
 
-    plan = createNode(planStr);
-    //createPlanDatabase("db3", plan);
+    plan = originalPlan;
     
     for (auto node : localNodes) {
 
@@ -632,7 +634,6 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
 
-  // Plan also now has db3 =====================================================
   SECTION("Modify journalSize in plan should update the according collection") {
 
     VPackBuilder v; v.add(VPackValue(0));
@@ -648,8 +649,6 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       auto collection = cb.slice();
       auto colname = collection.get(NAME).copyString();
 
-      // colname is shard_name (and gets added to plan as side effect)
-      //  ^^^ plan(PLAN_COL_PATH + dbname + "/" + colname + "/" + "journalSize");
       (*node.second(dbname).children().begin()->second)(prop) =
         v.slice();
 
@@ -667,39 +666,50 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
         REQUIRE(action.get("collection") == colname);
         REQUIRE(action.get("database") == dbname);
         auto const props = action.properties();
-// v is empty        REQUIRE(props->slice().get(prop).toJson() == v.slice().toJson());
+
       }
 
     }
   }
 
-  // Plan also now has db3 =====================================================
-  SECTION("Add one collection to local") {
 
-    VPackBuilder v.add(VPackValue(std::string()));
+  SECTION("Have theLeader set to empty") {
+
+    VPackBuilder v; v.add(VPackValue(std::string()));
 
     for (auto node : localNodes) {
 
       std::vector<ActionDescription> actions;
 
-      (*node.second("_system").children().begin()->second)("theLeader") =
-        v.slice();
+      auto& collection = *node.second("foo").children().begin()->second;
+      auto& leader = collection("theLeader");
+
+      bool check = false;
+      if (!leader.getString().empty()) {
+        check = true;
+        leader = v.slice();
+      } 
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, actions);
 
-      std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
-      
-      REQUIRE(actions.size() == 1);
-      for (auto const& action : actions) {
-        REQUIRE(action.name() == "UpdateCollection");
+      if (check) {
+        if (actions.size() != 1) {
+          std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
+        }
+        REQUIRE(actions.size() == 1);
+        for (auto const& action : actions) {
+          REQUIRE(action.name() == "UpdateCollection");
+          REQUIRE(action.has("collection"));
+          REQUIRE(action.get("collection") == collection("name").getString());
+          REQUIRE(action.get("localLeader").empty());
+        }
       }
-
     }
   }
 
-  // Plan also now has db3 =====================================================
+
   SECTION(
     "Empty db3 in plan should drop all local db3 collections on all servers") {
 
@@ -725,12 +735,25 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     }
 
   }
-/*
-  // Local has databases _system and db3 =====================================
-  SECTION("Local collections") {
+
+  
+  SECTION("Resign leadership") {
+
+    plan = originalPlan;
+    auto cid = collectionMap(plan).at("_system/bar");
+    auto& shards = plan({"Collections",dbname,cid,"shards"}).children();
 
     for (auto const& node : localNodes) {
       std::vector<ActionDescription> actions;
+
+      auto const& serverId = node.first;
+      
+      for (auto const& shard : shards) {
+        auto const& shname = shard.first;
+        Slice servers = shard.second.toBuilder().slice();
+      }
+      plan({"Collections","_system",cid,shards.begin().});
+      
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
         actions);
@@ -741,7 +764,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
 
-  SECTION("Diffing local and current") {
+/*  SECTION("Diffing local and current") {
 
     for (auto const& node : localNodes) {
       arangodb::maintenance::Transactions report;

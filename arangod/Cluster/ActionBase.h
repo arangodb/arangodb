@@ -60,7 +60,7 @@ class ActionBase {
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
-  virtual bool first();
+  virtual bool first() = 0; 
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
@@ -100,8 +100,7 @@ class ActionBase {
     return _state;
   }
 
-  void complete();
-  void fail();
+  void notify();
 
   virtual arangodb::Result kill(Signal const& signal);
 

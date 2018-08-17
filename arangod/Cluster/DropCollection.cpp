@@ -39,19 +39,23 @@ DropCollection::DropCollection(
   MaintenanceFeature& feature, ActionDescription const& d) :
   ActionBase(feature, d) {
 
+  std::stringstream error;
+  
   if (!d.has(COLLECTION)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropCollection: collection must be specified";
-    fail();
+    error << "collection must be specified. "; 
   }
   TRI_ASSERT(d.has(COLLECTION));
 
   if (!d.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropCollection: database must be specified";
-    fail();
+    error << "database must be specified. ";
   }
   TRI_ASSERT(d.has(DATABASE));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropCollectio: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
 
 }
 
@@ -59,26 +63,13 @@ DropCollection::~DropCollection() {};
 
 bool DropCollection::first() {
 
-  ActionBase::first();
-  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
-    std::string errorMsg("failed to lookup database ");
-    errorMsg += database;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropCollection: failed to drop local collection " << database
-      << "/" << collection << ": " << errorMsg;
-    fail();
-    return false;
-  }
-
   try {
 
-    DatabaseGuard guard(*vocbase);
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
 
     Result found = methods::Collections::lookup(
       vocbase, collection, [&](LogicalCollection& coll) {
@@ -88,20 +79,22 @@ bool DropCollection::first() {
       });
 
     if (found.fail()) {
-      std::string errorMsg("DropCollection: failed to lookup local collection ");
-      errorMsg += database + "/" + collection;
-      _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-      fail();
+      std::stringstream error;
+      error << "failed to lookup local collection " << database << "/" << collection;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropCollection: " << error.str();
+      _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
       return false;
     }
 
-    complete();
-    return false;
-
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << " action " << _description << " failed with exception " << e.what();
+    std::stringstream error;
+    error << " action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    return false;
   }
-    
+
+  notify();
+  return false;
+  
 }

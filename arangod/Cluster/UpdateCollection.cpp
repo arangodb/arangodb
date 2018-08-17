@@ -43,34 +43,35 @@ UpdateCollection::UpdateCollection(
   MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
 
+  std::stringstream error;
+  
   if (!desc.has(COLLECTION)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "UpdateCollection: collection must be specified";
-    fail();
+    error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
 
 
   if (!desc.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "UpdateCollection: database must be specified";
-    fail();
+    error << "database must be specified. ";
   }
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(LEADER)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "UpdateCollection: leader must be stecified";
-    fail();
+    error << "leader must be stecified. ";
   }
   TRI_ASSERT(desc.has(LEADER));
 
   if (!desc.has(LOCAL_LEADER)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "UpdateCollection: local leader must be stecified";
-    fail();
+    error << "local leader must be stecified. ";
   }
   TRI_ASSERT(desc.has(LOCAL_LEADER));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
+  
 }
 
 void handleLeadership(
@@ -117,29 +118,22 @@ UpdateCollection::~UpdateCollection() {};
 
 bool UpdateCollection::first() {
 
-  ActionBase::first();
-  
   auto const& database   = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& plannedLeader = _description.get(LEADER);
   auto const& localLeader = _description.get(LOCAL_LEADER);
   auto const& props = properties();
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
-    std::string errorMsg("UpdateCollection: Failed to lookup database ");
-    errorMsg += database;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
-    return false;
-  }
-
   try {
+
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
+    
     Result found = methods::Collections::lookup(
       vocbase, collection, [&](LogicalCollection& coll) {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "Updating local collection " + collection;
-
+          << "Updating local collection " + collection;
+        
         // We adjust local leadership, note that the planned
         // resignation case is not handled here, since then
         // ourselves does not appear in shards[shard] but only
@@ -147,22 +141,24 @@ bool UpdateCollection::first() {
         handleLeadership(coll, localLeader, plannedLeader);
         _result = Collections::updateProperties(&coll, props);
       });
-
+    
     if (found.fail()) {
-      std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
-      errorMsg += collection + "in database " + database;
-      _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-      fail();
+      std::stringstream error;
+      error << "failed to lookup local collection " << collection
+            << "in database " + database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
+      _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();
-    fail();
+    std::stringstream error;
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
   
-  complete();
+  notify();
   return false;
 
 }

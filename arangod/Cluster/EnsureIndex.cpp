@@ -42,40 +42,38 @@ EnsureIndex::EnsureIndex(
   MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
 
+  std::stringstream error;
+  
   if (!desc.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "CreateCollection: database must be specified";
-    fail();
+    error << "database must be specified. ";
   }
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(COLLECTION)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "CreateCollection: cluster-wide collection must be specified";
-    fail();
+    error << "cluster-wide collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
 
   if (!properties().hasKey(ID)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "EnsureIndex: index properties must include id";
-    fail();
+    error << "index properties must include id. ";
   }
   TRI_ASSERT(properties().hasKey(ID));
 
   if (!desc.has(TYPE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "EnsureIndex: index type must be specified - discriminatory";
-    fail();
+    error << "index type must be specified - discriminatory. ";
   }
   TRI_ASSERT(desc.has(TYPE));
 
   if (!desc.has(FIELDS)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "EnsureIndex: index fields must be specified - discriminatory";
-    fail();
+    error << "index fields must be specified - discriminatory. ";
   }
   TRI_ASSERT(desc.has(FIELDS));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
 
 }
 
@@ -83,35 +81,24 @@ EnsureIndex::~EnsureIndex() {};
 
 bool EnsureIndex::first() {
 
-  ActionBase::first();
-  
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& id = properties().get(ID).copyString();
 
-  auto* vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
-    std::string errorMsg("EnsureIndex: Failed to lookup database ");
-    errorMsg += database;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    fail();
-    return false;
-  }
-
   VPackBuilder body;
   
   try { // now try to guard the database
     
-    DatabaseGuard guard(*vocbase);
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
     
     auto col = vocbase->lookupCollection(collection);
     if (col == nullptr) {
       std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
       errorMsg += collection + " in database " + database;
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-      fail();
       return false;
     }
     
@@ -132,20 +119,23 @@ bool EnsureIndex::first() {
               : std::string(" updated"));
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << log;
     } else {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "Failed to ensure index " << body.slice().toJson();
-      fail();
+      std::stringstream error;
+      error << "failed to ensure index " << body.slice().toJson() << " "
+            << _result.errorMessage();
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
     
   } catch (std::exception const& e) { // Guard failed?
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();     
-      fail();
-      return false;
+    std::stringstream error;
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    return false;
   }
 
-  complete();
+  notify();
   return false;
     
 }

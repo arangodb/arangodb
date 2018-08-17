@@ -40,26 +40,28 @@ DropIndex::DropIndex(
   MaintenanceFeature& feature, ActionDescription const& d) :
   ActionBase(feature, d) {
 
+  std::stringstream error;
+  
   if (!d.has(COLLECTION)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropIndex: collection must be specified";
-    fail();
+    error << "collection must be specified. ";
   }
   TRI_ASSERT(d.has(COLLECTION));
 
   if (!d.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropIndex: database must be specified";
-    fail();
+    error << "database must be specified. ";
   }
   TRI_ASSERT(d.has(DATABASE));
 
   if (!d.has(INDEX)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropIndex: index id must be stecified";
-    fail();
+    error << "index id must be stecified. ";
   }
   TRI_ASSERT(d.has(INDEX));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
 
 }
 
@@ -67,8 +69,6 @@ DropIndex::~DropIndex() {};
 
 bool DropIndex::first() {
 
-  ActionBase::first();
-  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& id = _description.get(INDEX);
@@ -76,54 +76,46 @@ bool DropIndex::first() {
   VPackBuilder index;
   index.add(VPackValue(_description.get(INDEX)));
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
-    std::string errorMsg("DropIndex: Failed to lookup database ");
-    errorMsg += database;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
-    return false;
-  }
-
   try {
 
-    DatabaseGuard guard(*vocbase);
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
   
     auto col = vocbase->lookupCollection(collection);
     if (col == nullptr) {
-      std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
-      errorMsg += collection + " in database " + database;
-      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-      fail();
+      std::stringstream error;
+      error << "failed to lookup local collection " << collection
+            << " in database " << database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
     Result found = methods::Collections::lookup(
       vocbase, collection, [&](LogicalCollection& coll) {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "Dropping local index " + collection + "/" + id;
+          << "Dropping local index " + collection + "/" + id;
         _result = Indexes::drop(&coll, index.slice());
       });
 
     if (found.fail()) {
-      std::string errorMsg("DropIndex: Failed to lookup local collection ");
-      errorMsg += collection + "in database " + database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-      _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-      fail();
+      std::stringstream error;
+      error << "failed to lookup local collection " << collection
+            << "in database " + database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+      _result.reset(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, error.str());
       return false;
     }
 
-    complete();
-    return false;
-
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();
-    fail();
+    std::stringstream error;
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
   
+  notify();
+  return false;
+
 }

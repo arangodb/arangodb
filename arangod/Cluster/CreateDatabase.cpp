@@ -39,46 +39,40 @@ CreateDatabase::CreateDatabase(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
 
+  std::stringstream error;
+  
   if (!desc.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "CreateDatabase: database must be specified";
-    fail();
+    error << "database must be specified";
   }
   TRI_ASSERT(desc.has(DATABASE));
 
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
+  
 }
 
 CreateDatabase::~CreateDatabase() {};
 
 bool CreateDatabase::first() {
 
-  ActionBase::first();
-  
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
   LOG_TOPIC(INFO, Logger::MAINTENANCE)
     << "CreateDatabase: creating database " << database;
 
-  auto* systemVocbase =
-    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
-
-  if (systemVocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::MAINTENANCE)
-      << "CreateDatabase: could not determine _system database";
-    FATAL_ERROR_EXIT();
-  }
-
   try {
 
-    DatabaseGuard guard(*systemVocbase);
+    DatabaseGuard guard("_system");
     
     // Assertion in constructor makes sure that we have DATABASE.
     _result = Databases::create(_description.get(DATABASE), users, properties());
     if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "CreateDatabase: failed to create database " << database << ": " << _result;
-      fail();
       return false;
     }
     
@@ -86,11 +80,13 @@ bool CreateDatabase::first() {
       << "CreateDatabase: database  " << database << " created";
     
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();
+    std::stringstream error;
+    error << "action " << _description << " failed with exception " << e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
 
-  complete();
+  notify();
   return false;
 
 }

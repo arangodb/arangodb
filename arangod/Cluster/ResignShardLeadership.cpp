@@ -50,19 +50,23 @@ ResignShardLeadership::ResignShardLeadership(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
 
+  std::stringstream error;
+  
   if (!desc.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "ResignShardLeadership: database must be specified";
-    fail();
+    error << "database must be specified";
   }
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(SHARD)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "ResignShardLeadership: shard must be specified";
-    fail();
+    error << "shard must be specified";
   }
   TRI_ASSERT(desc.has(SHARD));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
 
 }
 
@@ -70,33 +74,12 @@ ResignShardLeadership::~ResignShardLeadership() {};
 
 bool ResignShardLeadership::first() {
 
-  ActionBase::first();
-  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(SHARD);
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "trying to withdraw as leader of shard '" << database << "/" << collection;
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
-    std::string errorMsg("ResignShardLeadership: Failed to lookup database ");
-    errorMsg += database;
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
-    return false;
-  }
-
-  auto col = vocbase->lookupCollection(collection);
-  if (col == nullptr) {
-    std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
-    errorMsg += collection + " in database " + database;
-    _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    fail();
-    return false;
-  }
   // This starts a write transaction, just to wait for any ongoing
   // write transaction on this shard to terminate. We will then later
   // report to Current about this resignation. If a new write operation
@@ -107,9 +90,18 @@ bool ResignShardLeadership::first() {
   try {
 
     // Guard database againts deletion for now
-    DatabaseGuard guard(*vocbase);
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
     
-    // we know the shard exists locally!
+    auto col = vocbase->lookupCollection(collection);
+    if (col == nullptr) {
+      std::stringstream error;
+      error << "Failed to lookup local collection " << collection
+            << " in database " + database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      return false;
+    }
 
     col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
     // Note that it is likely that we will be a follower for this shard
@@ -127,18 +119,17 @@ bool ResignShardLeadership::first() {
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
-     }
+    }
 
   } catch (std::exception const& e) {
-    std::string errorMsg( "ResignLeadership: exception thrown when resigning:");
-    errorMsg += e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    _result = Result(TRI_ERROR_INTERNAL, errorMsg);
-    fail();
+    std::stringstream error;
+    error << "exception thrown when resigning:" << e.what();
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
 
-  complete();
+  notify();
   return false;
 
 }

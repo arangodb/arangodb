@@ -77,32 +77,13 @@ ActionBase::~ActionBase() {
 }
 
 
-void ActionBase::complete() {	
-  _actionDone = secs_since_epoch();	
+void ActionBase::notify() {	
   auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");	
   if (cf != nullptr) {	
     cf->syncDBServerStatusQuo();	
   }
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "Action " << _description << " completed in "
-    << std::chrono::duration<double>(
-      _actionDone.load() - _actionStarted.load()).count() << " seconds";
-  _state = COMPLETE;	
 }
 
-
-void ActionBase::fail() {
-  _actionDone = secs_since_epoch();
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (cf != nullptr) {
-    cf->syncDBServerStatusQuo();
-  }
-  LOG_TOPIC(WARN, Logger::MAINTENANCE)
-    << "Action " << _description << "failed after "
-    << std::chrono::duration<double>(
-      _actionDone.load() - _actionStarted.load()).count() << " seconds";
-  _state = FAILED;
-}
 
 /// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
@@ -140,12 +121,6 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & desc
   } // else
 
 } // ActionBase::createPreAction
-
-
-bool ActionBase::first() {	
-  _actionStarted = secs_since_epoch();	
-  return false;	
-}
 
 
 /// @brief Retrieve pointer to action that should run before this one

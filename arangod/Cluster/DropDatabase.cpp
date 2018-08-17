@@ -38,12 +38,18 @@ DropDatabase::DropDatabase(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
 
+  std::stringstream error;
+  
   if (!desc.has(DATABASE)) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
-      << "DropDatabase: database must be specified";
-    fail();
+    error << "database must be specified";
   }
   TRI_ASSERT(desc.has(DATABASE));
+
+  if (!error.str().empty()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropDatabase: " << error.str();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
+  }
 
 }
 
@@ -51,38 +57,28 @@ DropDatabase::~DropDatabase() {};
 
 bool DropDatabase::first() {
 
-  ActionBase::first();
-  
-  auto const& database = _description.get(DATABASE);
-  auto* systemVocbase =
-    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
-  if (systemVocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
-    FATAL_ERROR_EXIT();
-  }
+  std::string const database = _description.get(DATABASE);
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
 
   try {
-
-    DatabaseGuard guard(*systemVocbase);
+    DatabaseGuard guard("_system");
+    auto vocbase = &guard.database();
     
-    auto result = Databases::drop(systemVocbase, database);
-    if (!result.ok()) {
-      _result = result;
+    _result = Databases::drop(vocbase, database);
+    if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "DropDatabase: dropping database " << database << " failed: "
-        << result.errorMessage();
-      fail();
+        << _result.errorMessage();
       return false;
     }
-
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "action " << _description << " failed with exception " << e.what();
-    fail();
+    std::stringstream error;
+    error << "action " << _description << " failed with exception " << e.what();
+    _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
   
-  complete();
+  notify();
   return false;
 
 }

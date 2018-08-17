@@ -29,7 +29,6 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
-
 /// @brief ctor
 ActionDescription::ActionDescription(
   std::map<std::string, std::string> const& d,
@@ -94,7 +93,9 @@ bool ActionDescription::operator==(
 
 /// @brief Get action name. Cannot throw. See constructor
 std::string const& ActionDescription::name() const {
-  return _description.at(NAME);
+  static const std::string EMPTY_STRING;
+  auto const& it = _description.find(NAME);
+  return (it != _description.end()) ? it->second : EMPTY_STRING;
 }
 
 /// @brief summary to velocypack

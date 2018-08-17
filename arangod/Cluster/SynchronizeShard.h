@@ -57,9 +57,6 @@ private:
     std::string const& collection, std::string const& clientId, uint64_t& rlid,
     double timeout = 300.0);
 
-  arangodb::Result synchronise();
-
-
 };
 
 }}
