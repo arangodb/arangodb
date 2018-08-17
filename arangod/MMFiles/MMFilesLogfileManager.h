@@ -70,7 +70,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   MMFilesLogfileManager& operator=(MMFilesLogfileManager const&) = delete;
 
  public:
-  explicit MMFilesLogfileManager(application_features::ApplicationServer* server);
+  explicit MMFilesLogfileManager(
+    application_features::ApplicationServer& server
+  );
 
   // destroy the logfile manager
   ~MMFilesLogfileManager();

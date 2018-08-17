@@ -86,19 +86,6 @@ RestStatus RestSimpleHandler::execute() {
   return RestStatus::DONE;
 }
 
-RestStatus RestSimpleHandler::continueExecute() {
-  // extract the sub-request type
-  rest::RequestType const type = _request->requestType();
-
-  if (type == rest::RequestType::PUT) {
-    return processQuery();
-  }
-
-  // Other parts of the query cannot be paused
-  TRI_ASSERT(false);
-  return RestStatus::DONE;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock RestRemoveByKeys
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,22 +165,18 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  if (registerQueryOrCursor(data.slice())) {
-    return processQuery();
-  }
-  return RestStatus::DONE;
+  return registerQueryOrCursor(data.slice());
 }
     
-void RestSimpleHandler::handleQueryResult() {
+RestStatus RestSimpleHandler::handleQueryResult() {
   if (_queryResult.code != TRI_ERROR_NO_ERROR) {
     if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
-      return;
+    } else {
+      generateError(GeneralResponse::responseCode(_queryResult.code), _queryResult.code, _queryResult.details);
     }
-
-    generateError(GeneralResponse::responseCode(_queryResult.code), _queryResult.code, _queryResult.details);
-    return;
+    return RestStatus::DONE;
   }
 
   // extract the request type
@@ -203,10 +186,10 @@ void RestSimpleHandler::handleQueryResult() {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
       handleQueryResultRemoveByKeys();
-      return;
+      return RestStatus::DONE;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
       handleQueryResultLookupByKeys();
-      return;
+      return RestStatus::DONE;
     }
   }
 
@@ -215,6 +198,7 @@ void RestSimpleHandler::handleQueryResult() {
   TRI_ASSERT(false);
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return RestStatus::DONE;
 }
 
 void RestSimpleHandler::handleQueryResultRemoveByKeys() {
@@ -323,8 +307,5 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  if (registerQueryOrCursor(data.slice())) {
-    return processQuery();
-  }
-  return RestStatus::DONE;
+  return registerQueryOrCursor(data.slice());
 }

@@ -64,8 +64,10 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
 }
 
 MMFilesFulltextIndex::MMFilesFulltextIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
@@ -281,7 +283,10 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   // note: the following call will free "ft"!
   std::set<TRI_voc_rid_t> results =
       TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
-  return new MMFilesFulltextIndexIterator(_collection, trx, this, std::move(results));
+
+  return new MMFilesFulltextIndexIterator(
+    &_collection, trx, this, std::move(results)
+  );
 }
 
 /// @brief callback function called by the fulltext index to determine the

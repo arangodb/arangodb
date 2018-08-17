@@ -41,5 +41,5 @@ Description: Database storage engine
  Please note that you can't switch storage engines of existing installations,
  a dump and restore is required therefore.
  
- 'auto' will pick the existing one or default to mmfiles.
+ 'auto' will pick the existing one or default to rocksdb.
 

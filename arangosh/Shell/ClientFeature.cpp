@@ -36,14 +36,18 @@
 #include <thread>
 #include <chrono>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ClientFeature::ClientFeature(application_features::ApplicationServer* server,
-                             bool allowJwtSecret, double connectionTimeout,
-                             double requestTimeout)
+namespace arangodb {
+
+ClientFeature::ClientFeature(
+    application_features::ApplicationServer& server,
+    bool allowJwtSecret,
+    double connectionTimeout,
+    double requestTimeout
+)
     : ApplicationFeature(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
@@ -54,7 +58,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _jwtSecret(""),
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
-      _maxPacketSize(128 * 1024 * 1024),
+      _maxPacketSize(1024 * 1024 * 1024),
       _sslProtocol(TLS_V12),
       _allowJwtSecret(allowJwtSecret),
       _retries(DEFAULT_RETRIES),
@@ -63,7 +67,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _haveServerPassword(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -112,6 +116,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.request-timeout", "request timeout in seconds",
                      new DoubleParameter(&_requestTimeout));
 
+  // note: the max-packet-size is used for all client tools that use the
+  // SimpleHttpClient. fuerte does not use this
   options->addHiddenOption(
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
@@ -123,7 +129,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.protocol",
                      "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 "
                      "(negotiated), 3 = SSLv3, 4 = "
-                     "TLSv1, 5 = TLSV1.2)",
+                     "TLSv1, 5 = TLSv1.2)",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
 }
@@ -315,3 +321,5 @@ int ClientFeature::runMain(
     return EXIT_FAILURE;
   }
 }
+
+} // arangodb

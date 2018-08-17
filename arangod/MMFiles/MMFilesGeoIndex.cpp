@@ -46,12 +46,11 @@ template <typename CMP = geo_index::DocumentsAscending>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
-               ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
+               MMFilesGeoIndex const* index,
                geo::QueryParams&& params)
       : IndexIterator(collection, trx, index),
         _index(index),
-        _near(std::move(params)),
-        _mmdr(mmdr) {
+        _near(std::move(params)) {
     if (!params.fullRange) {
       estimateDensity();
     }
@@ -89,27 +88,30 @@ struct NearIterator final : public IndexIterator {
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
-          if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+          bool result = true; // updated by the callback
+          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            geo::FilterType const ft = _near.filterType();
+            if (ft != geo::FilterType::NONE) {  // expensive test
+              geo::ShapeContainer const& filter = _near.filterShape();
+              TRI_ASSERT(!filter.empty());
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok() &&
+                        !test.empty());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false; // skip
+                return;
+              }
+            }
+            cb(gdoc.token, doc);  // return result
+            result = true;
+          })) {
             return false;  // skip
           }
-          VPackSlice doc(_mmdr->vpack());
-          geo::FilterType const ft = _near.filterType();
-          if (ft != geo::FilterType::NONE) {  // expensive test
-            geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(!filter.empty());
-            geo::ShapeContainer test;
-            Result res = _index->shape(doc, test);
-            TRI_ASSERT(res.ok() &&
-                       !test.empty());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
-              return false;  // skip
-            }
-          }
-          cb(gdoc.token, doc);  // return result
-          return true;
+          return result;
         },
         limit);
   }
@@ -121,18 +123,23 @@ struct NearIterator final : public IndexIterator {
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
-            if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+            bool result = true; // updated by the callback
+            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                   !filter.intersects(&test))) {
+                result = false;
+              } else {
+                result = true;
+              }
+            })) {
               return false;
             }
-            geo::ShapeContainer test;
-            Result res = _index->shape(VPackSlice(_mmdr->vpack()), test);
-            TRI_ASSERT(res.ok());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
-              return false;
-            }
+            return result;
           }
           cb(gdoc.token);  // return result
           return true;
@@ -203,14 +210,16 @@ struct NearIterator final : public IndexIterator {
  private:
   MMFilesGeoIndex const* _index;
   geo_index::NearUtils<CMP> _near;
-  ManagedDocumentResult* _mmdr;
 };
+
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
-                                 LogicalCollection* collection,
-                                 VPackSlice const& info,
-                                 std::string const& typeName)
+MMFilesGeoIndex::MMFilesGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : MMFilesIndex(iid, collection, info),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -380,7 +389,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -415,10 +424,12 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   // why does this have to be shit?
   if (params.ascending) {
     return new NearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   } else {
     return new NearIterator<geo_index::DocumentsDescending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   }
 }
 

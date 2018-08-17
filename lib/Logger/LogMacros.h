@@ -58,27 +58,29 @@
 #ifndef ARANGODB_LOGGER_LOG_MACROS_H
 #define ARANGODB_LOGGER_LOG_MACROS_H 1
 
+#include "Logger.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message for a topic
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TOPIC(a, b)                                               \
-  !arangodb::Logger::isEnabled((arangodb::LogLevel::a), (b))          \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (arangodb::LogLevel::a) << (b)   \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
-                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+#define LOG_TOPIC(a, b)                                                 \
+  !::arangodb::Logger::isEnabled((::arangodb::LogLevel::a), (b))        \
+      ? (void)0                                                         \
+      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()          \
+                                  << (::arangodb::LogLevel::a) << (b)   \
+                                  << ::arangodb::Logger::LINE(__LINE__) \
+                                  << ::arangodb::Logger::FILE(__FILE__) \
+                                  << ::arangodb::Logger::FUNCTION(__FUNCTION__))
 
-#define LOG_TOPIC_RAW(a, b)                                           \
-  !arangodb::Logger::isEnabled((a), (b))                              \
-      ? (void)0                                                       \
-      : arangodb::LogVoidify() & (arangodb::LoggerStream()            \
-                                  << (a) << (b)                       \
-                                  << arangodb::Logger::LINE(__LINE__) \
-                                  << arangodb::Logger::FILE(__FILE__) \
-                                  << arangodb::Logger::FUNCTION(__FUNCTION__))
+#define LOG_TOPIC_RAW(a, b)                                             \
+  !::arangodb::Logger::isEnabled((a), (b))                              \
+      ? (void)0                                                         \
+      : ::arangodb::LogVoidify() & (::arangodb::LoggerStream()          \
+                                  << (a) << (b)                         \
+                                  << ::arangodb::Logger::LINE(__LINE__) \
+                                  << ::arangodb::Logger::FILE(__FILE__) \
+                                  << ::arangodb::Logger::FUNCTION(__FUNCTION__))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a message given that a condition is true
@@ -168,6 +170,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
+
 class LoggerStream;
 
 class LogVoidify {
@@ -175,6 +178,7 @@ class LogVoidify {
   LogVoidify() {}
   void operator&(LoggerStream const&) {}
 };
+
 }
 
 #endif

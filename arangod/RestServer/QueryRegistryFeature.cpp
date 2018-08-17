@@ -28,14 +28,17 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 
-QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
+QueryRegistryFeature::QueryRegistryFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "QueryRegistry"),
       _trackSlowQueries(true),
       _trackBindVars(true),
@@ -46,9 +49,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _queryCacheEntries(128),
       _queryRegistryTTL(DefaultQueryTTL) {
   setOptional(false);
-  startsAfter("DatabasePath");
-  startsAfter("Database");
-  startsAfter("Cluster");
+  startsAfter("V8Phase");
 }
 
 void QueryRegistryFeature::collectOptions(
@@ -90,11 +91,11 @@ void QueryRegistryFeature::prepare() {
   std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
                                                  _queryCacheEntries};
   arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
-  
+
   if (_queryRegistryTTL <= 0) {
     _queryRegistryTTL = DefaultQueryTTL;
   }
-  
+
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY = _queryRegistry.get();
@@ -106,3 +107,5 @@ void QueryRegistryFeature::unprepare() {
   // clear the query registery
   QUERY_REGISTRY = nullptr;
 }
+
+} // arangodb

@@ -82,7 +82,7 @@ RestStatus RocksDBRestWalHandler::execute() {
 void RocksDBRestWalHandler::properties() {
   // not supported on rocksdb
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED,
-                 basics::VelocyPackHelper::EmptyObjectValue());
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::flush() {
@@ -161,7 +161,7 @@ void RocksDBRestWalHandler::flush() {
     THROW_ARANGO_EXCEPTION(res);
   }
   generateResult(rest::ResponseCode::OK,
-                 basics::VelocyPackHelper::EmptyObjectValue());
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void RocksDBRestWalHandler::transactions() {

@@ -74,7 +74,9 @@ function optimizerRuleTestSuite () {
     testRuleDisabled : function () {
       var queries = [ 
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name(),
-        "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN doc"
+        "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN doc",
+        "FOR doc IN " + c.name() + " REPLACE doc WITH { test: 1 } IN " + c.name(),
+        "FOR doc IN " + c.name() + " REPLACE doc WITH { test: 1 } IN " + c.name() + " RETURN doc"
       ];
 
       queries.forEach(function(query) {
@@ -90,8 +92,19 @@ function optimizerRuleTestSuite () {
     testRuleNoEffect : function () {
       var queries = [ 
         "UPDATE 'test0' WITH { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc1 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " FILTER doc1.value == 2 RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1.value", // must not kick in here
+        "FOR i IN 1..10 FOR doc1 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR i IN 1..10 UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
         "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
-        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc2" // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " UPDATE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc2", // must not kick in here
+        "REPLACE 'test0' WITH { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc1 IN " + c.name() + " REPLACE doc1 WITH { test: 1 } IN " + c.name() + " FILTER doc1.value == 2 RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " REPLACE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1.value", // must not kick in here
+        "FOR i IN 1..10 FOR doc1 IN " + c.name() + " REPLACE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR i IN 1..10 REPLACE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " REPLACE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc1", // must not kick in here
+        "FOR doc1 IN " + c.name() + " FOR doc2 IN " + c.name() + " REPLACE doc1 WITH { test: 1 } IN " + c.name() + " RETURN doc2", // must not kick in here
       ];
 
       queries.forEach(function(query) {
@@ -105,10 +118,17 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["x"] });
+
       var queries = [ 
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name(), // nothing returned
         "FOR doc IN " + c.name() + " UPDATE doc WITH { test: 1 } IN " + c.name() + " RETURN 1", // different values returned
-        "FOR doc IN " + c.name() + " FILTER doc.value > 100 UPDATE doc WITH { test: 1 } IN " + c.name() // nothing returned
+        "FOR doc IN " + c.name() + " FILTER doc.value > 100 UPDATE doc WITH { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " FILTER doc.x > 100 UPDATE doc WITH { test: 1 } IN " + c.name(), // using index
+        "FOR doc IN " + c.name() + " REPLACE doc WITH { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " REPLACE doc WITH { test: 1 } IN " + c.name() + " RETURN 1", // different values returned
+        "FOR doc IN " + c.name() + " FILTER doc.value > 100 REPLACE doc WITH { test: 1 } IN " + c.name(), // nothing returned
+        "FOR doc IN " + c.name() + " FILTER doc.x > 100 REPLACE doc WITH { test: 1 } IN " + c.name(), // using index
       ];
 
       queries.forEach(function(query) {
@@ -121,7 +141,7 @@ function optimizerRuleTestSuite () {
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResultsAfterModification : function () {
+    testResultsAfterUpdate : function () {
       var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1 } IN " + c.name() + " RETURN doc";
       var result = AQL_EXPLAIN(query, { }); 
       assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
@@ -132,14 +152,41 @@ function optimizerRuleTestSuite () {
       for (var i = 0; i < result.length; ++i) {
         assertTrue(result[i].value >= 0);
       }
+
+      c.toArray().forEach(function(doc) {
+        assertEqual(-1, doc.value);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResultsOld : function () {
-      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1 } IN " + c.name() + " RETURN OLD";
+    testResultsAfterReplace : function () {
+      var query = "FOR doc IN " + c.name() + " REPLACE doc WITH { xy: -1, bang: true } IN " + c.name() + " RETURN doc";
+      var result = AQL_EXPLAIN(query, { }); 
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(2000, result.length);
+
+      for (var i = 0; i < result.length; ++i) {
+        assertTrue(result[i].value >= 0);
+      }
+
+      c.toArray().forEach(function(doc) {
+        assertUndefined(doc.value);
+        assertEqual(-1, doc.xy);
+        assertTrue(doc.bang);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsUpdateOld : function () {
+      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1, bang: true } IN " + c.name() + " RETURN OLD";
       var result = AQL_EXPLAIN(query, { }); 
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
 
@@ -148,15 +195,21 @@ function optimizerRuleTestSuite () {
 
       for (var i = 0; i < result.length; ++i) {
         assertTrue(result[i].value >= 0);
+        assertUndefined(result[i].bang);
       }
+      
+      c.toArray().forEach(function(doc) {
+        assertEqual(-1, doc.value);
+        assertTrue(doc.bang);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResultsNew : function () {
-      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1 } IN " + c.name() + " RETURN NEW";
+    testResultsUpdateNew : function () {
+      var query = "FOR doc IN " + c.name() + " UPDATE doc WITH { value: -1, bang: true } IN " + c.name() + " RETURN NEW";
       var result = AQL_EXPLAIN(query, { }); 
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
 
@@ -165,7 +218,63 @@ function optimizerRuleTestSuite () {
 
       for (var i = 0; i < result.length; ++i) {
         assertEqual(-1, result[i].value);
+        assertTrue(result[i].bang);
       }
+      
+      c.toArray().forEach(function(doc) {
+        assertEqual(-1, doc.value);
+        assertTrue(doc.bang);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsReplaceOld : function () {
+      var query = "FOR doc IN " + c.name() + " REPLACE doc WITH { xy: -1, bang: true } IN " + c.name() + " RETURN OLD";
+      var result = AQL_EXPLAIN(query, { }); 
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(2000, result.length);
+
+      for (var i = 0; i < result.length; ++i) {
+        assertTrue(result[i].value >= 0);
+        assertUndefined(result[i].xy);
+        assertUndefined(result[i].bang);
+      }
+      
+      c.toArray().forEach(function(doc) {
+        assertUndefined(doc.value);
+        assertEqual(-1, doc.xy);
+        assertTrue(doc.bang);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResultsReplaceNew : function () {
+      var query = "FOR doc IN " + c.name() + " REPLACE doc WITH { xy: -1, bang: true } IN " + c.name() + " RETURN NEW";
+      var result = AQL_EXPLAIN(query, { }); 
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(2000, result.length);
+
+      for (var i = 0; i < result.length; ++i) {
+        assertEqual(-1, result[i].xy);
+        assertTrue(result[i].bang);
+        assertUndefined(result[i].value);
+      }
+      
+      c.toArray().forEach(function(doc) {
+        assertEqual(-1, doc.xy);
+        assertTrue(doc.bang);
+        assertUndefined(doc.value);
+      });
     }
 
   };

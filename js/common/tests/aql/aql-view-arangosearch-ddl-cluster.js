@@ -68,8 +68,8 @@ function IResearchFeatureDDLTestSuite () {
         var view = db._createView("TestView", "arangosearch", {});
         view.properties(addLink, true); // partial update
         let properties = view.properties();
-        assertTrue(Array === properties.collections.constructor);
-        assertEqual(1, properties.collections.length);
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
         var indexes = db.TestCollection0.getIndexes();
         assertEqual(2, indexes.length);
         var link = indexes[1];
@@ -94,8 +94,8 @@ function IResearchFeatureDDLTestSuite () {
       for (let i = 0; i < 100; ++i) {
         view.properties(addLink, true); // partial update
         let properties = view.properties();
-        assertTrue(Array === properties.collections.constructor);
-        assertEqual(1, properties.collections.length);
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
         var indexes = db.TestCollection0.getIndexes();
         assertEqual(2, indexes.length);
         var link = indexes[1];
@@ -104,8 +104,8 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual("arangosearch", link.type);
         view.properties(removeLink, false);
         properties = view.properties();
-        assertTrue(Array === properties.collections.constructor);
-        assertEqual(0, properties.collections.length);
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(0, Object.keys(properties.links).length);
         assertEqual(1, db.TestCollection0.getIndexes().length);
       }
     },
@@ -119,12 +119,12 @@ function IResearchFeatureDDLTestSuite () {
       var addLink = { links: { "TestCollection0": {} } };
       view.properties(addLink, true); // partial update
       let properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
       db._drop("TestCollection0");
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(0, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
     },
 
     testViewDDL: function() {
@@ -139,26 +139,26 @@ function IResearchFeatureDDLTestSuite () {
       var view = db._createView("TestView", "arangosearch", {});
 
       var properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(0, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
 
       var meta = { links: { "TestCollection0": {} } };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
       meta = { links: { "TestCollection1": {} } };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(2, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(2, Object.keys(properties.links).length);
 
       meta = { links: { "TestCollection2": {} } };
       view.properties(meta, false); // full update
       properties = view.properties();
-      assertTrue(Array === properties.collections.constructor);
-      assertEqual(1, properties.collections.length);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
 
       // commit
@@ -227,15 +227,15 @@ function IResearchFeatureDDLTestSuite () {
 
       // locale
       db._dropView("TestView");
-      view = db._createView("TestView", "arangosearch", {});
+      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
 
       properties = view.properties();
-      meta = { locale: "de_DE.UTF-16" };
+      meta = { locale: "en_US.UTF-8" };
       view.properties(meta);
       properties = view.properties();
       assertTrue(String === properties.locale.constructor);
       assertTrue(properties.locale.length > 0);
-      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual("de_DE.UTF-16", properties.locale);
     },
 
     testLinkDDL: function() {
@@ -250,11 +250,11 @@ function IResearchFeatureDDLTestSuite () {
 
       var meta = { links: {
         "TestCollection0": {},
-        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true },
+        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "full" },
         "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
-          "d": { trackListPositions: true },
+          "d": { trackListPositions: true, storeValues: "id" },
           "e": { analyzers: [ "text_de"] }
         } }
       } };
@@ -270,6 +270,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(false, properties.links.TestCollection0.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection0.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection0.trackListPositions);
+      assertTrue(String === properties.links.TestCollection0.storeValues.constructor);
+      assertEqual("none", properties.links.TestCollection0.storeValues);
       assertTrue(Array === properties.links.TestCollection0.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection0.analyzers.length);
       assertTrue(String === properties.links.TestCollection0.analyzers[0].constructor);
@@ -283,6 +285,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
+      assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
+      assertEqual("full", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -302,6 +306,8 @@ function IResearchFeatureDDLTestSuite () {
 
       assertTrue(Boolean === properties.links.TestCollection2.fields.d.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection2.fields.d.trackListPositions);
+      assertTrue(String === properties.links.TestCollection2.fields.d.storeValues.constructor);
+      assertEqual("id", properties.links.TestCollection2.fields.d.storeValues);
 
       assertTrue(Array === properties.links.TestCollection2.fields.e.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection2.fields.e.analyzers.length);
@@ -312,6 +318,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection2.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection2.trackListPositions);
+      assertTrue(String === properties.links.TestCollection2.storeValues.constructor);
+      assertEqual("none", properties.links.TestCollection2.storeValues);
       assertTrue(Array === properties.links.TestCollection2.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection2.analyzers.length);
       assertTrue(String === properties.links.TestCollection2.analyzers[0].constructor);
@@ -330,6 +338,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
+      assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
+      assertEqual("full", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -343,6 +353,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(false, properties.links.TestCollection2.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection2.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection2.trackListPositions);
+      assertTrue(String === properties.links.TestCollection2.storeValues.constructor);
+      assertEqual("none", properties.links.TestCollection2.storeValues);
       assertTrue(Array === properties.links.TestCollection2.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection2.analyzers.length);
       assertTrue(String === properties.links.TestCollection2.analyzers[0].constructor);
@@ -361,6 +373,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, properties.links.TestCollection0.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection0.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection0.trackListPositions);
+      assertTrue(String === properties.links.TestCollection0.storeValues.constructor);
+      assertEqual("none", properties.links.TestCollection0.storeValues);
       assertTrue(Array === properties.links.TestCollection0.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection0.analyzers.length);
       assertTrue(String === properties.links.TestCollection0.analyzers[0].constructor);
@@ -374,6 +388,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(false, properties.links.TestCollection1.includeAllFields);
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(false, properties.links.TestCollection1.trackListPositions);
+      assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
+      assertEqual("none", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -480,7 +496,7 @@ function IResearchFeatureDDLTestSuite () {
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
-      var view = db._createView("TestView", "arangosearch", {});
+      var view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
 
       var meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
@@ -494,7 +510,7 @@ function IResearchFeatureDDLTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16"
+        locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
@@ -510,7 +526,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual("de_DE.UTF-16", properties.locale);
 
       col0.save({ name: "quarter", text: "quick over" });
       result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
@@ -521,7 +537,7 @@ function IResearchFeatureDDLTestSuite () {
       db._dropView("TestView");
       db._drop("TestCollection0");
       col0 = db._create("TestCollection0");
-      view = db._createView("TestView", "arangosearch", {});
+      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
 
       col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col0.save({ name: "half", text: "quick fox over lazy" });
@@ -540,7 +556,7 @@ function IResearchFeatureDDLTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16"
+        locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
@@ -560,7 +576,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual("de_DE.UTF-16", properties.locale);
 
       // 2 non-empty collections
       db._dropView("TestView");
@@ -568,7 +584,7 @@ function IResearchFeatureDDLTestSuite () {
       db._drop("TestCollection1");
       col0 = db._create("TestCollection0");
       var col1 = db._create("TestCollection1");
-      view = db._createView("TestView", "arangosearch", {});
+      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
 
       col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col0.save({ name: "half", text: "quick fox over lazy" });
@@ -590,7 +606,7 @@ function IResearchFeatureDDLTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16"
+        locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
@@ -610,7 +626,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual("de_DE.UTF-16", properties.locale);
 
       // 1 empty collection + 2 non-empty collections
       db._dropView("TestView");
@@ -620,7 +636,7 @@ function IResearchFeatureDDLTestSuite () {
       col0 = db._create("TestCollection0");
       col1 = db._create("TestCollection1");
       var col2 = db._create("TestCollection2");
-      view = db._createView("TestView", "arangosearch", {});
+      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
 
       col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col2.save({ name: "half", text: "quick fox over lazy" });
@@ -643,7 +659,7 @@ function IResearchFeatureDDLTestSuite () {
             count: {}
           }
         },
-        locale: "de_DE.UTF-16"
+        locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
@@ -663,7 +679,32 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
       assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
       assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-8", properties.locale);
+      assertEqual("de_DE.UTF-16", properties.locale);
+
+      view.properties({}, false); // full update (reset to defaults)
+      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      assertEqual(0, result.length);
+      properties = view.properties();
+      assertTrue(Object === properties.commit.constructor);
+      assertEqual(10, properties.commit.cleanupIntervalStep);
+      assertEqual(60000, properties.commit.commitIntervalMsec);
+      assertTrue(Object === properties.commit.consolidate.constructor);
+      assertEqual(4, Object.keys(properties.commit.consolidate).length);
+      assertTrue(Object === properties.commit.consolidate.bytes.constructor);
+      assertEqual(300, properties.commit.consolidate.bytes.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
+      assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
+      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
+      assertTrue(Object === properties.commit.consolidate.count.constructor);
+      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.commit.consolidate.fill.constructor);
+      assertEqual(300, properties.commit.consolidate.fill.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.commit.consolidate.fill.threshold.toFixed(6));
+      assertEqual("de_DE.UTF-16", properties.locale);
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(0, Object.keys(properties.links).length);
     },
 
     testLinkModify: function() {

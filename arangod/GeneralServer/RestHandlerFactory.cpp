@@ -22,18 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandlerFactory.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "Replication/ReplicationFeature.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestBaseHandler.h"
-#include "RestHandler/RestDocumentHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
 static std::string const ROOT_PATH = "/";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
@@ -44,89 +44,73 @@ RestHandler* RestHandlerFactory::createHandler(
     std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
 
-  auto const& ii = _constructors;
-  std::string const* modifiedPath = &path;
-  std::string prefix;
+  auto it = _constructors.find(path);
 
-  auto i = ii.find(path);
-
+  if (it != _constructors.end()) {
+    // direct match!
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found direct handler for path '" << path << "'";
+    return it->second.first(req.release(), res.release(), it->second.second);
+  }
+  
   // no direct match, check prefix matches
-  if (i == ii.end()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no direct handler found, trying prefixes";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no direct handler found, trying prefixes";
+  
+  std::string const* prefix = nullptr;
 
-    // find longest match
-    size_t const pathLength = path.size();
-    // prefixes are sorted by length descending,
-    for (auto const& p : _prefixes) {
-      size_t const pSize = p.size();
-      if (path.compare(0, pSize, p) == 0) {
-        if (pSize < pathLength && path[pSize] == '/') {
-          prefix = p;
-          break; // first match is longest match
-        }
-      }
+  // find longest match
+  size_t const pathLength = path.size();
+  // prefixes are sorted by length descending
+  for (auto const& p : _prefixes) {
+    size_t const pSize = p.size();
+    if (pSize >= pathLength) {
+      // prefix too long
+      continue;
     }
-
-    if (prefix.empty()) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no prefix handler found, trying catch all";
-
-      i = ii.find(ROOT_PATH);
-      if (i != ii.end()) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found catch all handler '/'";
-
-        size_t l = 1;
-        size_t n = path.find_first_of('/', l);
-
-        while (n != std::string::npos) {
-          req->addSuffix(path.substr(l, n - l));
-          l = n + 1;
-          n = path.find_first_of('/', l);
-        }
-
-        if (l < path.size()) {
-          req->addSuffix(path.substr(l));
-        }
-
-        modifiedPath = &ROOT_PATH;
-        req->setPrefix(ROOT_PATH);
-      }
+    
+    if (path[pSize] != '/') {
+      // requested path does not have a '/' at the prefix length's position
+      // so it cannot match
+      continue;
     }
-
-    else {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found prefix match '" << prefix << "'";
-
-      size_t l = prefix.size() + 1;
-      size_t n = path.find_first_of('/', l);
-
-      while (n != std::string::npos) {
-        req->addSuffix(path.substr(l, n - l));
-        l = n + 1;
-        n = path.find_first_of('/', l);
-      }
-
-      if (l < path.size()) {
-        req->addSuffix(path.substr(l));
-      }
-
-      modifiedPath = &prefix;
-
-      i = ii.find(prefix);
-      req->setPrefix(prefix);
+    if (path.compare(0, pSize, p) == 0) {
+      prefix = &p;
+      break; // first match is longest match
     }
   }
 
-  // no match
-  if (i == ii.end()) {
-    if (_notFound != nullptr) {
-      return _notFound(req.release(), res.release(), nullptr);
-    }
+  size_t l;
+  if (prefix == nullptr) {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no prefix handler found, using catch all";
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no not-found handler, giving up";
-    return nullptr;
+    it = _constructors.find(ROOT_PATH);
+    l = 1;
+  } else {
+    TRI_ASSERT(!prefix->empty());
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found prefix match '" << *prefix << "'";
+    
+    it = _constructors.find(*prefix);
+    l = prefix->size() + 1;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << *modifiedPath << "'";
-  return i->second.first(req.release(), res.release(), i->second.second);
+  // we must have found a handler - at least the catch-all handler must be present    
+  TRI_ASSERT(it != _constructors.end());
+
+  size_t n = path.find_first_of('/', l);
+
+  while (n != std::string::npos) {
+    req->addSuffix(path.substr(l, n - l));
+    l = n + 1;
+    n = path.find_first_of('/', l);
+  }
+
+  if (l < path.size()) {
+    req->addSuffix(path.substr(l));
+  }
+
+  req->setPrefix(it->first);
+
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << it->first << "'";
+  return it->second.first(req.release(), res.release(), it->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +119,10 @@ RestHandler* RestHandlerFactory::createHandler(
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
-  _constructors[path] = std::make_pair(func, data);
+  if (!_constructors.emplace(path, std::make_pair(func, data)).second) {
+    // there should only be one handler for each path
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("attempt to register duplicate path handler for '") + path + "'");
+  } 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,17 +131,12 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 
 void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
-  _constructors[path] = std::make_pair(func, data);
+  addHandler(path, func, data);
+
+  // add to list of prefixes and (re-)sort them
   _prefixes.emplace_back(path);
+
   std::sort(_prefixes.begin(), _prefixes.end(), [](std::string const& a, std::string const& b) {
     return a.size() > b.size();
   });
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a path and constructor to the factory
-////////////////////////////////////////////////////////////////////////////////
-
-void RestHandlerFactory::addNotFoundHandler(create_fptr func) {
-  _notFound = func;
 }

@@ -110,7 +110,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     if (q.bindParameters != nullptr) {
       result.add("bindVars", q.bindParameters->slice());
     } else {
-      result.add("bindVars", arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+      result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
     }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));

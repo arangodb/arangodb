@@ -19,7 +19,7 @@ ERROR_CORRUPTED_CSV,13,"csv is corrupt","Will be raised when encountering a corr
 ERROR_FILE_NOT_FOUND,14,"file not found","Will be raised when a file is not found."
 ERROR_CANNOT_WRITE_FILE,15,"cannot write file","Will be raised when a file cannot be written."
 ERROR_CANNOT_OVERWRITE_FILE,16,"cannot overwrite file","Will be raised when an attempt is made to overwrite an existing file."
-ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is unencountered."
+ERROR_TYPE_ERROR,17,"type error","Will be raised when a type error is encountered."
 ERROR_LOCK_TIMEOUT,18,"lock timeout","Will be raised when there's a timeout waiting for a lock."
 ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when an attempt to create a directory fails."
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
@@ -35,6 +35,7 @@ ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resou
 ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations failed"
 ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
 ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
+ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
 
 ################################################################################
 ## HTTP error status codes
@@ -230,6 +231,7 @@ ERROR_QUERY_PARSE,1501,"%s","Will be raised when query is parsed and is found to
 ERROR_QUERY_EMPTY,1502,"query is empty","Will be raised when an empty query is specified."
 ERROR_QUERY_SCRIPT,1503,"runtime error '%s'","Will be raised when a runtime error is caused by the query."
 ERROR_QUERY_NUMBER_OUT_OF_RANGE,1504,"number out of range","Will be raised when a number is outside the expected range."
+ERROR_QUERY_INVALID_GEO_VALUE,1505,"invalid geo coordinate value","Will be raised when a geo index coordinate is invalid or out of range."
 ERROR_QUERY_VARIABLE_NAME_INVALID,1510,"variable name '%s' has an invalid format","Will be raised when an invalid variable name is used."
 ERROR_QUERY_VARIABLE_REDECLARED,1511,"variable '%s' is assigned multiple times","Will be raised when a variable gets re-assigned in a query."
 ERROR_QUERY_VARIABLE_NAME_UNKNOWN,1512,"unknown variable '%s'","Will be raised when an unknown variable is used or the variable is undefined the context it is used."
@@ -256,7 +258,6 @@ ERROR_QUERY_MULTI_MODIFY,1573,"multi-modify query","Will be raised when an AQL q
 ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION,1574,"invalid aggregate expression","Will be raised when an AQL query contains an invalid aggregate expression."
 ERROR_QUERY_COMPILE_TIME_OPTIONS,1575,"query options must be readable at query compile time","Will be raised when an AQL data-modification query contains options that cannot be figured out at query compile time."
 ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected","Will be raised when an AQL data-modification query contains an invalid options specification."
-ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,1577,"collection '%s' used as expression operand","Will be raised when a collection is used as an operand in an AQL expression."
 ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."
 
@@ -375,6 +376,10 @@ ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
 ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
 ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
 ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
+ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graphs collection contains invalid data."
+ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,1942,"edge collection already set","Tried to add an edge collection which is already defined."
+ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
+ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 
 ################################################################################
 ## Session errors
@@ -435,6 +440,7 @@ ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the smart graph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and connot be used for sharding. All system attributes are forbidden."
+ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The smart graph attribute of the given collection does not match the smart graph attribute of the graph."
 
 ################################################################################
 ## Cluster repair errors

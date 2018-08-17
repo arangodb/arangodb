@@ -50,7 +50,7 @@ function indexSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +66,23 @@ function indexSuite() {
       catch (err) {
       }
       collection = null;
-      internal.wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexes : function () {
+      var res = collection.indexes();
+
+      assertEqual(1, res.length);
+
+      collection.ensureGeoIndex("a");
+      collection.ensureGeoIndex("a", "b");
+
+      res = collection.indexes();
+
+      assertEqual(3, res.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,7 +265,6 @@ function getIndexesSuite() {
     tearDown : function () {
       collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -721,7 +736,6 @@ function getIndexesEdgesSuite() {
     tearDown : function () {
       collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1111,13 +1125,96 @@ function multiIndexRollbackSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+function parallelIndexSuite() {
+  'use strict';
+  let cn = "UnitTestsCollectionIdx";
+  let tasks = require("@arangodb/tasks");
+
+  return {
+
+    setUp : function () {
+      internal.db._drop(cn);
+      internal.db._create(cn);
+    },
+
+    tearDown : function () {
+      tasks.get().forEach(function(task) {
+        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
+          try {
+            tasks.unregister(task);
+          }
+          catch (err) {
+          }
+        }
+      });
+      internal.db._drop(cn);
+    },
+
+    testCreateInParallel: function () {
+      let n = 80;
+      for (let i = 0; i < n; ++i) {
+        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + i + '"] });';
+        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
+      }
+
+      let time = require("internal").time;
+      let start = time();
+      while (true) {
+        let indexes = require("internal").db._collection(cn).getIndexes();
+        if (indexes.length === n + 1) {
+          // primary index + user-defined indexes
+          break;
+        }
+        if (time() - start > 180) {
+          // wait for 3 minutes maximum
+          fail();
+        }
+        require("internal").wait(0.5, false);
+      }
+        
+      let indexes = require("internal").db._collection(cn).getIndexes();
+      assertEqual(n + 1, indexes.length);
+    },
+
+    testCreateInParallelDuplicate: function () {
+      let n = 100;
+      for (let i = 0; i < n; ++i) {
+        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + (i % 4) + '"] });';
+        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
+      }
+
+      let time = require("internal").time;
+      let start = time();
+      while (true) {
+        let indexes = require("internal").db._collection(cn).getIndexes();
+        if (indexes.length === 4 + 1) {
+          // primary index + user-defined indexes
+          break;
+        }
+        if (time() - start > 180) {
+          // wait for 3 minutes maximum
+          fail();
+        }
+        require("internal").wait(0.5, false);
+      }
+      
+      // wait some extra time because we just have 4 distinct indexes
+      // these will be created relatively quickly. by waiting here a bit
+      // we give the other pending tasks a chance to execute too (but they
+      // will not do anything because the target indexes already exist)
+      require("internal").wait(5, false);
+        
+      let indexes = require("internal").db._collection(cn).getIndexes();
+      assertEqual(4 + 1, indexes.length);
+    }
+
+  };
+}
 
 jsunity.run(indexSuite);
 jsunity.run(getIndexesSuite);
 jsunity.run(getIndexesEdgesSuite);
 jsunity.run(multiIndexRollbackSuite);
+jsunity.run(parallelIndexSuite);
 
 return jsunity.done();

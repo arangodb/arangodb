@@ -39,11 +39,19 @@
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
+#include "Utils/ExecContext.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -62,6 +70,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
@@ -117,13 +126,20 @@ NS_END
 // -----------------------------------------------------------------------------
 
 struct IResearchViewSetup {
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() {
+      arangodb::ClusterComm::_theInstanceInit.store(0);
+    }
+  };
+
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchViewSetup(): server(nullptr, nullptr) {
+  IResearchViewSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -133,42 +149,61 @@ struct IResearchViewSetup {
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
+    auto buildFeatureEntry = [&] (arangodb::application_features::ApplicationFeature* ftr, bool start) -> void {
+      std::string name = ftr->name();
+      features.emplace(name, std::make_pair(ftr, start));
+    };
+
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
     // setup required application features
-    features.emplace_back(new arangodb::V8DealerFeature(&server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), true);
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false);
+    buildFeatureEntry(new arangodb::AqlFeature(server), true);
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
+
+    // We need this feature to be added now in order to create the system database
+    arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
+
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
+ 
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false); 
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+      arangodb::application_features::ApplicationServer::server->addFeature(f.second.first);
+    }
+    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
+    orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
+
+    for (auto& f : orderedFeatures) {
+      f->prepare();
     }
 
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
+    for (auto& f : orderedFeatures) {
+      if (features.at(f->name()).second) {
+        f->start();
       }
     }
 
@@ -193,20 +228,21 @@ struct IResearchViewSetup {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT); // suppress ERROR recovery failure due to error from callback
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      if (features.at((*f)->name()).second) {
+        (*f)->stop();
       }
     }
 
-    for (auto& f : features) {
-      f.first->unprepare();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      (*f)->unprepare();
     }
 
+    ClusterCommControl::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
@@ -249,15 +285,12 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
-    CHECK((8 == slice.length()));
+    CHECK((10U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(false == slice.get("deleted").getBool());
     CHECK(false == slice.get("isSystem").getBool());
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((3U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
     CHECK((meta.init(slice, error) && expectedMeta == meta));
     CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
@@ -270,7 +303,6 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-    arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -279,18 +311,14 @@ SECTION("test_defaults") {
 
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
-    CHECK(4 == slice.length());
+    CHECK((slice.isObject()));
+    CHECK((6U == slice.length()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK((false == slice.hasKey("deleted")));
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((4U == slice.length()));
     CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -299,7 +327,7 @@ SECTION("test_defaults") {
   // new view definition with links (not supported for link creation)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"links\": { \"testCollection\": {} } }");
 
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -313,6 +341,146 @@ SECTION("test_defaults") {
     CHECK((0 == cids.size()));
     CHECK((true == logicalCollection->getIndexes().empty()));
   }
+
+  // view definition with links
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+
+    CHECK((false == logicalCollection->getIndexes().empty()));
+    CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    logicalView->toVelocyPack(builder, true, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
+    CHECK((slice.isObject()));
+    CHECK((6U == slice.length()));
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK((false == slice.hasKey("deleted")));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
+
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+    CHECK((true == tmpSlice.hasKey("testCollection")));
+  }
+
+  // view definition with links (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+
+    CHECK((false == logicalCollection->getIndexes().empty()));
+    CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->toVelocyPack(builder, true, false).errorNumber()));
+  }
+}
+
+SECTION("test_cleanup") {
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"commit\": { \"cleanupIntervalStep\":1, \"commitIntervalMsec\": 1000 } }");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+  CHECK((false == !viewImpl));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+  CHECK((nullptr != view));
+
+  std::vector<std::string> const EMPTY;
+
+  // fill with test data
+  {
+
+    auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+    arangodb::iresearch::IResearchLinkMeta meta;
+    meta._includeAllFields = true;
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  auto const memory = view->memory();
+
+  // remove the data
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    view->remove(trx, 42, arangodb::LocalDocumentId(0));
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  // wait for commit thread
+  size_t const MAX_ATTEMPTS = 200;
+  size_t attempt = 0;
+
+  while (memory <= view->memory() && attempt < MAX_ATTEMPTS) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    ++attempt;
+  }
+
+  // ensure memory was freed
+  CHECK(view->memory() <= memory);
 }
 
 SECTION("test_drop") {
@@ -380,6 +548,27 @@ SECTION("test_drop_with_link") {
   CHECK((true == logicalCollection->getIndexes().empty()));
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+}
+
+SECTION("test_drop_collection") {
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+  REQUIRE((false == !logicalCollection));
+  auto logicalView = vocbase.createView(viewCreateJson->slice());
+  REQUIRE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  REQUIRE((false == !view));
+
+  CHECK((true == logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+  CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+  CHECK((true == logicalCollection->drop().ok()));
+  CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; }))); // FIXME TODO should be 'true' but the Index is not notified
+
+  CHECK((true == logicalView->drop().ok()));
 }
 
 SECTION("test_drop_cid") {
@@ -453,7 +642,7 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition updated+persisted)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
@@ -602,7 +791,7 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition persist failure)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
@@ -680,7 +869,7 @@ SECTION("test_drop_cid") {
 
   // cid in list of collections for snapshot (view definition persist failure on recovery completion)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
@@ -773,11 +962,147 @@ SECTION("test_drop_cid") {
     }
   }
 }
+  
+SECTION("test_truncate_cid") {
+  static std::vector<std::string> const EMPTY;
+  
+  // cid not in list of collections for snapshot (view definition not updated, not persisted)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+    
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+      view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(1 == snapshot->live_docs_count());
+    }
+    
+    // truncate cid 42
+    {
+      bool persisted = false;
+      auto before = StorageEngineMock::before;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
+      StorageEngineMock::before = [&persisted]()->void { persisted = true; };
+      
+      CHECK((TRI_ERROR_NO_ERROR == view->truncate(42)));
+      CHECK((!persisted)); // truncate() does not modify view meta
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(0 == snapshot->live_docs_count());
+    }
+  }
+  
+  // cid in list of collections for snapshot (view definition not updated+persisted)
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
+    CHECK((false == !viewImpl));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+    CHECK((nullptr != view));
+    
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+      view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+       arangodb::transaction::StandaloneContext::Create(vocbase),
+       EMPTY,
+       EMPTY,
+       EMPTY,
+       arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(1 == snapshot->live_docs_count());
+    }
+    
+    // truncate cid 42
+    {
+      bool persisted = false;
+      auto before = StorageEngineMock::before;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
+      StorageEngineMock::before = [&persisted]()->void { persisted = true; };
+      
+      CHECK((TRI_ERROR_NO_ERROR == view->truncate(42)));
+      CHECK((!persisted)); // truncate() does not modify view meta
+      view->sync();
+    }
+    
+    // query
+    {
+      arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
+      );
+      auto* snapshot = view->snapshot(trx, true);
+      CHECK(0 == snapshot->live_docs_count());
+    }
+  }
+}
 
 SECTION("test_emplace_cid") {
   // emplace (already in list)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
@@ -1603,7 +1928,7 @@ SECTION("test_register_link") {
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
-  auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
+  auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"collections\": [ 100 ] }");
   auto linkJson  = arangodb::velocypack::Parser::fromJson("{ \"view\": 101 }");
 
   // new link in recovery
@@ -1611,6 +1936,7 @@ SECTION("test_register_link") {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1641,7 +1967,7 @@ SECTION("test_register_link") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == persisted));
     CHECK((false == !link));
 
@@ -1666,6 +1992,7 @@ SECTION("test_register_link") {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1709,7 +2036,7 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((true == persisted)); // link instantiation does modify and persist view meta
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -1744,6 +2071,7 @@ SECTION("test_register_link") {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson1->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1777,7 +2105,7 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == persisted));
     CHECK((false == !link0));
 
@@ -1809,7 +2137,7 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
+    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(*logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -1847,7 +2175,7 @@ SECTION("test_unregister_link") {
   StorageEngineMock::before = [&persisted]()->void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { } }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
   // link removed before view (in recovery)
   {
@@ -2142,7 +2470,7 @@ SECTION("test_self_token") {
 
 SECTION("test_tracked_cids") {
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { } }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
 
   // test empty before open (TRI_vocbase_t::createView(...) will call open())
   {
@@ -2167,7 +2495,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
+    StorageEngineMock(s.server).registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
@@ -2195,7 +2523,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
+    StorageEngineMock(s.server).registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
@@ -2230,7 +2558,7 @@ SECTION("test_tracked_cids") {
     // initial populate persisted view
     {
       s.engine.views.clear();
-      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102, \"properties\": { } }");
+      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 }");
       auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
         arangodb::FlushFeature
       >("Flush");
@@ -2261,7 +2589,7 @@ SECTION("test_tracked_cids") {
     // test persisted CIDs on open
     {
       s.engine.views.clear();
-      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102, \"properties\": { } }");
+      auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 }");
       Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
       auto logicalView = vocbase.createView(createJson->slice());
       REQUIRE((false == !logicalView));
@@ -2802,7 +3130,8 @@ SECTION("test_transaction_snapshot") {
 SECTION("test_update_overwrite") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
+    \"type\": \"arangosearch\", \
+    \"locale\": \"en\" \
   }");
 
   // modify meta params
@@ -2816,36 +3145,56 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-        \"locale\": \"en\" \
+        \"locale\": \"de\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("en", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      arangodb::iresearch::IResearchViewMetaState metaState;
-      std::string error;
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        std::string error;
 
-      CHECK(slice.isObject());
-      CHECK(4 == slice.length());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((4U == slice.length()));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      }
 
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
 
     // subsequent update (overwrite)
@@ -2856,32 +3205,203 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._locale = irs::locale_utils::locale("ru", true);
+      expectedMeta._locale = irs::locale_utils::locale("en");
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      arangodb::iresearch::IResearchViewMetaState metaState;
-      std::string error;
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
 
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((4U == slice.length()));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      }
 
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
+    }
+  }
+
+  // modify meta params with links
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice());
+    REQUIRE((false == !logicalView));
+    REQUIRE((logicalView->category() == arangodb::LogicalView::category()));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
+      std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
+
+      expectedMeta._locale = irs::locale_utils::locale("en");
+      expectedMetaState._collections.insert(logicalCollection->id());
+      expectedLinkMeta["testCollection"]; // use defaults
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, false);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((6U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.get("deleted").isNone())); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+
+        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+          arangodb::iresearch::IResearchLinkMeta linkMeta;
+          auto key = itr.key();
+          auto value = itr.value();
+          CHECK((true == key.isString()));
+
+          auto expectedItr = expectedLinkMeta.find(key.copyString());
+          CHECK((
+            true == value.isObject()
+            && expectedItr != expectedLinkMeta.end()
+            && linkMeta.init(value, error)
+            && expectedItr->second == linkMeta
+          ));
+          expectedLinkMeta.erase(expectedItr);
+        }
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((10U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
+
+      CHECK((true == expectedLinkMeta.empty()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+    }
+
+    // subsequent update (overwrite)
+    {
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+        \"locale\": \"ru\" \
+      }");
+
+      expectedMeta._locale = irs::locale_utils::locale("en");
+      CHECK((logicalView->updateProperties(updateJson->slice(), false, false).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, false);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((6U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.get("deleted").isNone())); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((10U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
   }
 
@@ -2907,48 +3427,72 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      arangodb::iresearch::IResearchViewMetaState metaState;
-      std::string error;
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
 
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((4U == slice.length()));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
 
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-      for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
-        arangodb::iresearch::IResearchLinkMeta linkMeta;
-        auto key = itr.key();
-        auto value = itr.value();
-        CHECK((true == key.isString()));
+        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+          arangodb::iresearch::IResearchLinkMeta linkMeta;
+          auto key = itr.key();
+          auto value = itr.value();
+          CHECK((true == key.isString()));
 
-        auto expectedItr = expectedLinkMeta.find(key.copyString());
-        CHECK((
-          true == value.isObject()
-          && expectedItr != expectedLinkMeta.end()
-          && linkMeta.init(value, error)
-          && expectedItr->second == linkMeta
-        ));
-        expectedLinkMeta.erase(expectedItr);
+          auto expectedItr = expectedLinkMeta.find(key.copyString());
+          CHECK((
+            true == value.isObject()
+            && expectedItr != expectedLinkMeta.end()
+            && linkMeta.init(value, error)
+            && expectedItr->second == linkMeta
+          ));
+          expectedLinkMeta.erase(expectedItr);
+        }
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
       }
 
       CHECK((true == expectedLinkMeta.empty()));
@@ -2963,48 +3507,72 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      arangodb::iresearch::IResearchViewMetaState metaState;
-      std::string error;
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
 
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((4U == slice.length()));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
 
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-      for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
-        arangodb::iresearch::IResearchLinkMeta linkMeta;
-        auto key = itr.key();
-        auto value = itr.value();
-        CHECK((true == key.isString()));
+        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+          arangodb::iresearch::IResearchLinkMeta linkMeta;
+          auto key = itr.key();
+          auto value = itr.value();
+          CHECK((true == key.isString()));
 
-        auto expectedItr = expectedLinkMeta.find(key.copyString());
-        CHECK((
-          true == value.isObject()
-          && expectedItr != expectedLinkMeta.end()
-          && linkMeta.init(value, error)
-          && expectedItr->second == linkMeta
-        ));
-        expectedLinkMeta.erase(expectedItr);
+          auto expectedItr = expectedLinkMeta.find(key.copyString());
+          CHECK((
+            true == value.isObject()
+            && expectedItr != expectedLinkMeta.end()
+            && linkMeta.init(value, error)
+            && expectedItr->second == linkMeta
+          ));
+          expectedLinkMeta.erase(expectedItr);
+        }
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
       }
 
       CHECK((true == expectedLinkMeta.empty()));
@@ -3030,26 +3598,46 @@ SECTION("test_update_overwrite") {
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      auto tmpSlice = slice.get("collections");
-      CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
-      tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
-      tmpSlice = tmpSlice.get("testCollection");
-      CHECK((true == tmpSlice.isObject()));
-      tmpSlice = tmpSlice.get("includeAllFields");
-      CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        CHECK((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
 
     // update link
@@ -3059,31 +3647,85 @@ SECTION("test_update_overwrite") {
       );
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
-      tmpSlice = tmpSlice.get("testCollection");
-      CHECK((true == tmpSlice.isObject()));
-      tmpSlice = tmpSlice.get("includeAllFields");
-      CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+        auto slice = builder.slice();
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        CHECK((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
+  }
+
+  // add link (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 
 SECTION("test_update_partial") {
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\" \
+    \"type\": \"arangosearch\", \
+    \"locale\": \"en\" \
   }");
   bool persisted = false;
   auto before = StorageEngineMock::before;
@@ -3100,35 +3742,57 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-      \"locale\": \"en\" \
+      \"locale\": \"de\" \
     }");
 
-    expectedMeta._locale = irs::locale_utils::locale("en", true);
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // test rollback on meta modification failure (as an example invalid value for 'locale')
@@ -3144,31 +3808,226 @@ SECTION("test_update_partial") {
       \"locale\": 123 \
     }");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
+    }
+  }
+
+  // modify meta params with links
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(createJson->slice());
+    REQUIRE((false == !logicalView));
+    REQUIRE((logicalView->category() == arangodb::LogicalView::category()));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
+      std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
+
+      expectedMeta._locale = irs::locale_utils::locale("en");
+      expectedMetaState._collections.insert(logicalCollection->id());
+      expectedLinkMeta["testCollection"]; // use defaults
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, false);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((6U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.get("deleted").isNone())); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+
+        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+          arangodb::iresearch::IResearchLinkMeta linkMeta;
+          auto key = itr.key();
+          auto value = itr.value();
+          CHECK((true == key.isString()));
+
+          auto expectedItr = expectedLinkMeta.find(key.copyString());
+          CHECK((
+            true == value.isObject()
+            && expectedItr != expectedLinkMeta.end()
+            && linkMeta.init(value, error)
+            && expectedItr->second == linkMeta
+          ));
+          expectedLinkMeta.erase(expectedItr);
+        }
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((10U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
+
+      CHECK((true == expectedLinkMeta.empty()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+    }
+
+    // subsequent update (partial update)
+    {
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      arangodb::iresearch::IResearchViewMetaState expectedMetaState;
+      std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
+        \"locale\": \"ru\" \
+      }");
+
+      expectedMeta._locale = irs::locale_utils::locale("en");
+      expectedMetaState._collections.insert(logicalCollection->id());
+      expectedLinkMeta["testCollection"]; // use defaults
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, false);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((6U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.get("deleted").isNone())); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+
+        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+          arangodb::iresearch::IResearchLinkMeta linkMeta;
+          auto key = itr.key();
+          auto value = itr.value();
+          CHECK((true == key.isString()));
+
+          auto expectedItr = expectedLinkMeta.find(key.copyString());
+          CHECK((
+            true == value.isObject()
+            && expectedItr != expectedLinkMeta.end()
+            && linkMeta.init(value, error)
+            && expectedItr->second == linkMeta
+          ));
+          expectedLinkMeta.erase(expectedItr);
+        }
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        logicalView->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK((slice.isObject()));
+        CHECK((10U == slice.length()));
+        CHECK((slice.get("name").copyString() == "testView"));
+        CHECK((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
+
+      CHECK((true == expectedLinkMeta.empty()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+    }
   }
 
   // add a new link (in recovery)
@@ -3192,24 +4051,46 @@ SECTION("test_update_partial") {
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
     CHECK((false == persisted));
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((
-      true == slice.hasKey("links")
-      && slice.get("links").isObject()
-      && 1 == slice.get("links").length()
-    ));
+      auto slice = builder.slice();
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK(slice.isObject());
+      CHECK((
+        true == slice.hasKey("links")
+        && slice.get("links").isObject()
+        && 1 == slice.get("links").length()
+      ));
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      auto tmpSlice = slice.get("collections");
+      CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // add a new link
@@ -3229,50 +4110,74 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
     CHECK((true == persisted)); // link addition does modify and persist view meta
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      auto key = itr.key();
-      auto value = itr.value();
-      CHECK((true == key.isString()));
+      for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        auto key = itr.key();
+        auto value = itr.value();
+        CHECK((true == key.isString()));
 
-      auto expectedItr = expectedLinkMeta.find(key.copyString());
-      CHECK((
-        true == value.isObject()
-        && expectedItr != expectedLinkMeta.end()
-        && linkMeta.init(value, error)
-        && expectedItr->second == linkMeta
-      ));
-      expectedLinkMeta.erase(expectedItr);
+        auto expectedItr = expectedLinkMeta.find(key.copyString());
+        CHECK((
+          true == value.isObject()
+          && expectedItr != expectedLinkMeta.end()
+          && linkMeta.init(value, error)
+          && expectedItr->second == linkMeta
+        ));
+        expectedLinkMeta.erase(expectedItr);
+      }
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
     }
 
     CHECK((true == expectedLinkMeta.empty()));
@@ -3312,49 +4217,74 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
     CHECK((true == persisted)); // link addition does modify and persist view meta
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      auto key = itr.key();
-      auto value = itr.value();
-      CHECK((true == key.isString()));
+      for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid(); ++itr) {
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        auto key = itr.key();
+        auto value = itr.value();
+        CHECK((true == key.isString()));
 
-      auto expectedItr = expectedLinkMeta.find(key.copyString());
-      CHECK((
-        true == value.isObject()
-        && expectedItr != expectedLinkMeta.end()
-        && linkMeta.init(value, error)
-        && expectedItr->second == linkMeta
-      ));
-      expectedLinkMeta.erase(expectedItr);
+        auto expectedItr = expectedLinkMeta.find(key.copyString());
+        CHECK((
+          true == value.isObject()
+          && expectedItr != expectedLinkMeta.end()
+          && linkMeta.init(value, error)
+          && expectedItr->second == linkMeta
+        ));
+        expectedLinkMeta.erase(expectedItr);
+      }
+    }
+
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
     }
 
     CHECK((true == expectedLinkMeta.empty()));
@@ -3374,30 +4304,54 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
-    CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    expectedMeta._locale = irs::locale_utils::locale("en");
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // remove link (in recovery)
@@ -3429,10 +4383,10 @@ SECTION("test_update_partial") {
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
       CHECK((
         true == slice.hasKey("links")
         && slice.get("links").isObject()
@@ -3460,10 +4414,10 @@ SECTION("test_update_partial") {
 
       auto slice = builder.slice();
       CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
       CHECK(slice.get("name").copyString() == "testView");
       CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
       CHECK((
         true == slice.hasKey("links")
         && slice.get("links").isObject()
@@ -3484,6 +4438,7 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     expectedMetaState._collections.insert(logicalCollection->id());
 
     {
@@ -3494,29 +4449,51 @@ SECTION("test_update_partial") {
 
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      arangodb::iresearch::IResearchViewMetaState metaState;
-      std::string error;
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
 
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((4U == slice.length()));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      }
 
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
 
     {
@@ -3525,32 +4502,55 @@ SECTION("test_update_partial") {
           \"testCollection\": null \
       }}");
 
+      expectedMeta._locale = irs::locale_utils::locale("en");
       expectedMetaState._collections.clear();
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      arangodb::iresearch::IResearchViewMetaState metaState;
-      std::string error;
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
 
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((4U == slice.length()));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      }
 
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        arangodb::iresearch::IResearchViewMeta meta;
+        arangodb::iresearch::IResearchViewMetaState metaState;
+        std::string error;
+
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        CHECK((meta.init(slice, error) && expectedMeta == meta));
+        CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
   }
 
@@ -3567,31 +4567,54 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
       }}");
 
-    CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
+    expectedMeta._locale = irs::locale_utils::locale("en");
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // remove non-existant link
@@ -3610,31 +4633,54 @@ SECTION("test_update_partial") {
         \"testCollection\": null \
     }}");
 
+    expectedMeta._locale = irs::locale_utils::locale("en");
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-    arangodb::velocypack::Builder builder;
+    // not for persistence
+    {
+      arangodb::velocypack::Builder builder;
 
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
+      builder.openObject();
+      view->toVelocyPack(builder, true, false);
+      builder.close();
 
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    arangodb::iresearch::IResearchViewMetaState metaState;
-    std::string error;
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
 
-    CHECK(slice.isObject());
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.get("deleted").isNone()); // no system properties
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((4U == slice.length()));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
-    CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK(slice.isObject());
+      CHECK((6U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK(slice.get("deleted").isNone()); // no system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      auto tmpSlice = slice.get("links");
+      CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    }
 
-    auto tmpSlice = slice.get("links");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    // for persistence
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      view->toVelocyPack(builder, true, true);
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      arangodb::iresearch::IResearchViewMetaState metaState;
+      std::string error;
+
+      CHECK(slice.isObject());
+      CHECK((10U == slice.length()));
+      CHECK(slice.get("name").copyString() == "testView");
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+      CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+      CHECK((true == metaState.init(slice, error) && expectedMetaState == metaState));
+      CHECK((false == slice.hasKey("links")));
+    }
   }
 
   // remove + add link to same collection (reindex)
@@ -3653,20 +4699,42 @@ SECTION("test_update_partial") {
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
 
     // add + remove
@@ -3682,20 +4750,43 @@ SECTION("test_update_partial") {
 
       CHECK((!initial.empty()));
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-      arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      auto slice = builder.slice();
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        CHECK((false == slice.hasKey("links")));
+      }
 
       std::unordered_set<TRI_idx_iid_t> actual;
 
@@ -3723,26 +4814,46 @@ SECTION("test_update_partial") {
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      auto tmpSlice = slice.get("collections");
-      CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
-      tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
-      tmpSlice = tmpSlice.get("testCollection");
-      CHECK((true == tmpSlice.isObject()));
-      tmpSlice = tmpSlice.get("includeAllFields");
-      CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        CHECK((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        CHECK((true == tmpSlice.isBoolean() && true == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
 
     // update link
@@ -3752,25 +4863,79 @@ SECTION("test_update_partial") {
       );
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
-      arangodb::velocypack::Builder builder;
+      // not for persistence
+      {
+        arangodb::velocypack::Builder builder;
 
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
+        builder.openObject();
+        view->toVelocyPack(builder, true, false);
+        builder.close();
 
-      auto slice = builder.slice();
-      CHECK(slice.isObject());
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-      CHECK(slice.get("deleted").isNone()); // no system properties
-      slice = slice.get("properties");
-      auto tmpSlice = slice.get("links");
-      CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
-      tmpSlice = tmpSlice.get("testCollection");
-      CHECK((true == tmpSlice.isObject()));
-      tmpSlice = tmpSlice.get("includeAllFields");
-      CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((6U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK(slice.get("deleted").isNone()); // no system properties
+        auto tmpSlice = slice.get("links");
+        CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+        tmpSlice = tmpSlice.get("testCollection");
+        CHECK((true == tmpSlice.isObject()));
+        tmpSlice = tmpSlice.get("includeAllFields");
+        CHECK((true == tmpSlice.isBoolean() && false == tmpSlice.getBoolean()));
+      }
+
+      // for persistence
+      {
+        arangodb::velocypack::Builder builder;
+
+        builder.openObject();
+        view->toVelocyPack(builder, true, true);
+        builder.close();
+
+        auto slice = builder.slice();
+        CHECK(slice.isObject());
+        CHECK((10U == slice.length()));
+        CHECK(slice.get("name").copyString() == "testView");
+        CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+        CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
+        auto tmpSlice = slice.get("collections");
+        CHECK((true == tmpSlice.isArray() && 1 == tmpSlice.length()));
+        CHECK((false == slice.hasKey("links")));
+      }
     }
+  }
+
+  // add link (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto* origExecContext = ExecContext::CURRENT;
+    auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
+    ExecContext::CURRENT = &execContext;
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
+    userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+    auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
+
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
   }
 }
 

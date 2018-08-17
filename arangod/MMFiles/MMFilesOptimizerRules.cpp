@@ -57,7 +57,7 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto node = static_cast<SortNode*>(n);
+    auto node = ExecutionNode::castTo<SortNode*>(n);
     auto const& elements = node->elements();
     if (elements.size() != 1) {
       // we're looking for "SORT RAND()", which has just one sort criterion
@@ -73,7 +73,7 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       continue;
     }
 
-    auto cn = static_cast<CalculationNode*>(setter);
+    auto cn = ExecutionNode::castTo<CalculationNode*>(setter);
     auto const expression = cn->expression();
 
     if (expression == nullptr || expression->node() == nullptr ||
@@ -104,12 +104,6 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
     ExecutionNode* collectionNode = nullptr;
 
     while (current != nullptr) {
-      if (current->canThrow()) {
-        // we shouldn't bypass a node that can throw
-        collectionNode = nullptr;
-        break;
-      }
-
       switch (current->getType()) {
         case EN::SORT:
         case EN::COLLECT:
@@ -159,14 +153,11 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       // we found a node to modify!
       TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
       // set the random iteration flag for the EnumerateCollectionNode
-      static_cast<EnumerateCollectionNode*>(collectionNode)->setRandom();
+      ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)->setRandom();
 
-      // remove the SortNode
-      // note: the CalculationNode will be removed by
-      // "remove-unnecessary-calculations"
-      // rule if not used
-
+      // remove the SortNode and the CalculationNode
       plan->unlinkNode(n);
+      plan->unlinkNode(setter);
       modified = true;
     }
   }

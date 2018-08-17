@@ -36,13 +36,15 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-using namespace arangodb;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Authentication"),
       _userManager(nullptr),
       _authCache(nullptr),
@@ -53,7 +55,8 @@ AuthenticationFeature::AuthenticationFeature(
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(false);
-  startsAfter("Random");
+  startsAfter("BasicsPhase");
+
 #ifdef USE_ENTERPRISE
   startsAfter("Ldap");
 #endif
@@ -83,7 +86,7 @@ void AuthenticationFeature::collectOptions(
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
-                     "enable or disable authentication for ALL client requests",
+                     "enable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
   options->addOption(
@@ -93,7 +96,7 @@ void AuthenticationFeature::collectOptions(
 
   options->addOption(
       "--server.local-authentication",
-      "enable or disable authentication using the local user database",
+      "enable authentication using the local user database",
       new BooleanParameter(&_localAuthentication));
 
   options->addOption(
@@ -187,3 +190,5 @@ void AuthenticationFeature::start() {
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
+
+} // arangodb

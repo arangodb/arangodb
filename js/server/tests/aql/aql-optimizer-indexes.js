@@ -263,7 +263,7 @@ function optimizerIndexesTestSuite () {
           ( nodeTypes.indexOf("SingleRemoteOperationNode") !== -1)
         ), query);
 
-      var results = AQL_EXECUTE(query, {}, {profile: 30 });
+      var results = AQL_EXECUTE(query);
       assertEqual([ 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(1, results.stats.scannedIndex);
@@ -1426,18 +1426,18 @@ function optimizerIndexesTestSuite () {
 
     testPrimaryIndexDynamic : function () {
       var queries = [
-        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a ] RETURN i.value", [ 35 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN [ PASSTHRU('test35') ] RETURN i.value", [ 35 ] ],
-        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, a, a ] RETURN i.value", [ 35 ] ],
-        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ 'test35', 'test36' ] RETURN i.value", [ 35, 36 ] ], 
-        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test-9') FOR i IN " + c.name() + " FILTER i._key IN [ b, b, a, b, c ] RETURN i.value", [ 35, 36 ] ], 
-        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
-        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a ] || i._key IN [ b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
-        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37'), d = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c, d ] || i._key IN [ a, b, c, d ] RETURN i.value", [ 35, 36, 37 ] ], 
-        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key == a RETURN i.value", [ 35 ] ],
-        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == a RETURN i.value", [ 35 ] ],
-        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b RETURN i.value", [ 35, 36 ] ], 
-        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37'), d = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b || i._key == c || i._key == d RETURN i.value", [ 35, 36, 37 ] ] 
+        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a ] RETURN i.value", [ 35 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN [ NOOPT('test35') ] RETURN i.value", [ 35 ] ],
+        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, a, a ] RETURN i.value", [ 35 ] ],
+        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ 'test35', 'test36' ] RETURN i.value", [ 35, 36 ] ], 
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test-9') FOR i IN " + c.name() + " FILTER i._key IN [ b, b, a, b, c ] RETURN i.value", [ 35, 36 ] ], 
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a ] || i._key IN [ b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37'), d = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c, d ] || i._key IN [ a, b, c, d ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a RETURN i.value", [ 35 ] ],
+        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == a RETURN i.value", [ 35 ] ],
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b RETURN i.value", [ 35, 36 ] ], 
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37'), d = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b || i._key == c || i._key == d RETURN i.value", [ 35, 36, 37 ] ] 
       ];
 
       queries.forEach(function(query) {
@@ -1771,7 +1771,7 @@ function optimizerIndexesTestSuite () {
       c.ensureSkiplist("value2");
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
 
-      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < PASSTHRU(i.value) RETURN i.value2";
+      var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < NOOPT(i.value) RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query).plan;
       var nodeTypes = plan.nodes.map(function(node) {
@@ -2033,14 +2033,14 @@ function optimizerIndexesTestSuite () {
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value2 != i.value RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value2 != i.value || i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value != 1 && PASSTHRU(i.value2) == 2 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value != 1 FILTER PASSTHRU(i.value2) == 2 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER PASSTHRU(i.value2) == 2 && i.value != 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER PASSTHRU(i.value2) == 2 FILTER i.value != 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value2 != 2 && PASSTHRU(i.value) == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value2 != 2 FILTER PASSTHRU(i.value) == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER PASSTHRU(i.value) == 1 && i.value2 != 2 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER PASSTHRU(i.value) == 1 FILTER i.value2 != 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value != 1 && NOOPT(i.value2) == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value != 1 FILTER NOOPT(i.value2) == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER NOOPT(i.value2) == 2 && i.value != 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER NOOPT(i.value2) == 2 FILTER i.value != 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 != 2 && NOOPT(i.value) == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 != 2 FILTER NOOPT(i.value) == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER NOOPT(i.value) == 1 && i.value2 != 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER NOOPT(i.value) == 1 FILTER i.value2 != 2 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value3 != 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value3 != 1 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value3 != 1 || i.value2 == 2 RETURN i.value",
@@ -2072,16 +2072,16 @@ function optimizerIndexesTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() != -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() <= 10 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() < 10 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 && PASSTHRU(true) == true RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 && 1 + PASSTHRU(2) == 3 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 && 1 + PASSTHRU(2) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && NOOPT(true) == true RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && 1 + NOOPT(2) == 3 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && 1 + NOOPT(2) RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() != -1 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() <= 10 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() < 10 && i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) == 3 && i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + NOOPT(2) == 3 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + NOOPT(2) && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value IN [ 1 ] && RAND() >= -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 FILTER i.value IN [ 1 ] RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER RAND() >= -1 RETURN i.value",
@@ -2089,16 +2089,16 @@ function optimizerIndexesTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER RAND() != -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER RAND() <= 10 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER RAND() < 10 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER PASSTHRU(true) == true RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER 1 + PASSTHRU(2) == 3 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER 1 + PASSTHRU(2) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER NOOPT(true) == true RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER 1 + NOOPT(2) == 3 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER 1 + NOOPT(2) RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() != -1 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() <= 10 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() < 10 FILTER i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) == 3 FILTER i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) FILTER i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + NOOPT(2) == 3 FILTER i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + NOOPT(2) FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value IN [ 1 ] FILTER RAND() >= -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 FILTER i.value IN [ 1 ] RETURN i.value"
       ];
@@ -2125,12 +2125,12 @@ function optimizerIndexesTestSuite () {
       var queries = [
         "LET a = 1 FOR i IN " + c.name() + " FILTER i.value == 1 && a == 1 RETURN i.value",
         "LET a = 1 FOR i IN " + c.name() + " FILTER a == 1 && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a == 1 && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a == 1 && i.value == 1 RETURN i.value",
         "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER i.value == 1 && a.value == 1 RETURN i.value",
         "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER a.value == 1 && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 && a.value == 1 RETURN i.value",
-        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 && i.value == 1 RETURN i.value",
+        "LET a = NOOPT({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 && a.value == 1 RETURN i.value",
+        "LET a = NOOPT({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 && i.value == 1 RETURN i.value",
         "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER i.value == 1 && (1 IN sub) RETURN i.value",
         "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER (1 IN sub) && i.value == 1 RETURN i.value",
         "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value == 1 && j == 1 RETURN i.value",
@@ -2139,12 +2139,12 @@ function optimizerIndexesTestSuite () {
         "FOR j IN [ { value: 1 } ] FOR i IN " + c.name() + " FILTER j.value == 1 && i.value == 1 RETURN i.value",
         "LET a = 1 FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a == 1 RETURN i.value",
         "LET a = 1 FOR i IN " + c.name() + " FILTER a == 1 FILTER i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a == 1 FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a == 1 FILTER i.value == 1 RETURN i.value",
         "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a.value == 1 RETURN i.value",
         "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER a.value == 1 FILTER i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a.value == 1 RETURN i.value",
-        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a.value == 1 RETURN i.value",
+        "LET a = NOOPT({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 FILTER i.value == 1 RETURN i.value",
         "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER (1 IN sub) RETURN i.value",
         "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER (1 IN sub) FILTER i.value == 1 RETURN i.value",
         "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value == 1 FILTER j == 1 RETURN i.value",
@@ -2199,28 +2199,28 @@ function optimizerIndexesTestSuite () {
 
     testIndexAndDespiteOperators : function () {
       var queries = [
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a != 2 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 2 && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a != 2 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a != 2 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value != 2 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value != 2 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value - 1 == 0 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value - 1 == 0 && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a + 1 == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a IN [ 0, 1 ] RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a + 1 == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a IN [ 0, 1 ] RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && NOT (i.value != 1) RETURN i",
         "FOR i IN " + c.name() + " FILTER i.value == 1 || NOT NOT (i.value == 1) RETURN i",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a != 2 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 2 FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a != 2 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a != 2 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER i.value != 2 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value != 2 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER i.value - 1 == 0 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value - 1 == 0 FILTER i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a + 1 == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 FILTER i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a IN [ 0, 1 ] RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a + 1 == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a IN [ 0, 1 ] RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 3 && (i.value != 1 || i.value != 2) RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 3 FILTER (i.value != 1 || i.value != 2) RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER NOT (i.value != 1) RETURN i",
@@ -2281,26 +2281,26 @@ function optimizerIndexesTestSuite () {
 
     testIndexAndDespiteOperatorsEmpty : function () {
       var queries = [
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a != 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 1 && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a != 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a != 1 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value != 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value != 1 && i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value - 1 == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value - 1 == 1 && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a + 1 == 0 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 0 && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a IN [ 1 ] RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 1 ] && i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a != 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 1 FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a + 1 == 0 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a + 1 == 0 && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a IN [ 1 ] RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a IN [ 1 ] && i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a != 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a != 1 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER i.value != 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value != 1 FILTER i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 FILTER i.value - 1 == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value - 1 == 1 FILTER i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a + 1 == 0 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 0 FILTER i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a IN [ 1 ] RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 1 ] FILTER i.value == 1 RETURN i.value"
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a + 1 == 0 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a + 1 == 0 FILTER i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 FILTER a IN [ 1 ] RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a IN [ 1 ] FILTER i.value == 1 RETURN i.value"
       ];
 
       queries.forEach(function(query) {
@@ -2334,16 +2334,16 @@ function optimizerIndexesTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() != -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() <= 10 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() < 10 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 || PASSTHRU(true) == true RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + PASSTHRU(2) == 3 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + PASSTHRU(2) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || NOOPT(true) == true RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + NOOPT(2) == 3 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + NOOPT(2) RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() != -1 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() <= 10 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() < 10 || i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) == 3 || i.value == 1 RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + NOOPT(2) == 3 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + NOOPT(2) || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value IN [ 1, 2 ] || RAND() >= -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value IN [ 1, 2 ] RETURN i.value"
       ];
@@ -2370,12 +2370,12 @@ function optimizerIndexesTestSuite () {
       var queries = [
         "LET a = 1 FOR i IN " + c.name() + " FILTER i.value == 1 || a == 1 RETURN i.value",
         "LET a = 1 FOR i IN " + c.name() + " FILTER a == 1 || i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 || a == 1 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a == 1 || i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 || a == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a == 1 || i.value == 1 RETURN i.value",
         "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER i.value == 1 || a.value == 1 RETURN i.value",
         "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER a.value == 1 || i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 || a.value == 1 RETURN i.value",
-        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 || i.value == 1 RETURN i.value",
+        "LET a = NOOPT({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 || a.value == 1 RETURN i.value",
+        "LET a = NOOPT({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 || i.value == 1 RETURN i.value",
         "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER i.value == 1 || 1 IN sub RETURN i.value",
         "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER 1 IN sub || i.value == 1 RETURN i.value",
         "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value == 1 || j == 1 RETURN i.value",
@@ -2428,16 +2428,16 @@ function optimizerIndexesTestSuite () {
 
     testIndexOrNoIndexBecauseOfOperators : function () {
       var queries = [
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 || a != 2 RETURN i.value",
-        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 2 || i.value == 1 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER i.value == 1 || a != 2 RETURN i.value",
+        "LET a = NOOPT(1) FOR i IN " + c.name() + " FILTER a != 2 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value != -1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value != -1 || i.value == 1 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value - 1 != 0 RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value - 1 != 0 || i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 || a + 1 == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 || i.value == 1 RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 || a IN [ 0, 1 ] RETURN i.value",
-        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] || i.value == 1 RETURN i.value"
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 || a + 1 == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 || i.value == 1 RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER i.value == 1 || a IN [ 0, 1 ] RETURN i.value",
+        "LET a = NOOPT(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] || i.value == 1 RETURN i.value"
       ];
 
       queries.forEach(function(query) {
@@ -2712,50 +2712,50 @@ function optimizerIndexesTestSuite () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var queries = [
-        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([]) RETURN i.value2", [ ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([23]) RETURN i.value2", [ 23 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([23, 42]) RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
-        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
-        [ "LET a = PASSTHRU(23), b = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value2 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOOPT([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOOPT([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN NOOPT([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT(42) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = NOOPT(23), b = NOOPT(42) FOR i IN " + c.name() + " FILTER i.value2 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value2 IN [23] RETURN i.value2", [ 23 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value2 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
-        [ "LET a = PASSTHRU([23]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23 ] ],
-        [ "LET a = PASSTHRU([23, 42]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
-        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
-        [ "LET a = PASSTHRU(23), b = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value3 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([]) RETURN i.value2", [ ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([23]) RETURN i.value2", [ 23 ] ],
-        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT([]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
+        [ "LET a = NOOPT([23]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23 ] ],
+        [ "LET a = NOOPT([23, 42]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT(42) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = NOOPT(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = NOOPT(23), b = NOOPT(42) FOR i IN " + c.name() + " FILTER i.value3 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOOPT([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOOPT([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN NOOPT([23, 42]) RETURN i.value2", [ 23, 42 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23] RETURN i.value2", [ 23 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ],
-        [ "LET a = PASSTHRU([23]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23 ] ],
-        [ "LET a = PASSTHRU([23, 42]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU('test42') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23', 'test42' ] ],
-        [ "LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23' ] ],
-        [ "LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ a ], a) RETURN i._key", [ 'test23' ] ],
-        [ "LET a = PASSTHRU('test23'), b = PASSTHRU('test42') FOR i IN " + c.name() + " FILTER i._key IN [ a, b ] RETURN i._key", [ 'test23', 'test42' ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU([]) RETURN i._key", [ ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU(['test23']) RETURN i._key", [ 'test23' ] ],
-        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU(['test23', 'test42']) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = NOOPT([]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ],
+        [ "LET a = NOOPT([23]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23 ] ],
+        [ "LET a = NOOPT([23, 42]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT('test42') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = NOOPT('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23' ] ],
+        [ "LET a = NOOPT('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ a ], a) RETURN i._key", [ 'test23' ] ],
+        [ "LET a = NOOPT('test23'), b = NOOPT('test42') FOR i IN " + c.name() + " FILTER i._key IN [ a, b ] RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN NOOPT([]) RETURN i._key", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN NOOPT(['test23']) RETURN i._key", [ 'test23' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN NOOPT(['test23', 'test42']) RETURN i._key", [ 'test23', 'test42' ] ],
         [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23'] RETURN i._key", [ 'test23' ] ],
         [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23', 'test42'] RETURN i._key", [ 'test23', 'test42' ] ],
-        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
-        [ "LET a = PASSTHRU(['test23']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23' ] ],
-        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ],
-        [ "LET a = PASSTHRU({ ids: ['test23', 'test42'] }) FOR i IN " + c.name() + " FILTER i._key IN a.ids RETURN i._key", [ 'test23', 'test42' ] ],
-        [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value2 IN a.ids RETURN i.value2", [ 23, 42 ] ],
-        [ "LET a = PASSTHRU({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value3 IN a.ids RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
+        [ "LET a = NOOPT(['test23']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23' ] ],
+        [ "LET a = NOOPT(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = NOOPT({ ids: ['test23', 'test42'] }) FOR i IN " + c.name() + " FILTER i._key IN a.ids RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = NOOPT({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value2 IN a.ids RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = NOOPT({ ids: [23, 42] }) FOR i IN " + c.name() + " FILTER i.value3 IN a.ids RETURN i.value2", [ 23, 42 ] ],
 
         // non-arrays. should not fail but return no results
-        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
-        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
-        [ "LET a = PASSTHRU({}) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ]
+        [ "LET a = NOOPT({}) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
+        [ "LET a = NOOPT({}) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
+        [ "LET a = NOOPT({}) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ]
       ];
 
       queries.forEach(function(query) {
@@ -2935,9 +2935,9 @@ function optimizerIndexesTestSuite () {
 
       c.ensureHashIndex("value2", { sparse: true });
       var queries = [
-        "LET a = PASSTHRU(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) || i.value2 == PASSTHRU(null) RETURN i.value"
+        "LET a = NOOPT(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) || i.value2 == NOOPT(null) RETURN i.value"
       ];
 
       queries.forEach(function(query) {
@@ -3260,9 +3260,9 @@ function optimizerIndexesTestSuite () {
 
       c.ensureSkiplist("value2", { sparse: true });
       var queries = [
-        "LET a = PASSTHRU(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) RETURN i.value",
-        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) || i.value2 == PASSTHRU(null) RETURN i.value"
+        "LET a = NOOPT(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) || i.value2 == NOOPT(null) RETURN i.value"
       ];
 
       queries.forEach(function(query) {

@@ -738,8 +738,9 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   }
 
   auth::Level level;
-  if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+  if (isdigit(coll[0])) {
+    std::string tmpColl =
+        DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
     level = it->second.collectionAuthLevel(dbname, coll);

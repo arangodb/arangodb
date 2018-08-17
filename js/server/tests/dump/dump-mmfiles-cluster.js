@@ -317,6 +317,43 @@ function dumpTestSuite () {
         assertEqual(t, doc.value);
       });
 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test view restoring
+////////////////////////////////////////////////////////////////////////////////
+
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(Object.keys(props.links).length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+
+      /*var res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 0 RETURN doc").toArray();
+      assertEqual(10000, res.length);
+
+      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 5000 RETURN doc").toArray();
+      assertEqual(5000, res.length);
+
+      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 9000 RETURN doc").toArray();
+      assertEqual(1000, res.length);
+
+      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
+      assertEqual(0, res.length);*/
     }
 
   };
@@ -604,7 +641,7 @@ function dumpTestEnterpriseSuite () {
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
       assertEqual("12", res[3].value);
-    }
+    },
 
   };
 

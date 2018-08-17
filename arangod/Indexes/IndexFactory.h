@@ -48,7 +48,7 @@ class IndexFactory {
   /// properties.
   //////////////////////////////////////////////////////////////////////////////
   typedef std::function<std::shared_ptr<Index>(
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     velocypack::Slice const& definition, // index definition
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -86,7 +86,7 @@ class IndexFactory {
     IndexNormalizer const& normalizer
   );
 
-  Result enhanceIndexDefinition(
+  virtual Result enhanceIndexDefinition(
     velocypack::Slice const definition,
     velocypack::Builder& normalized,
     bool isCreation,
@@ -96,7 +96,7 @@ class IndexFactory {
   std::shared_ptr<Index> prepareIndexFromSlice(
     velocypack::Slice definition,
     bool generateKey,
-    LogicalCollection* collection,
+    LogicalCollection& collection,
     bool isClusterConstructor
   ) const;
 
@@ -104,12 +104,17 @@ class IndexFactory {
   virtual std::vector<std::string> supportedIndexes() const;
 
   /// @brief create system indexes primary / edge
-  virtual void fillSystemIndexes(arangodb::LogicalCollection*,
-                                 std::vector<std::shared_ptr<arangodb::Index>>&) const = 0;
+  virtual void fillSystemIndexes(
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
+  ) const = 0;
 
   /// @brief create indexes from a list of index definitions
-  virtual void prepareIndexes(LogicalCollection* col, velocypack::Slice const&,
-                              std::vector<std::shared_ptr<arangodb::Index>>&) const = 0;
+  virtual void prepareIndexes(
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+  ) const = 0;
 
  protected:
   /// @brief clear internal factory/normalizer maps
