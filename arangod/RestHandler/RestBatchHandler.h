@@ -37,9 +37,10 @@ struct MultipartMessage {
         boundaryLength(boundaryLength),
         messageStart(messageStart),
         messageEnd(messageEnd){};
+  MultipartMessage(){}
 
   char const* boundary;
-  size_t const boundaryLength;
+  size_t boundaryLength;
   char const* messageStart;
   char const* messageEnd;
 };
@@ -65,7 +66,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestBatchHandler"; }
   // be pessimistic about what this handler does... it may invoke V8
   // or not, but as we don't know where, we need to assume it
-  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
  private:
   RestStatus executeHttp();
@@ -81,6 +82,14 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
   // extract the next part from a multipart message
   bool extractPart(SearchHelper*);
+
+private:
+  bool executeNextHandler();
+
+  MultipartMessage _multipartMessage;
+  SearchHelper _helper;
+  size_t _errors;
+  std::string _boundary;
 };
 }
 

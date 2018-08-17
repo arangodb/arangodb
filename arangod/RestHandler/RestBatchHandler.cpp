@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/ExecContext.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -66,6 +67,194 @@ RestStatus RestBatchHandler::executeVst() {
   return RestStatus::DONE;
 }
 
+bool RestBatchHandler::executeNextHandler() {
+
+  auto self(shared_from_this());
+
+  // Post the sub handler creation on the Scheduler. This is fast, but a user
+  // request.
+  return SchedulerFeature::SCHEDULER->queue(
+    PriorityRequestLane(RequestLane::CLIENT_FAST), [this, self]() {
+
+      // get authorization header. we will inject this into the subparts
+      std::string const& authorization =
+      _request->header(StaticStrings::Authorization);
+
+      // get the next part from the multipart message
+      if (!extractPart(&_helper)) {
+        // error
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid multipart message received");
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
+
+        continueHandlerExecution();
+        return ;
+      }
+
+      // split part into header & body
+      char const* partStart = _helper.foundStart;
+      char const* partEnd = partStart + _helper.foundLength;
+      size_t const partLength = _helper.foundLength;
+
+      char const* headerStart = partStart;
+      char const* bodyStart = nullptr;
+      size_t headerLength = 0;
+      size_t bodyLength = 0;
+
+      // assume Windows linebreak \r\n\r\n as delimiter
+      char const* p = strstr(headerStart, "\r\n\r\n");
+
+      if (p != nullptr && p + 4 <= partEnd) {
+        headerLength = p - partStart;
+        bodyStart = p + 4;
+        bodyLength = partEnd - bodyStart;
+      } else {
+        // test Unix linebreak
+        p = strstr(headerStart, "\n\n");
+
+        if (p != nullptr && p + 2 <= partEnd) {
+          headerLength = p - partStart;
+          bodyStart = p + 2;
+          bodyLength = partEnd - bodyStart;
+        } else {
+          // no delimiter found, assume we have only a header
+          headerLength = partLength;
+        }
+      }
+
+      // set up request object for the part
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
+
+      std::unique_ptr<HttpRequest> request(new HttpRequest(
+          _request->connectionInfo(), headerStart, headerLength, false));
+
+      // we do not have a client task id here
+      request->setClientTaskId(0);
+
+      // inject the request context from the framing (batch) request
+      // the "false" means the context is not responsible for resource handling
+      request->setRequestContext(_request->requestContext(), false);
+      request->setDatabaseName(_request->databaseName());
+
+      if (bodyLength > 0) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
+                   << "'";
+        request->setBody(bodyStart, bodyLength);
+      }
+
+      if (!authorization.empty()) {
+        // inject Authorization header of multipart message into part message
+        request->setHeader(StaticStrings::Authorization.c_str(),
+                           StaticStrings::Authorization.size(),
+                           authorization.c_str(), authorization.size());
+      }
+
+      std::shared_ptr<RestHandler> handler = nullptr;
+
+      {
+        std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+
+        auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
+                std::move(request), std::move(response));
+
+        if (h == nullptr) {
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                        "could not create handler for batch part processing");
+
+          continueHandlerExecution();
+          return ;
+        }
+
+        handler.reset(h);
+      }
+
+      // now scheduler the real handler
+      bool ok = SchedulerFeature::SCHEDULER->queue(
+        PriorityRequestLane(handler->lane()), [this, self, handler]() {
+          HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+
+          // start to work for this handler
+          {
+            // ignore any errors here, will be handled later by inspecting the response
+            try {
+              ExecContextScope scope(nullptr);// workaround because of assertions
+              handler->runHandler([](RestHandler*) {});
+            } catch (...) {
+            }
+
+
+
+            HttpResponse* partResponse =
+                dynamic_cast<HttpResponse*>(handler->response());
+
+            if (partResponse == nullptr) {
+              generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                            "could not create a response for batch part request");
+
+              //return RestStatus::DONE;
+              continueHandlerExecution();
+              return ;
+            }
+
+            rest::ResponseCode const code = partResponse->responseCode();
+
+            // count everything above 400 as error
+            if (int(code) >= 400) {
+              ++_errors;
+            }
+
+            // append the boundary for this subpart
+            httpResponse->body().appendText(_boundary + "\r\nContent-Type: ");
+            httpResponse->body().appendText(StaticStrings::BatchContentType);
+
+            // append content-id if it is present
+            if (_helper.contentId != nullptr) {
+              httpResponse->body().appendText(
+                  "\r\nContent-Id: " +
+                  std::string(_helper.contentId, _helper.contentIdLength));
+            }
+
+            httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+
+            // remove some headers we don't need
+            partResponse->setConnectionType(rest::ConnectionType::C_NONE);
+            partResponse->setHeaderNC(StaticStrings::Server, "");
+
+            // append the part response header
+            partResponse->writeHeader(&httpResponse->body());
+
+            // append the part response body
+            httpResponse->body().appendText(partResponse->body());
+            httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+          }
+
+          // we've read the last part
+          if (!_helper.containsMore) {
+            // complete the handler
+
+            // append final boundary + "--"
+            httpResponse->body().appendText(_boundary + "--");
+
+            if (_errors > 0) {
+              httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(_errors));
+            }
+
+
+            continueHandlerExecution();
+          } else {
+            executeNextHandler();
+          }
+        }
+      );
+
+      if (!ok) {
+        //generateError(); -- add some error here pls!
+        continueHandlerExecution();
+      }
+    }
+  );
+}
+
 RestStatus RestBatchHandler::executeHttp() {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
@@ -89,22 +278,17 @@ RestStatus RestBatchHandler::executeHttp() {
     return RestStatus::DONE;
   }
 
-  std::string boundary;
 
   // invalid content-type or boundary sent
-  if (!getBoundary(&boundary)) {
+  if (!getBoundary(&_boundary)) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
     return RestStatus::DONE;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "boundary of multipart-message is '" << boundary << "'";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "boundary of multipart-message is '" << _boundary << "'";
 
-  size_t errors = 0;
-
-  // get authorization header. we will inject this into the subparts
-  std::string const& authorization =
-      _request->header(StaticStrings::Authorization);
+  _errors = 0;
 
   // create the response
   resetResponse(rest::ResponseCode::OK);
@@ -112,168 +296,19 @@ RestStatus RestBatchHandler::executeHttp() {
 
   // http required here
   std::string const& bodyStr = httpRequest->body();
+
   // setup some auxiliary structures to parse the multipart message
-  MultipartMessage message(boundary.c_str(), boundary.size(), bodyStr.c_str(),
-                           bodyStr.c_str() + bodyStr.size());
+  _multipartMessage = MultipartMessage{_boundary.c_str(), _boundary.size(), bodyStr.c_str(),
+                           bodyStr.c_str() + bodyStr.size()};
 
-  SearchHelper helper;
-  helper.message = &message;
-  helper.searchStart = message.messageStart;
+  _helper.message = &_multipartMessage;
+  _helper.searchStart = _multipartMessage.messageStart;
 
-  // iterate over all parts of the multipart message
-  while (true) {
-    // get the next part from the multipart message
-    if (!extractPart(&helper)) {
-      // error
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid multipart message received");
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
 
-      return RestStatus::DONE;
-    }
+  executeNextHandler();
 
-    // split part into header & body
-    char const* partStart = helper.foundStart;
-    char const* partEnd = partStart + helper.foundLength;
-    size_t const partLength = helper.foundLength;
-
-    char const* headerStart = partStart;
-    char const* bodyStart = nullptr;
-    size_t headerLength = 0;
-    size_t bodyLength = 0;
-
-    // assume Windows linebreak \r\n\r\n as delimiter
-    char const* p = strstr(headerStart, "\r\n\r\n");
-
-    if (p != nullptr && p + 4 <= partEnd) {
-      headerLength = p - partStart;
-      bodyStart = p + 4;
-      bodyLength = partEnd - bodyStart;
-    } else {
-      // test Unix linebreak
-      p = strstr(headerStart, "\n\n");
-
-      if (p != nullptr && p + 2 <= partEnd) {
-        headerLength = p - partStart;
-        bodyStart = p + 2;
-        bodyLength = partEnd - bodyStart;
-      } else {
-        // no delimiter found, assume we have only a header
-        headerLength = partLength;
-      }
-    }
-
-    // set up request object for the part
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
-
-    std::unique_ptr<HttpRequest> request(new HttpRequest(
-        _request->connectionInfo(), headerStart, headerLength, false));
-
-    // we do not have a client task id here
-    request->setClientTaskId(0);
-
-    // inject the request context from the framing (batch) request
-    // the "false" means the context is not responsible for resource handling
-    request->setRequestContext(_request->requestContext(), false);
-    request->setDatabaseName(_request->databaseName());
-
-    if (bodyLength > 0) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
-                 << "'";
-      request->setBody(bodyStart, bodyLength);
-    }
-
-    if (!authorization.empty()) {
-      // inject Authorization header of multipart message into part message
-      request->setHeader(StaticStrings::Authorization.c_str(),
-                         StaticStrings::Authorization.size(),
-                         authorization.c_str(), authorization.size());
-    }
-
-    std::shared_ptr<RestHandler> handler = nullptr;
-
-    {
-      std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
-
-      auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-              std::move(request), std::move(response));
-
-      if (h == nullptr) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                      "could not create handler for batch part processing");
-
-        return RestStatus::DONE;
-      }
-
-      handler.reset(h);
-    }
-
-    // start to work for this handler
-    {
-      // ignore any errors here, will be handled later by inspecting the response
-      try {
-        ExecContextScope scope(nullptr);// workaround because of assertions        
-        handler->runHandler([](RestHandler*) {});
-      } catch (...) {
-      }
-
-      HttpResponse* partResponse =
-          dynamic_cast<HttpResponse*>(handler->response());
-
-      if (partResponse == nullptr) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                      "could not create a response for batch part request");
-
-        return RestStatus::DONE;
-      }
-
-      rest::ResponseCode const code = partResponse->responseCode();
-
-      // count everything above 400 as error
-      if (int(code) >= 400) {
-        ++errors;
-      }
-
-      // append the boundary for this subpart
-      httpResponse->body().appendText(boundary + "\r\nContent-Type: ");
-      httpResponse->body().appendText(StaticStrings::BatchContentType);
-
-      // append content-id if it is present
-      if (helper.contentId != nullptr) {
-        httpResponse->body().appendText(
-            "\r\nContent-Id: " +
-            std::string(helper.contentId, helper.contentIdLength));
-      }
-
-      httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
-
-      // remove some headers we don't need
-      partResponse->setConnectionType(rest::ConnectionType::C_NONE);
-      partResponse->setHeaderNC(StaticStrings::Server, "");
-
-      // append the part response header
-      partResponse->writeHeader(&httpResponse->body());
-
-      // append the part response body
-      httpResponse->body().appendText(partResponse->body());
-      httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-    }
-
-    // we've read the last part
-    if (!helper.containsMore) {
-      break;
-    }
-  }
-
-  // append final boundary + "--"
-  httpResponse->body().appendText(boundary + "--");
-
-  if (errors > 0) {
-    httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(errors));
-  }
-
-  // success
-  return RestStatus::DONE;
+  // and wait for completion
+  return RestStatus::WAITING;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
