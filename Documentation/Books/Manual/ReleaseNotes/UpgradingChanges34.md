@@ -306,22 +306,6 @@ The following APIs have been added or augmented:
 AQL
 ---
 
-- ArangoDB 3.4 adds the new view-related `SEARCH` keyword to AQL:
-
-  Usage of this keyword as collection name, variable name or attribute name
-  in AQL queries will not be possible without quoting. For example, the following
-  AQL query will still work as it uses a quoted collection name and a quoted
-  attribute name:
-
-      FOR doc IN `search`
-        RETURN doc.`search`
-
-  However, the following query will fail because it uses the `SEARCH` keyword in
-  an unexpected position:
-      
-      FOR doc IN search
-        RETURN doc.search
-
 - the AQL functions `CALL` and `APPLY` may now throw the errors 1540
 (`ERROR_QUERY_FUNCTION_NAME_UNKNOWN`) and 1541 (`ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH`)
 instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
