@@ -273,7 +273,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.X, 'abc', 'test_A'), 'test_B') SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc', 'test_A'), 'test_B') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -297,7 +297,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.X, 'abc', 'test_A') SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_A') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -321,7 +321,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.X, 'abc'), 'test_A') SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc'), 'test_A') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -345,7 +345,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.X, 'abc', 'test_B') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -367,7 +367,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH analyzer(PHRASE(d.X, 'abc'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -389,7 +389,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -411,7 +411,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.Y, 'def', 'test_A'), 'test_B') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def', 'test_A'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -433,7 +433,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH PHRASE(d.Y, 'def', 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -455,7 +455,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.Y, 'def'), 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -596,7 +596,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.same, 'xyz', 'test_A'), 'test_B') SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_A'), 'test_B') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -625,7 +625,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.same, 'xyz', 'test_A') SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_A') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -654,7 +654,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.same, 'xyz'), 'test_A') SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_A') SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -683,7 +683,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.same, 'xyz', 'test_B'), 'identity') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_B'), 'identity') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -710,7 +710,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.same, 'xyz', 'test_B') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -737,7 +737,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.same, 'xyz'), 'test_B') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -764,7 +764,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.duplicated, 'abcd', 'test_A'), 'test_B') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'abcd', 'test_A'), 'test_B') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -788,7 +788,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER PHRASE(d.duplicated, 'abcd', 'test_A') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, 'abcd', 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -812,7 +812,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER ANALYZER(PHRASE(d.duplicated, 'abcd'), 'test_A') SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'abcd'), 'test_A') SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -884,7 +884,7 @@ SECTION("test_fields") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER d.X == 'abc' SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH d.X == 'abc' SORT d.seq RETURN d",
       nullptr,
       true
     );
@@ -908,7 +908,7 @@ SECTION("test_fields") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView FILTER d.Y == 'def' SORT d.seq RETURN d"
+      "FOR d IN testView SEARCH d.Y == 'def' SORT d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

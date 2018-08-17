@@ -1003,7 +1003,7 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */') + ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
+          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition) + '   ' + annotation('/* view query */');
         }
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':

@@ -316,7 +316,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6
       }
     ));
 
@@ -341,7 +341,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6
       }
     ));
 
@@ -366,7 +366,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6
       }
     ));
 
@@ -391,7 +391,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6
       }
     ));
 
@@ -876,7 +876,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x=(FOR i IN collection_1 SEARCH i.name=='A' RETURN i)[0].name FOR d IN testView SEARCH d.name==x RETURN d"
+      "LET x=(FOR i IN collection_1 FILTER i.name=='A' RETURN i)[0].name FOR d IN testView SEARCH d.name==x RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -903,51 +903,50 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "LET x=(FOR i IN collection_1 SEARCH i.name=='A' RETURN i)[0] FOR d IN testView SEARCH d.name==x RETURN d"
+      "LET x=(FOR i IN collection_1 FILTER i.name=='A' RETURN i)[0] FOR d IN testView SEARCH d.name==x RETURN d"
     );
     REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code); // unsupported type: object
   }
 
-// FIXME Not supported yet
-//  // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN i)[0].name), unordered
-//  {
-//    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
-//      { "A", &insertedDocs[0] }
-//    };
-//
-//    auto queryResult = arangodb::tests::executeQuery(
-//      vocbase,
-//      "FOR d IN testView SEARCH d.name==(FOR i IN collection_1 SEARCH i.name=='A' RETURN i)[0].name RETURN d"
-//    );
-//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
-//
-//    auto result = queryResult.result->slice();
-//    CHECK(result.isArray());
-//
-//    arangodb::velocypack::ArrayIterator resultIt(result);
-//    CHECK(expectedDocs.size() == resultIt.size());
-//
-//    for (auto const actualDoc : resultIt) {
-//      auto const resolved = actualDoc.resolveExternals();
-//      auto const keySlice = resolved.get("name");
-//      auto const key = arangodb::iresearch::getStringRef(keySlice);
-//
-//      auto expectedDoc = expectedDocs.find(key);
-//      REQUIRE(expectedDoc != expectedDocs.end());
-//      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
-//      expectedDocs.erase(expectedDoc);
-//    }
-//    CHECK(expectedDocs.empty());
-//  }
-//
-//  // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN i)[0]), unordered
-//  {
-//    auto queryResult = arangodb::tests::executeQuery(
-//      vocbase,
-//      "FOR d IN testView SEARCH d.name==(FOR i IN collection_1 SEARCH i.name=='A' RETURN i)[0] RETURN d"
-//    );
-//    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code); // unsupported type: object
-//  }
+  // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN i)[0].name), unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] }
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH d.name==(FOR i IN collection_1 FILTER i.name=='A' RETURN i)[0].name RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // subquery, d.name == (FOR i IN collection_1 SEARCH i.name == 'A' RETURN i)[0]), unordered
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH d.name==(FOR i IN collection_1 FILTER i.name=='A' RETURN i)[0] RETURN d"
+    );
+    REQUIRE(TRI_ERROR_BAD_PARAMETER == queryResult.code); // unsupported type: object
+  }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                                !=

@@ -437,50 +437,22 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     view->sync();
   }
 
-  // explicit collection and view with the same 'collection' name
+  // using search keyword for collection is prohibited
   {
-    std::string const query = "LET c=5 FOR x IN collection_1 SEARCH x.seq == c FOR d IN collection_1 SEARCH x.seq == d.seq RETURN x";
+    std::string const query = "LET c=5 FOR x IN collection_1 SEARCH x.seq == c RETURN x";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
 
-    CHECK((arangodb::tests::assertRules(vocbase, query, {}, boundParameters)));
-
-    // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws TRI_ERROR_INTERNAL
+    // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    CHECK((TRI_ERROR_INTERNAL == queryResult.code));
+    CHECK(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
   }
 
-  // explicit collection and view with the same 'view' name
+  // using search keyword for bound collection is prohibited
   {
-    std::string const query = "LET c=5 FOR x IN testView SEARCH x.seq == c FOR d IN testView SEARCH x.seq == d.seq RETURN x";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
-
-    CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
-
-    // arangodb::transaction::Methods::addCollectionAtRuntime(...) throws TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+    std::string const query = "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c  RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"collection_1\" }");
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code));
-  }
-
-  // bind collection and view with the same name
-  {
-    std::string const query = "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c FOR d IN  @@dataSource SEARCH x.seq == d.seq RETURN x";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
-
-    CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
-
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code));
-  }
-
-  // bind collection and view with the same name
-  {
-    std::string const query = "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c FOR d IN  @@dataSource SEARCH x.seq == d.seq RETURN d";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
-
-    CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
-
-    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code));
+    CHECK(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
   }
 }
 
@@ -629,7 +601,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -676,7 +648,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -723,7 +695,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -771,7 +743,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -819,7 +791,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -864,7 +836,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -910,7 +882,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -957,7 +929,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -997,7 +969,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1161,7 +1133,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1203,7 +1175,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1246,7 +1218,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1286,7 +1258,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6
       }
     ));
 
@@ -1341,7 +1313,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1402,7 +1374,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1441,7 +1413,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1481,7 +1453,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1500,7 +1472,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1522,7 +1494,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1565,7 +1537,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1588,7 +1560,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1610,7 +1582,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 
@@ -1632,7 +1604,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     CHECK(arangodb::tests::assertRules(
       vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule_pass6,
       }
     ));
 

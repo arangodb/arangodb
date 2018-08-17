@@ -922,9 +922,9 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR_VIEW);
   TRI_ASSERT(node->numMembers() == 3);
 
-  auto variable = node->getMember(0);
-  auto expression = node->getMember(1);
-  auto search = node->getMember(2);
+  auto const* variable = node->getMember(0);
+  auto const* expression = node->getMember(1);
+  auto* search = node->getMember(2);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -950,9 +950,7 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
   std::string const viewName = expression->getString();
     
-  auto collection = _ast->query()->collections()->get(viewName);
-    
-  if (collection == nullptr) {
+  if (!_ast->query()->collections()->get(viewName)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no view for EnumerateView");
   }
