@@ -33,13 +33,15 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
 EngineSelectorFeature::EngineSelectorFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "EngineSelector"), 
       _engine("auto"), 
       _hasStarted(false) {
@@ -78,7 +80,9 @@ void EngineSelectorFeature::prepare() {
   }
     
   if (_engine == "auto") {
-    _engine = MMFilesEngine::EngineName;
+    _engine = defaultEngine();
+    LOG_TOPIC(WARN, Logger::STARTUP) << "using default storage engine '" << _engine << "', as no storage engine was explicitly selected via the `--server.storage-engine` option";
+    LOG_TOPIC(INFO, Logger::STARTUP) << "please note that default storage engine has changed from 'mmfiles' to 'rocksdb' in ArangoDB 3.4";
   }
   
   TRI_ASSERT(_engine != "auto");
@@ -167,3 +171,9 @@ std::unordered_map<std::string, std::string> EngineSelectorFeature::availableEng
 char const* EngineSelectorFeature::engineName() {
   return ENGINE->typeName();
 }
+    
+std::string const& EngineSelectorFeature::defaultEngine() {
+  return RocksDBEngine::EngineName;
+}
+
+} // arangodb

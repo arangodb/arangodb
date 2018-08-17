@@ -35,6 +35,7 @@
 #include "velocypack/Iterator.h"
 
 #include "IResearchLinkMeta.h"
+#include "Misc.h"
 
 NS_LOCAL
 
@@ -74,13 +75,15 @@ IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
   : _analyzers(mask),
     _fields(mask),
     _includeAllFields(mask),
-    _trackListPositions(mask) {
+    _trackListPositions(mask),
+    _storeValues(mask) {
 }
 
 IResearchLinkMeta::IResearchLinkMeta()
   : //_fields(<empty>), // no fields to index by default
     _includeAllFields(false), // true to match all encountered fields, false match only fields in '_fields'
-    _trackListPositions(false) { // treat '_trackListPositions' as SQL-IN
+    _trackListPositions(false), // treat '_trackListPositions' as SQL-IN
+    _storeValues(ValueStorage::NONE) { // do not track values at all
   auto analyzer = IResearchAnalyzerFeature::identity();
 
   // identity-only tokenization
@@ -103,6 +106,7 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexc
     _fields = std::move(other._fields);
     _includeAllFields = std::move(other._includeAllFields);
     _trackListPositions = std::move(other._trackListPositions);
+    _storeValues = other._storeValues;
   }
 
   return *this;
@@ -114,6 +118,7 @@ IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) 
     _fields = other._fields;
     _includeAllFields = other._includeAllFields;
     _trackListPositions = other._trackListPositions;
+    _storeValues = other._storeValues;
   }
 
   return *this;
@@ -145,6 +150,10 @@ bool IResearchLinkMeta::operator==(
   }
 
   if (_trackListPositions != other._trackListPositions) {
+    return false; // values do not match
+  }
+
+  if (_storeValues != other._storeValues) {
     return false; // values do not match
   }
 
@@ -267,6 +276,41 @@ bool IResearchLinkMeta::init(
     }
   }
 
+  {
+    // optional string enum
+    static const std::string fieldName("storeValues");
+
+    mask->_storeValues = slice.hasKey(fieldName);
+
+    if (!mask->_storeValues) {
+      _storeValues = defaults._storeValues;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!field.isString()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      static const std::unordered_map<std::string, ValueStorage> policies = {
+        { "none", ValueStorage::NONE },
+        { "id", ValueStorage::ID },
+        { "full", ValueStorage::FULL }
+      };
+      auto name = field.copyString();
+      auto itr = policies.find(name);
+
+      if (itr == policies.end()) {
+        errorField = fieldName + "=>" + name;
+
+        return false;
+      }
+
+      _storeValues = itr->second;
+    }
+  }
+
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
@@ -382,6 +426,27 @@ bool IResearchLinkMeta::json(
 
   if ((!ignoreEqual || _trackListPositions != ignoreEqual->_trackListPositions) && (!mask || mask->_trackListPositions)) {
     builder.add("trackListPositions", arangodb::velocypack::Value(_trackListPositions));
+  }
+
+  if ((!ignoreEqual || _storeValues != ignoreEqual->_storeValues) && (!mask || mask->_storeValues)) {
+    static_assert(adjacencyChecker<ValueStorage>::checkAdjacency<
+      ValueStorage::FULL, ValueStorage::ID, ValueStorage::NONE>(),
+      "Values are not adjacent"
+    );
+
+    static const std::string policies[] {
+      "none", // ValueStorage::NONE
+      "id", // ValueStorage::ID
+      "full" // ValueStorage::FULL
+    };
+
+    auto const policyIdx = static_cast<std::underlying_type<ValueStorage>::type>(_storeValues);
+
+    if (policyIdx >= IRESEARCH_COUNTOF(policies)) {
+      return false; // unsupported value storage policy
+    }
+
+    builder.add("storeValues", arangodb::velocypack::Value(policies[policyIdx]));
   }
 
   return true;

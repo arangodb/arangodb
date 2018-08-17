@@ -1,4 +1,4 @@
-shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - http://localhost:8529/_api/cursor &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'x-arango-async: store'</span> --data-binary @- --dump - http://localhost:8529/_api/cursor</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"query"</span> : <span class="hljs-string">"FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 &amp;&amp; j == 5 RETURN 42"</span> 
 }
@@ -6,19 +6,19 @@ EOF
 
 HTTP/1.1 202 Accepted
 x-content-type-options: nosniff
-x-arango-async-id: 153130265990879
+x-arango-async-id: 129199
 content-type: text/plain; charset=utf-8
 
-shell> curl --dump - http://localhost:8529/_api/job/pending
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/job/pending</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"153130265990879"</span> 
+  <span class="hljs-string">"129199"</span> 
 ]
-shell> curl -X PUT --dump - http://localhost:8529/_api/job/153130265990879/cancel
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --dump - http://localhost:8529/_api/job/129199/cancel</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -27,12 +27,12 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : <span class="hljs-literal">true</span> 
 }
-shell> curl --dump - http://localhost:8529/_api/job/pending
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/job/pending</span>
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"153130265990879"</span> 
+  <span class="hljs-string">"129199"</span> 
 ]

@@ -55,7 +55,6 @@ enum AstNodeFlagType : AstNodeFlagsType {
   DETERMINED_SORTED =            0x0000001,  // node is a list and its members are sorted asc.
   DETERMINED_CONSTANT =          0x0000002,  // node value is constant (i.e. not dynamic)
   DETERMINED_SIMPLE =            0x0000004,  // node value is simple (i.e. for use in a simple expression)
-  DETERMINED_THROWS =            0x0000008,  // node can throw an exception
   DETERMINED_NONDETERMINISTIC =  0x0000010,  // node produces non-deterministic result (e.g. function call nodes)
   DETERMINED_RUNONDBSERVER =     0x0000020,  // node can run on the DB server in a cluster setup
   DETERMINED_CHECKUNIQUENESS =   0x0000040,  // object's keys must be checked for uniqueness
@@ -64,7 +63,6 @@ enum AstNodeFlagType : AstNodeFlagsType {
   VALUE_SORTED =                 0x0000100,  // node is a list and its members are sorted asc.
   VALUE_CONSTANT =               0x0000200,  // node value is constant (i.e. not dynamic)
   VALUE_SIMPLE =                 0x0000400,  // node value is simple (i.e. for use in a simple expression)
-  VALUE_THROWS =                 0x0000800,  // node can throw an exception
   VALUE_NONDETERMINISTIC =       0x0001000,  // node produces non-deterministic result (e.g. function call nodes)
   VALUE_RUNONDBSERVER =          0x0002000,  // node can run on the DB server in a cluster setup
   VALUE_CHECKUNIQUENESS =        0x0004000,  // object's keys must be checked for uniqueness
@@ -476,10 +474,6 @@ struct AstNode {
   /// @brief whether or not a node is an array comparison operator
   bool isArrayComparisonOperator() const;
 
-  /// @brief whether or not a node (and its subnodes) may throw a runtime
-  /// exception
-  bool canThrow() const;
-
   /// @brief whether or not a node (and its subnodes) can safely be executed on
   /// a DB server
   bool canRunOnDBServer() const;
@@ -550,6 +544,12 @@ struct AstNode {
   inline void removeMemberUnchecked(size_t i) {
     TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.erase(members.begin() + i);
+  }
+  
+  /// @brief remove all members from the node at once
+  void removeMembers() {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    members.clear();
   }
 
   /// @brief return a member of the node

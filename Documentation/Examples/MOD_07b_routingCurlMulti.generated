@@ -1,11 +1,11 @@
-shell> curl --dump - http://localhost:8529/url2
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/url2</span>
 
 HTTP/1.1 200 OK
 content-type: text/plain
 x-content-type-options: nosniff
 
 "route 2"
-shell> curl --dump - http://localhost:8529/url3
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/url3</span>
 
 HTTP/1.1 200 OK
 content-type: text/plain

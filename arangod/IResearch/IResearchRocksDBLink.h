@@ -54,6 +54,10 @@ class IResearchRocksDBLink final
     writeRocksWalMarker();
     return IResearchLink::drop();
   }
+    
+  virtual void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -86,7 +90,7 @@ class IResearchRocksDBLink final
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -142,7 +146,7 @@ class IResearchRocksDBLink final
   void writeRocksWalMarker();
   IResearchRocksDBLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 };
 

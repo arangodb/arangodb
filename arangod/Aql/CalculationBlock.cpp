@@ -117,7 +117,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->emplaceValue(i, _outReg, arangodb::basics::VelocyPackHelper::NullValue());
+        result->emplaceValue(i, _outReg, arangodb::velocypack::Slice::nullSlice());
         continue;
       }
     }

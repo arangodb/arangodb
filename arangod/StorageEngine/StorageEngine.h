@@ -70,7 +70,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // create the storage engine
   StorageEngine(
-      application_features::ApplicationServer* server,
+      application_features::ApplicationServer& server,
       std::string const& engineName,
       std::string const& featureName,
       std::unique_ptr<IndexFactory>&& indexFactory
@@ -325,9 +325,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // property changes and throw only then, so that subsequent operations will not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeView" returns
-  virtual void changeView(
+  virtual arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
   ) = 0;
@@ -341,7 +340,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // and throw only then, so that subsequent view creation requests will not fail.
   // the WAL entry for the view creation will be written *after* the call
   // to "createCview" returns
-  virtual void createView(
+  virtual arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -353,20 +352,6 @@ class StorageEngine : public application_features::ApplicationFeature {
      TRI_vocbase_t& vocbase,
      LogicalView const& view,
      VPackBuilder& builder
-  ) = 0;
-
-  // asks the storage engine to persist the view.
-  // After this call the view is persisted over recovery.
-  virtual arangodb::Result persistView(
-      TRI_vocbase_t& vocbase,
-      arangodb::LogicalView const& view
-  ) = 0;
-
-  // asks the storage engine to persist renaming of a view
-  virtual arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
   ) = 0;
 
   // asks the storage engine to drop the specified view and persist the
@@ -412,9 +397,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // AQL functions
   // -------------
-
-  /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() {}
 
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules() {}

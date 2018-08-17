@@ -24,15 +24,17 @@
 // / @author Michael Hackstein
 // //////////////////////////////////////////////////////////////////////////////
 
-const expect = require('chai').expect;
+const chai = require('chai');
+const expect = chai.expect;
+chai.Assertion.addProperty('does', function () { return this; });
 
 const arangodb = require('@arangodb');
 const request = require('@arangodb/request');
 
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
-const wait = require('internal').wait;
-const extend = require('lodash').extend;
+const internal = require('internal');
+const wait = internal.wait;
 
 describe('_api/gharial', () => {
 
@@ -312,6 +314,298 @@ describe('_api/gharial', () => {
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - invalid from', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'peter',
+      _to: 'persons/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - invalid to', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/peter',
+      _to: 'charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - invalid from and to attributes', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'peter',
+      _to: 'charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing from and to attributes', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if incident edges are deleted with a vertex', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    // vertices
+    const alice = 'alice';
+    const bob = 'bob';
+    const eve = 'eve';
+
+    expect(db._collection(eName)).to.be.null;
+    expect(db._collection(vName)).to.be.null;
+    // load graph
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    // pre-check that the expected edges are there
+    expect(db[eName].all().toArray().length).to.equal(5);
+
+    // delete vertex bob
+    const res = request.delete(
+      `${url}/${exampleGraphName}/vertex/${vName}/${bob}`
+    );
+
+    // check response
+    expect(res).to.be.an.instanceof(request.Response);
+    expect(res.body).to.be.a('string');
+    const body = JSON.parse(res.body);
+    // 202 without waitForSync (default)
+    expect(body).to.eql({
+      error: false,
+      code: 202,
+      removed: true
+    });
+
+    // check that all edges incident to bob were removed as well
+    expect(db[eName].all().toArray().length).to.equal(1);
+
+    // check that the remaining edge is the expected one
+    const eveKnowsAlice = db[eName].all().toArray()[0];
+    expect(eveKnowsAlice).to.have.all.keys(
+      ['_key', '_id', '_rev', '_from', '_to', 'vertex']
+    );
+    expect(eveKnowsAlice).to.include({
+      _from: `${vName}/${eve}`,
+      _to: `${vName}/${alice}`,
+      vertex: eve
+    });
+  });
+
+  it('should check that non-graph incident edges are not deleted with a' +
+    ' vertex', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    // vertices
+    const alice = 'alice';
+    const bob = 'bob';
+    const charlie = 'charlie';
+    const dave = 'dave';
+    const eve = 'eve';
+
+    expect(db._collection(eName)).to.be.null;
+    expect(db._collection(vName)).to.be.null;
+    // load graph
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const ngEdges = db._create(eColName);
+    ngEdges.insert({
+      _from: `${vName}/${bob}`,
+      _to: `${vName}/${charlie}`,
+      name: 'bob->charlie'
+    });
+    ngEdges.insert({
+      _from: `${vName}/${dave}`,
+      _to: `${vName}/${bob}`,
+      name: 'dave->bob'
+    });
+
+    // pre-check that the expected edges are there
+    expect(db[eName].all().toArray().length).to.equal(5);
+
+    // delete vertex bob
+    const res = request.delete(
+      `${url}/${exampleGraphName}/vertex/${vName}/${bob}`
+    );
+
+    // check response
+    expect(res).to.be.an.instanceof(request.Response);
+    expect(res.body).to.be.a('string');
+    const body = JSON.parse(res.body);
+    // 202 without waitForSync (default)
+    expect(body).to.eql({
+      error: false,
+      code: 202,
+      removed: true
+    });
+
+    // check that the edges outside of g are still there
+    let remainingEdges = ngEdges.all().toArray();
+    expect(remainingEdges.length).to.equal(2);
+    expect(remainingEdges.map(x => x.name))
+      .to.have.members(['bob->charlie', 'dave->bob']);
+  });
+
+  // TODO deleting a vertex via the graph api should probably delete all
+  // edges that are in any graph's edge collection, not only the "current"
+  // graph. Decide this and write a test.
+
+  it('should check that edges can be replaced', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const e = db.knows.any();
+
+    const newEdge = Object.assign({}, e);
+    newEdge.newAttribute = 'new value';
+
+    const res = request.put(
+      `${url}/${exampleGraphName}/edge/${eName}/${e._key}`,
+      {body: JSON.stringify(newEdge)}
+    );
+
+    // 202 without waitForSync (default)
+    expect(res.statusCode).to.equal(202);
+    expect(res.json.code).to.equal(202);
+    expect(res.json.error).to.equal(false);
+    expect(res.json.edge._key).to.equal(e._key);
+
+    expect(db.knows.document(e._key))
+      .to.be.an('object')
+      .that.has.property('newAttribute')
+      .which.equals('new value');
+  });
+
+  it('should check that edges can NOT be replaced if their _from or _to' +
+    ' attribute is missing', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const e = db.knows.any();
+
+    let newEdge;
+    let newEdges = {};
+    newEdge = newEdges['_from missing'] = Object.assign({new: "new"}, e);
+    delete newEdge._from;
+    newEdge = newEdges['_to missing'] = Object.assign({new: "new"}, e);
+    delete newEdge._to;
+    newEdge = newEdges['_from and _to missing'] = Object.assign({new: "new"}, e);
+    delete newEdge._from;
+    delete newEdge._to;
+
+
+    for (let key in newEdges) {
+      if (!newEdges.hasOwnProperty(key)) {
+        continue;
+      }
+      const description = key;
+      const newEdge = newEdges[key];
+
+      const res = request.put(
+        `${url}/${exampleGraphName}/edge/${eName}/${e._key}`,
+        {body: JSON.stringify(newEdge)}
+      );
+
+      expect(res.statusCode, description).to.equal(400);
+      expect(res.json.errorNum, description)
+        .to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+    }
+
+    expect(db.knows.document(e._key))
+      .to.be.an('object')
+      .that.does.not.have.property('new');
+
   });
 
 });

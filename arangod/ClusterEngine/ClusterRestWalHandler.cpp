@@ -80,7 +80,7 @@ RestStatus ClusterRestWalHandler::execute() {
 void ClusterRestWalHandler::properties() {
   // not supported on rocksdb
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED,
-                 basics::VelocyPackHelper::EmptyObjectValue());
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void ClusterRestWalHandler::flush() {
@@ -151,7 +151,7 @@ void ClusterRestWalHandler::flush() {
     THROW_ARANGO_EXCEPTION(res);
   }
   generateResult(rest::ResponseCode::OK,
-                 basics::VelocyPackHelper::EmptyObjectValue());
+                 arangodb::velocypack::Slice::emptyObjectSlice());
 }
 
 void ClusterRestWalHandler::transactions() {

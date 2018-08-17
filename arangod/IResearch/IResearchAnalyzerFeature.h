@@ -56,7 +56,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
   // thread-safe analyzer pool
   class AnalyzerPool: private irs::util::noncopyable {
    public:
-    DECLARE_SPTR(AnalyzerPool);
+    typedef std::shared_ptr<AnalyzerPool> ptr;
     irs::flags const& features() const noexcept;
     irs::analysis::analyzer::ptr get() const noexcept; // nullptr == error creating analyzer
     std::string const& name() const noexcept;
@@ -82,19 +82,20 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     bool init(
       irs::string_ref const& type,
       irs::string_ref const& properties,
-      irs::flags const& additionalFeatures = irs::flags::empty_instance()
+      irs::flags const& features = irs::flags::empty_instance()
    );
     void setKey(irs::string_ref const& type);
   };
 
   explicit IResearchAnalyzerFeature(
-    application_features::ApplicationServer* server
+    arangodb::application_features::ApplicationServer& server
   );
 
   std::pair<AnalyzerPool::ptr, bool> emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
-    irs::string_ref const& properties
+    irs::string_ref const& properties,
+    irs::flags const& features = irs::flags::empty_instance()
   ) noexcept;
   AnalyzerPool::ptr ensure(irs::string_ref const& name); // before start() returns pool placeholder, during start() all placeholders are initialized, after start() returns same as get(...)
   size_t erase(irs::string_ref const& name) noexcept;
@@ -119,7 +120,8 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     irs::string_ref const& name,
     irs::string_ref const& type,
     irs::string_ref const& properties,
-    bool initAndPersist
+    bool initAndPersist,
+    irs::flags const& features = irs::flags::empty_instance()
   ) noexcept;
 
   static Analyzers const& getStaticAnalyzers();

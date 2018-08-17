@@ -96,14 +96,14 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
       _cache(std::move(cache)),
-      _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()),
+      _builderIterator(arangodb::velocypack::Slice::emptyArraySlice()),
       _lastKey(VPackSlice::nullSlice()) {
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
 
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the options
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.fill_cache = EdgeIndexFillBlockCache;
   _iterator = mthds->NewIterator(options, index->columnFamily());
 }
@@ -122,7 +122,7 @@ void RocksDBEdgeIndexIterator::reset() {
   _keysIterator.reset();
   _lastKey = VPackSlice::nullSlice();
   _builderIterator =
-      VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+      VPackArrayIterator(arangodb::velocypack::Slice::emptyArraySlice());
 }
     
 // returns true if we have one more key for the index lookup.
@@ -218,7 +218,7 @@ bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
               _builderIterator.next();
             }
             _builderIterator = VPackArrayIterator(
-                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+                arangodb::velocypack::Slice::emptyArraySlice());
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
@@ -313,7 +313,7 @@ bool RocksDBEdgeIndexIterator::nextCovering(DocumentCallback const& cb, size_t l
               _builderIterator.next();
             }
             _builderIterator = VPackArrayIterator(
-                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+                arangodb::velocypack::Slice::emptyArraySlice());
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
@@ -420,7 +420,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
               limit--;
             }
             _builderIterator = VPackArrayIterator(
-                arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+                arangodb::velocypack::Slice::emptyArraySlice());
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
@@ -514,10 +514,12 @@ uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
   return static_cast<uint64_t>(hasher(tmp));
 }
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
-                                   arangodb::LogicalCollection* collection,
-                                   VPackSlice const& info,
-                                   std::string const& attr)
+RocksDBEdgeIndex::RocksDBEdgeIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& attr
+)
     : RocksDBIndex(iid, collection, std::vector<std::vector<AttributeName>>(
                                         {{AttributeName(attr, false)}}),
                    false, false, RocksDBColumnFamily::edge(),
@@ -598,7 +600,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(trx)->trackIndexInsert(
-      _collection->id(), id(), hash
+      _collection.id(), id(), hash
     );
 
     return IndexResult();
@@ -632,7 +634,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(trx)->trackIndexRemove(
-      _collection->id(), id(), hash
+      _collection.id(), id(), hash
     );
 
     return IndexResult();
@@ -715,13 +717,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx, this);
     }
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx, this);
 }
 
 /// @brief specializes the condition for use with the index
@@ -788,9 +790,9 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   }
 
   // try to find the right bounds
-  rocksdb::ReadOptions ro = mthds->readOptions();
-  ro.prefix_same_as_start = false;
-  ro.total_order_seek = true;
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+  ro.prefix_same_as_start = false; // key-prefix includes edge (i.e. "collection/vertex")
+  ro.total_order_seek = true; // otherwise full-index-scan does not work
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
 
@@ -850,7 +852,6 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto rocksColl = toRocksDBCollection(_collection);
-  ManagedDocumentResult mmdr;
   bool needsInsert = false;
   std::string previous = "";
   VPackBuilder builder;
@@ -858,10 +859,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   // intentional copy of the read options
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::Slice const end = upper;
-  rocksdb::ReadOptions options = mthds->readOptions();
+  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
-  options.prefix_same_as_start = false;
-  options.total_order_seek = true;
+  options.prefix_same_as_start = false; // key-prefix includes edge
+  options.total_order_seek = true; // otherwise full-index-scan does not work
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
   std::unique_ptr<rocksdb::Iterator> it(
@@ -942,17 +943,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (rocksColl->readDocument(trx, docId, mmdr)) {
+      if (!rocksColl->readDocumentWithCallback(trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
         builder.add(VPackValue(docId.id()));
-
-        VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =
             _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
                          : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
+      })) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      } else {
         // Data Inconsistency.
         // We have a revision id without a document...
         TRI_ASSERT(false);
@@ -1007,7 +1006,9 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexIterator(
+    &_collection, trx, this, std::move(keys), _cache
+  );
 }
 
 /// @brief create the iterator
@@ -1033,7 +1034,9 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexIterator(
+    &_collection, trx, this, std::move(keys), _cache
+  );
 }
 
 /// @brief add a single value node to the iterator's keys
@@ -1078,7 +1081,14 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   return true;
 }
 
+void RocksDBEdgeIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
+  RocksDBIndex::afterTruncate();
+}
+
 void RocksDBEdgeIndex::recalculateEstimates() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
@@ -1086,10 +1096,10 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   rocksdb::Slice const end = bounds.end();
   rocksdb::ReadOptions options;
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
-  options.prefix_same_as_start = false;
-  options.total_order_seek = true;
+  options.prefix_same_as_start = false;  // key-prefix includes edge
+  options.total_order_seek = true; // otherwise full scan fails
   options.verify_checksums = false;
-  options.fill_cache = EdgeIndexFillBlockCache;
+  options.fill_cache = false;
   std::unique_ptr<rocksdb::Iterator> it(
       rocksutils::globalRocksDB()->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {

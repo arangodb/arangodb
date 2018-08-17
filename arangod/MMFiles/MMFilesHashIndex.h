@@ -54,11 +54,11 @@ struct MMFilesHashIndexHelper {
   MMFilesHashIndexHelper(size_t n, bool allowExpansion)
     : _numFields(n), _allowExpansion(allowExpansion) {}
 
-  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+  static inline uint64_t HashKey(VPackSlice const* key) {
     return MMFilesHashIndexElement::hash(*key);
   }
 
-  static inline uint64_t HashElement(void*, MMFilesHashIndexElement const* element, bool byKey) {
+  static inline uint64_t HashElement(MMFilesHashIndexElement const* element, bool byKey) {
     uint64_t hash = element->hash();
 
     if (byKey) {
@@ -235,12 +235,14 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
  public:
   MMFilesHashIndex() = delete;
 
-  MMFilesHashIndex(TRI_idx_iid_t, LogicalCollection*,
-                   arangodb::velocypack::Slice const&);
+  MMFilesHashIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesHashIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
 
   char const* typeName() const override { return "hash"; }

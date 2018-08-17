@@ -30,9 +30,6 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-double VocbaseContext::ServerSessionTtl =
-    60.0 * 60.0 * 24 * 60;  // 2 month session timeout
-
 VocbaseContext::VocbaseContext(
     GeneralRequest& req,
     TRI_vocbase_t& vocbase,

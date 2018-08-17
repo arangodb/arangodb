@@ -81,7 +81,7 @@ arangodb::Result createLink(
     arangodb::velocypack::Value(IResearchLinkHelper::type())
   );
   builder.add(
-    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.guid())
   );
 
   if (!mergeSliceSkipKeys(builder, link, acceptor)) {
@@ -268,14 +268,6 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackDetailed(
     );
   }
 
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
-  auto closePropertiesField = // close StaticStrings::PropertiesField
-    irs::make_finally([&builder]()->void { builder.close(); });
-
   if (!_meta.json(builder)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
@@ -349,9 +341,7 @@ bool IResearchViewCoordinator::emplace(
   auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
-  auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  auto props = json.get(StaticStrings::PropertiesField);
-  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
+  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
   if (!view->_meta.init(properties, error)) {
@@ -431,7 +421,7 @@ bool IResearchViewCoordinator::visitCollections(
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(
-    velocypack::Slice const& properties,
+    velocypack::Slice const& slice,
     bool partialUpdate,
     bool /*doSync*/
 ) {
@@ -443,9 +433,12 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       ? _meta
       : IResearchViewMeta::DEFAULT();
 
-    if (!meta.init(properties, error, defaults)) {
+    if (!meta.init(slice, error, defaults)) {
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
+
+    // reset non-updatable values to match current meta
+    meta._locale = _meta._locale;
 
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {
@@ -461,18 +454,13 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-        builder.add(
-          StaticStrings::PropertiesField,
-          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-        );
-          meta.json(builder);
-        builder.close(); // close PROPERTIES_FIELD
+      meta.json(builder);
 
-        auto result = toVelocyPack(builder, false, true);
+      auto result = toVelocyPack(builder, false, true);
 
-        if (!result.ok()) {
-          return result;
-        }
+      if (!result.ok()) {
+        return result;
+      }
 
       builder.close();
       result = engine->setViewPropertiesCoordinator(
@@ -484,7 +472,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       }
     }
 
-    if (!properties.hasKey(StaticStrings::LinksField)) {
+    if (!slice.hasKey(StaticStrings::LinksField) && partialUpdate) {
       return arangodb::Result(); // nothing more to do
     }
 
@@ -514,11 +502,15 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     arangodb::velocypack::Builder viewNewProperties;
     bool modified = false;
     std::unordered_set<TRI_voc_cid_t> newCids;
+    auto links = slice.hasKey(StaticStrings::LinksField)
+               ? slice.get(StaticStrings::LinksField)
+               : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
+
 
     viewNewProperties.openObject();
 
     return updateLinks(
-      properties.get(StaticStrings::LinksField),
+      links,
       currentLinks.slice(),
       *this,
       partialUpdate,
@@ -527,10 +519,20 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       viewNewProperties,
       newCids
     );
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, iresearch::TOPIC)
+      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      e.code(),
+      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
@@ -539,6 +541,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "'";
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
@@ -570,7 +573,10 @@ Result IResearchViewCoordinator::drop() {
     );
 
     if (!res.ok()) {
-      return res;
+      return arangodb::Result(
+        res.errorNumber(),
+        std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+      );
     }
   }
 

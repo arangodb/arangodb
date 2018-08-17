@@ -90,7 +90,8 @@ class V8GcThread : public Thread {
 }
 
 V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -165,7 +166,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addHiddenOption(
       "--javascript.enabled",
-      "enable or disable the V8 JS engine entirely",
+      "enable the V8 JavaScript engine",
       new BooleanParameter(&_enableJS));
 }
 

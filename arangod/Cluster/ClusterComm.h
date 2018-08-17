@@ -176,6 +176,8 @@ struct ClusterCommResult {
   ServerID serverID;     // the actual server ID of the recipient, can be empty
   std::string endpoint;  // the actual endpoint of the recipient, always set
   std::string errorMessage;
+  // error code as returned by the other side in "errorNum" attribute
+  int errorCode;
   ClusterCommOpStatus status;
   bool dropped;  // this is set to true, if the operation
                  // is dropped whilst in state CL_COMM_SENDING
@@ -205,6 +207,7 @@ struct ClusterCommResult {
   ClusterCommResult()
       : coordTransactionID(0),
         operationID(0),
+        errorCode(TRI_ERROR_NO_ERROR),
         status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
@@ -228,6 +231,7 @@ struct ClusterCommResult {
 
   void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
     errorMessage = TRI_errno_string(errorCode);
+    this->errorCode = errorCode;
     switch (errorCode) {
       case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
@@ -254,6 +258,7 @@ struct ClusterCommResult {
 
   void fromResponse(std::unique_ptr<GeneralResponse> response) {
     sendWasComplete = true;
+    errorCode = TRI_ERROR_NO_ERROR;
     // mop: simulate the old behaviour where the original request
     // was sent to the recipient and was simply accepted. Then the backend would
     // do its work and send a request to the target containing the result of
@@ -288,6 +293,15 @@ struct ClusterCommResult {
     // result was available in different status code situations :S
     if (single) {
       status = result->wasHttpError() ? CL_COMM_ERROR : CL_COMM_SENT;
+      if (status == CL_COMM_ERROR) {
+        try {
+          auto body = result->getBodyVelocyPack(VPackOptions());
+          if (body->slice().isObject() && body->slice().hasKey("errorMessage")) {
+            errorMessage = body->slice().get("errorMessage").copyString();
+            errorCode = body->slice().get("errorNum").getNumber<int>();
+          }
+        } catch (...) {}
+      }
     } else {
       // mop: actually it will never be an ERROR here...this is and was a dirty
       // hack :S
