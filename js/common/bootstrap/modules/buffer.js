@@ -261,13 +261,13 @@ global.DEFINE_MODULE('buffer', (function () {
   }
 
   Buffer.prototype._PRINT = function (context) {
-    context.output += '<Buffer'
+    context.output += '<Buffer';
     for (let i = 0; i < Math.min(this.length, 50); i++) {
       context.output += ' ';
       context.output += this.parent.hexSlice(i, i + 1);
     }
     if (this.length > 50) {
-      context.output += '... '
+      context.output += '... ';
     }
     context.output += '>';
   };
