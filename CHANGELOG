@@ -13,6 +13,9 @@ v3.3.15 (XXXX-XX-XX)
 * Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
   on VMs with limited disk throughput
 
+* backport pull request 6150: establish unique function to indicate when
+  application is terminating and therefore network retries should not occur
+
 
 v3.3.14 (2018-08-15)
 --------------------
@@ -29,11 +32,11 @@ v3.3.14 (2018-08-15)
 
 * fixed internal issue #2566: corrected web UI alignment of the nodes table
 
-* fixed internal issue #2869: when attaching a follower with global applier to an 
-  authenticated leader already existing users have not been replicated, all users 
+* fixed internal issue #2869: when attaching a follower with global applier to an
+  authenticated leader already existing users have not been replicated, all users
   created/modified later are replicated.
 
-* fixed internal issue #2865: dumping from an authenticated arangodb the users have 
+* fixed internal issue #2865: dumping from an authenticated arangodb the users have
   not been included
 
 * fixed issue #5943: misplaced database ui icon and wrong cursor type were used
@@ -52,8 +55,8 @@ v3.3.14 (2018-08-15)
 
 * fixed internal issue #2812: Cluster fails to create many indexes in parallel
 
-* intermediate commits in the RocksDB engine are now only enabled in standalone AQL 
-  queries (not within a JS transaction), standalone truncate as well as for the 
+* intermediate commits in the RocksDB engine are now only enabled in standalone AQL
+  queries (not within a JS transaction), standalone truncate as well as for the
   "import" API
 
 * Bug fix: race condition could request data from Agency registry that did not

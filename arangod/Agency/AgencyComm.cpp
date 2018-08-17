@@ -1359,7 +1359,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
     auto serverFeature =
         application_features::ApplicationServer::getFeature<ServerFeature>(
         "Server");
-    if (serverFeature->isStopping()) {
+    if (serverFeature->isStopping()
+        || !application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Unsuccessful AgencyComm: Timeout because of shutdown "
         << "errorCode: " << result.errorCode()
