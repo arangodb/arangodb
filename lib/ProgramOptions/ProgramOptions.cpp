@@ -122,7 +122,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
   builder.openObject();
 
   walk(
-      [&builder, &exclude, &detailed](Section const&, Option const& option) {
+      [&builder, &exclude, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
         if (exclude.find(full) != exclude.end()) {
           // excluded option
@@ -139,6 +139,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           builder.add("description", VPackValue(option.description));
           builder.add("hidden", VPackValue(option.hidden));
           builder.add("type", VPackValue(option.parameter->name()));
+          builder.add("enterpriseOnly", VPackValue(section.enterpriseOnly || option.enterpriseOnly));
           std::string values = option.parameter->description();
           if (!values.empty()) {
             builder.add("values", VPackValue(values));

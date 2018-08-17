@@ -108,24 +108,38 @@ exports.sha1 = function (value) {
 // / @brief Generates a string of a given length containing numbers.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.genRandomNumbers = function (value) {
-  return internal.genRandomNumbers(value);
+exports.genRandomNumbers = function (length) {
+  return internal.genRandomNumbers(length);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Generates a string of a given length containing numbers and characters.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.genRandomAlphaNumbers = function (value) {
-  return internal.genRandomAlphaNumbers(value);
+exports.genRandomAlphaNumbers = function (length) {
+  return internal.genRandomAlphaNumbers(length);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Generates a string of a given length containing ASCII characters.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.genRandomSalt = function (value) {
-  return internal.genRandomSalt(value);
+exports.genRandomSalt = function (length) {
+  return internal.genRandomSalt(length);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Generates a buffer of a given length containing random bytes.
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.genRandomBytes = function (length = 0) {
+  const numBytes = Math.ceil(length / 4);
+  const buf = new Buffer(numBytes * 4);
+  buf.fill(0);
+  for (let i = 0; i < numBytes; i++) {
+    buf.writeInt32LE(exports.rand(), i * 4);
+  }
+  return buf.slice(0, length);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -142,6 +156,27 @@ exports.createNonce = function () {
 
 exports.checkAndMarkNonce = function (value) {
   return internal.checkAndMarkNonce(value);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Generates a UUID v4 string
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.uuidv4 = function () {
+  const bytes = exports.genRandomBytes(16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  return `${
+    bytes.hexSlice(0, 4)
+    }-${
+    bytes.hexSlice(4, 6)
+    }-${
+    bytes.hexSlice(6, 8)
+    }-${
+    bytes.hexSlice(8, 10)
+    }-${
+    bytes.hexSlice(10, bytes.length)
+    }`;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

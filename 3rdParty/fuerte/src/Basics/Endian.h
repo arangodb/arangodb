@@ -58,97 +58,97 @@ static constexpr bool isLittleEndian() {return false;}
 #pragma messsage("unsupported os or compiler")
 #endif
  
-template<typename T> inline void ByteSwap (T& t) {
+template<typename T> inline void ByteSwap(T& t) {
   uint8_t* ptr = (uint8_t*)(&t);
   size_t bytes = sizeof(T);
-  for(size_t i = 0; i < bytes/2; i ++ ) {
+  for(size_t i = 0; i < bytes / 2; i ++ ) {
     uint8_t swap = ptr[i];
-    ptr[i] = ptr[bytes-i-1];
-    ptr[bytes-i-1] = swap;
+    ptr[i] = ptr[bytes - i - 1];
+    ptr[bytes - i - 1] = swap;
   }
 }
 
 template<typename T, size_t size> struct EndianTraits;
 
-template<typename T> struct EndianTraits<T,2> {
+template<typename T> struct EndianTraits<T, 2> {
   typedef typename std::make_unsigned<T>::type type;
-  inline static type htole (type in) {
+  inline static type htole(type in) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt16(in);
 #elif __linux__
     return htole16(in);
 #elif _WIN32
-  if(!isLittleEndian()) {
-    ByteSwap(in);
-  }
-#endif
-    return in;
-  }
-  inline static type letoh (type in) {
-#ifdef __APPLE__
-    return OSSwapLittleToHostInt16(in);
-#elif __linux__
-    return le16toh(in);
-#elif _WIN32
-  if(!isLittleEndian()) {
-    ByteSwap(in);
-  }
-#endif
-    return in;
-  }
-  inline static type htobe (type in) {
-#ifdef __APPLE__
-    return OSSwapHostToBigInt16(in);
-#elif __linux__
-    return htobe16(in);
-#elif _WIN32
-  if(isLittleEndian()){
-    ByteSwap(in);
-  }
-#endif
-    return in;
-  }
-  inline static type betoh (type in) {
-#ifdef __APPLE__
-    return OSSwapBigToHostInt16(in);
-#elif __linux__
-    return be16toh(in);
-#elif _WIN32
-  if(isLittleEndian()) {
-    ByteSwap(in);
-  }
-#endif
-    return in;
-  }
-};
-
-template<typename T> struct EndianTraits<T,4> {
-  typedef typename std::make_unsigned<T>::type type;
-  inline static type htole (type in) {
-#ifdef __APPLE__
-    return OSSwapHostToLittleInt32(in);
-#elif __linux__
-    return htole32(in);
-#elif _WIN32
-  if(!isLittleEndian()) {
-    ByteSwap(in);
-  }
-#endif
-    return in;
-  }
-  inline static type letoh (type in) {
-#ifdef __APPLE__
-    return OSSwapLittleToHostInt32(in);
-#elif __linux__
-    return le32toh(in);
-#elif _WIN32
-    if(!isLittleEndian()) {
+    if (!isLittleEndian()) {
       ByteSwap(in);
     }
 #endif
     return in;
   }
-  inline static type htobe (type in) {
+  inline static type letoh(type in) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt16(in);
+#elif __linux__
+    return le16toh(in);
+#elif _WIN32
+    if (!isLittleEndian()) {
+      ByteSwap(in);
+    }
+#endif
+    return in;
+  }
+  inline static type htobe(type in) {
+#ifdef __APPLE__
+    return OSSwapHostToBigInt16(in);
+#elif __linux__
+    return htobe16(in);
+#elif _WIN32
+    if (isLittleEndian()) {
+      ByteSwap(in);
+    }
+#endif
+    return in;
+  }
+  inline static type betoh(type in) {
+#ifdef __APPLE__
+    return OSSwapBigToHostInt16(in);
+#elif __linux__
+    return be16toh(in);
+#elif _WIN32
+    if (isLittleEndian()) {
+      ByteSwap(in);
+    }
+#endif
+    return in;
+  }
+};
+
+template<typename T> struct EndianTraits<T, 4> {
+  typedef typename std::make_unsigned<T>::type type;
+  inline static type htole(type in) {
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt32(in);
+#elif __linux__
+    return htole32(in);
+#elif _WIN32
+    if (!isLittleEndian()) {
+      ByteSwap(in);
+    }
+#endif
+    return in;
+  }
+  inline static type letoh(type in) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt32(in);
+#elif __linux__
+    return le32toh(in);
+#elif _WIN32
+    if (!isLittleEndian()) {
+      ByteSwap(in);
+    }
+#endif
+    return in;
+  }
+  inline static type htobe(type in) {
 #ifdef __APPLE__
     return OSSwapHostToBigInt32(in);
 #elif __linux__
@@ -160,55 +160,55 @@ template<typename T> struct EndianTraits<T,4> {
 #endif
     return in;
   }
-  inline static type betoh (type in) {
+  inline static type betoh(type in) {
 #ifdef __APPLE__
     return OSSwapBigToHostInt32(in);
 #elif __linux__
     return be32toh(in);
 #elif _WIN32
-  if(isLittleEndian()) {
-    ByteSwap(in);
-  }
+    if (isLittleEndian()) {
+      ByteSwap(in);
+    }
 #endif
     return in;
   }
 };
 
-template<typename T> struct EndianTraits<T,8> {
+template<typename T> struct EndianTraits<T, 8> {
   typedef typename std::make_unsigned<T>::type type;
-  inline static type htole (type in) {
+  inline static type htole(type in) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt64(in);
 #elif __linux__
     return htole64(in);
 #elif _WIN32
-    if(!isLittleEndian()) {
+    if (!isLittleEndian()) {
       ByteSwap(in);
     }
 #endif
     return in;
   }
-  inline static type letoh (type in) {
+  inline static type letoh(type in) {
 #ifdef __APPLE__
     return OSSwapLittleToHostInt64(in);
 #elif __linux__
     return le64toh(in);
 #elif _WIN32
-    if(!isLittleEndian()) {
+    if (!isLittleEndian()) {
       ByteSwap(in);
     }
 #endif
     return in;
   }
-  inline static type htobe (type in) {
+  inline static type htobe(type in) {
 #ifdef __APPLE__
     return OSSwapHostToBigInt64(in);
 #elif __linux__
     return htobe64(in);
 #elif _WIN32
-  if(isLittleEndian()){
-    ByteSwap(in);
-  }
+    if (isLittleEndian()) {
+      ByteSwap(in);
+    }
 #endif
     return in;
   }

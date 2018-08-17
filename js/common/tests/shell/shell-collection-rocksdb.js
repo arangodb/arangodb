@@ -123,8 +123,7 @@ function CollectionSuiteErrorHandling () {
         // one char too long
         db._create("a1234567890123456789012345678901234567890123456789012345678901234");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -137,8 +136,7 @@ function CollectionSuiteErrorHandling () {
       try {
         db._create("1234");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -151,8 +149,7 @@ function CollectionSuiteErrorHandling () {
       try {
         db._create("_illegal");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -165,8 +162,7 @@ function CollectionSuiteErrorHandling () {
       try {
         db._create("");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -179,8 +175,7 @@ function CollectionSuiteErrorHandling () {
       try {
         db._create("12345");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -193,8 +188,7 @@ function CollectionSuiteErrorHandling () {
       try {
         var a = db._illegal;
         assertUndefined(a);
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(false);
       }
     },
@@ -207,8 +201,7 @@ function CollectionSuiteErrorHandling () {
       try {
         var a = db[""];
         assertUndefined(a);
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(false);
       }
     },
@@ -1099,7 +1092,6 @@ function CollectionDbSuite () {
     }
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: collection caches

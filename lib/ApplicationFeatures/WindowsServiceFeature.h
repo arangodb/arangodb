@@ -54,8 +54,8 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
   void shutDownBegins ();
   void shutDownComplete ();
   void shutDownFailure ();
-  void abortFailure();
-  static void abortService();
+  void abortFailure(uint16_t exitCode);
+  static void abortService(uint16_t exitCode);
 
  public:
   bool _installService = false;

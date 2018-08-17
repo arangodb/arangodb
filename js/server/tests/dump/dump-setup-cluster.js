@@ -233,9 +233,10 @@ function setupSatelliteCollections() {
       }
     } });
 
-    /*for (i = 0; i < 10000; ++i) {
-      c.save({ _key: "test" + i, value: i });
-    }*/
+    for (i = 0; i < 5000; ++i) {
+      c.save({ _key: "test" + i, value: i});
+    }
+    c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 
   setupSmartGraph();
