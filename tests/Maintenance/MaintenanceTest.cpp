@@ -737,7 +737,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   }
 
   
-  SECTION("Resign leadership") {
+/*  SECTION("Resign leadership") {
 
     plan = originalPlan;
     auto cid = collectionMap(plan).at("_system/bar");
@@ -751,6 +751,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
       for (auto const& shard : shards) {
         auto const& shname = shard.first;
         Slice servers = shard.second.toBuilder().slice();
+        servers.size
       }
       plan({"Collections","_system",cid,shards.begin().});
       
@@ -762,7 +763,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
     }
 
   }
-
+*/
 
 /*  SECTION("Diffing local and current") {
 
