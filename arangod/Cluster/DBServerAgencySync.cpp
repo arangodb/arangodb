@@ -76,13 +76,11 @@ Result getLocalCollections(VPackBuilder& collections) {
   
   VPackObjectBuilder c(&collections);
   for (auto const& database : Databases::list()) {
-    auto vocbase = dbfeature->lookupDatabase(database);
-    if (vocbase == nullptr) {
-      continue;
-    }
 
     try {
-      DatabaseGuard guard(*vocbase);      
+      DatabaseGuard guard(database);
+      auto vocbase = &guard.database();
+      
       collections.add(VPackValue(database));
       VPackObjectBuilder db(&collections);
       auto cols = vocbase->collections(false);
@@ -99,6 +97,7 @@ Result getLocalCollections(VPackBuilder& collections) {
         TRI_ERROR_INTERNAL,
         std::string("Failed to guard database ") +  database + ": " + e.what());
     }
+    
   }
   
   return Result();
@@ -164,42 +163,52 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "Failed to handle plan change: " << e.what();
   }
-  auto report = rb.slice();
-  auto phaseTwo = report.get("phaseTwo");
 
-  // Report to current
-  if (!phaseTwo.isEmptyObject()) {
+  if (rb.isClosed()) {
 
-    std::vector<AgencyOperation> operations;
-    for (auto const& ao : VPackObjectIterator(report.get("phaseTwo"))) {
-      auto const key = ao.key.copyString();
-      auto const op = ao.value.get("op").copyString();
-      if (op == "set") {
-        auto const value = ao.value.get("payload");
-        operations.push_back(
-          AgencyOperation(key, AgencyValueOperationType::SET, value));
-      } else if (op == "delete") {
-        operations.push_back(
-          AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
+    auto report = rb.slice();
+    if (report.isObject()) {
+    
+      if (report.hasKey("phaseTwo") && report.get("phaseTwo").isObject()) {
+      
+        auto phaseTwo = report.get("phaseTwo");
+      
+        // Report to current
+        if (!phaseTwo.isEmptyObject()) {
+        
+          std::vector<AgencyOperation> operations;
+          for (auto const& ao : VPackObjectIterator(report.get("phaseTwo"))) {
+            auto const key = ao.key.copyString();
+            auto const op = ao.value.get("op").copyString();
+            if (op == "set") {
+              auto const value = ao.value.get("payload");
+              operations.push_back(
+                AgencyOperation(key, AgencyValueOperationType::SET, value));
+            } else if (op == "delete") {
+              operations.push_back(
+                AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
+            }
+          }
+          operations.push_back(
+            AgencyOperation(
+              "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
+          AgencyWriteTransaction currentTransaction(operations);
+          AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
+          if (!r.successful()) {
+            LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
+          }
+        }
       }
-    }
-    operations.push_back(
-      AgencyOperation(
-        "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
-    AgencyWriteTransaction currentTransaction(operations);
-    AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
-    if (!r.successful()) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
+    
+      result = DBServerAgencySyncResult(
+        tmp.ok(),
+        report.hasKey("Plan") ?
+        report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
+        report.hasKey("Current") ?
+        report.get("Current").get("Version").getNumber<uint64_t>() : 0);
     }
   }
   
-  result = DBServerAgencySyncResult(
-    tmp.ok(),
-    report.hasKey("Plan") ?
-    report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
-    report.hasKey("Current") ?
-    report.get("Current").get("Version").getNumber<uint64_t>() : 0);
-
   auto took = duration<double>(clock::now()-start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
