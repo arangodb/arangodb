@@ -1,6 +1,8 @@
 v3.2.17 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5354: updated the ui json editor, improved usability
+
 * fixed issue #5648: fixed error message when saving unsupported document
   types
 
