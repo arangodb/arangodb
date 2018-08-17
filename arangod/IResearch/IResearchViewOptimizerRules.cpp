@@ -249,19 +249,21 @@ bool IResearchViewConditionHanlder::before(ExecutionNode* en) {
         *filterCondition.root()
       );
 
-      if (canUseView) {
-        node->filterCondition(filterCondition.root());
-        node->sortCondition(std::move(sortCondition));
-
-        TRI_IF_FAILURE("IResearchViewConditionFinder::insertViewNode") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        _processedViewNodes->insert(node);
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "filter clause "
-          "not yet supported with view");
+      if (!canUseView) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          "unsupported SEARCH condition"
+        );
       }
+
+      node->filterCondition(filterCondition.root());
+      node->sortCondition(std::move(sortCondition));
+
+      TRI_IF_FAILURE("IResearchViewConditionFinder::insertViewNode") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      _processedViewNodes->insert(node);
 
       break;
     }
