@@ -96,9 +96,11 @@ bool EnsureIndex::first() {
     
     auto col = vocbase->lookupCollection(collection);
     if (col == nullptr) {
-      std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
-      errorMsg += collection + " in database " + database;
-      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+      std::stringstream error;
+      error << "failed to lookup local collection " << collection
+            << " in database " + database;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
     

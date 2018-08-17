@@ -84,6 +84,7 @@ bool CreateDatabase::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+    return false;
   }
 
   notify();

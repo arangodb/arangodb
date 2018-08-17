@@ -50,7 +50,6 @@ UpdateCollection::UpdateCollection(
   }
   TRI_ASSERT(desc.has(COLLECTION));
 
-
   if (!desc.has(DATABASE)) {
     error << "database must be specified. ";
   }
