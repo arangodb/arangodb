@@ -1,6 +1,8 @@
 v3.3.15 (XXXX-XX-XX)
 --------------------
 
+* bug fix: facilitate faster shutdown of coordinators and db servers
+
 * upgraded arangodb starter version to 0.13.2
 
 * cluster nodes should retry registering in agency until successful
@@ -53,6 +55,10 @@ v3.3.14 (2018-08-15)
 * intermediate commits in the RocksDB engine are now only enabled in standalone AQL 
   queries (not within a JS transaction), standalone truncate as well as for the 
   "import" API
+
+* Bug fix: race condition could request data from Agency registry that did not
+  exist yet.  This caused a throw that would end the Supervision thread.
+  All registry query APIs no longer throw exceptions.
 
 
 v3.3.13 (2018-07-26)
