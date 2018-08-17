@@ -676,7 +676,7 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
   // Plan also now has db3 =====================================================
   SECTION("Add one collection to local") {
 
-    VPackBuilder v; v.add(VPackValue(std::string()));
+    VPackBuilder v.add(VPackValue(std::string()));
 
     for (auto node : localNodes) {
 
@@ -691,9 +691,9 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       
-      //REQUIRE(actions.size() == 1);
+      REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
-        //REQUIRE(action.name() == "UpdateCollection");
+        REQUIRE(action.name() == "UpdateCollection");
       }
 
     }
