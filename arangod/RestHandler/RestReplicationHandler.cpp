@@ -1072,7 +1072,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
   if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
@@ -1852,13 +1852,6 @@ void RestReplicationHandler::handleCommandSync() {
   // will throw if invalid
   config.validate();
 
-  double waitForSyncTimeout = VelocyPackHelper::getNumericValue(body, "waitForSyncTimeout", 5.0);
-
-  // wait until all data in current logfile got synced
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  engine->waitForSyncTimeout(waitForSyncTimeout);
-
   TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
 
@@ -2524,8 +2517,6 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 void RestReplicationHandler::handleCommandLoggerState() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
-
-  engine->waitForSyncTimeout(10.0); // only for mmfiles
 
   VPackBuilder builder;
   auto res = engine->createLoggerState(&_vocbase, builder);

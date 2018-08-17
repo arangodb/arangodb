@@ -239,15 +239,34 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 // /////////////////////////////////////////////////////////////////////////////
 
 ArangoView.prototype.drop = function () {
-  var requestResult = this._database._connection.DELETE(this._baseurl());
+  var requestResult;
+  if (typeof options === 'object' && options.isSystem) {
+    requestResult = this._database._connection.DELETE(this._baseurl() + '?isSystem=true');
+  } else {
+    requestResult = this._database._connection.DELETE(this._baseurl());
+  }
 
   if (requestResult !== null
+    && requestResult !== undefined
     && requestResult.error === true
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "view not found"
     arangosh.checkRequestResult(requestResult);
-  } else {
-    this._database._unregisterView(this._name);
+  }
+
+  var database = this._database;
+  var name;
+
+  for (name in database) {
+    if (database.hasOwnProperty(name)) {
+      var view = database[name];
+
+      if (view instanceof ArangoView) {
+        if (view.name() === this.name()) {
+          delete database[name];
+        }
+      }
+    }
   }
 };
 
@@ -261,6 +280,7 @@ ArangoView.prototype.rename = function (name) {
 
   arangosh.checkRequestResult(requestResult);
 
-  this._database._renameView(this._name, name);
+  delete this._database[this._name];
+  this._database[name] = this;
   this._name = name;
 };

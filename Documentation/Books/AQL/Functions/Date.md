@@ -130,7 +130,6 @@ date components separately. All parameters after *day* are optional.
 
 - **year** (number): typically in the range 0..9999, e.g. *2017*
 - **month** (number): 1..12 for January through December
-  (unlike JavaScript, which uses the slightly confusing range 0..11)
 - **day** (number): 1..31 (upper bound depends on number of days in month)
 - **hour** (number, *optional*): 0..23
 - **minute** (number, *optional*): 0..59

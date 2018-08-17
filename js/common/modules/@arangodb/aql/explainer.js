@@ -979,9 +979,10 @@ function processQuery (query, explain) {
     } else {
       if (variable !== false) {
         idx.condition = variable;
-      } else {
-        idx.condition = '*'; // empty condition. this is likely an index used for sorting only
       }
+    }
+    if (idx.condition === '') {
+      idx.condition = '*'; // empty condition. this is likely an index used for sorting or scanning only
     }
     indexes.push(idx);
   };
