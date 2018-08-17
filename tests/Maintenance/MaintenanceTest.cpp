@@ -203,7 +203,7 @@ void createCollection(
 std::string S("s");
 std::string C("c");
 
-void createShards (
+void createPlanShards (
   size_t numberOfShards, size_t replicationFactor, VPackBuilder& col) {
   
   auto servers = shortNames;
@@ -231,10 +231,10 @@ void createPlanCollection(
 
   VPackBuilder tmp;
   { VPackObjectBuilder o(&tmp);
+    createCollection(colname, tmp);
     tmp.add("isSmart", VPackValue(false));
     tmp.add("deleted", VPackValue(false));
-    createCollection(colname, tmp);
-    createShards(numberOfShards, replicationFactor, tmp);}
+    createPlanShards(numberOfShards, replicationFactor, tmp);}
   
   Slice col = tmp.slice();
   auto id = col.get("id").copyString();
