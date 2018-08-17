@@ -49,7 +49,7 @@ VstConnection<ST>::VstConnection(
       _timeout(*_io_context),
       _state(Connection::State::Disconnected),
       _loopState(0),
-      _writeQueue(1024){}
+      _writeQueue(1024) {}
 
 template<SocketType ST>
 VstConnection<ST>::~VstConnection() {
@@ -74,8 +74,8 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   
   // Add item to send queue
   if (!_writeQueue.push(item.get())) {
-    FUERTE_LOG_ERROR << "connection queue capactiy exceeded\n";
-    throw std::length_error("connection queue capactiy exceeded");
+    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    throw std::length_error("connection queue capacity exceeded");
   }
   item.release();
   // WRITE_LOOP_ACTIVE, READ_LOOP_ACTIVE are synchronized via cmpxchg
@@ -103,7 +103,6 @@ void VstConnection<ST>::startConnection() {
     FUERTE_LOG_ERROR << "already resolving endpoint\n";
     return;
   }
-  
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
     if (ec) {
@@ -128,7 +127,8 @@ void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   try {
     _timeout.cancel();
   } catch (...) {
-    // cancel() may throw
+    // cancel() may throw, but we are not allowed to throw here
+    // as we may be called from the dtor
   }
   
   // Close socket

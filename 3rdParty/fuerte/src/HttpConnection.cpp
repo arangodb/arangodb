@@ -153,8 +153,8 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // Prepare a new request
   uint64_t id = item->_messageID;
   if (!_queue.push(item.get())) {
-    FUERTE_LOG_ERROR << "connection queue capactiy exceeded\n";
-    throw std::length_error("connection queue capactiy exceeded");
+    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    throw std::length_error("connection queue capacity exceeded");
   }
   item.release();
   _numQueued.fetch_add(1, std::memory_order_relaxed);
@@ -173,7 +173,6 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
 // Activate this connection.
 template <SocketType ST>
 void HttpConnection<ST>::startConnection() {
-  
   // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
@@ -201,13 +200,18 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
   
   _state.store(State::Disconnected, std::memory_order_release);
+     
+  // cancel timeouts
   try {
-    _timeout.cancel();    // cancel timeouts
+    _timeout.cancel();   
   } catch (...) {
     // cancel() may throw, but we are not allowed to throw here
     // as we may be called from the dtor
   }
-  _protocol.shutdown(); // Close socket
+
+  // Close socket
+  _protocol.shutdown(); 
+  
   _active.store(false); // no IO operations running
   
   RequestItem* item = nullptr;

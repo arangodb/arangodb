@@ -144,14 +144,11 @@ void V8ClientConnection::init(ClientFeature* client) {
   }
 }
 
-void V8ClientConnection::setInterrupted(bool interrupted) {
+void V8ClientConnection::setInterrupted() {
   if (_connection) {
-    if (interrupted) {
-      shutdownConnection(); 
-    } else {
-      if (_connection->state() == fuerte::Connection::State::Disconnected) {
-        _connection->startConnection();
-      }
+    _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
+    if (_connection->state() == fuerte::Connection::State::Disconnected) {
+      _connection->startConnection();
     }
   }
 }

@@ -58,7 +58,7 @@ class V8ClientConnection {
   ~V8ClientConnection();
 
  public:
-  void setInterrupted(bool value);
+  void setInterrupted();
   bool isConnected();
   
   void connect(ClientFeature*);
