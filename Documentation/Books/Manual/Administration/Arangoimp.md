@@ -13,7 +13,7 @@ attribute. When importing into an [edge collection](../Appendix/Glossary.md#edge
 imported documents have the *_from* and *_to* attributes, and that they contain
 valid references.
 
-Let's assume for the following examples you want to import user data into an 
+Let's assume for the following examples you want to import user data into an
 existing collection named "users" on the server.
 
 
@@ -40,7 +40,7 @@ This will transfer the data to the server, import the records, and print a
 status summary. To show the intermediate progress during the import process, the
 option *--progress* can be added. This option will show the percentage of the
 input file that has been sent to the server. This will only be useful for big
-import files. 
+import files.
 
     > arangoimp --file "data.json" --type json --collection users --progress true
 
@@ -50,7 +50,7 @@ process to arangoimp:
 
     > cat data.json | arangoimp --file - --type json --collection users
 
-Note that you have to use `--file -` if you want to use another command as input 
+Note that you have to use `--file -` if you want to use another command as input
 for arangoimp. No progress can be reported for such imports as the size of the input
 will be unknown to arangoimp.
 
@@ -78,9 +78,9 @@ When importing data into an existing collection it is often convenient to first
 remove all data from the collection and then start the import. This can be achieved
 by passing the *--overwrite* parameter to _arangoimp_. If it is set to *true*,
 any existing data in the collection will be removed prior to the import. Note
-that any existing index definitions for the collection will be preserved even if 
+that any existing index definitions for the collection will be preserved even if
 *--overwrite* is set to true.
-    
+
     > arangoimp --file "data.json" --type json --collection "users" --overwrite true
 
 As the import file already contains the data in JSON format, attribute names and
@@ -88,9 +88,9 @@ data types are fully preserved. As can be seen in the example data, there is no
 need for all data records to have the same attribute names or types. Records can
 be inhomogeneous.
 
-Please note that by default, _arangoimp_ will import data into the specified 
-collection in the default database (*_system*). To specify a different database, 
-use the *--server.database* option when invoking _arangoimp_. 
+Please note that by default, _arangoimp_ will import data into the specified
+collection in the default database (*_system*). To specify a different database,
+use the *--server.database* option when invoking _arangoimp_.
 
 The tool also supports parallel imports, with multiple threads. Using multiple
 threads may provide a speedup, especially when using the RocksDB storage engine.
@@ -106,7 +106,7 @@ this case, the number of threads should be set to 1.
 
 ### JSON input file formats
 
-**Note**: *arangoimp* supports two formats when importing JSON data from 
+**Note**: *arangoimp* supports two formats when importing JSON data from
 a file. The first format that we also used above is commonly known as [jsonl](http://jsonlines.org)).
 However, in contrast to the JSONL specification it requires the input file to contain
 one complete JSON document in each line, e.g.
@@ -135,7 +135,7 @@ An alternative is to put one big JSON document into the input file like this:
 ]
 ```
 
-This format allows line breaks within the input file as required. The downside 
+This format allows line breaks within the input file as required. The downside
 is that the whole input file will need to be read by _arangoimp_ before it can
 send the first batch. This might be a problem if the input file is big. By
 default, _arangoimp_ will allow importing such files up to a size of about 16 MB.
@@ -163,7 +163,7 @@ data records and will be imported.
 
 The CSV import requires the data to have a homogeneous structure. All records
 must have exactly the same amount of columns as there are headers. By default,
-lines with a different number of values will not be imported and there will be 
+lines with a different number of values will not be imported and there will be
 warnings for them. To still import lines with less values than in the header,
 there is the *--ignore-missing* option. If set to true, lines that have a
 different amount of fields will be imported. In this case only those attributes
@@ -209,11 +209,11 @@ The command line to execute the import is:
 The above data will be imported into 5 documents which will look as follows:
 
 ```js
-{ "first" : "John", "last" : "Connor", "active" : true, "age" : 25 } 
+{ "first" : "John", "last" : "Connor", "active" : true, "age" : 25 }
 { "first" : "Jim", "last" : "O'Brady", "age" : 19 }
-{ "first" : "Lisa", "last" : "Jones", "dob" : "1981-04-09" } 
-{ "first" : "Hans", "last" : "dos Santos", "age" : 123 } 
-{ "first" : "Wayne", "last" : "Brewer", "active" : false } 
+{ "first" : "Lisa", "last" : "Jones", "dob" : "1981-04-09" }
+{ "first" : "Hans", "last" : "dos Santos", "age" : 123 }
+{ "first" : "Wayne", "last" : "Brewer", "active" : false }
 ```
 
 As can be seen, values left completely empty in the input file will be treated
@@ -232,9 +232,9 @@ option is used).
 
 Note that the quote and separator characters can be adjusted via the
 *--quote* and *--separator* arguments when invoking _arangoimp_. The quote
-character defaults to the double quote (*"*). To use a literal quote in a 
-string, you can use two quote characters. 
-To use backslash for escaping quote characters, please set the option 
+character defaults to the double quote (*"*). To use a literal quote in a
+string, you can use two quote characters.
+To use backslash for escaping quote characters, please set the option
 *--backslash-escape* to *true*.
 
 The importer supports Windows (CRLF) and Unix (LF) line breaks. Line breaks might
@@ -251,8 +251,8 @@ multine password!"
 "Bartholomew ""Bart"" Simpson","Milhouse"
 ```
 
-Extra whitespace at the end of each line will be ignored. Whitespace at the 
-start of lines or between field values will not be ignored, so please make sure 
+Extra whitespace at the end of each line will be ignored. Whitespace at the
+start of lines or between field values will not be ignored, so please make sure
 that there is no extra whitespace in front of values or between them.
 
 
@@ -267,11 +267,11 @@ As with CSV, the first line in the TSV file must contain the attribute names,
 and all lines must have an identical number of values.
 
 If a different separator character or string should be used, it can be specified
-with the *--separator* argument. 
+with the *--separator* argument.
 
 An example command line to execute the TSV import is:
 
-    > arangoimp --file "data.tsv" --type tsv --collection "users" 
+    > arangoimp --file "data.tsv" --type tsv --collection "users"
 
 
 ### Attribute Name Translation
@@ -287,21 +287,21 @@ invoking arangoimp:
     > arangoimp --file "data.csv" --type csv --translate "id=_key"
 
 Other common cases are to rename columns in the input file to *_from* and *_to*:
-    
+
     > arangoimp --file "data.csv" --type csv --translate "from=_from" --translate "to=_to"
 
 The *translate* option can be specified multiple types. The source attribute name
 and the target attribute must be separated with a *=*.
 
 
-### Ignoring Attributes 
+### Ignoring Attributes
 
 
 For the CSV and TSV input formats, certain attribute names can be ignored on imports.
 In an ArangoDB cluster there are cases where this can come in handy,
 when your documents already contain a `_key` attribute
 and your collection has a sharding attribute other than `_key`: In the cluster this
-configuration is not supported, because ArangoDB needs to guarantee the uniqueness of the `_key` 
+configuration is not supported, because ArangoDB needs to guarantee the uniqueness of the `_key`
 attribute in *all* shards of the collection.
 
     > arangoimp --file "data.csv" --type csv --remove-attribute "_key"
@@ -316,7 +316,7 @@ The same thing would apply if your data contains an *_id* attribute:
 arangoimp can also be used to import data into an existing edge collection.
 The import data must, for each edge to import, contain at least the *_from* and
 *_to* attributes. These indicate which other two documents the edge should connect.
-It is necessary that these attributes are set for all records, and point to 
+It is necessary that these attributes are set for all records, and point to
 valid document ids in existing collections.
 
 *Examples*
@@ -325,8 +325,8 @@ valid document ids in existing collections.
 { "_from" : "users/1234", "_to" : "users/4321", "desc" : "1234 is connected to 4321" }
 ```
 
-**Note**: The edge collection must already exist when the import is started. Using 
-the *--create-collection* flag will not work because arangoimp will always try to 
+**Note**: The edge collection must already exist when the import is started. Using
+the *--create-collection* flag will not work because arangoimp will always try to
 create a regular document collection if the target collection does not exist.
 
 
@@ -351,22 +351,22 @@ Other possible values for *--on-duplicate* are:
 
 - *update*: each document present in the import file that is also present in the target
   collection already will be updated by arangoimp. *update* will perform a partial update
-  of the existing document, modifying only the attributes that are present in the import 
+  of the existing document, modifying only the attributes that are present in the import
   file and leaving all other attributes untouched.
-  
+
   The values of system attributes *_id*, *_key*, *_rev*, *_from* and *_to* cannot be
-  updated or replaced in existing documents. 
+  updated or replaced in existing documents.
 
 - *replace*: each document present in the import file that is also present in the target
   collection already will be replace by arangoimp. *replace* will replace the existing
   document entirely, resulting in a document with only the attributes specified in the import
-  file. 
-  
+  file.
+
   The values of system attributes *_id*, *_key*, *_rev*, *_from* and *_to* cannot be
-  updated or replaced in existing documents. 
+  updated or replaced in existing documents.
 
 - *ignore*: each document present in the import file that is also present in the target
-  collection already will be ignored and not modified in the target collection. 
+  collection already will be ignored and not modified in the target collection.
 
 When *--on-duplicate* is set to either *update* or *replace*, arangoimp will return the
 number of documents updated/replaced in the *updated* return value. When set to another
@@ -374,7 +374,7 @@ value, the value of *updated* will always be zero. When *--on-duplicate* is set 
 arangoimp will return the number of ignored documents in the *ignored* return value.
 When set to another value, *ignored* will always be zero.
 
-It is possible to perform a combination of inserts and updates/replaces with a single 
+It is possible to perform a combination of inserts and updates/replaces with a single
 arangoimp run. When *--on-duplicate* is set to *update* or *replace*, all documents present
 in the import file will be inserted into the target collection provided they are valid
 and do not already exist with the specified *_key*. Documents that are already present
@@ -387,10 +387,10 @@ An _arangoimp_ import run will print out the final results on the command line.
 It will show the
 
 * number of documents created (*created*)
-* number of documents updated/replaced (*updated/replaced*, only non-zero if 
-  *--on-duplicate* was set to *update* or *replace*, see below) 
+* number of documents updated/replaced (*updated/replaced*, only non-zero if
+  *--on-duplicate* was set to *update* or *replace*, see below)
 * number of warnings or errors that occurred on the server side (*warnings/errors*)
-* number of ignored documents (only non-zero if *--on-duplicate* was set to *ignore*). 
+* number of ignored documents (only non-zero if *--on-duplicate* was set to *ignore*).
 
 *Example*
 
@@ -404,18 +404,18 @@ ignored:          0
 For CSV and TSV imports, the total number of input file lines read will also be printed
 (*lines read*).
 
-_arangoimp_ will also print out details about warnings and errors that happened on the 
+_arangoimp_ will also print out details about warnings and errors that happened on the
 server-side (if any).
 
 
 ### Attribute Naming and Special Attributes
 
-Attributes whose names start with an underscore are treated in a special way by 
+Attributes whose names start with an underscore are treated in a special way by
 ArangoDB:
 
 - the optional *_key* attribute contains the document's key. If specified, the value
-  must be formally valid (e.g. must be a string and conform to the naming conventions). 
-  Additionally, the key value must be unique within the 
+  must be formally valid (e.g. must be a string and conform to the naming conventions).
+  Additionally, the key value must be unique within the
   collection the import is run for.
 - *_from*: when importing into an edge collection, this attribute contains the id
   of one of the documents connected by the edge. The value of *_from* must be a
@@ -424,7 +424,7 @@ ArangoDB:
   of the other document connected by the edge. The value of *_to* must be a
   syntactically valid document id and the referred collection must exist.
 - *_rev*: this attribute contains the revision number of a document. However, the
-  revision numbers are managed by ArangoDB and cannot be specified on import. Thus 
+  revision numbers are managed by ArangoDB and cannot be specified on import. Thus
   any value in this attribute is ignored on import.
 
 If you import values into *_key*, you should make sure they are valid and unique.
@@ -448,3 +448,40 @@ Importing the following document will then create an edge between *users/1234* a
 ```js
 { "_from" : "1234", "_to" : "4321", "desc" : "users/1234 is connected to products/4321" }
 ```
+
+### Automatic pacing with busy or low throughput disk subsystems
+
+Arangoimport has an automatic pacing algorithm that limits how fast
+data is sent to the ArangoDB servers.  This pacing algorithm exists to
+prevent the import operation from failing due to slow responses.
+
+Google Compute and other VM providers limit the throughput of disk
+devices. Google's limit is more strict for smaller disk rentals, than
+for larger. Specifically, a user could choose the smallest disk space
+and be limited to 3 Mbytes per second.  Similarly, other users'
+processes on the shared VM can limit available throughput of the disk
+devices.
+
+The automatic pacing algorithm adjusts the transmit block size
+dynamically based upon the actual throughput of the server over the
+last 20 seconds. Further, each thread delivers its portion of the data
+in mostly non-overlapping chunks. The thread timing creates
+intentional windows of non-import activity to allow the server extra
+time for meta operations.
+
+Automatic pacing intentionally does not use the full throughput of a
+disk device.  An unlimited (really fast) disk device might not need
+pacing. Raising the number of threads via the `--threads X` command
+line to any value of `X` greater than 2 will increase the total
+throughput used.
+
+Automatic pacing frees the user from adjusting the throughput used to
+match available resources.  It is disabled by manually specifying any
+`--batch-size`. 16777216 was the previous default for *--batch-size*.
+Having *--batch-size* too large can lead to transmitted data piling-up
+on the server, resulting in a TimeoutError.
+
+The pacing algorithm works successfully with MMFiles with disks
+limited to read and write throughput as small as 1 Mbyte per
+second. The algorithm works successfully with RocksDB with disks
+limited to read and write throughput as small as 3 Mbyte per second.

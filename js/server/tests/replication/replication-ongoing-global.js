@@ -63,6 +63,12 @@ const collectionCount = function(name) {
   return db._collection(name).count();
 };
 
+// Usage:
+// masterFunc apply changes on the master before replication
+// masterFunc2 apply changes on the master while replication is ongoing
+// slaveFuncOngoing function is executed while replication is still ongoing, if this returns "wait" it means
+//   it will be called again after a while, thereby we can wait until replication is synced up
+// slaveFuncFinal function is executed after FuncOngoing has decided we are done, for final validation.
 const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
   var state = {};
 
@@ -81,14 +87,14 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   applierConfiguration.endpoint = masterEndpoint;
   applierConfiguration.username = "root";
   applierConfiguration.password = "";
-  applierConfiguration.includeSystem = false;
+  applierConfiguration.includeSystem = applierConfiguration.includeSystem || false;
 
   var syncResult = replication.syncGlobal({
     endpoint: masterEndpoint,
     username: "root",
     password: "",
     verbose: true,
-    includeSystem: false,
+    includeSystem: applierConfiguration.includeSystem,
     keepBarrier: false,
     restrictType: applierConfiguration.restrictType,
     restrictCollections: applierConfiguration.restrictCollections
@@ -685,6 +691,52 @@ function ReplicationSuite() {
     db._drop(cn);
     db._drop(cn2);
     db._drop(cn + "Renamed");
+  };
+
+  suite.testSyncOfUsers = function() {
+    connectToMaster();
+
+    compare(
+      function(state) {
+        // Initially create a user which is unknown to the slave
+        let users = require("@arangodb/users");
+        users.save("alice","alice");
+        users.grantDatabase("alice", "_system", "rw");
+        users.grantCollection("alice", "_system", cn, "none");
+        internal.wal.flush(true, true);
+        // Just to validate everything is as expected
+        assertTrue(users.exists("alice"));
+        assertEqual("rw", users.permission("alice", "_system"));
+        assertEqual("none", users.permission("alice", "_system", cn));
+      },
+      function(state) {
+        let users = require("@arangodb/users");
+        users.save("bob","bob");
+        users.grantDatabase("bob", "_system", "ro");
+        users.grantCollection("bob", "_system", cn, "rw");
+        internal.wal.flush(true, true);
+        // Just to validate everything is as expected
+        assertTrue(users.exists("bob"));
+        assertEqual("ro", users.permission("bob", "_system"));
+        assertEqual("rw", users.permission("bob", "_system", cn));
+      },
+      function(state) {
+        return true;
+      },
+      function(state) {
+        let users = require("@arangodb/users");
+        assertTrue(users.exists("root"));
+        assertTrue(users.exists("bob"));
+        assertEqual("ro", users.permission("bob", "_system"));
+        assertEqual("rw", users.permission("bob", "_system", cn));
+        assertTrue(users.exists("alice"));
+        assertEqual("rw", users.permission("alice", "_system"));
+        assertEqual("none", users.permission("alice", "_system", cn));
+      },
+      {
+        includeSystem: true
+      }
+    );
   };
 
   return suite;
