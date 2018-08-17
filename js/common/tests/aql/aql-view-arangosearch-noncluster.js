@@ -432,8 +432,8 @@ function iResearchAqlTestSuite () {
       expected.add(JSON.stringify({ a: "baz", b: "foo", c: 1 }));
 
       var result = db._query(
-        "FOR adoc IN AnotherUnitTestsCollection" +
-        "  FOR doc IN UnitTestsView FILTER adoc.id == doc.c SEARCH STARTS_WITH(doc['a'], adoc.a) " +
+        "FOR adoc IN AnotherUnitTestsCollection " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
 
@@ -450,8 +450,8 @@ function iResearchAqlTestSuite () {
       expected.add(JSON.stringify({ a: "foo", b: "baz", c: 0 }));
 
       var result = db._query(
-        "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1" +
-        "  FOR doc IN UnitTestsView FILTER adoc.id == doc.c SEARCH STARTS_WITH(doc['a'], adoc.a) " +
+        "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1 " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
 
@@ -470,8 +470,8 @@ function iResearchAqlTestSuite () {
       expected.push({ a: "foo", b: "baz", c: 0 });
 
       var result = db._query(
-        "FOR adoc IN AnotherUnitTestsCollection" +
-        "  FOR doc IN UnitTestsView FILTER adoc.id == doc.c SEARCH STARTS_WITH(doc['a'], adoc.a) " +
+        "FOR adoc IN AnotherUnitTestsCollection " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
         "SORT doc.c DESC, doc.a, doc.b " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
@@ -494,8 +494,8 @@ function iResearchAqlTestSuite () {
       expected.push({ a: "foo", b: "baz", c: 0 });
 
       var result = db._query(
-        "FOR adoc IN AnotherUnitTestsCollection" +
-        "  FOR doc IN UnitTestsView FILTER adoc.id == doc.c SEARCH STARTS_WITH(doc['a'], adoc.a) " +
+        "FOR adoc IN AnotherUnitTestsCollection " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
         "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
