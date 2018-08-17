@@ -139,7 +139,7 @@ function iResearchAqlTestSuite () {
     },
 
     testAttributeEqualityFilter : function () {
-      var result = db._query("FOR doc IN UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN UnitTestsView SEARCH doc.a == 'foo' RETURN doc", null, { waitForSync: true }).toArray();
 
       assertEqual(result.length, 10);
       result.forEach(function(res) {
@@ -433,7 +433,7 @@ function iResearchAqlTestSuite () {
 
       var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection " +
-        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) && adoc.id == doc.c " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
 
@@ -451,7 +451,7 @@ function iResearchAqlTestSuite () {
 
       var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection FILTER adoc.id < 1 " +
-        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) && adoc.id == doc.c " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
 
@@ -471,7 +471,7 @@ function iResearchAqlTestSuite () {
 
       var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection " +
-        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) && adoc.id == doc.c " +
         "SORT doc.c DESC, doc.a, doc.b " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
@@ -495,7 +495,7 @@ function iResearchAqlTestSuite () {
 
       var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection " +
-        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) FILTER adoc.id == doc.c " +
+        "FOR doc IN UnitTestsView SEARCH STARTS_WITH(doc['a'], adoc.a) && adoc.id == doc.c " +
         "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
         "RETURN doc"
       , null, { waitForSync: true }).toArray();
