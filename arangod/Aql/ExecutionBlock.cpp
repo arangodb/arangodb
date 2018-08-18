@@ -692,24 +692,3 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
 
   return outputNrRegs;
 }
-
-std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
-  auto got = ::blockTypeToNamesMap.find(type);
-  if (got == ::blockTypeToNamesMap.end()) {
-    // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
-  }
-  return got->second;
-}
-
-ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
-  auto got = ::NamesToBlockTypeMap.find(type);
-  if (got == ::NamesToBlockTypeMap.end()) {
-    // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
-    return arangodb::aql::ExecutionBlock::Type::_UNDEFINED;
-  }
-  return got->second;
-}
