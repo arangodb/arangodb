@@ -910,7 +910,7 @@ void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   auth::UserManager* um = af->userManager();
   if (um != nullptr) {
-    um->setGlobalVersion(um->globalVersion()+1);
+    um->increaseGlobalVersion();
   }
 }
 

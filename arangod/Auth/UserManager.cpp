@@ -295,7 +295,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 #endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
       _userCache.erase(entry.username());
-      _globalVersion.fetch_add(1, std::memory_order_relaxed);
+      increaseGlobalVersion();
       LOG_TOPIC(WARN, Logger::AUTHENTICATION)
           << "Cannot update user due to conflict";
     }
@@ -366,8 +366,8 @@ VPackBuilder auth::UserManager::allUsers() {
 void auth::UserManager::triggerReload() {
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
-    _globalVersion.fetch_add(1, std::memory_order_relaxed);
-    _internalVersion.fetch_add(1, std::memory_order_relaxed);
+    increaseGlobalVersion();
+    _internalVersion.fetch_add(1, std::memory_order_release);
     return;
   }
 
@@ -383,8 +383,8 @@ void auth::UserManager::triggerReload() {
     AgencyCommResult result =
         agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
-      _globalVersion.fetch_add(1, std::memory_order_relaxed);
-      _internalVersion.fetch_add(1, std::memory_order_relaxed);
+      increaseGlobalVersion();
+      _internalVersion.fetch_add(1, std::memory_order_release);
       return;
     }
   }
@@ -635,7 +635,6 @@ Result auth::UserManager::removeAllUsers() {
         pair++;
       }
     }
-    //_outdated = true;
   }
 
   triggerReload();

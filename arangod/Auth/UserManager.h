@@ -77,6 +77,10 @@ class UserManager {
     _globalVersion.store(version, std::memory_order_release);
   }
   
+  void increaseGlobalVersion() {
+    _globalVersion.fetch_add(1, std::memory_order_release);
+  }
+  
   /// @brief used for caching
   uint64_t globalVersion() {
     return _globalVersion.load(std::memory_order_acquire);

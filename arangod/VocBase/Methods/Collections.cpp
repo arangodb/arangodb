@@ -565,9 +565,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 Result Collections::warmup(TRI_vocbase_t& vocbase,
                            LogicalCollection const& coll) {
   ExecContext const* exec = ExecContext::CURRENT;  // disallow expensive ops
-  if (!exec->canUseCollection(coll.name(), auth::Level::RW)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                   "server is in read-only mode");
+  if (!exec->canUseCollection(coll.name(), auth::Level::RO)) {
+    return Result(TRI_ERROR_FORBIDDEN);
   }
 
   if (ServerState::instance()->isCoordinator()) {

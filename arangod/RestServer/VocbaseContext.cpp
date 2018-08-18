@@ -65,7 +65,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   AuthenticationFeature* auth = AuthenticationFeature::instance();
   TRI_ASSERT(auth != nullptr);
   if (!auth->isActive()) {
-    if (ServerState::readOnly() && !isSuperUser) {
+    if (ServerState::readOnly()) {
       // special read-only case
       return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                                 /*sysLevel*/ auth::Level::RO,
