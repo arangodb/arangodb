@@ -54,68 +54,6 @@ static std::string const& stateToString(ExecutionState state) {
   return unknownString;
 }
 
-struct ExecutionBlockTypeHash {
-  size_t operator()(ExecutionBlock::Type value) const noexcept {
-    typedef std::underlying_type<decltype(value)>::type UnderlyingType;
-    return std::hash<UnderlyingType>()(UnderlyingType(value));
-  }
-};
-
-std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const NamesToBlockTypeMap = {
-  { "CalculationBlock",            arangodb::aql::ExecutionBlock::Type::CALCULATION},
-  { "CountCollectBlock",           arangodb::aql::ExecutionBlock::Type::COUNT_COLLECT},
-  { "DistinctCollectBlock",        arangodb::aql::ExecutionBlock::Type::DISTINCT_COLLECT},
-  { "EnumerateCollectionBlock",    arangodb::aql::ExecutionBlock::Type::ENUMERATE_COLLECTION},
-  { "EnumerateListBlock",          arangodb::aql::ExecutionBlock::Type::ENUMERATE_LIST},
-  { "FilterBlock",                 arangodb::aql::ExecutionBlock::Type::FILTER},
-  { "HashedCollectBlock",          arangodb::aql::ExecutionBlock::Type::HASHED_COLLECT},
-  { "IndexBlock",                  arangodb::aql::ExecutionBlock::Type::INDEX},
-  { "LimitBlock",                  arangodb::aql::ExecutionBlock::Type::LIMIT},
-  { "NoResultsBlock",              arangodb::aql::ExecutionBlock::Type::NO_RESULTS},
-  { "RemoteBlock",                 arangodb::aql::ExecutionBlock::Type::REMOTE},
-  { "ReturnBlock",                 arangodb::aql::ExecutionBlock::Type::RETURN},
-  { "ShortestPathBlock",           arangodb::aql::ExecutionBlock::Type::SHORTEST_PATH},
-  { "SingletonBlock",              arangodb::aql::ExecutionBlock::Type::SINGLETON},
-  { "SingleOperationBlock",        arangodb::aql::ExecutionBlock::Type::SINGLEOPERATION},
-  { "SortBlock",                   arangodb::aql::ExecutionBlock::Type::SORT},
-  { "SortedCollectBlock",          arangodb::aql::ExecutionBlock::Type::SORTED_COLLECT},
-  { "SortingGatherBlock",          arangodb::aql::ExecutionBlock::Type::SORTING_GATHER},
-  { "SubqueryBlock",               arangodb::aql::ExecutionBlock::Type::SUBQUERY},
-  { "TraversalBlock",              arangodb::aql::ExecutionBlock::Type::TRAVERSAL},
-  { "UnsortingGatherBlock",        arangodb::aql::ExecutionBlock::Type::UNSORTING_GATHER},
-  { "RemoveBlock",                 arangodb::aql::ExecutionBlock::Type::REMOVE},
-  { "InsertBlock",                 arangodb::aql::ExecutionBlock::Type::INSERT},
-  { "UpdateBlock",                 arangodb::aql::ExecutionBlock::Type::UPDATE},
-  { "ReplaceBlock",                arangodb::aql::ExecutionBlock::Type::REPLACE},
-  { "UpsertBlock",                 arangodb::aql::ExecutionBlock::Type::UPSERT},
-  { "ScatterBlock",                arangodb::aql::ExecutionBlock::Type::SCATTER},
-  { "DistributeBlock",             arangodb::aql::ExecutionBlock::Type::DISTRIBUTE},
-#ifdef USE_IRESEARCH
-  { "IResearchViewBlock",          arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW},
-  { "IResearchViewOrderedBlock",   arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_ORDERED},
-  { "IResearchViewUnorderedBlock", arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_UNORDERED}
-#endif
-};
-
-std::unordered_map<
-  arangodb::aql::ExecutionBlock::Type,
-  std::reference_wrapper<const std::string>,
-  ExecutionBlockTypeHash
-> blockTypeToNamesMap;
-
-struct BlockTypeToNameMapInitializer {
-  BlockTypeToNameMapInitializer() {
-    blockTypeToNamesMap.reserve(NamesToBlockTypeMap.size());
-    std::for_each(NamesToBlockTypeMap.begin(),
-                  NamesToBlockTypeMap.end(),
-                  [](std::pair<std::string const&, arangodb::aql::ExecutionBlock::Type> const& p) {
-        blockTypeToNamesMap.emplace(p.second, p.first);
-    });
-  }
-
-
-} initializeBlockTypeToNameMap;
-
 } // namespace
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
