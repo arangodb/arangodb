@@ -260,17 +260,6 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   }
 }
 
-std::string typeToString(ExecutionBlock::Type type) {
-  auto got = ::blockTypeToNamesMap.find(type);
-  if (got == ::blockTypeToNamesMap.end()) {
-    // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
-  }
-  return got->second;
-}
-
-
 // Trace the end of a getSome call, potentially with result
 void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) {
   TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
@@ -284,8 +273,6 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
       _getSomeBegin = 0;
     }
     
-    LOG_DEVEL << "traceGetSomeEnd: " << typeToString(getType()) << ", " << en->id() << ", " << stats.runtime;
-
     auto it = _engine->_stats.nodes.find(en->id());
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
@@ -704,4 +691,25 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
     planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
   return outputNrRegs;
+}
+
+std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
+  auto got = ::blockTypeToNamesMap.find(type);
+  if (got == ::blockTypeToNamesMap.end()) {
+    // to please compiler in non-maintainer mode
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
+  }
+  return got->second;
+}
+
+ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
+  auto got = ::NamesToBlockTypeMap.find(type);
+  if (got == ::NamesToBlockTypeMap.end()) {
+    // to please compiler in non-maintainer mode
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
+    return arangodb::aql::ExecutionBlock::Type::_UNDEFINED;
+  }
+  return got->second;
 }

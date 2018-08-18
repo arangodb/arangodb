@@ -124,6 +124,9 @@ class ExecutionBlock {
   // ModificationBlock (insert, update, etc.)
   // BlockWithClients (scatter, distribute)
   // IResearchViewBlockBase (IResearchView*)
+  
+  static std::string typeToString(Type type);
+  static Type typeFromString(std::string const& type);
 
  public:
   /// @brief batch size value
