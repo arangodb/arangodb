@@ -77,36 +77,36 @@ const nodeTypesList = [
   SubqueryNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
-const CalculationBlock = 'CalculationBlock';
-const CountCollectBlock = 'CountCollectBlock';
-const DistinctCollectBlock = 'DistinctCollectBlock';
-const EnumerateCollectionBlock = 'EnumerateCollectionBlock';
-const EnumerateListBlock = 'EnumerateListBlock';
-const FilterBlock = 'FilterBlock';
-const HashedCollectBlock = 'HashedCollectBlock';
-const IndexBlock = 'IndexBlock';
-const LimitBlock = 'LimitBlock';
-const NoResultsBlock = 'NoResultsBlock';
-const RemoteBlock = 'RemoteBlock';
-const ReturnBlock = 'ReturnBlock';
-const ShortestPathBlock = 'ShortestPathBlock';
-const SingletonBlock = 'SingletonBlock';
-const SortBlock = 'SortBlock';
-const SortedCollectBlock = 'SortedCollectBlock';
-const SortingGatherBlock = 'SortingGatherBlock';
-const SubqueryBlock = 'SubqueryBlock';
-const TraversalBlock = 'TraversalBlock';
-const UnsortingGatherBlock = 'UnsortingGatherBlock';
-const RemoveBlock = 'RemoveBlock';
-const InsertBlock = 'InsertBlock';
-const UpdateBlock = 'UpdateBlock';
-const ReplaceBlock = 'ReplaceBlock';
-const UpsertBlock = 'UpsertBlock';
-const ScatterBlock = 'ScatterBlock';
-const DistributeBlock = 'DistributeBlock';
-const IResearchViewUnorderedBlock = 'IResearchViewUnorderedBlock';
-const IResearchViewBlock = 'IResearchViewBlock';
-const IResearchViewOrderedBlock = 'IResearchViewOrderedBlock';
+const CalculationBlock = 'CalculationNode';
+const CountCollectBlock = 'CollectNode';
+const DistinctCollectBlock = 'CollectNode';
+const EnumerateCollectionBlock = 'EnumerateCollectionNode';
+const EnumerateListBlock = 'EnumerateListNode';
+const FilterBlock = 'FilterNode';
+const HashedCollectBlock = 'CollectNode';
+const IndexBlock = 'IndexNode';
+const LimitBlock = 'LimitNode';
+const NoResultsBlock = 'NoResultsNode';
+const RemoteBlock = 'RemoteNode';
+const ReturnBlock = 'ReturnNode';
+const ShortestPathBlock = 'ShortestPathNode';
+const SingletonBlock = 'SingletonNode';
+const SortBlock = 'SortNode';
+const SortedCollectBlock = 'CollectNode';
+const SortingGatherBlock = 'GatherNode';
+const SubqueryBlock = 'SubqueryNode';
+const TraversalBlock = 'TraversalNode';
+const UnsortingGatherBlock = 'GatherNode';
+const RemoveBlock = 'RemoveNode';
+const InsertBlock = 'InsertNode';
+const UpdateBlock = 'UpdateNode';
+const ReplaceBlock = 'ReplaceNode';
+const UpsertBlock = 'UpsertNode';
+const ScatterBlock = 'ScatterNode';
+const DistributeBlock = 'DistributeNode';
+const IResearchViewUnorderedBlock = 'IResearchViewNode';
+const IResearchViewBlock = 'IResearchViewNode';
+const IResearchViewOrderedBlock = 'IResearchViewNode';
 
 const blockTypesList = [
   CalculationBlock, CountCollectBlock, DistinctCollectBlock,
@@ -161,19 +161,26 @@ function zipPlanNodesIntoStatsNodes (profile) {
     },
     {}
   );
+  
+  let types = {};
+  profile.plan.nodes.forEach(function(node) { types[node.id] = node.type; });
 
   // Note: We need to take the order plan.nodes here, not stats.nodes,
   // as stats.nodes is sorted by id.
   return profile.plan.nodes.map(node => (
-    { id: node.id, fromStats: statsNodesById[node.id], fromPlan: node }
+    { id: node.id, type: types[node.id], fromStats: statsNodesById[node.id], fromPlan: node }
   ));
 }
 
 function getCompactStatsNodes (profile) {
   // While we don't use any .fromPlan info here, zip uses the (correct) order
   // of the plan, not from the stats (which is sorted by id).
+  let types = {};
+  profile.plan.nodes.forEach(function(node) { types[node.id] = node.type; });
+
   return zipPlanNodesIntoStatsNodes(profile).map(
     node => ({
+      type: types[node.id],
       calls: node.fromStats.calls,
       items: node.fromStats.items,
     })
@@ -193,6 +200,7 @@ function getStatsNodesWithId (profile) {
   return profile.stats.nodes.map(
     node => ({
       id: node.id,
+      type: node.type,
     })
   );
 }
@@ -419,7 +427,6 @@ function assertStatsNodesMatchPlanNodes (profile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function assertNodesItemsAndCalls (expected, actual, details = {}) {
-
   // assert node types first
   assert.assertEqual(
     expected.map(node => node.type),
