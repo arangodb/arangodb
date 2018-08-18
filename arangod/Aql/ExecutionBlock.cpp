@@ -62,7 +62,6 @@ struct ExecutionBlockTypeHash {
 };
 
 std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const NamesToBlockTypeMap = {
-  { "-undefined-",                 arangodb::aql::ExecutionBlock::Type::_UNDEFINED},
   { "CalculationBlock",            arangodb::aql::ExecutionBlock::Type::CALCULATION},
   { "CountCollectBlock",           arangodb::aql::ExecutionBlock::Type::COUNT_COLLECT},
   { "DistinctCollectBlock",        arangodb::aql::ExecutionBlock::Type::DISTINCT_COLLECT},
@@ -206,13 +205,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   _skipped = 0;
   _collector.clear();
 
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    // Set block type in per-block statistics.
-    // Intentionally using operator[], which inserts a new element if it can't
-    // find one.
-    _engine->_stats.nodes[getPlanNode()->id()].type = this->getType();
-  }
-
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   TRI_ASSERT(_dependencyPos == _dependencies.end());
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
@@ -255,7 +247,9 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
 // Trace the start of a getSome call
 void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _getSomeBegin = TRI_microtime();
+    if (_getSomeBegin == 0) {
+      _getSomeBegin = TRI_microtime();
+    }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
       LOG_TOPIC(INFO, Logger::QUERIES)
@@ -266,16 +260,32 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   }
 }
 
+std::string typeToString(ExecutionBlock::Type type) {
+  auto got = ::blockTypeToNamesMap.find(type);
+  if (got == ::blockTypeToNamesMap.end()) {
+    // to please compiler in non-maintainer mode
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
+  }
+  return got->second;
+}
+
+
 // Trace the end of a getSome call, potentially with result
-void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) const {
+void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) {
   TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     ExecutionNode const* en = getPlanNode();
     ExecutionStats::Node stats;
     stats.calls = 1;
     stats.items = result != nullptr ? result->size() : 0;
-    stats.runtime = TRI_microtime() - _getSomeBegin;
-    stats.type = getType();
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0;
+    }
+    
+    LOG_DEVEL << "traceGetSomeEnd: " << typeToString(getType()) << ", " << en->id() << ", " << stats.runtime;
+
     auto it = _engine->_stats.nodes.find(en->id());
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
@@ -694,25 +704,4 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
     planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
   return outputNrRegs;
-}
-
-std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
-  auto got = ::blockTypeToNamesMap.find(type);
-  if (got == ::blockTypeToNamesMap.end()) {
-  // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
-  }
-  return got->second;
-}
-
-ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
-  auto got = ::NamesToBlockTypeMap.find(type);
-  if (got == ::NamesToBlockTypeMap.end()) {
-  // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                                   std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
-    return arangodb::aql::ExecutionBlock::Type::_UNDEFINED;
-  }
-  return got->second;
 }

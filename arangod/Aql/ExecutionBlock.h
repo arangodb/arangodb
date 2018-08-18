@@ -125,9 +125,6 @@ class ExecutionBlock {
   // BlockWithClients (scatter, distribute)
   // IResearchViewBlockBase (IResearchView*)
 
-  static std::string typeToString(Type type);
-  static Type typeFromString(std::string const& type);
-
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
@@ -186,7 +183,7 @@ class ExecutionBlock {
       size_t atMost);
 
   void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state) const;
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
  
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to

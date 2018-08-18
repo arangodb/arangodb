@@ -174,8 +174,6 @@ function getCompactStatsNodes (profile) {
   // of the plan, not from the stats (which is sorted by id).
   return zipPlanNodesIntoStatsNodes(profile).map(
     node => ({
-      // type: node.fromPlan.type,
-      type: node.fromStats.blockType,
       calls: node.fromStats.calls,
       items: node.fromStats.items,
     })
@@ -195,7 +193,6 @@ function getStatsNodesWithId (profile) {
   return profile.stats.nodes.map(
     node => ({
       id: node.id,
-      blockType: node.blockType,
     })
   );
 }
