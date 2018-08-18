@@ -284,7 +284,7 @@ private:
   /// @brief create an execution plan element from an AST SHORTEST PATH node
   ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan element from an AST FILTER or SEARCH node
+  /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST LET node

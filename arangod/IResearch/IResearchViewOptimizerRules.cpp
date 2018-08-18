@@ -134,10 +134,10 @@ bool addView(
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewConditionFinder
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewConditionHanlder final
+class IResearchViewConditionHandler final
     : public arangodb::aql::WalkerWorker<ExecutionNode> {
  public:
-  IResearchViewConditionHanlder(
+  IResearchViewConditionHandler(
       ExecutionPlan& plan,
       std::set<arangodb::iresearch::IResearchViewNode const *>& processedViewNodes) noexcept
    : _plan(&plan),
@@ -164,7 +164,7 @@ class IResearchViewConditionHanlder final
   std::set<arangodb::iresearch::IResearchViewNode const*>* _processedViewNodes;
 }; // IResearchViewConditionFinder
 
-bool IResearchViewConditionHanlder::before(ExecutionNode* en) {
+bool IResearchViewConditionHandler::before(ExecutionNode* en) {
   switch (en->getType()) {
     case EN::LIMIT:
       // LIMIT invalidates the sort expression we already found
@@ -278,7 +278,7 @@ bool IResearchViewConditionHanlder::before(ExecutionNode* en) {
   return false;
 }
 
-bool IResearchViewConditionHanlder::handleFilterCondition(
+bool IResearchViewConditionHandler::handleFilterCondition(
     ExecutionNode* en,
     Condition& condition) {
   // normalize the condition
@@ -329,7 +329,7 @@ void handleViewsRule(
   // set of processed view nodes
   std::set<IResearchViewNode const*> processedViewNodes;
 
-  IResearchViewConditionHanlder handler(*plan, processedViewNodes);
+  IResearchViewConditionHandler handler(*plan, processedViewNodes);
   for (auto const& n : nodes) {
     n->walk(handler);
   }
