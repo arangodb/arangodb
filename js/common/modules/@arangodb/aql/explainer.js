@@ -684,11 +684,11 @@ function processQuery (query, explain) {
           maxCallsLen = String(n.calls).length;
         }
         if (String(n.items).length > maxItemsLen) {
-          maxCallsLen = String(n.items).length;
+          maxItemsLen = String(n.items).length;
         }
         let l = String(nodes[n.id].runtime.toFixed(3)).length;
         if (l > maxRuntimeLen) {
-          maxCallsLen = l;
+          maxRuntimeLen = l;
         }
       }
     });
