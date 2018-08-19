@@ -300,7 +300,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      let query = \"FOR d IN VIEW ${testView1Name} RETURN d\";
+                      let query = \"FOR d IN  ${testView1Name} RETURN d\";
                       let result = db._query(query);
                       global.KEY_SET('${keySpaceId}', '${name}_length', result.toArray().length);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
@@ -348,7 +348,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      let query = \"FOR d IN VIEW ${testView2Name} RETURN d\";
+                      let query = \"FOR d IN  ${testView2Name} RETURN d\";
                       let result = db._query(query);
                       global.KEY_SET('${keySpaceId}', '${name}_length', result.toArray().length);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
@@ -401,7 +401,7 @@ function hasIResearch (db) {
                     command: `(function (params) {
                       try {
                         const db = require('@arangodb').db;
-                        let query = \"FOR d IN VIEW ${testView2Name} RETURN d\";
+                        let query = \"FOR d IN  ${testView2Name} RETURN d\";
                         let result = db._query(query);
                         global.KEY_SET('${keySpaceId}', '${name}_status', true);
                       } catch (e) {

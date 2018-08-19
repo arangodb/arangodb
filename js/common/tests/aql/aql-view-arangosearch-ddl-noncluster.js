@@ -326,11 +326,11 @@ function iResearchFeatureAqlTestSuite () {
       var meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(0, result.length);
 
       col0.save({ name: "quarter", text: "quick over" });
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
 
@@ -348,7 +348,7 @@ function iResearchFeatureAqlTestSuite () {
       meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -374,7 +374,7 @@ function iResearchFeatureAqlTestSuite () {
       } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -403,7 +403,7 @@ function iResearchFeatureAqlTestSuite () {
       } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -432,7 +432,7 @@ function iResearchFeatureAqlTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(0, result.length);
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
@@ -448,7 +448,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual("de_DE.UTF-16", properties.locale);
 
       col0.save({ name: "quarter", text: "quick over" });
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
 
@@ -477,7 +477,7 @@ function iResearchFeatureAqlTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -526,7 +526,7 @@ function iResearchFeatureAqlTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -578,7 +578,7 @@ function iResearchFeatureAqlTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -598,7 +598,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual("de_DE.UTF-16", properties.locale);
 
       view.properties({}, false); // full update (reset to defaults)
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(0, result.length);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
@@ -637,7 +637,7 @@ function iResearchFeatureAqlTestSuite () {
       var meta = { links: { "TestCollection0": { fields: { a: {} } } } };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN  TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
@@ -649,7 +649,7 @@ function iResearchFeatureAqlTestSuite () {
       assertNotEqual(undefined, updatedMeta.links.TestCollection0.fields.b);
       assertEqual(undefined, updatedMeta.links.TestCollection0.fields.a);
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(2, result.length);
       assertEqual(2, result[0].z);
       assertEqual(3, result[1].z);
@@ -657,7 +657,7 @@ function iResearchFeatureAqlTestSuite () {
       meta = { links: { "TestCollection0": { fields: { c: {} } } } };
       view.properties(meta, false); // full update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(2, result[1].z);

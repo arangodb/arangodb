@@ -412,16 +412,16 @@ function dumpTestSuite () {
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
 
-      var res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 0 RETURN doc").toArray();
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
       assertEqual(5000, res.length);
 
-      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 2500 RETURN doc").toArray();
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
       assertEqual(2500, res.length);
 
-      res = db._query("FOR doc IN VIEW " + view.name() + " FILTER doc.value >= 5000 RETURN doc").toArray();
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
       assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN VIEW UnitTestsDumpView FILTER PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
       assertEqual(1, res.length);
     }
 

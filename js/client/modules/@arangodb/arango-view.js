@@ -238,7 +238,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 // @brief drops a view
 // /////////////////////////////////////////////////////////////////////////////
 
-ArangoView.prototype.drop = function () {
+ArangoView.prototype.drop = function (options) {
   var requestResult;
   if (typeof options === 'object' && options.isSystem) {
     requestResult = this._database._connection.DELETE(this._baseurl() + '?isSystem=true');
