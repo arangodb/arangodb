@@ -462,8 +462,8 @@ ExecutionNode* ExecutionPlan::createCalculation(
         auto conversion = func->getArgumentConversion(i);
 
         if (member->type == NODE_TYPE_COLLECTION &&
-            (conversion == Function::CONVERSION_REQUIRED ||
-             conversion == Function::CONVERSION_OPTIONAL)) {
+            (conversion == Function::Conversion::Required ||
+             conversion == Function::Conversion::Optional)) {
           // collection attribute: no need to check for member simplicity
           args->changeMember(i, _ast->createNodeValueString(member->getStringValue(), member->getStringLength()));
         }
@@ -924,7 +924,6 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
 
   auto const* variable = node->getMember(0);
   auto const* expression = node->getMember(1);
-  auto* search = node->getMember(2);
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -975,6 +974,7 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
     );
   }
   
+  auto* search = node->getMember(2);
   TRI_ASSERT(search->type == NODE_TYPE_FILTER);
   TRI_ASSERT(search->numMembers() == 1);
 

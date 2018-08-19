@@ -51,8 +51,7 @@ function ViewSuite () {
       try {
         db._createView("", "arangosearch", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -64,8 +63,7 @@ function ViewSuite () {
       try {
         db._createView("abc");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -77,8 +75,7 @@ function ViewSuite () {
       try {
         db._createView("abc", "", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -90,8 +87,7 @@ function ViewSuite () {
       try {
         db._createView("abc", "bogus", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -104,8 +100,7 @@ function ViewSuite () {
         db._createView("abc", "arangosearch", {});
         db._createView("abc", "arangosearch", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
         var abc = db._view("abc");
         abc.drop();
@@ -121,8 +116,7 @@ function ViewSuite () {
         var v = db._createView("def", "arangosearch", {});
         v.rename("abc");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
         var abc = db._view("abc");
         abc.drop();
@@ -139,8 +133,7 @@ function ViewSuite () {
         var v = db._createView("abc", "arangosearch", {});
         v.rename("@bc!");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
         var abc = db._view("abc");
         abc.drop();
@@ -189,14 +182,12 @@ function ViewSuite () {
       def.drop();
       try {
         abc = db._view("abc");
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
       try {
         def = db._view("def");
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },

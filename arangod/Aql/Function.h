@@ -27,24 +27,56 @@
 #include "Basics/Common.h"
 #include "Aql/Functions.h"
 
+#include <type_traits>
+
 namespace arangodb {
 namespace aql {
 
 struct Function {
-  enum Conversion { CONVERSION_NONE, CONVERSION_OPTIONAL, CONVERSION_REQUIRED };
+  enum class Conversion : uint8_t { 
+    None = 0,
+    Optional = 1,
+    Required = 2
+  };
+
+  /// @brief arbitrary function flags. note that these must be mutually exclusive
+  /// when bit-ORed  
+  enum class Flags : uint32_t { 
+    None = 0,
+  
+    /// @brief whether or not the function is deterministic (i.e. its results are
+    /// identical when called repeatedly with the same input values)
+    Deterministic = 1,
+    
+    /// @brief whether or not the function result is cacheable in the query cache
+    Cacheable = 2,
+ 
+    /// @brief whether or not the function may be executed on DB servers
+    CanRunOnDBServer = 4
+  };
+
+  /// @brief helper for building flags
+  template <typename... Args>
+  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+  }
+  
+  static std::underlying_type<Flags>::type makeFlags() {
+    return static_cast<std::underlying_type<Flags>::type>(Flags::None);
+  }
 
   Function() = delete;
 
   /// @brief create the function
   Function(std::string const& name,
-           char const* arguments, bool isDeterministic,
-           bool canRunOnDBServer,
+           char const* arguments, 
+           std::underlying_type<Flags>::type flags,
            FunctionImplementation const& implementation = nullptr);
 
-  /// @brief checks if the function produces a result that can
-  /// be cached by the AQL query result cache
-  /// the return value is currently the same flag as isDeterministic
-  bool isCacheable() const { return isDeterministic; }
+  /// @brief return whether a specific flag is set for the function
+  inline bool hasFlag(Flags flag) const {
+    return (flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0;
+  }
 
   /// @brief return the number of required arguments
   inline std::pair<size_t, size_t> numArguments() const {
@@ -55,7 +87,7 @@ struct Function {
   /// collection parameter to a collection name parameter
   inline Conversion getArgumentConversion(size_t position) const {
     if (position >= conversions.size()) {
-      return CONVERSION_NONE;
+      return Conversion::None;
     }
     return conversions[position];
   }
@@ -70,12 +102,8 @@ struct Function {
   /// @brief function arguments
   char const* arguments;
 
-  /// @brief whether or not the function is deterministic (i.e. its results are
-  /// identical when called repeatedly with the same input values)
-  bool const isDeterministic;
-
-  /// @brief whether or not the function may be executed on DB servers
-  bool const canRunOnDBServer;
+  /// @brief function flags
+  std::underlying_type<Flags>::type const flags;
 
   /// @brief minimum number of required arguments
   size_t minRequiredArguments;
@@ -90,7 +118,7 @@ struct Function {
   std::vector<Conversion> conversions;
 
   /// @brief maximum number of function arguments that can be used
-  static size_t const MaxArguments = 65536;
+  static constexpr size_t maxArguments = 65536;
 };
 }
 }
