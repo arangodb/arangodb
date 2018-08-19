@@ -48,13 +48,11 @@ function runSetup () {
   view.properties(meta);
 
   meta = {
-    commit: {
-      commitIntervalMsec: 10000,
-      consolidate: {
-        bytes: { segmentThreshold: 20, threshold: 0.5 },
-        bytes_accum: {},
-        count: {}
-      }
+    commitIntervalMsec: 10000,
+    consolidate: {
+      bytes: { segmentThreshold: 20, threshold: 0.5 },
+      bytes_accum: {},
+      count: {}
     },
     locale: "en_US.UTF-8"
   };
@@ -93,15 +91,16 @@ function recoverySuite () {
 
       // validate state
       var properties = v.properties();
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.commitIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
     }
 

@@ -430,7 +430,7 @@ bool syncStore(
     irs::directory_reader& reader,
     irs::index_writer& writer,
     std::atomic<size_t>& segmentCount,
-    arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicies const& policies,
+    arangodb::iresearch::IResearchViewMeta::ConsolidationPolicies const& policies,
     bool forceCommit,
     bool runCleanupAfterCommit,
     std::string const& viewName,
@@ -784,7 +784,7 @@ IResearchView::IResearchView(
 
   // add asynchronous commit tasks
   if (_asyncFeature) {
-    struct State: public IResearchViewMeta::CommitMeta {
+    struct State: public IResearchViewMeta {
       size_t _cleanupIntervalCount{ 0 };
       std::chrono::system_clock::time_point _last{ std::chrono::system_clock::now() };
     };
@@ -816,8 +816,8 @@ IResearchView::IResearchView(
           auto meta = std::atomic_load(&_meta);
           SCOPED_LOCK(meta->read());
 
-          if (state != meta->_commit) {
-            static_cast<IResearchViewMeta::CommitMeta&>(state) = meta->_commit;
+          if (state != *meta) {
+            static_cast<IResearchViewMeta&>(state) = *meta;
           }
         }
 
