@@ -393,13 +393,20 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   often what is desired anyway, but the change makes `DATE_NOW` useless to measure
   time differences inside a single query.
 
-- the internal AQL function `PASSTHRU` (which simply returns its call argument)
+- the AQL function `PASSTHRU` (which simply returns its call argument)
   has been changed from being non-deterministic to being deterministic, provided its
   call argument is also deterministic. This change should not affect end users, as
   `PASSTHRU` is intended to be used for internal testing only. Should end users use
   this AQL function in any query and need a wrapper to make query parts non-deterministic,
   the `NOOPT` AQL function can stand in as a non-deterministic variant of `PASSTHRU`
-  
+
+- when only parsing an AQL query via the `db._parse()` function or the REST API at
+  endpoint `POST /_api/query`, parsing will now fail and return error code 1203
+  ("collection or view not found") when referring to a non-existing collection or view.
+
+  Previous versions of ArangoDB continued with parsing even if referenced collections
+  did not exist, and did not return an error in this case. 
+
 
 Usage of V8
 -----------
