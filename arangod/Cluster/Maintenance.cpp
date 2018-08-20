@@ -43,7 +43,7 @@ using namespace arangodb::basics;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-static std::vector<std::string> cmp {
+static std::vector<std::string> const cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
 static std::string const CURRENT_COLLECTIONS("Current/Collections/");
 static std::string const CURRENT_DATABASES("Current/Databases/");
@@ -112,7 +112,7 @@ std::shared_ptr<VPackBuilder> compareRelevantProps (
   VPackSlice const& first, VPackSlice const& second) {
   auto result = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(result.get());
-    for (auto property : cmp) {
+    for (auto const& property : cmp) {
       auto const& planned = first.get(property);
       if (planned != second.get(property)) { // Register any change
         result->add(property,planned);
