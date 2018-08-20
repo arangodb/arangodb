@@ -141,7 +141,12 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                           RequestCallback cb) {
   static std::atomic<uint64_t> ticketId(1);
   
-  assert(req);
+  Connection::State state = _state.load(std::memory_order_acquire);
+  if (state == Connection::State::Failed) {
+    cb(errorToInt(ErrorCondition::Canceled), std::move(req), nullptr);
+    return 0;
+  }
+  
   // construct RequestItem
   std::unique_ptr<RequestItem> item(new RequestItem());
   // requestItem->_response later
@@ -159,7 +164,6 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item.release();
   _numQueued.fetch_add(1, std::memory_order_relaxed);
 
-  Connection::State state = _state.load(std::memory_order_acquire);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading\n";
     startWriting();

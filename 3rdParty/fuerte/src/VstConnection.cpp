@@ -62,6 +62,12 @@ static std::atomic<MessageID> vstMessageId(1);
 template<SocketType ST>
 MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                          RequestCallback cb) {
+  Connection::State state = _state.load(std::memory_order_acquire);
+  if (state == Connection::State::Failed) {
+    cb(errorToInt(ErrorCondition::Canceled), std::move(req), nullptr);
+    return 0;
+  }
+  
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   // Create RequestItem from parameters
@@ -81,7 +87,6 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // WRITE_LOOP_ACTIVE, READ_LOOP_ACTIVE are synchronized via cmpxchg
   uint32_t loop =  _loopState.fetch_add(WRITE_LOOP_QUEUE_INC, std::memory_order_seq_cst);
   
-  Connection::State state = _state.load(std::memory_order_acquire);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): start sending & reading\n";
     if (!(loop & WRITE_LOOP_ACTIVE)) {
