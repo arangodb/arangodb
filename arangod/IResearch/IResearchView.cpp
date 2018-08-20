@@ -1638,6 +1638,24 @@ int IResearchView::insert(
 
       return nullptr;
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    // AT THIS POINT the view is already created but does not have links
+    // from the properties set-
+    //
+    // Add them now manually.
+    ////////////////////////////////////////////////////////////////////////////
+
+    if (properties.hasKey(StaticStrings::LinksField)) {
+      auto links = properties.get(StaticStrings::LinksField);
+
+      std::unordered_set<TRI_voc_cid_t> collections;
+      auto res = IResearchLinkHelper::updateLinks(
+        collections, vocbase, *view, links
+      );
+
+      THROW_ARANGO_EXCEPTION_IF_FAIL(res);
+    }
   }
 
   return view;
