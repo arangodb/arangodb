@@ -1,8 +1,8 @@
 # Detailed overview of ArangoSearch views
 
-ArangoSearch is powerful fulltext search component with additional functionality, 
+ArangoSearch is a powerful fulltext search component with additional functionality, 
 supported via the 'text' analyzer and 'tfidf'/'bm25' [scorers](Scorers.md), 
-without impact to performance when specifying documents from different collections or 
+without impact on performance when specifying documents from different collections or 
 filtering on multiple document attributes.
 
 ## View datasource
