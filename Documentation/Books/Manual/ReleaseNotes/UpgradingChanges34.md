@@ -249,10 +249,9 @@ The following APIs have been added or augmented:
   ```
 
 - `GET /_admin/status` now returns the attribute `operationMode` in addition to
-  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new
   attribute `readOnly`, which is has an inverted value compared to the original
-  attribute. In future releases the old attributes will be deprecated in favor
-  of the new ones.
+  attribute. The old attributes are deprecated in favor of the new ones.
 
 - `POST /_api/collection` now will process the optional `shardingStrategy` 
   attribute in the response body in cluster mode. 
@@ -313,14 +312,14 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 - the existing "fulltext-index-optimizer" optimizer rule has been removed 
   because its duty is now handled by the new "replace-function-with-index" rule.
 
-- the behavior of the `fullCount` option for AQL query cursors has changed so that it 
+- the behavior of the `fullCount` option for AQL queries has changed so that it 
   will only take into account `LIMIT` statements on the top level of the query.
 
   `LIMIT` statements in subqueries will not have any effect on the `fullCount` results
   any more.
 
-- the `NEAR`, `WITHIN` and `FULLTEXT` AQL functions do not support accessing
-  collections dynamically anymore.
+- the AQL functions `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `FULLTEXT` do not 
+  support accessing collections dynamically anymore.
 
   The name of the underlying collection and the name of the index attribute to be
   used have to specified using either collection name identifiers, string literals 
@@ -341,7 +340,7 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
       FOR doc IN collection 
         FOR match IN FULLTEXT(PARSE_IDENTIFIER(doc).collection, PARSE_IDENTIFIER(doc).key, "foxx") RETURN doc
 
-- the AQL warning 1577 (collection used in expression) will not occur anymore
+- the AQL warning 1577 ("collection used in expression") will not occur anymore
 
   It was used in previous versions of ArangoDB when the name of a collection was
   used in an expression in an AQL query, e.g.
@@ -380,6 +379,17 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
       0 + "1 "           0 + 1 = 1           0 + 1 = 1        TO_NUMBER("1 ") = 1
       0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
       0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
+
+- the AQL function `DATE_NOW` is now marked as deterministic internally, meaning that
+  the optimizer may evaluate the function at query compile time and not at query
+  runtime. This will mean that calling the function repeatedly inside the same query will
+  now always produce the same result, whereas in previous versions of ArangoDB the
+  function may have generated different results.
+  
+  Each AQL query that is run will still evalute the result value of the `DATE_NOW` 
+  function independently, but only once at the beginning of the query. This is most
+  often what is desired anyway, but the change makes `DATE_NOW` useless to measure
+  time differences inside a single query.
 
 - the internal AQL function `PASSTHRU` (which simply returns its call argument)
   has been changed from being non-deterministic to being deterministic, provided its
@@ -583,6 +593,20 @@ removed in future versions of ArangoDB:
 
   Client applications using the old tailing API at `/_api/replication/logger-follow`
   should switch to the new API eventually.
+
+* the result attributes `mode` and `writeOpsEnabled` in the REST API for querying
+  a server's status at `/_admin/status`:
+
+  `GET /_admin/status` returns the additional attributes `operationMode` and 
+  `readOnly` now, which should be used in favor of the old attributes.
+  
+* creating geo indexes via any APIs with one of the types `geo1` or `geo2`:
+
+  The two previously known geo index types (`geo1`and `geo2`) are deprecated now.
+  Instead, when creating geo indexes, the type `geo` should be used.
+
+  The types `geo1` and `geo2` will still work in ArangoDB 3.4, but may be removed
+  in future versions.
 
 * the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
 

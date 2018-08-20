@@ -1587,8 +1587,8 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             // built-in function, not seen before
             nodes.openObject();
             nodes.add("name", VPackValue(func->name));
-            nodes.add("isDeterministic", VPackValue(func->isDeterministic));
-            nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
+            nodes.add("isDeterministic", VPackValue(func->hasFlag(Function::Flags::Deterministic)));
+            nodes.add("canRunOnDBServer", VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServer)));
             nodes.add("usesV8", VPackValue(func->implementation == nullptr));
             nodes.close();
           }
@@ -1875,11 +1875,11 @@ void SubqueryNode::getVariablesUsedHere(
 }
 
 /// @brief is the node determistic?
-struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
+struct DeterministicFinder final : public WalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
 
-  IsDeterministicFinder() : _isDeterministic(true) {}
-  ~IsDeterministicFinder() {}
+  DeterministicFinder() : _isDeterministic(true) {}
+  ~DeterministicFinder() {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
@@ -1895,7 +1895,7 @@ struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 bool SubqueryNode::isDeterministic() {
-  IsDeterministicFinder finder;
+  DeterministicFinder finder;
   _subquery->walk(finder);
   return finder._isDeterministic;
 }
