@@ -423,7 +423,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestTasksHandler.cpp
-  RestHandler/RestTestHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
