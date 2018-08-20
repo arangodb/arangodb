@@ -80,6 +80,7 @@ struct IResearchViewMeta {
     Type type() const noexcept;
 
    private:
+    friend class IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
     irs::index_writer::consolidation_policy_t _policy;
     size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
     float _threshold; // consolidation policy threshold
@@ -89,16 +90,14 @@ struct IResearchViewMeta {
   struct Mask {
     bool _cleanupIntervalStep;
     bool _commitIntervalMsec;
-    bool _consolidationPolicies;
+    bool _consolidationPolicy;
     bool _locale;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  typedef std::vector<ConsolidationPolicy> ConsolidationPolicies;
-
   size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
   size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-  ConsolidationPolicies _consolidationPolicies;
+  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
   std::locale _locale; // locale used for ordering processed attribute names
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
@@ -253,4 +252,5 @@ struct IResearchViewMetaState {
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

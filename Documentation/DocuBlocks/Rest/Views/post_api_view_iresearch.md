@@ -33,48 +33,23 @@ For the case where the consolidation policies rarely merge segments (i.e. few
 inserts/deletes), a higher value will impact performance without any added
 benefits.
 
-
 @RESTSTRUCT{consolidate,post_api_view_props,object,optional,post_api_view_props_consolidation}
+The consolidation policy to apply for selecting which segments should be merged
+(default: {}, to disable use: null)
 
 
-@RESTSTRUCT{bytes,post_api_view_props_consolidation,object,optional,post_api_view_props_consolidation_bytes}
-Use empty object for default values, i.e. {}
+@RESTSTRUCT{type,optional,post_api_view_props_consolidations,string,optional,string}
+Currently supported types aren (default: "bytes_accum"):
+- *bytes*: Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)
+- *bytes_accum*: Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+- *count*: Consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+- *fill*: Consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
 
-@RESTSTRUCT{segmentThreshold,post_api_view_props_consolidation_bytes,integer,optional,uint64}
-Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
+@RESTSTRUCT{segmentThreshold,post_api_view_props_consolidation,integer,optional,uint64}
+Apply consolidation policy IFF {segmentThreshold} > #segments (default: 300)
 
-@RESTSTRUCT{threshold,post_api_view_props_consolidation_bytes,integer,optional,uint64}
-Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments) (default: 0.85)
-
-
-@RESTSTRUCT{bytes_accum,post_api_view_props_consolidation,object,optional,post_api_view_props_consolidation_bytes_accum}
-Use empty object for default values, i.e. {}
-
-@RESTSTRUCT{segmentThreshold,post_api_view_props_consolidation_bytes_accum,integer,optional,uint64}
-Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
-
-@RESTSTRUCT{threshold,post_api_view_props_consolidation_bytes_accum,integer,optional,uint64}
-Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes (default: 0.85)
-
-
-@RESTSTRUCT{count,post_api_view_props_consolidation,object,optional,post_api_view_props_consolidation_count}
-Use empty object for default values, i.e. {}
-
-@RESTSTRUCT{segmentThreshold,post_api_view_props_consolidation_count,integer,optional,uint64}
-Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
-
-@RESTSTRUCT{threshold,post_api_view_props_consolidation_count,integer,optional,uint64}
-Consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments) (default: 0.85)
-
-
-@RESTSTRUCT{fill,post_api_view_props_consolidation,object,optional,post_api_view_props_consolidation_fill}
-Use empty object for default values, i.e. {}
-
-@RESTSTRUCT{segmentThreshold,post_api_view_props_consolidation_fill,integer,optional,uint64}
-Apply consolidation policy IFF {segmentThreshold} >= #segments (default: 300, to disable use: 0)
-
-@RESTSTRUCT{threshold,post_api_view_props_consolidation_fill,integer,optional,uint64}
-Consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed}) (default: 0.85)
+@RESTSTRUCT{threshold,post_api_view_props_consolidation,float,optional,float}
+Consolidate IFF {threshold} > {formula based on *type*}, valid value range [0.0, 1.0] (default: 0.85)
 
 
 @RESTSTRUCT{locale,post_api_view_props,string,optional,string}

@@ -186,43 +186,27 @@ During view modification the following directives apply:
   impact performance and waste disk space for each commit call without any
   added benefits
 
-* consolidate: (optional; default: `none`)
-  a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
-  store segment merge candidates, if specified then only the listed policies
-  are used, keys are any of:
+* consolidate: (optional; default: `{}`)
+  the consolidation policy to apply for selecting data store segment merge
+  candidates, to disable use: `null`
 
-  * bytes: (optional; for default values use an empty object: `{}`)
+  * type: (optional; defailt "bytes_accum")
+    currently supported types are:
+    - *bytes*:
+      Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)
+    - *bytes_accum*:
+      Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+    - *count*:
+      Consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+    - *fill*:
+      Consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
 
-    * segmentThreshold: (optional, default: `300`; to disable use: `0`)
-      apply consolidation policy IFF {segmentThreshold} >= #segments
+  * segmentThreshold: (optional, default: `300`)
+    apply consolidation policy IFF {segmentThreshold} > #segments
 
-    * threshold: (optional; default: `0.85`)
-      consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
+  * threshold: (optional; default: `0.85`)
+    consolidate IFF {threshold} > {formula based on *type*}, valid value range `[0.0, 1.0]`
 
-  * bytes_accum: (optional; for default values use: `{}`)
-
-    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-      apply consolidation policy IFF {segmentThreshold} >= #segments
-
-    * threshold: (optional; default: `0.85`)
-      consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
-
-  * count: (optional; for default values use: `{}`)
-
-    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-      apply consolidation policy IFF {segmentThreshold} >= #segments
-
-    * threshold: (optional; default: `0.85`)
-      consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
-
-  * fill: (optional)
-    if specified, use empty object for default values, i.e. `{}`
-
-    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-      apply consolidation policy IFF {segmentThreshold} >= #segments
-
-    * threshold: (optional; default: `0.85`)
-      consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
 ### Link properties
 
