@@ -21,47 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTIONS_H
-#define ARANGOD_AQL_COLLECTIONS_H 1
+#ifndef ARANGOD_REST_HANDLER_ADMIN_DATABASE_HANDLER_H
+#define ARANGOD_REST_HANDLER_ADMIN_DATABASE_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "VocBase/AccessMode.h"
-
-struct TRI_vocbase_t;
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace aql {
-struct Collection;
-
-class Collections {
+class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
  public:
-  Collections& operator=(Collections const& other) = delete;
-
-  explicit Collections(TRI_vocbase_t*);
-
-  ~Collections();
+  RestAdminDatabaseHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  Collection* get(std::string const& name) const;
-
-  Collection* add(std::string const& name, AccessMode::Type accessType);
-
-  std::vector<std::string> collectionNames() const;
-
-  std::map<std::string, Collection*>* collections();
-
-  std::map<std::string, Collection*> const* collections() const;
-
-  bool empty() const { return _collections.empty(); }
-
- private:
-  TRI_vocbase_t* _vocbase;
-
-  std::map<std::string, Collection*> _collections;
-
-  static size_t const MaxCollections = 256;
+  char const* name() const override final { return "RestAdminDatabaseHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() override;
 };
-}
 }
 
 #endif

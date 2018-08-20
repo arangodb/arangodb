@@ -43,7 +43,7 @@ class EdgeDefinition {
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
                  std::set<std::string>&& to_)
-      : _edgeCollection(std::move(edgeCollection_)), _from(from_), _to(to_) {}
+      : _edgeCollection(std::move(edgeCollection_)), _from(std::move(from_)), _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
   std::set<std::string> const& getFrom() const { return _from; }
