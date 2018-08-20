@@ -76,6 +76,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
+#include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -225,7 +226,7 @@ void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
-  
+
   _jobManager->deleteJobs();
 }
 
@@ -537,6 +538,15 @@ void GeneralServerFeature::defineHandlers() {
       ::createNoData
     );
   }
+
+  // ...........................................................................
+  // test handler
+  // ...........................................................................
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _handlerFactory->addPrefixHandler(
+    "/_api/test",
+    RestHandlerCreator<RestTestHandler>::createNoData);
+#endif
 
   // ...........................................................................
   // actions defined in v8
