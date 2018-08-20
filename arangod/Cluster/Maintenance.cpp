@@ -62,23 +62,7 @@ static VPackValue const VP_SET("set");
 static std::string const OP("op");
 static std::string const UNDERSCORE("_");
 
-template<typename T> int indexOf(VPackSlice const& slice, T const& t) {
-  size_t counter = 0;
-  if (slice.isArray()) {
-    for (auto const& entry : VPackArrayIterator(slice)) {
-      if (entry.isNumber()) {
-        if (entry.getNumber<T>() == t) {
-          return counter;
-        }
-      }
-      counter++;
-    }
-    return -1;
-  }
-}
-
-template<> int indexOf<std::string> (
-  VPackSlice const& slice, std::string const& val) {
+static int indexOf(VPackSlice const& slice, std::string const& val) {
   size_t counter = 0;
   if (slice.isArray()) {
     for (auto const& entry : VPackArrayIterator(slice)) {
