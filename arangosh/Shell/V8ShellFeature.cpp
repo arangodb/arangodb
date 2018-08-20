@@ -334,7 +334,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
-        [v8connection]() { v8connection->setInterrupted(); });
+        [v8connection]() { v8connection->setInterrupted(true); });
   }
 
   v8LineEditor.open(_console->autoComplete());
@@ -430,6 +430,10 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       // this will change the prompt for the next round
       promptError = true;
+    }
+    
+    if (v8connection != nullptr) {
+      v8connection->setInterrupted(false);
     }
 
     _console->stopPager();

@@ -116,12 +116,24 @@ void VstConnection<ST>::startConnection() {
   });
 }
   
+/// @brief cancel the connection, unusable afterwards
+template <SocketType ST>
+void VstConnection<ST>::cancel() {
+  auto self = shared_from_this();
+  asio_ns::post(*_io_context, [self, this] {
+    shutdownConnection(ErrorCondition::Canceled);
+    _state.store(State::Failed);
+  });
+}
+  
 // shutdown the connection and cancel all pending messages.
 template <SocketType ST>
 void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
   
-  _state.store(State::Disconnected, std::memory_order_release);
+  if (_state.load() != State::Failed) {
+    _state.store(State::Disconnected);
+  }
   
   // cancel timeouts
   try {
@@ -199,10 +211,9 @@ void VstConnection<ST>::finishInitialization() {
   auto self = shared_from_this();
   asio_ns::async_write(_protocol.socket,
       asio_ns::buffer(vstHeader, strlen(vstHeader)),
-      [this, self](asio_ns::error_code const& ec, std::size_t transferred) {
+      [self, this](asio_ns::error_code const& ec, std::size_t transferred) {
         if (ec) {
           FUERTE_LOG_ERROR << ec.message() << "\n";
-          _state.store(Connection::State::Disconnected, std::memory_order_release);
           shutdownConnection(ErrorCondition::CouldNotConnect);
           onFailure(errorToInt(ErrorCondition::CouldNotConnect),
                     "unable to initialize connection: error=" + ec.message());
@@ -242,7 +253,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   item->prepareForNetwork(_vstVersion, header, asio_ns::const_buffer(0,0));
 
   auto self = shared_from_this();
-  item->_callback = [this, self](Error error, std::unique_ptr<Request>,
+  item->_callback = [self, this](Error error, std::unique_ptr<Request>,
                                  std::unique_ptr<Response> resp) {
     if (error || resp->statusCode() != StatusOK) {
       _state.store(State::Failed, std::memory_order_release);
@@ -255,7 +266,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   
   // actually send auth request
   asio_ns::post(*_io_context, [this, self, item] {
-    auto cb = [this, self, item](asio_ns::error_code const& ec,
+    auto cb = [self, item, this](asio_ns::error_code const& ec,
                                  std::size_t transferred) {
       if (ec) {
         asyncWriteCallback(ec, transferred, std::move(item)); // error handling
@@ -286,7 +297,7 @@ void VstConnection<ST>::startWriting() {
                                                std::memory_order_seq_cst)) {
       FUERTE_LOG_TRACE << "startWriting (vst): starting write\n";
       auto self = shared_from_this(); // only one thread can get here per connection
-      asio_ns::post(*_io_context, [this, self] {
+      asio_ns::post(*_io_context, [self, this] {
         asyncWriteNextRequest();
       });
       return;
@@ -328,7 +339,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   setTimeout();             // prepare request / connection timeouts
   
   auto self = shared_from_this();
-  auto cb = [this, self, item](asio_ns::error_code const& ec, std::size_t transferred) {
+  auto cb = [self, item, this](asio_ns::error_code const& ec, std::size_t transferred) {
     asyncWriteCallback(ec, transferred, std::move(item));
   };
   asio_ns::async_write(_protocol.socket, item->_requestBuffers, cb);
@@ -404,7 +415,7 @@ void VstConnection<ST>::startReading() {
   while (!(state & READ_LOOP_ACTIVE)) {
     if (_loopState.compare_exchange_weak(state, state | READ_LOOP_ACTIVE)) {
       auto self = shared_from_this(); // only one thread can get here per connection
-      asio_ns::post(*_io_context, [this, self] {
+      asio_ns::post(*_io_context, [self, this] {
         asyncReadSome();
       });
       return;
@@ -444,7 +455,7 @@ void VstConnection<ST>::asyncReadSome() {
 #endif
   
   auto self = shared_from_this();
-  auto cb = [this, self](asio_ns::error_code const& ec, size_t transferred) {
+  auto cb = [self, this](asio_ns::error_code const& ec, size_t transferred) {
     // received data is "committed" from output sequence to input sequence
     _receiveBuffer.commit(transferred);
     asyncReadCallback(ec, transferred);
@@ -614,7 +625,7 @@ void VstConnection<ST>::setTimeout() {
   
   _timeout.expires_at(expires);
   auto self = shared_from_this();
-  _timeout.async_wait([this, self](asio_ns::error_code const& ec) {
+  _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
     if (ec) {  // was canceled
       return;
     }

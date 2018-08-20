@@ -194,13 +194,25 @@ void HttpConnection<ST>::startConnection() {
   });
 }
   
+/// @brief cancel the connection, unusable afterwards
+template <SocketType ST>
+void HttpConnection<ST>::cancel() {
+  auto self = shared_from_this();
+  asio_ns::post(*_io_context, [self, this] {
+    shutdownConnection(ErrorCondition::Canceled);
+    _state.store(State::Failed);
+  });
+}
+
 // shutdown the connection and cancel all pending messages.
 template<SocketType ST>
 void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
   
-  _state.store(State::Disconnected, std::memory_order_release);
-     
+  if (_state.load() != State::Failed) {
+    _state.store(State::Disconnected);
+  }
+  
   // cancel timeouts
   try {
     _timeout.cancel();   
@@ -210,8 +222,7 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   }
 
   // Close socket
-  _protocol.shutdown(); 
-  
+  _protocol.shutdown();
   _active.store(false); // no IO operations running
   
   RequestItem* item = nullptr;
@@ -339,7 +350,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
       return;
     }
     // a request got queued in-between last minute
-    _active.store(true, std::memory_order_release);
+    _active.store(true);
   }
   std::shared_ptr<http::RequestItem> item(ptr);
   _numQueued.fetch_sub(1, std::memory_order_relaxed);
@@ -525,97 +536,6 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
       restartConnection(ErrorCondition::Timeout);
     }
   });
-}
-
-/// @brief sed request synchronously, only save to use if the
-template<SocketType ST>
-std::unique_ptr<Response> HttpConnection<ST>::sendRequestSync(std::unique_ptr<Request> req) {
-  int max = 1024;
-  Connection::State state = _state.load(std::memory_order_acquire);
-  while (state != State::Connected && max-- > 0) {
-    if (state == State::Failed) {
-      return nullptr;
-    } else if (state == State::Disconnected) {
-      startConnection();
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    state = _state.load(std::memory_order_acquire);
-  }
-  if (state != State::Connected) {
-    throw ErrorCondition::CouldNotConnect;
-  }
-  
-  RequestItem item;
-  // requestItem->_response later
-  item._requestHeader = buildRequestBody(*req);
-  item._request = std::move(req);
-  item._response.reset(new Response());
-
-  setTimeout(item._request->timeout());
-  std::vector<asio_ns::const_buffer> buffers(2);
-  buffers.emplace_back(item._requestHeader.data(),
-                       item._requestHeader.size());
-  // GET and HEAD have no payload
-  if (item._request->header.restVerb != RestVerb::Get &&
-      item._request->header.restVerb != RestVerb::Head) {
-    buffers.emplace_back(item._request->payload());
-  }
-  asio_ns::error_code ec;
-  asio_ns::write(_protocol.socket, buffers, ec);
-  if (ec) {
-    auto err = checkEOFError(ec, ErrorCondition::WriteError);;
-    shutdownConnection(err);
-    throw err;
-  }
-  
-  http_parser_init(&_parser, HTTP_RESPONSE);
-  _parser.data = static_cast<void*>(&item);
-  
-  while (!item.message_complete) {
-    // reserve 32kB in output buffer
-    auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
-    
-    size_t transferred = _protocol.socket.read_some(mutableBuff, ec);
-    if (ec) {
-      auto err = checkEOFError(ec, ErrorCondition::ReadError);;
-      shutdownConnection(err);
-      throw err;
-    }
-    
-    // Inspect the data we've received so far.
-    auto cursor = asio_ns::buffer_cast<const char*>(_receiveBuffer.data()); // no copy
-    
-    /* Start up / continue the parser.
-     * Note we pass recved==0 to signal that EOF has been received.
-     */
-    size_t nparsed = http_parser_execute(&_parser, &_parserSettings,
-                                         cursor, transferred);
-    
-    if (_parser.upgrade || nparsed != transferred) {
-      /* Handle error. Usually just close the connection. */
-      FUERTE_LOG_ERROR << "Invalid HTTP response in parser\n";
-      shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
-      throw ErrorCondition::ProtocolError;
-    }
-
-    // item.message_complete may have been set by the call to http_parser_execute!
-    if (item.message_complete) {
-      //_timeout.cancel(); // got response in time
-      // Remove consumed data from receive buffer.
-      _receiveBuffer.consume(nparsed);
-      
-      // thread-safe access on IO-Thread
-      if (!item._responseBuffer.empty()) {
-        item._response->setPayload(std::move(item._responseBuffer), 0);
-      }
-      if (!item.should_keep_alive) {
-        shutdownConnection(ErrorCondition::CloseRequested);
-      }
-      return std::move(item._response);
-    }
-  }
-  
-  throw ErrorCondition::Timeout;
 }
   
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Tcp>;

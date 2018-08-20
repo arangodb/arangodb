@@ -72,10 +72,13 @@ class VstConnection final : public Connection {
   /// Activate the connection.
   void startConnection() override final;
   
-  /// called on shutdown, always call superclass
-  void shutdownConnection(const ErrorCondition) override;
+  /// @brief cancel the connection, unusable afterwards
+  void cancel() override final;
 
  private:
+  
+  /// shutdown connection, cancel async operations
+  void shutdownConnection(const ErrorCondition);
   
   void restartConnection(const ErrorCondition);
   
