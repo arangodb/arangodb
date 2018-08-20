@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, arango */
+/*global assertEqual, arango, VPACK_TO_V8 */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the require which is canceled
@@ -74,7 +74,7 @@ function RequireCanceledTestSuite() {
         var d;
 
         try {
-          d = JSON.parse(c.body);
+          d = VPACK_TO_V8(c.body);
         } catch (err) {
           require("internal").print(c.body);
           throw err;

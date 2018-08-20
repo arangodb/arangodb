@@ -194,9 +194,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        while (node->numMembers() > 0) {
-          node->removeMemberUnchecked(0);
-        }
+        node->removeMembers();
         node->addMember(op);
 
         return node;
@@ -208,9 +206,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        while (node->numMembers() > 0) {
-          node->removeMemberUnchecked(0);
-        }
+        node->removeMembers();
         node->addMember(op);
 
         return node;
@@ -282,9 +278,8 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 
   if (_found.size() == _attributes.size()) {
     // remove node's existing members
-    while (node->numMembers() > 0) {
-      node->removeMemberUnchecked(0);
-    }
+    node->removeMembers();
+    
     // found contains all nodes required for this condition sorted by
     // _attributes
     // now re-add only those
@@ -293,6 +288,8 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
       auto it = _found.find(i);
       TRI_ASSERT(it != _found.end());  // Found contains by def. 1 Element for
                                        // each _attribute
+        
+      TRI_ASSERT(it->second->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
       node->addMember(it->second);
     }
 

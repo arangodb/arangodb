@@ -48,7 +48,8 @@ class Hints {
     RECOVERY = 512,
     NO_DLD = 1024, // disable deadlock detection
     NO_INDEXING = 2048, // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 4096 // enable intermediate commits in rdb
+    INTERMEDIATE_COMMITS = 4096, // enable intermediate commits in rdb
+    ALLOW_RANGE_DELETE = 8192 // enable range-delete in rdb
   };
 
   Hints() : _value(0) {}

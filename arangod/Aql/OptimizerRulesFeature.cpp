@@ -32,9 +32,10 @@
 #include "IResearch/IResearchViewOptimizerRules.h"
 #endif
 
-using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::aql;
+
+namespace arangodb {
+namespace aql {
 
 // @brief list of all rules
 std::map<int, OptimizerRule> OptimizerRulesFeature::_rules;
@@ -48,7 +49,8 @@ constexpr bool CanBeDisabled = true;
 constexpr bool CanNotBeDisabled = false;
 
 OptimizerRulesFeature::OptimizerRulesFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
   startsAfter("V8Phase");
@@ -250,9 +252,9 @@ void OptimizerRulesFeature::addRules() {
 #ifdef USE_IRESEARCH
   // move filters and sort conditions into views
   registerRule(
-    "handle-views",
+    "handle-arangosearch-views",
     arangodb::iresearch::handleViewsRule,
-    OptimizerRule::handleViewsRule_pass6,
+    OptimizerRule::handleArangoSearchViewsRule_pass6,
     DoesNotCreateAdditionalPlans,
     CanNotBeDisabled
   );
@@ -411,3 +413,6 @@ std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
 
   return disabled;
 }
+
+} // aql
+} // arangodb

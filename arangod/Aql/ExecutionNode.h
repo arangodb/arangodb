@@ -265,21 +265,14 @@ class ExecutionNode {
   }
 
   /// @brief get the node and its dependencies as a vector
-  std::vector<ExecutionNode*> getDependencyChain(bool includeSelf) {
-    std::vector<ExecutionNode*> result;
-
+  void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf) {
     auto current = this;
     while (current != nullptr) {
       if (includeSelf || current != this) {
         result.emplace_back(current);
       }
-      if (! current->hasDependency()) {
-        break;
-      }
       current = current->getFirstDependency();
     }
-
-    return result;
   }
 
   /// @brief inspect one index; only skiplist indices which match attrs in
@@ -453,9 +446,6 @@ class ExecutionNode {
     _varsValid.clear();
     _varUsageValid = false;
   }
-
-  /// @brief can the node throw?
-  virtual bool canThrow() { return false; }
 
   /// @brief whether or not the subquery is deterministic
   virtual bool isDeterministic() { return true; }
@@ -890,8 +880,7 @@ class CalculationNode : public ExecutionNode {
       : ExecutionNode(plan, id),
         _conditionVariable(conditionVariable),
         _outVariable(outVariable),
-        _expression(expr),
-        _canRemoveIfThrows(false) {
+        _expression(expr) {
     TRI_ASSERT(_expression != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
   }
@@ -926,16 +915,6 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief return the expression
   Expression* expression() const { return _expression; }
-
-  /// @brief allow removal of this calculation even if it can throw
-  /// this can only happen if the optimizer added a clone of this expression
-  /// elsewhere, and if the clone will stand in
-  bool canRemoveIfThrows() const { return _canRemoveIfThrows; }
-
-  /// @brief allow removal of this calculation even if it can throw
-  /// this can only happen if the optimizer added a clone of this expression
-  /// elsewhere, and if the clone will stand in
-  void canRemoveIfThrows(bool value) { _canRemoveIfThrows = value; }
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
@@ -975,9 +954,6 @@ class CalculationNode : public ExecutionNode {
     return std::vector<Variable const*>{_outVariable};
   }
 
-  /// @brief can the node throw?
-  bool canThrow() override final { return _expression->canThrow(); }
-
   bool isDeterministic() override final { return _expression->isDeterministic(); }
 
  private:
@@ -989,11 +965,6 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief we need to have an expression and where to write the result
   Expression* _expression;
-
-  /// @brief allow removal of this calculation even if it can throw
-  /// this can only happen if the optimizer added a clone of this expression
-  /// elsewhere, and if the clone will stand in
-  bool _canRemoveIfThrows;
 };
 
 /// @brief class SubqueryNode
@@ -1066,11 +1037,6 @@ class SubqueryNode : public ExecutionNode {
   /// @brief replace the out variable, so we can adjust the name.
   void replaceOutVariable(Variable const* var);
 
-  /// @brief can the node throw? Note that this means that an exception can
-  /// *originate* from this node. That is, this method does not need to
-  /// return true just because a dependent node can throw an exception.
-  bool canThrow() override final;
-
   bool isDeterministic() override final;
 
   bool isConst();
@@ -1100,7 +1066,7 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return FILTER; }
+  NodeType getType() const override { return FILTER; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -1150,7 +1116,6 @@ struct SortInformation {
   bool isValid = true;
   bool isDeterministic = true;
   bool isComplex = false;
-  bool canThrow = false;
 
   Match isCoveredBy(SortInformation const& other) {
     if (!isValid || !other.isValid) {

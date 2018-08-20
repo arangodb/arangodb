@@ -79,13 +79,15 @@ int main(int argc, char* argv[]) {
   arangodb::LogAppender::addAppender("-"); 
 
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ShellColorsFeature sc(server);
 
-  arangodb::ShellColorsFeature sc(nullptr);
+  arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
   sc.prepare();
-  
+
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
   ctx.exit(0); // set "good" exit code by default
-  
+
   arangodb::ServerIdFeature::setId(12345);
   IcuInitializer::setup(ARGV0);
 

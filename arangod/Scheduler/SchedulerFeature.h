@@ -29,19 +29,20 @@
 #include "Scheduler/Socket.h"
 
 namespace arangodb {
+
 namespace rest {
+
 class Scheduler;
+
 }
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
   static rest::Scheduler* SCHEDULER;
 
- public:
-  explicit SchedulerFeature(application_features::ApplicationServer* server);
+  explicit SchedulerFeature(application_features::ApplicationServer& server);
   ~SchedulerFeature();
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -49,7 +50,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
- public:
   uint64_t queueSize() const { return _queueSize; }
 
  private:
@@ -69,7 +69,6 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   size_t defaultNumberOfThreads() const;
   void buildScheduler();
 
- private:
   std::unique_ptr<rest::Scheduler> _scheduler;
 
   std::function<void(const asio_ns::error_code&, int)> _signalHandler;
@@ -79,6 +78,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
+
 }
 
 #endif

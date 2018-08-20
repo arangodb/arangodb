@@ -38,10 +38,12 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Graph/Graph.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -60,6 +62,7 @@
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
 #include "RestHandler/RestExplainHandler.h"
+#include "RestHandler/RestGraphHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
@@ -68,9 +71,9 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
-#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -90,16 +93,18 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
 
 GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true) {
@@ -207,13 +212,6 @@ void GeneralServerFeature::start() {
 
   for (auto& server : _servers) {
     server->startListening();
-  }
-
-  // initially populate the authentication cache. otherwise no one
-  // can access the new database
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um != nullptr) {
-    um->outdate();
   }
 }
 
@@ -334,6 +332,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EDGES_PATH,
       RestHandlerCreator<RestEdgesHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::GHARIAL_PATH,
+      RestHandlerCreator<RestGraphHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::ENDPOINT_PATH,
@@ -485,6 +487,10 @@ void GeneralServerFeature::defineHandlers() {
 
   // further admin handlers
   _handlerFactory->addPrefixHandler(
+      "/_admin/database/target-version",
+      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
@@ -542,3 +548,5 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addRestHandlers(*_handlerFactory);
 }
+
+} // arangodb

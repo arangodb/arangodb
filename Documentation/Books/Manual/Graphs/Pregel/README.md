@@ -39,22 +39,22 @@ For example you might create your collections like this:
 ```javascript
 // Create main vertex collection: 
 db._create("vertices", {
-    shardKeys:['_key'],
-    numberOfShards: 8
-  });
+  shardKeys: ['_key'],
+  numberOfShards: 8
+});
 
 // Optionally create arbitrary additional vertex collections 
 db._create("additonal", {
-    distributeShardsLike:"vertices", 
-    numberOfShards:8
-  });
+  distributeShardsLike: "vertices", 
+  numberOfShards: 8
+});
 
 // Create (one or more) edge-collections: 
 db._createEdgeCollection("edges", {
-    shardKeys:['vertex'],
-    distributeShardsLike:"vertices",
-    numberOfShards:8
-  });
+  shardKeys: ['vertex'],
+  distributeShardsLike: "vertices",
+  numberOfShards: 8
+});
 ```
 
 You will need to ensure that edge documents contain the proper values in their sharding attribute.
@@ -62,9 +62,9 @@ For a vertex document with the following content ```{_key:"A", value:0}```
 the corresponding edge documents would have look like this:
 
 ```
-  {_from:"vertices/A", _to: "vertices/B", vertex:"A"}
-  {_from:"vertices/A", _to: "vertices/C", vertex:"A"}
-  {_from:"vertices/A", _to: "vertices/D", vertex:"A"}
+  {"_from":"vertices/A", "_to": "vertices/B", vertex:"A"}
+  {"_from":"vertices/A", "_to": "vertices/C", vertex:"A"}
+  {"_from":"vertices/A", "_to": "vertices/D", vertex:"A"}
   ...
 ```
 

@@ -33,14 +33,15 @@
 #include "Utils/FlushThread.h"
 #include "Utils/FlushTransaction.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 std::atomic<bool> FlushFeature::_isRunning(false);
 
-FlushFeature::FlushFeature(ApplicationServer* server)
+FlushFeature::FlushFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Flush"),
       _flushInterval(1000000) {
   setOptional(true);
@@ -161,3 +162,5 @@ void FlushFeature::executeCallbacks() {
     // TODO: honor the commit results here
   }
 }
+
+} // arangodb

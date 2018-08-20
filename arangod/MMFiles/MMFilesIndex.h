@@ -53,10 +53,9 @@ class MMFilesIndex : public Index {
     : Index(id, collection, info) {}
 
 
-  int afterTruncate() override {
+  void afterTruncate() override {
     // for mmfiles, truncating the index just unloads it
     unload();
-    return TRI_ERROR_NO_ERROR;
   }
 };
 }

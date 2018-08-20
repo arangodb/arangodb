@@ -1359,7 +1359,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
     auto serverFeature =
         application_features::ApplicationServer::getFeature<ServerFeature>(
         "Server");
-    if (serverFeature->isStopping()) {
+    if (serverFeature->isStopping()
+        || !application_features::ApplicationServer::isRetryOK()) {
       LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Unsuccessful AgencyComm: Timeout because of shutdown "
         << "errorCode: " << result.errorCode()
@@ -1617,7 +1618,7 @@ AgencyCommResult AgencyComm::send(
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  params.setJwt(af->tokenCache()->jwtToken());
+  params.setJwt(af->tokenCache().jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
