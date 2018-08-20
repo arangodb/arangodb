@@ -213,13 +213,6 @@ void GeneralServerFeature::start() {
   for (auto& server : _servers) {
     server->startListening();
   }
-
-  // initially populate the authentication cache. otherwise no one
-  // can access the new database
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um != nullptr) {
-    um->outdate();
-  }
 }
 
 void GeneralServerFeature::stop() {

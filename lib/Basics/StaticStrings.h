@@ -106,6 +106,7 @@ class StaticStrings {
   static std::string const AccessControlMaxAge;
   static std::string const AccessControlRequestHeaders;
   static std::string const Allow;
+  static std::string const AllowDirtyReads;
   static std::string const Async;
   static std::string const AsyncId;
   static std::string const Authorization;
@@ -133,6 +134,7 @@ class StaticStrings {
   static std::string const Location;
   static std::string const NoSniff;
   static std::string const Origin;
+  static std::string const PotentialDirtyRead;
   static std::string const Queue;
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;

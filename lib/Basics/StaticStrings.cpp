@@ -113,6 +113,7 @@ std::string const StaticStrings::AccessControlMaxAge("access-control-max-age");
 std::string const StaticStrings::AccessControlRequestHeaders(
     "access-control-request-headers");
 std::string const StaticStrings::Allow("allow");
+std::string const StaticStrings::AllowDirtyReads("x-arango-allow-dirty-read");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
@@ -144,6 +145,7 @@ std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
+std::string const StaticStrings::PotentialDirtyRead("x-arango-potential-dirty-read");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
