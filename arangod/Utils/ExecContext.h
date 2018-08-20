@@ -39,20 +39,27 @@ class Methods;
 /// context for convencience
 class ExecContext : public RequestContext {
  protected:
-  ExecContext(uint32_t flags, std::string const& user,
+  
+  enum class Type {
+    Default,
+    Internal
+  };
+  
+  ExecContext(ExecContext::Type type, std::string const& user,
               std::string const& database, auth::Level systemLevel,
               auth::Level dbLevel)
-      : _flags(flags),
-        _canceled(false),
+      : _type(type),
         _user(user),
         _database(database),
+        _canceled(false),
         _systemDbAuthLevel(systemLevel),
         _databaseAuthLevel(dbLevel) {
-    TRI_ASSERT(!(_flags & FLAG_INTERNAL) || _user.empty());
+    TRI_ASSERT(!(_type == Type::Internal) || _user.empty());
   }
   ExecContext(ExecContext const&) = delete;
-
+  ExecContext(ExecContext&&) = delete;
  public:
+
   virtual ~ExecContext() {}
 
   /// shortcut helper to check the AuthenticationFeature
@@ -66,8 +73,9 @@ class ExecContext : public RequestContext {
   static ExecContext* create(std::string const& user, std::string const& db);
   
   /// @brief an internal user is none / ro / rw for all collections / dbs
+  /// mainly used to override further permission resolution
   inline bool isInternal() const {
-    return _flags & FLAG_INTERNAL;
+    return _type == Type::Internal;
   }
   
   /// @brief any internal operation is a superuser.
@@ -83,7 +91,6 @@ class ExecContext : public RequestContext {
   
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const {
-    // conflicts with read-only: TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
     return _systemDbAuthLevel == auth::Level::RW;
   }
   
@@ -140,21 +147,16 @@ class ExecContext : public RequestContext {
   
   /// Should always contain a reference to current user context
   static thread_local ExecContext const* CURRENT;
-  
-  /// Internal superuser or read-only user
-  static constexpr uint32_t FLAG_INTERNAL = 1;
-  /// Request allows dirty-reads
-  static constexpr uint32_t FLAG_DIRTY_READS_ALLOWED = 2;
 
  protected:
   
-  uint32_t _flags;
-  /// should be used to indicate a canceled request / thread
-  bool _canceled;
+  Type _type;
   /// current user, may be empty for internal users
   std::string const _user;
   /// current database to use
   std::string const _database;
+  /// should be used to indicate a canceled request / thread
+  bool _canceled;
   /// level of system database
   auth::Level _systemDbAuthLevel;
   /// level of current database
