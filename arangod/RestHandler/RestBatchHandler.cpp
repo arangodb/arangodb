@@ -249,14 +249,14 @@ void RestBatchHandler::executeNextHandler() {
       );
 
       if (!ok) {
-        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_BAD_PARAMETER);
+        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
         continueHandlerExecution();
       }
     }
   );
 
   if (!ok) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_BAD_PARAMETER);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
     continueHandlerExecution();
   }
 }
