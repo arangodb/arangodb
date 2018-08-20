@@ -1066,7 +1066,7 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return FILTER; }
+  NodeType getType() const override { return FILTER; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,

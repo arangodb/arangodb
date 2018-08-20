@@ -54,6 +54,7 @@
 
       // fetch collection defined in router
       this.collection.fetch({
+        fetchAllUsers: true,
         cache: false,
         success: function () {
           self.collection.whoAmI(callback);
@@ -111,6 +112,7 @@
       }.bind(this);
 
       this.collection.fetch({
+        fetchAllUsers: true,
         cache: false,
         success: function () {
           callbackFunction();
@@ -196,6 +198,7 @@
     updateUserManagement: function () {
       var self = this;
       this.collection.fetch({
+        fetchAllUsers: true,
         cache: false,
         success: function () {
           self.render();
@@ -213,6 +216,7 @@
       }
 
       this.collection.fetch({
+        fetchAllUsers: true,
         cache: false
       });
       var username = this.evaluateUserName($(e.currentTarget).attr('id'), '_edit-user');
@@ -296,6 +300,7 @@
     updateUserProfile: function () {
       var self = this;
       this.collection.fetch({
+        fetchAllUsers: true,
         cache: false,
         success: function () {
           self.render();

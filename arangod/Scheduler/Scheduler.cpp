@@ -278,7 +278,7 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
     callback();
   });
 
-  // no exception happen, cancel guards
+  // no exception happened, cancel guards
   guardV8.cancel();
   guardQueue.cancel();
 }
@@ -427,7 +427,7 @@ bool Scheduler::canPostDirectly() const noexcept {
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback,
                            bool isV8) {
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
-  TRI_ASSERT(fifo != FIFO8 || (fifo == FIFO8 && isV8));
+  TRI_ASSERT(fifo != FIFO8 || isV8);
 
   size_t p = static_cast<size_t>(fifo);
   auto job = std::make_unique<FifoJob>(callback, isV8);

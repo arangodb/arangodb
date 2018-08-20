@@ -204,7 +204,7 @@ var runTestFunc = function (execFunction, testName, sourceFile) {
     return('done with  ' + testName);
   } catch (err) {
     allErrors += '\nRUN FAILED: ' + testName + ' from testfile: ' + sourceFile + ', ' + err + '\n' + err.stack + '\n';
-    return hashes + '\nfailed with  ' + testName + ', ', err, '\n' + hashes;
+    return hashes + '\nfailed with  ' + testName + ', ' + err + '\n' + hashes;
   }
 };
 
@@ -215,7 +215,7 @@ var runTestFuncCatch = function (execFunction, testName, expectError) {
   } catch (err) {
     if (err.num !== expectError.code) {
       allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
-      return hashes + '\nfailed with  ' + testName + ', ', err, '\n' + hashes;
+      return hashes + '\nfailed with  ' + testName + ', ' + err + '\n' + hashes;
     }
   }
 };
