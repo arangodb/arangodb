@@ -434,7 +434,7 @@ bool syncStore(
     arangodb::iresearch::IResearchViewMeta::ConsolidationPolicies const& policies,
     bool forceCommit,
     bool runCleanupAfterCommit,
-    std::string const& viewName,
+    arangodb::iresearch::IResearchView const& view,
     const char* storeName
 ) {
   char runId = 0; // value not used
@@ -450,32 +450,32 @@ bool syncStore(
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << entry.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
+      << "registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << " segment threshold '" << entry.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
     try {
       writer.consolidate(entry.policy(), false);
       forceCommit = true; // a consolidation policy was found requiring commit
     } catch (arangodb::basics::Exception& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.what();
+        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << view.name() << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "'";
+        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << view.name() << "'";
       IR_LOG_EXCEPTION();
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+      << "finished registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
   }
 
   if (!forceCommit) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "skipping store sync since no consolidation policies matched and sync not forced for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+      << "skipping store sync since no consolidation policies matched and sync not forced for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
     return false; // commit not done
   }
@@ -485,29 +485,40 @@ bool syncStore(
   // ...........................................................................
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting '" << storeName << "' store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
+    << "starting '" << storeName << "' store sync for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count before '" << segmentCount.load() << "'";
 
   try {
     segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
     writer.commit();
-    reader = reader.reopen(); // update reader
+    const auto newReader = reader.reopen(); // update reader
+
+    if (newReader != reader) {
+      // invalidate query cache if there were some data changes
+      arangodb::aql::QueryCache::instance()->invalidate(
+        &view.vocbase(),
+        view.name()
+      );
+
+      reader = newReader;
+    }
+
     segmentCount += reader.size(); // add commited segments
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.what();
+      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << viewName << "'";
+      << "caught exception during sync of '" << storeName << "' store of IResearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished '" << storeName << "' store sync for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
+    << "finished '" << storeName << "' store sync for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "' segment count after '" << segmentCount.load() << "'";
 
   if (!runCleanupAfterCommit) {
     return true; // commit done
@@ -518,26 +529,26 @@ bool syncStore(
   // ...........................................................................
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "starting '" << storeName << "' store cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+    << "starting '" << storeName << "' store cleanup for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
   try {
     irs::directory_utils::remove_all_unreferenced(directory);
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << viewName << "': " << e.what();
+      << "caught exception during cleanup of '" << storeName << "' store of IResearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception during cleanup of '" << storeName << "' of IResearch view '" << viewName << "'";
+      << "caught exception during cleanup of '" << storeName << "' of IResearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
   }
 
   LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-    << "finished '" << storeName << "' store cleanup for IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+    << "finished '" << storeName << "' store cleanup for IResearch view '" << view.name() << "' run id '" << size_t(&runId) << "'";
 
   return true;
 }
@@ -858,21 +869,13 @@ IResearchView::IResearchView(
                          state._consolidationPolicies,
                          true,
                          runCleanupAfterCommit,
-                         name(),
+                         *this,
                          storeEntry.second
                         )
             && state._cleanupIntervalStep
             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0;
         };
-
-        if (readerBeforeSync != store->_reader) {
-          // invalidate query cache if there were some data changes
-          arangodb::aql::QueryCache::instance()->invalidate(
-            &this->vocbase(),
-            this->name()
-          );
-        }
 
         return true; // reschedule
       };
@@ -1404,19 +1407,22 @@ arangodb::Result IResearchView::commit() {
     memoryStore._writer->clear(); // prepare the store for reuse
 
     SCOPED_LOCK(_toFlush->_readMutex); // do not allow concurrent read since _storePersisted/_toFlush need to be updated atomically
-    const auto readerBeforeReopen = _storePersisted._reader;
-    _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
-    _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
-    memoryStore._reader = memoryStore._reader.reopen(); // update reader
-    memoryStore._segmentCount += memoryStore._reader.size(); // add commited segments
+    const auto newReader = _storePersisted._reader.reopen(); // update reader
 
-    if (readerBeforeReopen != _storePersisted._reader) {
+    if (newReader != _storePersisted._reader) {
        // invalidate query cache if there were some data changes
        arangodb::aql::QueryCache::instance()->invalidate(
          &vocbase(),
          name()
        );
+
+       _storePersisted._reader = newReader;
     }
+
+    _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
+    memoryStore._reader = memoryStore._reader.reopen(); // update reader
+    memoryStore._segmentCount += memoryStore._reader.size(); // add commited segments
+
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception& e) {
