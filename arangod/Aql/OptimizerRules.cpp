@@ -1211,8 +1211,7 @@ void arangodb::aql::moveCalculationsDownRule(
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::COLLECT || 
-                 currentType == EN::NORESULTS) {
+                 currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         shouldMove = false;
         break;
@@ -1562,7 +1561,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   template <typename T>
   void replaceInVariable(ExecutionNode* en) {
-    auto node = static_cast<T*>(en);
+    auto node = ExecutionNode::castTo<T*>(en);
     node->_inVariable = Variable::replace(node->_inVariable, _replacements);
   }
 

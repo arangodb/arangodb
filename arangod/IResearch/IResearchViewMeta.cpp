@@ -35,14 +35,14 @@
 NS_LOCAL
 
 bool equalConsolidationPolicies(
-  arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicies const& lhs,
-  arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicies const& rhs
+  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicies const& lhs,
+  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicies const& rhs
 ) noexcept {
   if (lhs.size() != rhs.size()) {
     return false;
   }
 
-  typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
+  typedef arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy ConsolidationPolicy;
   struct PtrEquals {
     bool operator()(ConsolidationPolicy const* lhs, ConsolidationPolicy const* rhs) const noexcept {
       return *lhs == *rhs;
@@ -73,179 +73,13 @@ bool equalConsolidationPolicies(
   return true;
 }
 
-bool initCommitMeta(
-  arangodb::iresearch::IResearchViewMeta::CommitMeta& meta,
-  arangodb::velocypack::Slice const& slice,
-  std::string& errorField,
-  arangodb::iresearch::IResearchViewMeta::CommitMeta const& defaults
-) noexcept {
-  bool tmpSeen;
-
-  {
-    // optional size_t
-    static const std::string fieldName("cleanupIntervalStep");
-
-    if (!arangodb::iresearch::getNumber(meta._cleanupIntervalStep, slice, fieldName, tmpSeen, defaults._cleanupIntervalStep)) {
-      errorField = fieldName;
-
-      return false;
-    }
-  }
-
-  {
-    // optional size_t
-    static const std::string fieldName("commitIntervalMsec");
-    bool tmpBool;
-
-    if (!arangodb::iresearch::getNumber(meta._commitIntervalMsec, slice, fieldName, tmpBool, defaults._commitIntervalMsec)) {
-      errorField = fieldName;
-
-      return false;
-    }
-  }
-
-  {
-    // optional enum->{size_t,float} map
-    static const std::string fieldName("consolidate");
-
-    if (!slice.hasKey(fieldName)) {
-      meta._consolidationPolicies = defaults._consolidationPolicies;
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isObject()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      meta._consolidationPolicies.clear(); // reset to match read values exactly
-
-      for (arangodb::velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
-        auto key = itr.key();
-
-        if (!key.isString()) {
-          errorField = fieldName + "=>[" + arangodb::basics::StringUtils::itoa(itr.index()) + "]";
-
-          return false;
-        }
-
-        typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
-
-        static const std::unordered_map<std::string, ConsolidationPolicy::Type> policies = {
-          { "bytes", ConsolidationPolicy::Type::BYTES },
-          { "bytes_accum", ConsolidationPolicy::Type::BYTES_ACCUM },
-          { "count", ConsolidationPolicy::Type::COUNT },
-          { "fill", ConsolidationPolicy::Type::FILL },
-        };
-
-        auto name = key.copyString();
-        auto policyItr = policies.find(name);
-        auto value = itr.value();
-
-        if (!value.isObject() || policyItr == policies.end()) {
-          errorField = fieldName + "=>" + name;
-
-          return false;
-        }
-
-        static const ConsolidationPolicy& defaultPolicy = ConsolidationPolicy::DEFAULT(policyItr->second);
-        size_t segmentThreshold = 0;
-
-        {
-          // optional size_t
-          static const std::string subFieldName("segmentThreshold");
-
-          if (!arangodb::iresearch::getNumber(segmentThreshold, value, subFieldName, tmpSeen, defaultPolicy.segmentThreshold())) {
-            errorField = fieldName + "=>" + name + "=>" + subFieldName;
-
-            return false;
-          }
-        }
-
-        float threshold = std::numeric_limits<float>::infinity();
-
-        {
-          // optional float
-          static const std::string subFieldName("threshold");
-
-          if (!arangodb::iresearch::getNumber(threshold, value, subFieldName, tmpSeen, defaultPolicy.threshold()) || threshold < 0. || threshold > 1.) {
-            errorField = fieldName + "=>" + name + "=>" + subFieldName;
-
-            return false;
-          }
-        }
-
-        // add only enabled policies
-        if (segmentThreshold) {
-          meta._consolidationPolicies.emplace_back(policyItr->second, segmentThreshold, threshold);
-        }
-      }
-    }
-  }
-
-  return true;
-}
-
-bool jsonCommitMeta(
-  arangodb::velocypack::Builder& builder,
-  arangodb::iresearch::IResearchViewMeta::CommitMeta const& meta
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add("cleanupIntervalStep", arangodb::velocypack::Value(meta._cleanupIntervalStep));
-  builder.add("commitIntervalMsec", arangodb::velocypack::Value(meta._commitIntervalMsec));
-
-  typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
-  struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
-  static const std::unordered_map<ConsolidationPolicy::Type, std::string, ConsolidationPolicyHash> policies = {
-    { ConsolidationPolicy::Type::BYTES, "bytes" },
-    { ConsolidationPolicy::Type::BYTES_ACCUM, "bytes_accum" },
-    { ConsolidationPolicy::Type::COUNT, "count" },
-    { ConsolidationPolicy::Type::FILL, "fill" },
-  };
-
-  arangodb::velocypack::Builder subBuilder;
-
-  {
-    arangodb::velocypack::ObjectBuilder subBuilderWrapper(&subBuilder);
-
-    for (auto& policy: meta._consolidationPolicies) {
-      if (!policy.segmentThreshold()) {
-        continue; // do not output disabled consolidation policies
-      }
-
-      auto itr = policies.find(policy.type());
-
-      if (itr != policies.end()) {
-        arangodb::velocypack::Builder policyBuilder;
-
-        {
-          arangodb::velocypack::ObjectBuilder policyBuilderWrapper(&policyBuilder);
-
-          policyBuilderWrapper->add("segmentThreshold", arangodb::velocypack::Value(policy.segmentThreshold()));
-          policyBuilderWrapper->add("threshold", arangodb::velocypack::Value(policy.threshold()));
-        }
-
-        subBuilderWrapper->add(itr->second, policyBuilder.slice());
-      }
-    }
-  }
-
-  builder.add("consolidate", subBuilder.slice());
-
-  return true;
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& value
+size_t IResearchViewMeta::ConsolidationPolicy::Hash::operator()(
+    IResearchViewMeta::ConsolidationPolicy const& value
 ) const noexcept {
   auto segmentThreshold = value.segmentThreshold();
   auto threshold = value.threshold();
@@ -257,8 +91,8 @@ size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
     ;
 }
 
-IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type type,
+IResearchViewMeta::ConsolidationPolicy::ConsolidationPolicy(
+    IResearchViewMeta::ConsolidationPolicy::Type type,
     size_t segmentThreshold,
     float threshold
 ): _segmentThreshold(segmentThreshold), _threshold(threshold), _type(type) {
@@ -282,20 +116,20 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
   }
 }
 
-IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
+IResearchViewMeta::ConsolidationPolicy::ConsolidationPolicy(
+    IResearchViewMeta::ConsolidationPolicy const& other
 ) {
   *this = other;
 }
 
-IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy&& other
+IResearchViewMeta::ConsolidationPolicy::ConsolidationPolicy(
+    IResearchViewMeta::ConsolidationPolicy&& other
 ) noexcept {
   *this = std::move(other);
 }
 
-IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator=(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
+IResearchViewMeta::ConsolidationPolicy& IResearchViewMeta::ConsolidationPolicy::operator=(
+    IResearchViewMeta::ConsolidationPolicy const& other
 ) {
   if (this != &other) {
     _segmentThreshold = other._segmentThreshold;
@@ -307,8 +141,8 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMet
   return *this;
 }
 
-IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator=(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy&& other
+IResearchViewMeta::ConsolidationPolicy& IResearchViewMeta::ConsolidationPolicy::operator=(
+    IResearchViewMeta::ConsolidationPolicy&& other
 ) noexcept {
   if (this != &other) {
     _segmentThreshold = std::move(other._segmentThreshold);
@@ -320,8 +154,8 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMet
   return *this;
 }
 
-bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
+bool IResearchViewMeta::ConsolidationPolicy::operator==(
+    IResearchViewMeta::ConsolidationPolicy const& other
 ) const noexcept {
   return _type == other._type
     && _segmentThreshold == other._segmentThreshold
@@ -329,8 +163,8 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
     ;
 }
 
-/*static*/ const IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMeta::ConsolidationPolicy::DEFAULT(
-    IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type type
+/*static*/ const IResearchViewMeta::ConsolidationPolicy& IResearchViewMeta::ConsolidationPolicy::DEFAULT(
+    IResearchViewMeta::ConsolidationPolicy::Type type
 ) {
   switch (type) {
     case Type::BYTES:
@@ -360,49 +194,37 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
   }
 }
 
-size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::segmentThreshold() const noexcept {
+size_t IResearchViewMeta::ConsolidationPolicy::segmentThreshold() const noexcept {
   return _segmentThreshold;
 }
 
-irs::index_writer::consolidation_policy_t const& IResearchViewMeta::CommitMeta::ConsolidationPolicy::policy() const noexcept {
+irs::index_writer::consolidation_policy_t const& IResearchViewMeta::ConsolidationPolicy::policy() const noexcept {
   return _policy;
 }
 
-float IResearchViewMeta::CommitMeta::ConsolidationPolicy::threshold() const noexcept {
+float IResearchViewMeta::ConsolidationPolicy::threshold() const noexcept {
   return _threshold;
 }
 
-IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type IResearchViewMeta::CommitMeta::ConsolidationPolicy::type() const noexcept {
+IResearchViewMeta::ConsolidationPolicy::Type IResearchViewMeta::ConsolidationPolicy::type() const noexcept {
   return _type;
 }
 
-bool IResearchViewMeta::CommitMeta::operator==(
-  CommitMeta const& other
-) const {
-  return _cleanupIntervalStep == other._cleanupIntervalStep
-      && _commitIntervalMsec == other._commitIntervalMsec
-      && equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies);
-}
-
-bool IResearchViewMeta::CommitMeta::operator!=(
-  CommitMeta const& other
-  ) const {
-  return !(*this == other);
-}
-
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
-  : _commit(mask),
+  : _cleanupIntervalStep(mask),
+    _commitIntervalMsec(mask),
+    _consolidationPolicies(mask),
     _locale(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
   : _locale(std::locale::classic()) {
-  _commit._cleanupIntervalStep = 10;
-  _commit._commitIntervalMsec = 60 * 1000;
-  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES));
-  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::BYTES_ACCUM));
-  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::COUNT));
-  _commit._consolidationPolicies.emplace_back(CommitMeta::ConsolidationPolicy::DEFAULT(CommitMeta::ConsolidationPolicy::Type::FILL));
+  _cleanupIntervalStep = 10;
+  _commitIntervalMsec = 60 * 1000;
+  _consolidationPolicies.emplace_back(ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::BYTES));
+  _consolidationPolicies.emplace_back(ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::BYTES_ACCUM));
+  _consolidationPolicies.emplace_back(ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::COUNT));
+  _consolidationPolicies.emplace_back(ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::FILL));
 }
 
 IResearchViewMeta::IResearchViewMeta(IResearchViewMeta const& defaults) {
@@ -415,7 +237,9 @@ IResearchViewMeta::IResearchViewMeta(IResearchViewMeta&& other) noexcept {
 
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexcept {
   if (this != &other) {
-    _commit = std::move(other._commit);
+    _cleanupIntervalStep = std::move(other._cleanupIntervalStep);
+    _commitIntervalMsec = std::move(other._commitIntervalMsec);
+    _consolidationPolicies = std::move(other._consolidationPolicies);
     _locale = std::move(other._locale);
   }
 
@@ -424,7 +248,9 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
 
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) {
   if (this != &other) {
-    _commit = other._commit;
+    _cleanupIntervalStep = other._cleanupIntervalStep;
+    _commitIntervalMsec = other._commitIntervalMsec;
+    _consolidationPolicies = other._consolidationPolicies;
     _locale = other._locale;
   }
 
@@ -432,7 +258,15 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
 }
 
 bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcept {
-  if (_commit != other._commit) {
+  if (_cleanupIntervalStep != other._cleanupIntervalStep) {
+    return false; // values do not match
+  }
+
+  if (_commitIntervalMsec != other._commitIntervalMsec) {
+    return false; // values do not match
+  }
+
+  if (!equalConsolidationPolicies(_consolidationPolicies, other._consolidationPolicies)) {
     return false; // values do not match
   }
 
@@ -475,13 +309,51 @@ bool IResearchViewMeta::init(
   }
 
   {
-    // optional jSON object
-    static const std::string fieldName("commit");
+    // optional size_t
+    static const std::string fieldName("cleanupIntervalStep");
 
-    mask->_commit = slice.hasKey(fieldName);
+    mask->_cleanupIntervalStep = slice.hasKey(fieldName);
 
-    if (!mask->_commit) {
-      _commit = defaults._commit;
+    if (!mask->_cleanupIntervalStep) {
+      _cleanupIntervalStep = defaults._cleanupIntervalStep;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_cleanupIntervalStep, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("commitIntervalMsec");
+
+    mask->_commitIntervalMsec = slice.hasKey(fieldName);
+
+    if (!mask->_commitIntervalMsec) {
+      _commitIntervalMsec = defaults._commitIntervalMsec;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_commitIntervalMsec, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional enum->{size_t,float} map
+    static const std::string fieldName("consolidate");
+
+    mask->_consolidationPolicies = slice.hasKey(fieldName);
+
+    if (!mask->_consolidationPolicies) {
+      _consolidationPolicies = defaults._consolidationPolicies;
     } else {
       auto field = slice.get(fieldName);
 
@@ -491,12 +363,67 @@ bool IResearchViewMeta::init(
         return false;
       }
 
-      std::string errorSubField;
+      _consolidationPolicies.clear(); // reset to match read values exactly
 
-      if (!initCommitMeta(_commit, field, errorSubField, defaults._commit)) {
-        errorField = fieldName + "=>" + errorSubField;
+      for (arangodb::velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+        auto key = itr.key();
 
-        return false;
+        if (!key.isString()) {
+          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+
+          return false;
+        }
+
+        static const std::unordered_map<std::string, ConsolidationPolicy::Type> policies = {
+          { "bytes", ConsolidationPolicy::Type::BYTES },
+          { "bytes_accum", ConsolidationPolicy::Type::BYTES_ACCUM },
+          { "count", ConsolidationPolicy::Type::COUNT },
+          { "fill", ConsolidationPolicy::Type::FILL },
+        };
+
+        auto name = key.copyString();
+        auto policyItr = policies.find(name);
+        auto value = itr.value();
+
+        if (!value.isObject() || policyItr == policies.end()) {
+          errorField = fieldName + "=>" + name;
+
+          return false;
+        }
+
+        static const ConsolidationPolicy& defaultPolicy = ConsolidationPolicy::DEFAULT(policyItr->second);
+        size_t segmentThreshold = 0;
+
+        {
+          // optional size_t
+          static const std::string subFieldName("segmentThreshold");
+          bool tmpSeen;
+
+          if (!arangodb::iresearch::getNumber(segmentThreshold, value, subFieldName, tmpSeen, defaultPolicy.segmentThreshold())) {
+            errorField = fieldName + "=>" + name + "=>" + subFieldName;
+
+            return false;
+          }
+        }
+
+        float threshold = std::numeric_limits<float>::infinity();
+
+        {
+          // optional float
+          static const std::string subFieldName("threshold");
+          bool tmpSeen;
+
+          if (!arangodb::iresearch::getNumber(threshold, value, subFieldName, tmpSeen, defaultPolicy.threshold()) || threshold < 0. || threshold > 1.) {
+            errorField = fieldName + "=>" + name + "=>" + subFieldName;
+
+            return false;
+          }
+        }
+
+        // add only enabled policies
+        if (segmentThreshold) {
+          _consolidationPolicies.emplace_back(policyItr->second, segmentThreshold, threshold);
+        }
       }
     }
   }
@@ -544,18 +471,47 @@ bool IResearchViewMeta::json(
     return false;
   }
 
-  if ((!ignoreEqual || _commit != ignoreEqual->_commit) && (!mask || mask->_commit)) {
+  if ((!ignoreEqual || _cleanupIntervalStep != ignoreEqual->_cleanupIntervalStep) && (!mask || mask->_cleanupIntervalStep)) {
+    builder.add("cleanupIntervalStep", arangodb::velocypack::Value(_cleanupIntervalStep));
+  }
+
+  if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) && (!mask || mask->_commitIntervalMsec)) {
+    builder.add("commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec));
+  }
+
+  if ((!ignoreEqual || !equalConsolidationPolicies(_consolidationPolicies, ignoreEqual->_consolidationPolicies)) && (!mask || mask->_consolidationPolicies)) {
+    struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
+    static const std::unordered_map<ConsolidationPolicy::Type, std::string, ConsolidationPolicyHash> policies = {
+      { ConsolidationPolicy::Type::BYTES, "bytes" },
+      { ConsolidationPolicy::Type::BYTES_ACCUM, "bytes_accum" },
+      { ConsolidationPolicy::Type::COUNT, "count" },
+      { ConsolidationPolicy::Type::FILL, "fill" },
+    };
+
     arangodb::velocypack::Builder subBuilder;
 
-    {
-      arangodb::velocypack::ObjectBuilder subBuilderWrapper(&subBuilder);
+    subBuilder.openObject();
 
-      if (!jsonCommitMeta(*(subBuilderWrapper.builder), _commit)) {
-        return false;
+    for (auto& policy: _consolidationPolicies) {
+      if (!policy.segmentThreshold()) {
+        continue; // do not output disabled consolidation policies
+      }
+
+      auto itr = policies.find(policy.type());
+
+      if (itr != policies.end()) {
+        arangodb::velocypack::Builder policyBuilder;
+
+        policyBuilder.openObject();
+        policyBuilder.add("segmentThreshold", arangodb::velocypack::Value(policy.segmentThreshold()));
+        policyBuilder.add("threshold", arangodb::velocypack::Value(policy.threshold()));
+        policyBuilder.close();
+        subBuilder.add(itr->second, policyBuilder.slice());
       }
     }
 
-    builder.add("commit", subBuilder.slice());
+    subBuilder.close();
+    builder.add("consolidate", subBuilder.slice());
   }
 
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {

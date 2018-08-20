@@ -216,18 +216,18 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 
   arangosh.checkRequestResult(requestResult);
 
-  const attributes = {
-    'commit': true,
-    'links': true,
-    'locale': true
+  const mask = {
+    'code': true,
+    'id': true,
+    'name': true,
+    'type': true,
   };
-
   var result = {};
-  for (let a in attributes) {
-    if (attributes.hasOwnProperty(a) &&
-      requestResult.hasOwnProperty(a) &&
-      requestResult[a] !== undefined) {
-      result[a] = requestResult[a];
+
+  // remove masked attributes from result
+  for (let attr in requestResult) {
+    if (!mask.hasOwnProperty(attr) && requestResult[attr] !== undefined) {
+      result[attr] = requestResult[attr];
     }
   }
 
