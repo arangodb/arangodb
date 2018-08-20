@@ -47,6 +47,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
@@ -63,7 +64,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-static std::atomic<TRI_voc_tick_t> NextQueryId(1);
+static std::atomic<TRI_voc_tick_t> nextQueryId(1);
 }
 
 /// @brief creates a query
@@ -1278,7 +1279,7 @@ void Query::init() {
     return;
   }
   TRI_ASSERT(_id == 0);
-  _id = Query::NextId();
+  _id = nextId();
   TRI_ASSERT(_id != 0);
 
   TRI_ASSERT(_profile == nullptr);
@@ -1440,6 +1441,11 @@ std::shared_ptr<transaction::Context> Query::createTransactionContext() {
 
   return transaction::StandaloneContext::Create(_vocbase);
 }
+  
+/// @brief pass-thru a resolver object from the transaction context
+CollectionNameResolver const& Query::resolver() {
+  return createTransactionContext()->resolver();
+}
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
@@ -1464,6 +1470,6 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
 }
 
 /// @brief returns the next query id
-TRI_voc_tick_t Query::NextId() {
-  return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
+TRI_voc_tick_t Query::nextId() {
+  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }

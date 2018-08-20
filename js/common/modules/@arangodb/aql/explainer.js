@@ -123,7 +123,7 @@ function collection (v) {
 
 function view (v) {
   'use strict';
-  return colors.COLOR_RED + 'VIEW( ' + v + ' )' + colors.COLOR_RESET;
+  return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
 function attribute (v) {
@@ -1002,6 +1002,9 @@ function processQuery (query, explain) {
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
+        if (node.condition && node.condition.hasOwnProperty('type')) {
+          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition) + '   ' + annotation('/* view query */');
+        }
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
