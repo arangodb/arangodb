@@ -77,7 +77,7 @@ static int indexOf(VPackSlice const& slice, std::string const& val) {
   return -1;
 }
 
-std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
+static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
   auto builder = std::make_shared<VPackBuilder>();
   TRI_ASSERT(s.isObject());
   { VPackObjectBuilder b(builder.get());
@@ -92,7 +92,7 @@ std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
 }
 
 
-std::shared_ptr<VPackBuilder> compareRelevantProps (
+static std::shared_ptr<VPackBuilder> compareRelevantProps (
   VPackSlice const& first, VPackSlice const& second) {
   auto result = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(result.get());
