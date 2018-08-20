@@ -1405,6 +1405,10 @@ int TRI_vocbase_t::renameView(
   auto doSync = databaseFeature->forceSyncProperties();
   auto res = view->rename(std::string(newName), doSync);
 
+  // invalidate all entries in the plan and query cache now
+  arangodb::aql::PlanCache::instance()->invalidate(this);
+  arangodb::aql::QueryCache::instance()->invalidate(this);
+
   return res.errorNumber();
 }
 

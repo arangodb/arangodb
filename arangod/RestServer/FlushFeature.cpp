@@ -23,6 +23,7 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
@@ -136,15 +137,16 @@ bool FlushFeature::unregisterCallback(void* ptr) {
 void FlushFeature::executeCallbacks() {
   std::vector<FlushTransactionPtr> transactions;
 
-  READ_LOCKER(locker, _callbacksLock);
+  {
+    READ_LOCKER(locker, _callbacksLock);
+    transactions.reserve(_callbacks.size());
 
-  transactions.reserve(_callbacks.size());
-
-  // execute all callbacks. this will create as many transactions as
-  // there are callbacks
-  for (auto const& cb : _callbacks) {
-    // copy elision, std::move(..) not required
-    transactions.emplace_back(cb.second());
+    // execute all callbacks. this will create as many transactions as
+    // there are callbacks
+    for (auto const& cb : _callbacks) {
+      // copy elision, std::move(..) not required
+      transactions.emplace_back(cb.second());
+    }
   }
 
   // TODO: make sure all data is synced
@@ -160,6 +162,13 @@ void FlushFeature::executeCallbacks() {
       LOG_TOPIC(ERR, Logger::FIXME) << "could not commit flush transaction '" << trx->name() << "': " << res.errorMessage();
     }
     // TODO: honor the commit results here
+  }
+
+  if (!transactions.empty()) {
+    // TODO: this is very coarse-grained still. Whenever an action was performed here,
+    // we invalidate the entire query cache. this is because we currently don't know
+    // what kinds of actions were performed by the flushing
+    arangodb::aql::QueryCache::instance()->invalidate();
   }
 }
 
