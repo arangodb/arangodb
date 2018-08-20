@@ -34,6 +34,7 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -78,19 +79,11 @@ static int indexOf(VPackSlice const& slice, std::string const& val) {
 }
 
 static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
-  auto builder = std::make_shared<VPackBuilder>();
   TRI_ASSERT(s.isObject());
-  { VPackObjectBuilder b(builder.get());
-    for (auto const& attr : VPackObjectIterator(s)) {
-      std::string const key = attr.key.copyString();
-      if (key == ID || key == NAME) {
-        continue;
-      }
-      builder->add(key, attr.value);
-    }}
-  return builder;
+  return std::make_shared<VPackBuilder>(
+    arangodb::velocypack::Collection::remove(s,
+    std::unordered_set<std::string>({ID, NAME})));
 }
-
 
 static std::shared_ptr<VPackBuilder> compareRelevantProps (
   VPackSlice const& first, VPackSlice const& second) {
