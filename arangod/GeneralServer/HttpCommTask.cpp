@@ -312,8 +312,6 @@ bool HttpCommTask::processRead(double startTime) {
       // request context for that request
       _incompleteRequest.reset(
           new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-      //GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
-      //    _incompleteRequest.get());
       _incompleteRequest->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -744,17 +742,15 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
-  if (!_auth->isActive()) {
-    request->setAuthenticated(true);
-    return rest::ResponseCode::OK;
-  }
-
+ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
   bool found;
-  std::string const& authStr = request->header(StaticStrings::Authorization, found);
+  std::string const& authStr = req->header(StaticStrings::Authorization, found);
   if (!found) {
-    events::CredentialsMissing(request);
-    return rest::ResponseCode::UNAUTHORIZED;
+    if (_auth->isActive()) {
+      events::CredentialsMissing(req);
+      return rest::ResponseCode::UNAUTHORIZED;
+    }
+    return rest::ResponseCode::OK;
   }
 
   size_t methodPos = authStr.find_first_of(' ');
@@ -765,8 +761,8 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       ++auth;
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\"" << (void*)this << "\",\""
-        << authStr << "\"";
+    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\""
+      << (void*)this << "\",\"" << authStr << "\"";
     try {
       // note that these methods may throw in case of an error
       AuthenticationMethod authMethod = AuthenticationMethod::NONE;
@@ -776,18 +772,18 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         authMethod = AuthenticationMethod::JWT;
       }
 
+      req->setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
-        request->setAuthenticationMethod(authMethod);
-        TRI_ASSERT(_auth->isActive());
-        auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
-        request->setAuthenticated(entry.authenticated());
-        request->setUser(std::move(entry._username));
-
-        if (request->authenticated()) {
-          events::Authenticated(request, authMethod);
-          return rest::ResponseCode::OK;
-        }
-        events::CredentialsBad(request, authMethod);
+        auto entry = _auth->tokenCache().checkAuthentication(authMethod, auth);
+        req->setAuthenticated(entry.authenticated());
+        req->setUser(std::move(entry._username));
+      }
+      
+      if (req->authenticated() || !_auth->isActive()) {
+        events::Authenticated(req, authMethod);
+        return rest::ResponseCode::OK;
+      } else if (_auth->isActive()) {
+        events::CredentialsBad(req, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }
 
@@ -803,6 +799,6 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
     }
   }
 
-  events::UnknownAuthenticationMethod(request);
+  events::UnknownAuthenticationMethod(req);
   return rest::ResponseCode::UNAUTHORIZED;
 }

@@ -38,7 +38,6 @@ class AuthenticationFeature final
   explicit AuthenticationFeature(
     application_features::ApplicationServer& server
   );
-  ~AuthenticationFeature();
 
   static inline AuthenticationFeature* instance() {
     return INSTANCE;
@@ -62,20 +61,20 @@ class AuthenticationFeature final
   bool localAuthentication() const noexcept { return _localAuthentication; }
 
   /// @return Cache to deal with authentication tokens
-  inline auth::TokenCache* tokenCache() const noexcept {
+  inline auth::TokenCache& tokenCache() const noexcept {
     TRI_ASSERT(_authCache);
-    return _authCache;
+    return *_authCache.get();
   }
 
-  /// user manager may be null on DBServers and Agency
+  /// @brief user manager may be null on DBServers and Agency
   /// @return user manager singleton
   inline auth::UserManager* userManager() const noexcept {
-    return _userManager;
+    return _userManager.get();
   }
 
  private:
-  auth::UserManager* _userManager;
-  auth::TokenCache* _authCache;
+  std::unique_ptr<auth::UserManager> _userManager;
+  std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
   double _authenticationTimeout;
