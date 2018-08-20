@@ -399,8 +399,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   std::string const& collection, std::string const& clientId,
   uint64_t rlid, double timeout) {
 
-  auto start = steady_clock::now();
-
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
@@ -450,13 +448,7 @@ arangodb::Result SynchronizeShard::getReadLock(
         << putres->stringifyErrorMessage();
     }
 
-  }
-
-  std::this_thread::sleep_for(duration<double>(.5));
-  if (std::chrono::duration_cast<std::chrono::seconds>(
-        steady_clock::now() - start).count() > timeout) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
-    return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
+    std::this_thread::sleep_for(duration<double>(.5));
   }
 
   LOG_TOPIC(ERR, Logger::MAINTENANCE) << "startReadLockOnLeader: giving up";
