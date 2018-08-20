@@ -22,9 +22,12 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Utils/DatabaseGuard.h"
@@ -729,6 +732,8 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             // bring followers in sync so just continue here
             auto cpath = std::vector<std::string> {dbname, colname, shname};
             if (!cdbs.hasKey(cpath)) {
+              LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
+                "Shard " << shname << " not in current yet. Rescheduling maintenance.";
               continue;
             }
 
@@ -785,7 +790,9 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
-
+  // Report to DBServerAgencySync, that we need to rerun. A follower has not found
+  // leader's entry in current and will schedule a rerun of maintenance immediately.
+  
   report.add(VPackValue("phaseTwo"));
   { VPackObjectBuilder p2(&report);
 

@@ -406,7 +406,7 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
 }
 
-TEST_CASE("ActionPhases", "[cluster][maintenance]") {
+TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
   std::map<std::string, Node> localNodes {
     {dbsIds[shortNames[0]], createNode(dbs0Str)},
@@ -736,50 +736,102 @@ TEST_CASE("ActionPhases", "[cluster][maintenance]") {
 
   }
 
-  
-/*  SECTION("Resign leadership") {
+
+  SECTION("Resign leadership") {
 
     plan = originalPlan;
-    auto cid = collectionMap(plan).at("_system/bar");
+    std::string const dbname("_system");
+    std::string const colname("bar");
+    auto cid = collectionMap(plan).at(dbname + "/" + colname);
     auto& shards = plan({"Collections",dbname,cid,"shards"}).children();
 
     for (auto const& node : localNodes) {
       std::vector<ActionDescription> actions;
 
       auto const& serverId = node.first;
-      
+
+      std::string shname;
+
       for (auto const& shard : shards) {
-        auto const& shname = shard.first;
-        Slice servers = shard.second.toBuilder().slice();
-        servers.size
+        shname = shard.first;
+        Slice servers = shard.second->toBuilder().slice();
+
+        REQUIRE(servers.isArray());
+        REQUIRE(servers.length() == 2);
+        auto const leader = servers[0].copyString();
+        auto const follower = servers[1].copyString();
+
+        if (leader == node.first) {
+
+          VPackBuilder newServers;
+          { VPackArrayBuilder a(&newServers);
+            newServers.add(VPackValue(std::string("_") + leader));
+            newServers.add(VPackValue(follower)); }
+          plan({"Collections", dbname, cid, "shards", shname}) = newServers.slice();
+          break;
+        }
       }
-      plan({"Collections","_system",cid,shards.begin().});
       
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
         actions);
 
-      REQUIRE(actions.size() == 0);
-    }
-
-  }
-*/
-
-/*  SECTION("Diffing local and current") {
-
-    for (auto const& node : localNodes) {
-      arangodb::maintenance::Transactions report;
-      arangodb::maintenance::diffLocalCurrent(
-        node.second.toBuilder().slice(), current.toBuilder().slice(), node.first,
-        report);
-      for (auto const& tp : report) {
-        std::cout
-          << "[ " << tp.first.toJson() << ", " << tp.second.toJson() << " ]"
-          << std::endl;
+      if (actions.size() != 1) {
+        std::cout << actions << std::endl;
       }
+      REQUIRE(actions.size() == 1);
+      REQUIRE(actions.front().name() == "ResignShardLeadership");
+      REQUIRE(actions.front().get(DATABASE) == dbname);
+      REQUIRE(actions.front().get(SHARD) == shname);
     }
 
   }
-*/
 
 }
+
+TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
+
+  plan = originalPlan;
+  
+  std::map<std::string, Node> localNodes {
+    {dbsIds[shortNames[0]], createNode(dbs0Str)},
+    {dbsIds[shortNames[1]], createNode(dbs1Str)},
+    {dbsIds[shortNames[2]], createNode(dbs2Str)}};
+
+
+/*  SECTION("Diffing local and current in equilibrium") {
+    
+    VPackSlice p = plan.toBuilder().slice();
+    REQUIRE(p.hasKey("Collections"));
+    REQUIRE(p.get("Collections").isObject());
+    VPackSlice c = current.toBuilder().slice();
+
+    for (auto const& node : localNodes) {
+
+      VPackSlice l = node.second.toBuilder().slice();
+      REQUIRE(c.isObject());
+      REQUIRE(p.isObject());
+      REQUIRE(l.isObject());
+
+      VPackBuilder rb;
+      { VPackObjectBuilder o(&rb);
+        rb.add(VPackValue("phaseTwo"));
+        { VPackObjectBuilder oo(&rb);
+          arangodb::maintenance::reportInCurrent(p, c, l, node.first, rb); }}
+
+      VPackSlice report = rb.slice();
+
+      VPackSlice pt = report.get("PhaseTwo");
+      REQUIRE(pt.isObject());
+      
+      if (!pt.isEmptyObject()) {
+        std::cout << pt.toJson() << std::endl;
+      }
+      REQUIRE(pt.isEmptyObject());
+      
+    }
+  }
+*/
+}
+
+

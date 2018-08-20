@@ -636,6 +636,10 @@ bool SynchronizeShard::first() {
   std::string shard = _description.get(SHARD);
   std::string leader = _description.get(LEADER);
 
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
+    << "' for central '" << database << "/" << planId << "'";
+
   auto* clusterInfo = ClusterInfo::instance();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = system_clock::now();
