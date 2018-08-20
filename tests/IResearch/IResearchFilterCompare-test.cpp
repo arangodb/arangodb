@@ -378,8 +378,8 @@ SECTION("BinaryEq") {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 1 == true RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(boost(1 == true, 1.5), 'test_analyzer') RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 1 == true RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(1 == true, 1.5), 'test_analyzer') RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // boolean expression

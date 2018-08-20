@@ -483,7 +483,7 @@ function CryptoSuite () {
 
     testUuidv4 : function () {
       const uuidv4 = crypto.uuidv4();
-      assertTrue(uuidv4.match(/^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$/))
+      assertTrue(uuidv4.match(/^[0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}$/));
       assertNotEqual(uuidv4, crypto.uuidv4());
     },
 
