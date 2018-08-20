@@ -516,28 +516,32 @@ VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
 
   VPackBuilder ret;
   
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
+  try {
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
+
+    { VPackObjectBuilder o(&ret);
+      ret.add(ERROR, VPackValue(false));
+      ret.add(ERROR_NUM, VPackValue(0));
+      ret.add(ERROR_MESSAGE, VPackValue(""));
+      ret.add(ID, VPackValue(std::to_string(vocbase->id())));
+      ret.add("name", VPackValue(vocbase->name())); }
+
+    return ret;
+  } catch(std::exception const& e) {
     std::string errorMsg(
       "Maintenance::assembleLocalDatabaseInfo: Failed to lookup database ");
     errorMsg += database;
+    errorMsg += " exception: ";
+    errorMsg += e.what();
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }
-
-  { VPackObjectBuilder o(&ret);
-    ret.add(ERROR, VPackValue(false));
-    ret.add(ERROR_NUM, VPackValue(0));
-    ret.add(ERROR_MESSAGE, VPackValue(""));
-    ret.add(ID, VPackValue(std::to_string(vocbase->id())));
-    ret.add("name", VPackValue(vocbase->name())); }
-
-  return ret;
 }
 
 
-// udateCurrentForCollections
+// updateCurrentForCollections
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
 arangodb::Result arangodb::maintenance::reportInCurrent(
@@ -790,12 +794,5 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   
   return result;
   
-}
-
-
-arangodb::Result arangodb::maintenance::synchroniseShards (
-  VPackSlice const&, VPackSlice const&, VPackSlice const&) {
-  arangodb::Result result;
-  return result;
 }
 
