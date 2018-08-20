@@ -121,7 +121,7 @@ class Ast {
   /// @brief track the write collection
   inline void addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
     TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
-               node->type == NODE_TYPE_PARAMETER);
+               node->type == NODE_TYPE_PARAMETER_DATASOURCE);
 
     _writeCollections.emplace_back(node, isExclusiveAccess);
   }
@@ -153,12 +153,15 @@ class Ast {
 
   /// @brief create an AST subquery node
   AstNode* createNodeSubquery();
-
+  
   /// @brief create an AST for node
-  AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
+  AstNode* createNodeFor(char const* variableName, size_t nameLength, AstNode const* expression, bool isUserDefinedVariable);
 
-  /// @brief create an AST for node, using an existing output variable
-  AstNode* createNodeFor(Variable*, AstNode const*);
+  /// @brief create an AST for (non-view) node, using an existing output variable
+  AstNode* createNodeFor(Variable* variable, AstNode const* expression);
+  
+  /// @brief create an AST for (view) node, using an existing out variable
+  AstNode* createNodeForView(Variable* variable, AstNode const* expression, AstNode const* search);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
@@ -171,7 +174,7 @@ class Ast {
 
   /// @brief create an AST filter node
   AstNode* createNodeFilter(AstNode const*);
-
+  
   /// @brief create an AST filter node for an UPSERT query
   AstNode* createNodeUpsertFilter(AstNode const*, AstNode const*);
 
@@ -220,30 +223,33 @@ class Ast {
   AstNode* createNodeAssign(char const*, size_t, AstNode const*);
 
   /// @brief create an AST variable node
-  AstNode* createNodeVariable(char const*, size_t, bool);
+  AstNode* createNodeVariable(char const* name, size_t nameLength, bool isUserDefined);
+  
+  /// @brief create an AST datasource
+  /// this function will return either an AST collection or an AST view node
+  /// if failIfDoesNotExist is true, the function will throw if the specified
+  /// data source does not exist 
+  AstNode* createNodeDataSource(arangodb::CollectionNameResolver const& resolver,
+                                char const* name, size_t nameLength, 
+                                AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(char const*, AccessMode::Type);
-
-  /// @brief create an AST view node
-  AstNode* createNodeView(char const*);
+  AstNode* createNodeCollection(char const* name, size_t nameLength, AccessMode::Type accessType);
 
   /// @brief create an AST reference node
-  AstNode* createNodeReference(char const*, size_t);
+  AstNode* createNodeReference(char const* name, size_t nameLength);
 
   /// @brief create an AST reference node
-  AstNode* createNodeReference(std::string const&);
+  AstNode* createNodeReference(std::string const& variableName);
 
   /// @brief create an AST reference node
-  AstNode* createNodeReference(Variable const*);
+  AstNode* createNodeReference(Variable const* variable);
 
-  /// @brief create an AST parameter node
-  AstNode* createNodeParameter(
-    char const* name,
-    size_t length
-  );
-  AstNode* createNodeParameterCollection(char const* name, size_t length);
-  AstNode* createNodeParameterView(char const* name, size_t length);
+  /// @brief create an AST parameter node for a value literal
+  AstNode* createNodeParameter(char const* name, size_t length);
+  
+  /// @brief create an AST parameter node for a datasource
+  AstNode* createNodeParameterDatasource(char const* name, size_t length);
 
   /// @brief create an AST quantifier node
   AstNode* createNodeQuantifier(int64_t);
@@ -335,9 +341,6 @@ class Ast {
 
   /// @brief create an AST calculated object element node
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
-
-  /// @brief create an AST collection pair node
-  AstNode* createNodeCollectionPair(AstNode const*, AstNode const*);
 
   /// @brief create an AST with collections node
   AstNode* createNodeWithCollections (AstNode const*);
@@ -530,7 +533,7 @@ class Ast {
   /// @brief optimizes an object literal or an object expression
   AstNode* optimizeObject(AstNode*);
 
-public:
+ public:
   /** Make sure to replace the AstNode* you pass into TraverseAndModify
    *  if it was changed. This is necessary because the function itself
    *  has only access to the node but not its parent / owner.
@@ -560,6 +563,14 @@ public:
 
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
+
+  /// @brief validate the name of the given datasource
+  std::string validateDataSourceName(char const* name, size_t nameLength, bool validateStrict);
+  
+  /// @brief create an AST collection node
+  /// private function, does no validation
+  AstNode* createNodeCollectionNoValidation(char const* name, size_t nameLength, 
+                                            std::string const& nameString, AccessMode::Type accessType);
 
  public:
   /// @brief negated comparison operators

@@ -198,7 +198,6 @@ class RocksDBEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
