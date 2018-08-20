@@ -73,7 +73,7 @@ bool SharedQueryState::execute(std::function<bool()> const& cb) {
       // We are shutting down
       return false;
     }
-    scheduler->post(_continueCallback);
+    scheduler->post(_continueCallback, false);
   } else {
     _wasNotified = true;
     guard.signal();

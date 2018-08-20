@@ -11,7 +11,6 @@ if (USE_IRESEARCH)
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
-#    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
     IResearch/ExpressionFilter-test.cpp
     IResearch/ExecutionBlockMock.cpp

@@ -626,6 +626,56 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test", "meow", "foo", "bar", "git")');
     },
 
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexMatches
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexMatchesValues: function () {
+      [ 
+        ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
+        ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
+        ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
+        ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["th1s1s-wayt00_l0ngt0beausername", "^[a-z0-9_-]{3,16}$", true, null ],
+        ["th1s1s-wayt00_l0ngt0beausername", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["myp4ssw0rd", "^[a-z0-9_-]{6,18}$", true, ["myp4ssw0rd"] ],
+        ["myp4ssw0rd", "^[a-z0-9_-]{6,18}$", false, ["myp4ssw0rd"] ],
+        ["myP4ssw0rD", "^[a-z0-9_-]{6,18}$", true, ["myP4ssw0rD"] ],
+        ["myP4ssw0rD", "^[a-z0-9_-]{6,18}$", false, null ],
+        ["mypa$$w0rd", "^[a-z0-9_-]{6,18}$", true, null ],
+        ["mypa$$w0rd", "^[a-z0-9_-]{6,18}$", false, null ],
+        ["#a3c113", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true, ["#a3c113", "a3c113"] ],
+        ["#a3c113", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", false, ["#a3c113", "a3c113"] ],
+        ["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true, null ],
+        ["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", false, null ],
+        ["my-title-here", "^[a-z0-9-]+$", true, ["my-title-here"] ],
+        ["my-title-here", "^[a-z0-9-]+$", false, ["my-title-here"] ],
+        ["my-Title-Here", "^[a-z0-9-]+$", true, ["my-Title-Here"] ],
+        ["my-Title-Here", "^[a-z0-9-]+$", false, null ],
+        ["john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", true, ["john@doe.com", "john", "doe.", "om"] ],
+        ["john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false, ["john@doe.com", "john", "doe.", "om"] ],
+        ["jOhn@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", true, ["jOhn@doe.com", "jOhn", "doe.", "om"] ],
+        ["jOhn@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false, null ],
+        ["http://www.google.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.google.com", "http://", "www.google.", "om", ""] ],
+        ["http://www.google.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", false, ["http://www.google.com", "http://", "www.google.", "om", ""] ],
+        ["http://www.gOoGle.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.gOoGle.com", "http://", "www.gOoGle.", "om", ""] ],
+        ["http://www.gOoGle.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.gOoGle.com", "http://", "www.gOoGle.", "om", ""] ],
+        ["http://google.com/some/file!.html", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, null ],
+        ["http://google.com/some/file!.html", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", false, null ],
+        ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, ["73.60.124.136"] ],
+        ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, ["73.60.124.136"] ],
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, null ],
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, null ],
+      ].forEach(function(test) {
+        assertEqual([ test[3] ], getQueryResults('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
+      });
+    },
+
+    testRegexMatchesInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test", "meow", "foo", "bar")');
+    },
     
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test like function, invalid arguments

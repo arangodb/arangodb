@@ -70,7 +70,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // create the storage engine
   StorageEngine(
-      application_features::ApplicationServer* server,
+      application_features::ApplicationServer& server,
       std::string const& engineName,
       std::string const& featureName,
       std::unique_ptr<IndexFactory>&& indexFactory
@@ -179,8 +179,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the return values will be the usual  TRI_ERROR_* codes.
 
   virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
-
-  virtual void waitForSyncTimeout(double maxWait) = 0;
 
   virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
                           bool writeShutdownFile = false) = 0;
@@ -397,9 +395,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // AQL functions
   // -------------
-
-  /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() {}
 
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules() {}

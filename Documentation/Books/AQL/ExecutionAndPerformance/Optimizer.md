@@ -414,10 +414,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed
   as late as possible and not before their results are required.
-* `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
-  its input completely, but to process it in smaller batches. The rule will fire for an
-  *UPDATE* query that is fed by a full collection scan, and that does not use any other
-  indexes and subqueries.
+* `patch-update-statements`: will appear if an *UpdateNode* or *ReplaceNode* was patched 
+  to not buffer its input completely, but to process it in smaller batches. The rule will 
+  fire for an *UPDATE* or *REPLACE* query that is fed by a full collection scan or an index
+  scan only, and that does not use any other collections, indexes, subqueries or traversals.
 * `optimize-traversals`: will appear if either the edge or path output variable in an
   AQL traversal was optimized away, or if a *FILTER* condition from the query was moved
   in the *TraversalNode* for early pruning of results.

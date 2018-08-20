@@ -683,11 +683,14 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
     std::string dname("datafile-" + std::to_string(datafile->fid()) + ".db");
     std::string filename =
         arangodb::basics::FileUtils::buildFilename(path(), dname);
+      
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing and renaming journal file '"
+                                                  << datafile->getName() << "'";
 
     res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed file '"
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed and renamed journal file '"
                                                     << datafile->getName() << "'";
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
@@ -1590,7 +1593,7 @@ int MMFilesCollection::fillIndexes(
       " }, indexes: " + std::to_string(n - 1));
 
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn);
+    SchedulerFeature::SCHEDULER->post(fn, false);
   };
   auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
@@ -1830,8 +1833,8 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   // successfully opened collection. now adjust version number
-  if (LogicalCollection::VERSION_31 != _logicalCollection.version()) {
-    _logicalCollection.setVersion(LogicalCollection::VERSION_31);
+  if (LogicalCollection::VERSION_33 != _logicalCollection.version()) {
+    _logicalCollection.setVersion(LogicalCollection::VERSION_33);
 
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(

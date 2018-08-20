@@ -89,7 +89,18 @@ struct Option {
   std::shared_ptr<Parameter> parameter;
   bool hidden;
   bool obsolete;
+  bool enterpriseOnly;
 };
+
+struct EnterpriseOption : public Option {
+  // create an option, consisting of single string
+  EnterpriseOption(std::string const& value, std::string const& description,
+                   Parameter* parameter, bool hidden, bool obsolete)
+    : Option(value, description, parameter, hidden, obsolete) {
+    enterpriseOnly = true;
+  }
+};
+
 }
 }
 

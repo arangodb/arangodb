@@ -93,16 +93,18 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
 
 GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true) {
@@ -553,3 +555,5 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addRestHandlers(*_handlerFactory);
 }
+
+} // arangodb

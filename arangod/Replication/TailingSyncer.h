@@ -101,6 +101,9 @@ class TailingSyncer : public Syncer {
   /// based on the VelocyPack provided
   Result changeCollection(arangodb::velocypack::Slice const&);
   
+  /// @brief truncate a collections. Assumes no trx are running
+  Result truncateCollection(arangodb::velocypack::Slice const&);
+  
   /// @brief changes the properties of a collection,
   /// based on the VelocyPack provided
   Result changeView(arangodb::velocypack::Slice const&);

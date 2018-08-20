@@ -117,7 +117,7 @@ OperationResult GraphManager::findOrCreateVertexCollectionByName(
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-bool GraphManager::renameGraphCollection(std::string oldName, std::string newName) {
+bool GraphManager::renameGraphCollection(std::string const& oldName, std::string const& newName) {
   // todo: return a result, by now just used in the graph modules
   VPackBuilder graphsBuilder;
   readGraphs(graphsBuilder, aql::PART_DEPENDENT);
@@ -998,6 +998,4 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   } catch (...) {
     return {TRI_ERROR_INTERNAL};
   }
-  TRI_ASSERT(false); // Catch all above!
-  return {TRI_ERROR_INTERNAL };
 }

@@ -74,7 +74,7 @@ class HttpConnection final : public fuerte::Connection {
   // called on shutdown, always call superclass
   void shutdownConnection(const ErrorCondition) override;
 
-private:
+ private:
   // restart connection
   void restartConnection(const ErrorCondition);
   
@@ -129,7 +129,7 @@ private:
   /// cached authentication header
   std::string _authHeader;
   
-  /// currently in fligth request
+  /// currently in-flight request
   std::shared_ptr<RequestItem> _inFlight;
   /// the node http-parser
   http_parser _parser;

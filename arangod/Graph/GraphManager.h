@@ -124,7 +124,7 @@ class GraphManager {
                                        bool waitForSync, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
-  bool renameGraphCollection(std::string oldName, std::string newName);
+  bool renameGraphCollection(std::string const& oldName, std::string const& newName);
 
   /// @brief check if the edge definitions conflicts with one in an existing
   /// graph

@@ -320,7 +320,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
       });
 
       cb();
-    });
+    }, false);
   } catch (...) {
     // will get here only if Scheduler::post threw
     jobDone();
@@ -597,6 +597,8 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
         *col,
         AccessMode::Type::WRITE
       );
+      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
 
       if (!res.ok()) {

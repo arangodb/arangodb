@@ -841,7 +841,7 @@ void ClusterInfo::loadCurrent() {
           << "Attention: /arango/Current/Version in the agency is not set or "
              "not a positive number.";
       }
-      { 
+      {
         READ_LOCKER(guard, _currentProt.lock);
         if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
           LOG_TOPIC(DEBUG, Logger::CLUSTER)
@@ -1362,6 +1362,9 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() /
                                                  interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -1378,7 +1381,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
   if (name == TRI_VOC_SYSTEM_DATABASE) {
     return TRI_ERROR_FORBIDDEN;
   }
-  
+
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1450,6 +1453,9 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -1746,13 +1752,16 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
-      
+
       if (application_features::ApplicationServer::isStopping()) {
         events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
         return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -1901,6 +1910,9 @@ int ClusterInfo::dropCollectionCoordinator(
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -2291,13 +2303,13 @@ int ClusterInfo::ensureIndexCoordinator(
   try {
     auto start = std::chrono::steady_clock::now();
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
-    while (true) { 
+    while (true) {
       resultBuilder.clear();
       errorCode = ensureIndexCoordinatorWithoutRollback(
         databaseName, collectionID, idString, slice, create, compare,
         resultBuilder, errorMsg, timeout);
 
-      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) { 
+      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
         if (std::chrono::duration_cast<std::chrono::seconds>(
               std::chrono::steady_clock::now()-start).count() < 120) {
           std::chrono::duration<size_t, std::milli>
@@ -2675,6 +2687,9 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 
@@ -2913,6 +2928,9 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }

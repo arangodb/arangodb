@@ -411,17 +411,23 @@ class LogicalCollection: public LogicalDataSource {
 
 
   // SECTION: Meta Information
-  //
+  
+  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  
+  /// @brief collection format version
+  uint32_t _version;
+  
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-
-  bool const _isAStub;
-
+  
   // @brief Collection type
   TRI_col_type_e const _type;
-
+  
   // @brief Current state of this colletion
   TRI_vocbase_col_status_e _status;
+
+  /// @brief is this a global collection on a DBServer
+  bool const _isAStub;
 
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool _isSmart;
@@ -431,19 +437,15 @@ class LogicalCollection: public LogicalDataSource {
   bool const _isDBServer;
   bool _waitForSync;
 
-  uint32_t _version;
-
   bool const _allowUserKeys;
 
   // SECTION: Key Options
-  // TODO Really VPack?
-  std::shared_ptr<velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
+  
+  // @brief options for key creation, TODO Really VPack?
+  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
   std::unique_ptr<KeyGenerator> _keyGenerator;
  
   std::unique_ptr<PhysicalCollection> _physical;
-
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
@@ -455,7 +457,8 @@ class LogicalCollection: public LogicalDataSource {
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
   std::unique_ptr<FollowerInfo> _followers;
-
+  
+  /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding; 
 };
 

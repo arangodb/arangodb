@@ -226,9 +226,6 @@ class Graph {
   /// @brief Set replicationFactor to the graph definition
   void setReplicationFactor(uint64_t setReplicationFactor);
 
-  /// @brief Set isSmart to the graph definition
-  void setSmartState(bool state);
-
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
 
@@ -253,9 +250,6 @@ class Graph {
 
   /// @brief edge definitions of this graph
   std::map<std::string, EdgeDefinition> _edgeDefs;
-
-  /// @brief state if smart graph enabled
-  bool _isSmart;
 
   /// @brief number of shards of this graph
   uint64_t _numberOfShards;
