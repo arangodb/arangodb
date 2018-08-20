@@ -1431,15 +1431,18 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
-  if (_transactionContext) {
-    return _transactionContext;
-  }
-  if (_contextOwnedByExterior) {
-    // we must use v8
-    return transaction::V8Context::Create(_vocbase, true);
+  if (!_transactionContext) {
+    if (_contextOwnedByExterior) {
+      // we must use v8
+      _transactionContext = transaction::V8Context::Create(_vocbase, true);
+    } else {
+      _transactionContext = transaction::StandaloneContext::Create(_vocbase);
+    }
   }
 
-  return transaction::StandaloneContext::Create(_vocbase);
+  TRI_ASSERT(_transactionContext != nullptr);
+
+  return _transactionContext;
 }
   
 /// @brief pass-thru a resolver object from the transaction context
