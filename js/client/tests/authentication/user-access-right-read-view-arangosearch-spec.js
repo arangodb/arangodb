@@ -235,7 +235,7 @@ function hasIResearch (db) {
 
             it('by AQL with link to single collection', () => {
               expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-              let query = `FOR d IN VIEW ${testView1Name} RETURN d`;
+              let query = `FOR d IN  ${testView1Name} RETURN d`;
               if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._query(query);
                 //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
@@ -254,7 +254,7 @@ function hasIResearch (db) {
 
             it('by AQL with links to multiple collections with same access level', () => {
               expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-              let query = `FOR d IN VIEW ${testView2Name} RETURN d`;
+              let query = `FOR d IN  ${testView2Name} RETURN d`;
               if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._query(query, null, { waitForSync: true });
                 //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
@@ -278,7 +278,7 @@ function hasIResearch (db) {
               });
 
               it('by AQL query (data)', () => {
-                let query = `FOR d IN VIEW ${testView2Name} RETURN d`;
+                let query = `FOR d IN  ${testView2Name} RETURN d`;
                 try {
                   db._query(query);
                 } catch (e) {
