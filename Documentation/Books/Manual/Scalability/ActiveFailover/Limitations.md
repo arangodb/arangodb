@@ -8,4 +8,4 @@ may be removed in later versions of ArangoDB:
  currently only one _follower_ is officially supported
 - Should you add more than one _follower_, be aware that during a _failover_ situation
  the failover attempts to pick the most up to date follower as a new leader, 
- but there is **no guarantee** on how much operations may have be lost.
+ but there is **no guarantee** on how much operations may have been lost.
