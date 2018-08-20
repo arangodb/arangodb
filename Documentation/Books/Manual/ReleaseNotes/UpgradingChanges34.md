@@ -175,11 +175,12 @@ HTTP REST API
 The following incompatible changes were made in context of ArangoDB's HTTP REST
 APIs:
 
-- The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
+- The following, partly undocumented internal REST APIs have been removed in ArangoDB 3.4:
 
   - `GET /_admin/test`
   - `GET /_admin/clusterCheckPort`
   - `GET /_admin/cluster-test` 
+  - `GET /_admin/routing/routes`
   - `GET /_admin/statistics/short`
   - `GET /_admin/statistics/long`
 
@@ -534,6 +535,22 @@ The client tool _arangoimp_ has been renamed to _arangoimport_ for consistency.
 Release packages will still install arangoimp as a symlink to arangoimport, 
 so user scripts invoking arangoimp do not need to be changed to work with
 ArangoDB 3.4.
+
+In the ArangoShell, the undocumented JavaScript module `@arangodb/actions` has
+been removed. This module contained the methods `printRouting` and `printFlatRouting`,
+which were used for debugging purposes only.
+
+In the ArangoShell, the undocumented JavaScript function `routingCache` has been
+removed from the `internal` module.
+
+
+Foxx applications
+-----------------
+
+The undocumented JavaScript module `@arangodb/database-version` has been
+removed, so it cannot be use from Foxx applications anymore The module only
+provided the current version of the database, so any client-side invocations
+can easily be replaced by using the `db._version()` instead.
 
 
 Miscellaneous changes
