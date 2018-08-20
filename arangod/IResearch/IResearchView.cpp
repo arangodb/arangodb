@@ -38,6 +38,7 @@
 #include "IResearchLinkHelper.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/QueryCache.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -846,6 +847,8 @@ IResearchView::IResearchView(
         ReadMutex mutex(_mutex); // 'store' can be asynchronously modified
         SCOPED_LOCK(mutex);
 
+        const auto readerBeforeSync = store->_reader;
+
         if (store->_directory
             && store->_writer
             && syncStore(*(store->_directory),
@@ -862,6 +865,14 @@ IResearchView::IResearchView(
             && state._cleanupIntervalCount++ > state._cleanupIntervalStep) {
           state._cleanupIntervalCount = 0;
         };
+
+        if (readerBeforeSync != store->_reader) {
+          // invalidate query cache if there were some data changes
+          arangodb::aql::QueryCache::instance()->invalidate(
+            &this->vocbase(),
+            this->name()
+          );
+        }
 
         return true; // reschedule
       };
@@ -1393,10 +1404,19 @@ arangodb::Result IResearchView::commit() {
     memoryStore._writer->clear(); // prepare the store for reuse
 
     SCOPED_LOCK(_toFlush->_readMutex); // do not allow concurrent read since _storePersisted/_toFlush need to be updated atomically
+    const auto readerBeforeReopen = _storePersisted._reader;
     _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
     _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
     memoryStore._reader = memoryStore._reader.reopen(); // update reader
     memoryStore._segmentCount += memoryStore._reader.size(); // add commited segments
+
+    if (readerBeforeReopen != _storePersisted._reader) {
+       // invalidate query cache if there were some data changes
+       arangodb::aql::QueryCache::instance()->invalidate(
+         &vocbase(),
+         name()
+       );
+    }
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception& e) {

@@ -163,13 +163,6 @@ void FlushFeature::executeCallbacks() {
     }
     // TODO: honor the commit results here
   }
-
-  if (!transactions.empty()) {
-    // TODO: this is very coarse-grained still. Whenever an action was performed here,
-    // we invalidate the entire query cache. this is because we currently don't know
-    // what kinds of actions were performed by the flushing
-    arangodb::aql::QueryCache::instance()->invalidate();
-  }
 }
 
 } // arangodb
