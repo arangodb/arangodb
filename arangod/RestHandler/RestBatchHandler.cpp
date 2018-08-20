@@ -125,140 +125,129 @@ void RestBatchHandler::processSubHandlerResult(std::shared_ptr<RestHandler> hand
     }
     continueHandlerExecution();
   } else {
-    executeNextHandler();
+    if (!executeNextHandler()) {
+      continueHandlerExecution();
+    }
   }
 }
 
-void RestBatchHandler::executeNextHandler() {
+bool RestBatchHandler::executeNextHandler() {
 
   auto self(shared_from_this());
 
-  // Post the sub handler creation on the Scheduler. This is fast, but a user
-  // request.
+  // get authorization header. we will inject this into the subparts
+  std::string const& authorization =
+  _request->header(StaticStrings::Authorization);
+
+  // get the next part from the multipart message
+  if (!extractPart(&_helper)) {
+    // error
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid multipart message received");
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
+    return false;
+  }
+
+  // split part into header & body
+  char const* partStart = _helper.foundStart;
+  char const* partEnd = partStart + _helper.foundLength;
+  size_t const partLength = _helper.foundLength;
+
+  char const* headerStart = partStart;
+  char const* bodyStart = nullptr;
+  size_t headerLength = 0;
+  size_t bodyLength = 0;
+
+  // assume Windows linebreak \r\n\r\n as delimiter
+  char const* p = strstr(headerStart, "\r\n\r\n");
+
+  if (p != nullptr && p + 4 <= partEnd) {
+    headerLength = p - partStart;
+    bodyStart = p + 4;
+    bodyLength = partEnd - bodyStart;
+  } else {
+    // test Unix linebreak
+    p = strstr(headerStart, "\n\n");
+
+    if (p != nullptr && p + 2 <= partEnd) {
+      headerLength = p - partStart;
+      bodyStart = p + 2;
+      bodyLength = partEnd - bodyStart;
+    } else {
+      // no delimiter found, assume we have only a header
+      headerLength = partLength;
+    }
+  }
+
+  // set up request object for the part
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
+
+  std::unique_ptr<HttpRequest> request(new HttpRequest(
+      _request->connectionInfo(), headerStart, headerLength, false));
+
+  // we do not have a client task id here
+  request->setClientTaskId(0);
+
+  // inject the request context from the framing (batch) request
+  // the "false" means the context is not responsible for resource handling
+  request->setRequestContext(_request->requestContext(), false);
+  request->setDatabaseName(_request->databaseName());
+
+  if (bodyLength > 0) {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
+               << "'";
+    request->setBody(bodyStart, bodyLength);
+  }
+
+  if (!authorization.empty()) {
+    // inject Authorization header of multipart message into part message
+    request->setHeader(StaticStrings::Authorization.c_str(),
+                       StaticStrings::Authorization.size(),
+                       authorization.c_str(), authorization.size());
+  }
+
+  std::shared_ptr<RestHandler> handler = nullptr;
+
+  {
+    std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+
+    auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
+            std::move(request), std::move(response));
+
+    if (h == nullptr) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                    "could not create handler for batch part processing");
+
+      return false;
+    }
+
+    handler.reset(h);
+  }
+
+  // now scheduler the real handler
   bool ok = SchedulerFeature::SCHEDULER->queue(
-    PriorityRequestLane(RequestLane::CLIENT_FAST), [this, self]() {
+    PriorityRequestLane(handler->lane()), [this, self, handler]() {
 
-      // get authorization header. we will inject this into the subparts
-      std::string const& authorization =
-      _request->header(StaticStrings::Authorization);
+      // start to work for this handler
+      // ignore any errors here, will be handled later by inspecting the response
+      try {
+        ExecContextScope scope(nullptr);// workaround because of assertions
+        handler->runHandler([this, self, handler](RestHandler*) {
+          processSubHandlerResult (handler);
 
-      // get the next part from the multipart message
-      if (!extractPart(&_helper)) {
-        // error
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "invalid multipart message received");
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received a corrupted multipart message";
-
-        continueHandlerExecution();
-        return ;
-      }
-
-      // split part into header & body
-      char const* partStart = _helper.foundStart;
-      char const* partEnd = partStart + _helper.foundLength;
-      size_t const partLength = _helper.foundLength;
-
-      char const* headerStart = partStart;
-      char const* bodyStart = nullptr;
-      size_t headerLength = 0;
-      size_t bodyLength = 0;
-
-      // assume Windows linebreak \r\n\r\n as delimiter
-      char const* p = strstr(headerStart, "\r\n\r\n");
-
-      if (p != nullptr && p + 4 <= partEnd) {
-        headerLength = p - partStart;
-        bodyStart = p + 4;
-        bodyLength = partEnd - bodyStart;
-      } else {
-        // test Unix linebreak
-        p = strstr(headerStart, "\n\n");
-
-        if (p != nullptr && p + 2 <= partEnd) {
-          headerLength = p - partStart;
-          bodyStart = p + 2;
-          bodyLength = partEnd - bodyStart;
-        } else {
-          // no delimiter found, assume we have only a header
-          headerLength = partLength;
-        }
-      }
-
-      // set up request object for the part
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part header is: " << std::string(headerStart, headerLength);
-
-      std::unique_ptr<HttpRequest> request(new HttpRequest(
-          _request->connectionInfo(), headerStart, headerLength, false));
-
-      // we do not have a client task id here
-      request->setClientTaskId(0);
-
-      // inject the request context from the framing (batch) request
-      // the "false" means the context is not responsible for resource handling
-      request->setRequestContext(_request->requestContext(), false);
-      request->setDatabaseName(_request->databaseName());
-
-      if (bodyLength > 0) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "part body is '" << std::string(bodyStart, bodyLength)
-                   << "'";
-        request->setBody(bodyStart, bodyLength);
-      }
-
-      if (!authorization.empty()) {
-        // inject Authorization header of multipart message into part message
-        request->setHeader(StaticStrings::Authorization.c_str(),
-                           StaticStrings::Authorization.size(),
-                           authorization.c_str(), authorization.size());
-      }
-
-      std::shared_ptr<RestHandler> handler = nullptr;
-
-      {
-        std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
-
-        auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-                std::move(request), std::move(response));
-
-        if (h == nullptr) {
-          generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                        "could not create handler for batch part processing");
-
-          continueHandlerExecution();
-          return ;
-        }
-
-        handler.reset(h);
-      }
-
-      // now scheduler the real handler
-      bool ok = SchedulerFeature::SCHEDULER->queue(
-        PriorityRequestLane(handler->lane()), [this, self, handler]() {
-
-          // start to work for this handler
-          // ignore any errors here, will be handled later by inspecting the response
-          try {
-            ExecContextScope scope(nullptr);// workaround because of assertions
-            handler->runHandler([this, self, handler](RestHandler*) {
-              processSubHandlerResult (handler);
-
-            });
-          } catch (...) {
-            processSubHandlerResult (handler);
-          }
-        }
-      );
-
-      if (!ok) {
-        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
-        continueHandlerExecution();
+        });
+      } catch (...) {
+        processSubHandlerResult (handler);
       }
     }
   );
 
   if (!ok) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL);
-    continueHandlerExecution();
+    return false;
   }
+
+  return true;
 }
 
 RestStatus RestBatchHandler::executeHttp() {
@@ -310,11 +299,8 @@ RestStatus RestBatchHandler::executeHttp() {
   _helper.message = &_multipartMessage;
   _helper.searchStart = _multipartMessage.messageStart;
 
-
-  executeNextHandler();
-
   // and wait for completion
-  return RestStatus::WAITING;
+  return executeNextHandler() ? RestStatus::WAITING : RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
