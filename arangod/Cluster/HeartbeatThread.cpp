@@ -265,7 +265,7 @@ void HeartbeatThread::runDBServer() {
       if (version > _desiredVersions->plan) {
         _desiredVersions->plan = version;
         LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Desired Current Version is now " << _desiredVersions->plan;
+          << "Desired Plan Version is now " << _desiredVersions->plan;
         doSync = true;
       }
     }
@@ -287,6 +287,49 @@ void HeartbeatThread::runDBServer() {
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+
+  std::function<bool(VPackSlice const& result)> updateCurrent =
+    [=](VPackSlice const& result) {
+
+    if (!result.isNumber()) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+      << "Plan Version is not a number! " << result.toJson();
+      return false;
+    }
+
+    uint64_t version = result.getNumber<uint64_t>();
+    bool doSync = false;
+
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      if (version > _desiredVersions->current) {
+        _desiredVersions->current = version;
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+          << "Desired Current Version is now " << _desiredVersions->plan;
+        doSync = true;
+      }
+    }
+
+    if (doSync) {
+      syncDBServerStatusQuo(true);
+    }
+
+    return true;
+  };
+
+  auto currentAgencyCallback = std::make_shared<AgencyCallback>(
+      _agency, "Current/Version", updateCurrent, true);
+
+  registered = false;
+  while (!registered) {
+    registered =
+      _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
+    if (!registered) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+          << "Couldn't register current change in agency!";
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
@@ -416,6 +459,7 @@ void HeartbeatThread::runDBServer() {
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
           planAgencyCallback->refetchAndUpdate(true, false);
+          currentAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased
@@ -434,6 +478,7 @@ void HeartbeatThread::runDBServer() {
     }
   }
 
+  _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
