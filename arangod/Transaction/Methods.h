@@ -26,15 +26,17 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringRef.h"
 #include "Basics/Result.h"
-#include "Utils/OperationResult.h"
+#include "Basics/StringRef.h"
+#include "Transaction/BatchRequests.h"
+#include "Transaction/BatchResponses.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 
@@ -571,10 +573,17 @@ OperationResult removeBatchCoordinator(
                                    TRI_voc_document_operation_e operation
                                   );
 
+  batch::RemoveResponse remove(std::string const& collectionName,
+                               batch::Request<batch::RemoveDoc> const& request);
+
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
                                     OperationOptions& options,
                                     VPackSlice const pattern);
+
+  batch::RemoveResponse removeLocal(
+    std::string const& collectionName,
+    batch::Request<batch::RemoveDoc> const& request);
 
   // TODO could the value slice be replaced by a string containing _key?
   OperationResult removeLocal(std::string const& collectionName,

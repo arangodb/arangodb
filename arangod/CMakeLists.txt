@@ -532,7 +532,7 @@ SET(ARANGOD_SOURCES
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
-)
+  Transaction/BatchResponses.cpp Transaction/BatchResponses.h)
 
 if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)

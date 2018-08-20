@@ -61,6 +61,8 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
+#include "BatchRequests.h"
+#include "BatchResponses.h"
 
 #include <arangod/Aql/Functions.h>
 #include <boost/optional.hpp>
@@ -219,7 +221,7 @@ static bool indexSupportsSort(Index const* idx,
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(VPackBuilder& builder,
                               std::unordered_map<int, size_t>& countErrorCodes,
-                              Result error, bool silent) {
+                              Result const& error, bool silent) {
   if (!silent) {
     builder.openObject();
     builder.add(StaticStrings::Error, VPackValue(true));
@@ -2559,7 +2561,6 @@ OperationResult transaction::Methods::removeBatchLocal(
   });
 }
 
-
 /// @brief remove one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -2569,21 +2570,31 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
                                              VPackSlice const pattern) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  if (!value.isObject() && !value.isArray() && !value.isString()) {
-    // must provide a document object or an array of documents
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (value.isArray() && value.length() == 0) {
-    return emptyResult(options);
+  auto maybeRequest = batch::createRequestFromSlice<batch::RemoveDoc>(value);
+
+  if (!maybeRequest) {
+    return OperationResult{std::move(maybeRequest)};
   }
 
-  OperationOptions optionsCopy = options;
+  batch::Request<batch::RemoveDoc> const& request {maybeRequest.get()};
 
-  if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, optionsCopy, pattern);
-  }
+  batch::RemoveResponse response = remove(collectionName, request);
 
-  return removeLocal(collectionName, value, optionsCopy, pattern);
+  return response.moveToOperationResult(request.options(), value.isArray());
+}
+
+batch::RemoveResponse
+Methods::remove(std::string const &collectionName, batch::Request<batch::RemoveDoc> const &request) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  TRI_ASSERT(!_state->isCoordinator()); // not implemented
+
+  return removeLocal(collectionName, request);
+}
+
+batch::RemoveResponse
+Methods::removeLocal(std::string const &collectionName, batch::Request<batch::RemoveDoc> const &request) {
+  return batch::RemoveResponse();
 }
 
 /// @brief remove for the batch api. Expects a full request as parameter.

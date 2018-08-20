@@ -114,17 +114,16 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual void unload() override {}
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) override;
 
-
   int lockRead(bool useDeadlockDetector,
-                       arangodb::TransactionState const* state,
-                       double timeout);
+               arangodb::TransactionState const* state,
+               double timeout) override;
   int lockWrite(bool useDeadlockDetector,
-                       arangodb::TransactionState const* state,
-                       double timeout);
+                arangodb::TransactionState const* state,
+                double timeout) override;
   int unlockRead(bool useDeadlockDetector,
-                       arangodb::TransactionState const* state);
+                 arangodb::TransactionState const* state) override;
   int unlockWrite(bool useDeadlockDetector,
-                       arangodb::TransactionState const* state);
+                  arangodb::TransactionState const* state) override;
 
  private:
   bool addIndex(std::shared_ptr<arangodb::Index> idx);

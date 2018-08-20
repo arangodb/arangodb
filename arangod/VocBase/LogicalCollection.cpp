@@ -1516,8 +1516,8 @@ bool LogicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   if (len < 3) {
     return false;
   }
-  size_t split;
-  return KeyGenerator::validateId(docId, static_cast<size_t>(len), &split);
+
+  return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
 TRI_voc_rid_t LogicalCollection::newRevisionId() const {
