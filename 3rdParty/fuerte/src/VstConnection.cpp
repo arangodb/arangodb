@@ -124,10 +124,13 @@ void VstConnection<ST>::startConnection() {
 /// @brief cancel the connection, unusable afterwards
 template <SocketType ST>
 void VstConnection<ST>::cancel() {
-  auto self = shared_from_this();
+  std::weak_ptr<Connection> self = shared_from_this();
   asio_ns::post(*_io_context, [self, this] {
-    shutdownConnection(ErrorCondition::Canceled);
-    _state.store(State::Failed);
+    auto s = self.lock();
+    if (s) {
+      shutdownConnection(ErrorCondition::Canceled);
+      _state.store(State::Failed);
+    }
   });
 }
   
