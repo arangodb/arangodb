@@ -61,10 +61,6 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   ~IndexBlock();
 
-  Type getType() const override final {
-    return Type::INDEX;
-  }
-
   /// @brief initializeCursor, here we release our docs from this collection
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 

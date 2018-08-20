@@ -857,19 +857,30 @@ engine at startup automatically.
 Foxx
 ----
 
-Foxx CLI
+The functions `uuidv4` and `genRandomBytes` have been added to the `crypto` module.
+
+The functions `hexSlice`, `hexWrite` have been added to the `Buffer` object.
+
+The functions `Buffer.from`, `Buffer.of`, `Buffer.alloc` and `Buffer.allocUnsafe`
+have been added to the `Buffer` object for improved compatibility with node.js.
 
 
 Security
 --------
 
-### Ownership for cursors and jobs
+### Ownership for cursors, jobs and tasks
 
-Cursors for AQL query results and jobs created by the APIs at endpoints `/_api/cursor`
-and `/_api/job` are now tied to the user that first created the cursor/job.
+Cursors for AQL query results created by the API at endpoint `/_api/cursor` 
+are now tied to the user that first created the cursor.
 
-Follow-up requests to consume or remove data of an already created cursor or job will
+Follow-up requests to consume or remove data of an already created cursor will
 now be denied if attempted by a different user.
+
+The same mechanism is also in place for the following APIs:
+
+- jobs created via the endpoint `/_api/job`
+- tasks created via the endpoint `/_api/tasks`
+
 
 ### Dropped support for SSLv2
 

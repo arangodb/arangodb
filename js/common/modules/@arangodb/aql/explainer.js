@@ -123,7 +123,7 @@ function collection (v) {
 
 function view (v) {
   'use strict';
-  return colors.COLOR_RED + 'VIEW( ' + v + ' )' + colors.COLOR_RESET;
+  return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
 function attribute (v) {
@@ -684,11 +684,11 @@ function processQuery (query, explain) {
           maxCallsLen = String(n.calls).length;
         }
         if (String(n.items).length > maxItemsLen) {
-          maxCallsLen = String(n.items).length;
+          maxItemsLen = String(n.items).length;
         }
         let l = String(nodes[n.id].runtime.toFixed(3)).length;
         if (l > maxRuntimeLen) {
-          maxCallsLen = l;
+          maxRuntimeLen = l;
         }
       }
     });
@@ -1002,6 +1002,9 @@ function processQuery (query, explain) {
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
+        if (node.condition && node.condition.hasOwnProperty('type')) {
+          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition) + '   ' + annotation('/* view query */');
+        }
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
@@ -1421,15 +1424,13 @@ function processQuery (query, explain) {
         return keyword('DISTRIBUTE');
       case 'ScatterNode':
         return keyword('SCATTER');
-      case 'ScatterViewNode':
-        return keyword('SCATTER VIEW');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
             if (node.path && node.path.length) {
               return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
             }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ');
+          }).join(', ') + '  ' + annotation('/* sort mode: ' + node.sortmode + ' */');
     }
 
     return 'unhandled node type (' + node.type + ')';

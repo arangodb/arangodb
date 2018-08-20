@@ -276,7 +276,14 @@ void RestGraphHandler::vertexActionRead(
         Graph& graph, std::string const& collectionName,
         std::string const& key) {
 
+  // check for an etag
   bool isValidRevision;
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  if (!isValidRevision) {
+    ifNoneRid =
+      UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     revision =
@@ -296,6 +303,14 @@ void RestGraphHandler::vertexActionRead(
       generateTransactionError(collectionName, result.result, key);
     }
     return;
+  }
+
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return;
+    }
   }
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
@@ -542,7 +557,14 @@ void RestGraphHandler::edgeActionRead(
         Graph& graph,
         const std::string &definitionName, const std::string &key) {
 
+  // check for an etag
   bool isValidRevision;
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  if (!isValidRevision) {
+    ifNoneRid =
+      UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     revision =
@@ -556,6 +578,14 @@ void RestGraphHandler::edgeActionRead(
   if (result.fail()) {
     generateTransactionError(result);
     return;
+  }
+
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return;
+    }
   }
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);

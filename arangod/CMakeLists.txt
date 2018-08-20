@@ -407,6 +407,7 @@ SET(ARANGOD_SOURCES
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
+  RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp

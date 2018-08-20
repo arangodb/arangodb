@@ -86,63 +86,63 @@ function iResearchFeatureAqlTestSuite () {
       view = db._createView("TestView", "arangosearch", {});
 
       properties = view.properties();
-      assertTrue(Object === properties.commit.constructor);
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(60000, properties.commit.commitIntervalMsec);
-      assertTrue(Object === properties.commit.consolidate.constructor);
-      assertEqual(4, Object.keys(properties.commit.consolidate).length);
-      assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(300, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.fill.constructor);
-      assertEqual(300, properties.commit.consolidate.fill.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.fill.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(60000, properties.commitIntervalMsec);
+      assertTrue(Object === properties.consolidate.constructor);
+      assertEqual(4, Object.keys(properties.consolidate).length);
+      assertTrue(Object === properties.consolidate.bytes.constructor);
+      assertEqual(300, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.bytes_accum.constructor);
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.count.constructor);
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.fill.constructor);
+      assertEqual(300, properties.consolidate.fill.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.fill.threshold.toFixed(6));
 
-      meta = { commit: {
+      meta = {
         commitIntervalMsec: 10000,
         consolidate: {
           bytes: { segmentThreshold: 20, threshold: 0.5 },
           bytes_accum: {},
           count: {}
         }
-      } };
+      };
       view.properties(meta, true); // partial update
       properties = view.properties();
-      assertTrue(Object === properties.commit.constructor);
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertTrue(Object === properties.commit.consolidate.constructor);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.commitIntervalMsec);
+      assertTrue(Object === properties.consolidate.constructor);
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertTrue(Object === properties.consolidate.bytes.constructor);
+      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.bytes_accum.constructor);
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.count.constructor);
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
 
-      meta = { commit: {
+      meta = {
         cleanupIntervalStep: 20,
         consolidate: { count: { segmentThreshold: 30, threshold: 0.75 } }
-      } };
+      };
       view.properties(meta, false); // full update
       properties = view.properties();
-      assertTrue(Object === properties.commit.constructor);
-      assertEqual(20, properties.commit.cleanupIntervalStep);
-      assertEqual(60000, properties.commit.commitIntervalMsec);
-      assertTrue(Object === properties.commit.consolidate.constructor);
-      assertEqual(1, Object.keys(properties.commit.consolidate).length);
-      assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(30, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.75).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(20, properties.cleanupIntervalStep);
+      assertEqual(60000, properties.commitIntervalMsec);
+      assertTrue(Object === properties.consolidate.constructor);
+      assertEqual(1, Object.keys(properties.consolidate).length);
+      assertTrue(Object === properties.consolidate.count.constructor);
+      assertEqual(30, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.75).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
 
 
       // locale
@@ -326,11 +326,11 @@ function iResearchFeatureAqlTestSuite () {
       var meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(0, result.length);
 
       col0.save({ name: "quarter", text: "quick over" });
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
 
@@ -348,7 +348,7 @@ function iResearchFeatureAqlTestSuite () {
       meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -374,7 +374,7 @@ function iResearchFeatureAqlTestSuite () {
       } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -403,7 +403,7 @@ function iResearchFeatureAqlTestSuite () {
       } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -422,34 +422,33 @@ function iResearchFeatureAqlTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commit: {
-          commitIntervalMsec: 10000,
-          consolidate: {
-            bytes: { segmentThreshold: 20, threshold: 0.5 },
-            bytes_accum: {},
-            count: {}
-          }
+        commitIntervalMsec: 10000,
+        consolidate: {
+          bytes: { segmentThreshold: 20, threshold: 0.5 },
+          bytes_accum: {},
+          count: {}
         },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(0, result.length);
       var properties = view.properties();
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.commitIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       col0.save({ name: "quarter", text: "quick over" });
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
 
@@ -468,34 +467,33 @@ function iResearchFeatureAqlTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commit: {
-          commitIntervalMsec: 10000,
-          consolidate: {
-            bytes: { segmentThreshold: 20, threshold: 0.5 },
-            bytes_accum: {},
-            count: {}
-          }
+        commitIntervalMsec: 10000,
+        consolidate: {
+          bytes: { segmentThreshold: 20, threshold: 0.5 },
+          bytes_accum: {},
+          count: {}
         },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
       properties = view.properties();
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.commitIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       // 2 non-empty collections
@@ -518,34 +516,33 @@ function iResearchFeatureAqlTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commit: {
-          commitIntervalMsec: 10000,
-          consolidate: {
-            bytes: { segmentThreshold: 20, threshold: 0.5 },
-            bytes_accum: {},
-            count: {}
-          }
+        commitIntervalMsec: 10000,
+        consolidate: {
+          bytes: { segmentThreshold: 20, threshold: 0.5 },
+          bytes_accum: {},
+          count: {}
         },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
       properties = view.properties();
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.commitIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       // 1 empty collection + 2 non-empty collections
@@ -571,57 +568,56 @@ function iResearchFeatureAqlTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commit: {
-          commitIntervalMsec: 10000,
-          consolidate: {
-            bytes: { segmentThreshold: 20, threshold: 0.5 },
-            bytes_accum: {},
-            count: {}
-          }
+        commitIntervalMsec: 10000,
+        consolidate: {
+          bytes: { segmentThreshold: 20, threshold: 0.5 },
+          bytes_accum: {},
+          count: {}
         },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
       properties = view.properties();
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.commitIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       view.properties({}, false); // full update (reset to defaults)
-      result = db._query("FOR doc IN VIEW TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(0, result.length);
       properties = view.properties();
-      assertTrue(Object === properties.commit.constructor);
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(60000, properties.commit.commitIntervalMsec);
-      assertTrue(Object === properties.commit.consolidate.constructor);
-      assertEqual(4, Object.keys(properties.commit.consolidate).length);
-      assertTrue(Object === properties.commit.consolidate.bytes.constructor);
-      assertEqual(300, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.bytes_accum.constructor);
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.count.constructor);
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertTrue(Object === properties.commit.consolidate.fill.constructor);
-      assertEqual(300, properties.commit.consolidate.fill.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.fill.threshold.toFixed(6));
+      assertTrue(Object === properties.constructor);
+      assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(60000, properties.commitIntervalMsec);
+      assertTrue(Object === properties.consolidate.constructor);
+      assertEqual(4, Object.keys(properties.consolidate).length);
+      assertTrue(Object === properties.consolidate.bytes.constructor);
+      assertEqual(300, properties.consolidate.bytes.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.bytes_accum.constructor);
+      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.count.constructor);
+      assertEqual(300, properties.consolidate.count.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertTrue(Object === properties.consolidate.fill.constructor);
+      assertEqual(300, properties.consolidate.fill.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.fill.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
@@ -641,7 +637,7 @@ function iResearchFeatureAqlTestSuite () {
       var meta = { links: { "TestCollection0": { fields: { a: {} } } } };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN  TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
@@ -653,7 +649,7 @@ function iResearchFeatureAqlTestSuite () {
       assertNotEqual(undefined, updatedMeta.links.TestCollection0.fields.b);
       assertEqual(undefined, updatedMeta.links.TestCollection0.fields.a);
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(2, result.length);
       assertEqual(2, result[0].z);
       assertEqual(3, result[1].z);
@@ -661,7 +657,7 @@ function iResearchFeatureAqlTestSuite () {
       meta = { links: { "TestCollection0": { fields: { c: {} } } } };
       view.properties(meta, false); // full update
 
-      result = db._query("FOR doc IN VIEW TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
+      result = db._query("FOR doc IN  TestView SORT doc.z RETURN doc", null, { waitForSync: true }).toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(2, result[1].z);

@@ -3,8 +3,8 @@ ArangoSearch View
 
 A natively integrated AQL extension that allows one to:
  * evaluate together documents located in different collections
- * filter documents based on AQL boolean expressions and functions
- * sort the result set based on how closely each document matched the filter
+ * search documents based on AQL boolean expressions and functions
+ * sort the result set based on how closely each document matched the search condition
 
 ### Creating an ArangoSearch View
 

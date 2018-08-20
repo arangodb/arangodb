@@ -185,7 +185,14 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
           }
       break;
     }
-    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::REDIRECT: {
+      bool found = false;
+      std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
+      if (StringUtils::boolean(val)) {
+        break; // continue with auth check
+      }
+      // intentional fallthrough
+    }
     case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&
           path.find("/_admin/cluster/health") == std::string::npos &&
@@ -246,8 +253,9 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
   }
-
-  // TODO add server ID on coordinators ?
+  if (mode == ServerState::Mode::REDIRECT) {
+    res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
 }
 
 /// Push this request into the execution pipeline

@@ -84,7 +84,6 @@ describe('_api/gharial', () => {
 
   afterEach(cleanup);
 
-
   it('should create a graph without orphans', () => {
     const graphDef = {
       "name": graphName,
@@ -606,6 +605,118 @@ describe('_api/gharial', () => {
       .to.be.an('object')
       .that.does.not.have.property('new');
 
+  });
+
+  it('should check if the if-match header is working - positive', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const key = 'bob';
+    const doc = db[vName].document(key);
+    const revision = doc._rev; // get a valid revision
+
+    let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key , {
+      headers: {
+        'if-match': revision
+      }
+    });
+    expect(req.statusCode).to.equal(200);
+    expect(req.json.edge).to.deep.equal(doc);
+  });
+
+  it('should check if the if-match header is working - negative', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const key = 'bob';
+    const doc = db[vName].document(key);
+    let revision = doc._rev; // get a valid revision
+    revision = revision + 'x';
+
+    const revisions = [null, undefined, true, false, revision];
+
+    revisions.forEach(function (rev) {
+      let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key , {
+        headers: {
+          'if-match': rev
+        }
+      });
+      expect(req.json.error).to.equal(true);
+      expect(req.statusCode).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
+      expect(req.json.code).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
+      expect(req.json.errorMessage).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.message);
+    });
+  });
+
+  it('should check if the if-none-match header is working - positive', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const key = 'bob';
+    const doc = db[vName].document(key);
+    const revision = doc._rev; // get a valid revision
+
+    let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key , {
+      headers: {
+        'if-none-match': revision
+      }
+    });
+    expect(req.status).to.equal(304);
+    expect(req.json).to.equal(undefined);
+  });
+
+  it('should check if the if-none-match header is working - negative', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const key = 'bob';
+    const doc = db[vName].document(key);
+    let revision = doc._rev; // get a valid revision
+    revision = revision + 'x';
+
+    const revisions = [null, undefined, true, false, revision];
+
+    revisions.forEach(function (rev) {
+      let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key , {
+        headers: {
+          'if-none-match': rev
+        }
+      });
+      expect(req.statusCode).to.equal(200);
+      expect(req.json.edge).to.deep.equal(doc);
+    });
   });
 
 });

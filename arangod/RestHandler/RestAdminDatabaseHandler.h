@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,30 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
-/// @author Simon Grätzer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AUTHENTICATION_COMMON_H
-#define ARANGOD_AUTHENTICATION_COMMON_H 1
+#ifndef ARANGOD_REST_HANDLER_ADMIN_DATABASE_HANDLER_H
+#define ARANGOD_REST_HANDLER_ADMIN_DATABASE_HANDLER_H 1
 
-#include <velocypack/Slice.h>
-#include "Basics/Result.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace auth {
+class RestAdminDatabaseHandler : public arangodb::RestBaseHandler {
+ public:
+  RestAdminDatabaseHandler(GeneralRequest*, GeneralResponse*);
 
-/// Supported access levels for data
-enum class Level : char {UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
-
-/// Supported source types of users sources
-enum class Source : char { Local, LDAP };
-
-auth::Level convertToAuthLevel(velocypack::Slice grants);
-auth::Level convertToAuthLevel(std::string const& grant);
-std::string convertFromAuthLevel(auth::Level lvl);
-
-}  // auth
-}  // arangodb
+ public:
+  char const* name() const override final { return "RestAdminDatabaseHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() override;
+};
+}
 
 #endif

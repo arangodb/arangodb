@@ -238,7 +238,7 @@ ClusterComm::ClusterComm()
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
-    std::string token = af->tokenCache()->jwtToken();
+    std::string token = af->tokenCache().jwtToken();
     TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
     _jwtAuthorization = "bearer " + token;

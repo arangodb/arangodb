@@ -172,15 +172,10 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
-  ///        also remove 'cid' from the persisted list of tracked collection IDs
+  /// @param unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
   ////////////////////////////////////////////////////////////////////////////////
-  int drop(TRI_voc_cid_t cid);
-      
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove all documents matching collection 'cid' from this IResearch
-  ///        View and the underlying IResearch stores
-  ////////////////////////////////////////////////////////////////////////////////
-  int truncate(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid, bool unlink = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
@@ -299,12 +294,6 @@ class IResearchView final
     arangodb::velocypack::Builder& builder,
     bool forPersistence
   ) const override;
-      
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove all documents matching collection 'cid' from this IResearch
-  ///        View and the underlying IResearch stores
-  ////////////////////////////////////////////////////////////////////////////////
-  int truncateUnlocked(TRI_voc_cid_t cid);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
