@@ -11,7 +11,7 @@ current document emitted by the `FOR` statement, i.e. it would be 'doc' for this
 statement:
 
 ```js
-FOR doc IN VIEW someView
+FOR doc IN someView
 ```
 
 IResearch provides a 'bm25' scorer implementing the

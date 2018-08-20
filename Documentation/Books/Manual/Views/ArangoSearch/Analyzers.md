@@ -28,7 +28,7 @@ The ArangoDB administrator may then set up a named analyzer 'text_des':
 
 The user is then immediately able to run queries with the said analyzer, e.g.
 
-`FILTER doc.description IN TOKENS('Ein brauner Fuchs springt', 'text_des')`
+`SEARCH doc.description IN TOKENS('Ein brauner Fuchs springt', 'text_des')`
 
 Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaSeq':
 
@@ -42,7 +42,7 @@ Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaSeq':
 
 The user is then immediately able to run queries with the said analyzer, e.g.
 
-`FILTER doc.dna IN TOKENS('ACGTCGTATGCACTGA', 'DnaSeq')`
+`SEARCH doc.dna IN TOKENS('ACGTCGTATGCACTGA', 'DnaSeq')`
 
 To a limited degree the concept of 'analysis' is even available in non-IResearch
 AQL, e.g. the `TOKENS(...)` function will utilize the power of IResearch to break
