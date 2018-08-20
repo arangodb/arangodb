@@ -105,7 +105,7 @@ bool CreateCollection::first() {
   auto const& props = properties();
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-    << "creating local shard '" << database << "/" << shard
+    << "CreateCollection: creating local shard '" << database << "/" << shard
     << "' for central '" << database << "/" << collection << "'";
 
   try { // now try to guard the vocbase

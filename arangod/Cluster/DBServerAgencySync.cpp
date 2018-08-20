@@ -24,6 +24,7 @@
 #include "DBServerAgencySync.h"
 
 #include "Basics/MutexLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/HeartbeatThread.h"
@@ -73,7 +74,8 @@ Result getLocalCollections(VPackBuilder& collections) {
     LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to get feature database";
     return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
   }
-  
+
+  collections.clear();
   VPackObjectBuilder c(&collections);
   for (auto const& database : Databases::list()) {
 
@@ -145,19 +147,26 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // in previous life handlePlanChange
     
     VPackObjectBuilder o(&rb);
-    
+
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(
       plan->slice(), local.slice(), serverId, *mfeature, rb);
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne done";
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
     glc = getLocalCollections(local);
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
       return result;
     }
   
     auto current = clusterInfo->getCurrent();
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+
     tmp = arangodb::maintenance::phaseTwo(
       plan->slice(), current->slice(), local.slice(), serverId, *mfeature, rb);
+                                             
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo done";
     
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
@@ -172,6 +181,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       if (report.hasKey("phaseTwo") && report.get("phaseTwo").isObject()) {
       
         auto phaseTwo = report.get("phaseTwo");
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "DBServerAgencySync reporting to Current: " << phaseTwo.toJson();
       
         // Report to current
         if (!phaseTwo.isEmptyObject()) {
@@ -196,6 +207,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error reporting to agency";
+          } else {
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "Invalidating current in ClusterInfo";
+            clusterInfo->invalidateCurrent();
           }
         }
       }
@@ -206,6 +220,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
         report.hasKey("Current") ?
         report.get("Current").get("Version").getNumber<uint64_t>() : 0);
+      
     }
   }
   

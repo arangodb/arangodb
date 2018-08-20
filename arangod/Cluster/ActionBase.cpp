@@ -86,9 +86,12 @@ ActionBase::~ActionBase() {
 
 
 void ActionBase::notify() {
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (cf != nullptr) {
-    cf->syncDBServerStatusQuo();
+
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "Job " << _description << " calling syncDBServerStatusQuo";
+  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");	
+  if (cf != nullptr) {	
+    cf->syncDBServerStatusQuo();	
   }
 }
 

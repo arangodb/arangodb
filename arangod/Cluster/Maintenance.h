@@ -143,6 +143,8 @@ arangodb::Result reportInCurrent(
  * @param  current   Current's scnapshot
  * @param  local     Local snapshot
  * @param  serverId  My server's uuid
+ * @param  actions   Resulting actions
+ * @param  rescheduleForSync Report to DBServerAgencySync, that we need to rerun
  *
  * @return           Success story
  */

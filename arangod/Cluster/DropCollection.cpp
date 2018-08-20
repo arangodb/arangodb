@@ -66,6 +66,9 @@ bool DropCollection::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "DropCollection: dropping local shard '" << database << "/" << collection;
+
   try {
 
     DatabaseGuard guard(database);
