@@ -85,7 +85,6 @@ describe('_api/gharial', () => {
   afterEach(cleanup);
 
 
-  /*
   it('should create a graph without orphans', () => {
     const graphDef = {
       "name": graphName,
@@ -604,7 +603,6 @@ describe('_api/gharial', () => {
       .that.does.not.have.property('new');
 
   });
-  */
 
   // TODO deleting a vertex via the graph api should probably delete all
   // edges that are in any graph's edge collection, not only the "current"
@@ -665,9 +663,10 @@ describe('_api/gharial', () => {
       deleted = true;
     }
 
-    expect(deleted).to.equal(true);
     graph._drop("firstGraph", true);
     graph._drop("secondGraph", true);
+
+    expect(deleted).to.equal(true);
   });
 
 });
