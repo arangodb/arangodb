@@ -125,7 +125,8 @@ class HttpConnection final : public fuerte::Connection {
   std::atomic<bool> _active;
   
   /// elements to send out
-  boost::lockfree::queue<fuerte::v1::http::RequestItem*> _queue;
+  boost::lockfree::queue<fuerte::v1::http::RequestItem*,
+    boost::lockfree::capacity<1024>> _queue;
   
   /// cached authentication header
   std::string _authHeader;

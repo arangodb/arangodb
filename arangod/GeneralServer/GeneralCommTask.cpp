@@ -192,6 +192,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
         break; // continue with auth check
       }
       // intentional fallthrough
+      [[gnu::fallthrough]];
     }
     case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&

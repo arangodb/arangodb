@@ -49,7 +49,7 @@ VstConnection<ST>::VstConnection(
       _timeout(*_io_context),
       _state(Connection::State::Disconnected),
       _loopState(0),
-      _writeQueue(1024) {}
+      _writeQueue() {}
 
 template<SocketType ST>
 VstConnection<ST>::~VstConnection() {
@@ -629,9 +629,13 @@ void VstConnection<ST>::setTimeout() {
   }
   
   _timeout.expires_at(expires);
-  auto self = shared_from_this();
+  std::weak_ptr<Connection> self = shared_from_this();
   _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
     if (ec) {  // was canceled
+      return;
+    }
+    auto s = self.lock();
+    if (!s) {
       return;
     }
       

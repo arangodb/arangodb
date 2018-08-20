@@ -104,7 +104,7 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
   _state(Connection::State::Disconnected),
   _numQueued(0),
   _active(false),
-  _queue(1024) {
+  _queue() {
   // initialize http parsing code
   _parserSettings.on_message_begin = ::on_message_began;
   _parserSettings.on_status = ::on_status;
@@ -524,20 +524,19 @@ template<SocketType ST>
 void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
   if (millis.count() == 0) {
     _timeout.cancel();
-    return; // do
+    return;
   }
   assert(millis.count() > 0);
   _timeout.expires_after(millis);
-  auto self = shared_from_this();
-  _timeout.async_wait([this, self] (asio_ns::error_code const& e) {
-    if (e == asio_ns::error::operation_aborted) {
-      // timer was canceled
-      return;
-    }
-    
-    if (!e) {  // expired
-      FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-      restartConnection(ErrorCondition::Timeout);
+  
+  std::weak_ptr<Connection> self = shared_from_this();
+  _timeout.async_wait([self, this] (asio_ns::error_code const& ec) {
+    if (!ec) {
+      auto s = self.lock();
+      if (s) {
+        FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+        restartConnection(ErrorCondition::Timeout);
+      }
     }
   });
 }

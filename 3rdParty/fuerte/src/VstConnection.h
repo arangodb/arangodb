@@ -154,7 +154,8 @@ class VstConnection final : public Connection {
   static_assert((WRITE_LOOP_ACTIVE & READ_LOOP_ACTIVE) == 0, "");
   
   /// elements to send out
-  boost::lockfree::queue<vst::RequestItem*> _writeQueue;
+  boost::lockfree::queue<vst::RequestItem*,
+    boost::lockfree::capacity<1024>> _writeQueue;
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst
