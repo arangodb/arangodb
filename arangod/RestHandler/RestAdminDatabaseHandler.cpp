@@ -21,47 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_COLLECTIONS_H
-#define ARANGOD_AQL_COLLECTIONS_H 1
+#include "RestAdminDatabaseHandler.h"
 
-#include "Basics/Common.h"
-#include "VocBase/AccessMode.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Rest/Version.h"
 
-struct TRI_vocbase_t;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace aql {
-struct Collection;
+using namespace arangodb;
+using namespace arangodb::rest;
 
-class Collections {
- public:
-  Collections& operator=(Collections const& other) = delete;
+RestAdminDatabaseHandler::RestAdminDatabaseHandler(GeneralRequest* request,
+                                                   GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
-  explicit Collections(TRI_vocbase_t*);
+RestStatus RestAdminDatabaseHandler::execute() {
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("version", VPackValue(std::to_string(Version::getNumericServerVersion())));
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK))); // hard-coded
+  result.close();
 
-  ~Collections();
-
- public:
-  Collection* get(std::string const& name) const;
-
-  Collection* add(std::string const& name, AccessMode::Type accessType);
-
-  std::vector<std::string> collectionNames() const;
-
-  std::map<std::string, Collection*>* collections();
-
-  std::map<std::string, Collection*> const* collections() const;
-
-  bool empty() const { return _collections.empty(); }
-
- private:
-  TRI_vocbase_t* _vocbase;
-
-  std::map<std::string, Collection*> _collections;
-
-  static size_t const MaxCollections = 256;
-};
+  generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
 }
-}
-
-#endif

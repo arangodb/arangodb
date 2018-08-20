@@ -186,7 +186,6 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OBJECT:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_REFERENCE:
-    case NODE_TYPE_PARAMETER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -210,7 +209,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal Optimizer encountered node: " << node->getTypeString();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
   }
