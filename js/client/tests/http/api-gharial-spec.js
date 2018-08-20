@@ -424,7 +424,6 @@ describe('_api/gharial', () => {
     var deleted = false;
     try {
       let deletedEdge = db._document(toBeRemovedEdgeID);
-      print(deletedEdge);
     } catch (e) {
       expect(e.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
       deleted = true;
