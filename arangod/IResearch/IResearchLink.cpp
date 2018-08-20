@@ -136,8 +136,12 @@ int IResearchLink::drop() {
 
   auto res = _view->drop(_collection.id());
 
-  if (TRI_ERROR_NO_ERROR != res) {
-    return res;
+  if (!res.ok()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to drop collection '" << _collection.name()
+      << "' from IResearch View '" << _view->name() << "': " << res.errorMessage();
+
+    return res.errorNumber();
   }
 
   _dropCollectionInDestructor = false; // will do drop now
@@ -158,14 +162,14 @@ int IResearchLink::drop() {
 void IResearchLink::afterTruncate() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-  
+
   if (!_view) {
-    return;
-    //return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
   }
-  
-  int res = _view->truncate(_view->id());
-  if (res != TRI_ERROR_NO_ERROR) {
+
+  auto res = _view->drop(_view->id(), false);
+
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
