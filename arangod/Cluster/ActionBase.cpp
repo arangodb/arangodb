@@ -55,29 +55,38 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
   : _feature(feature), _description(desc), _state(READY),
-    _actionCreated(secs_since_epoch()), _progress(0) {
+    _progress(0) {
 
-  _hash = _description.hash();
-  _clientId = std::to_string(_hash);
-  _id = _feature.nextActionId();
+  init();
 
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature,  ActionDescription&& desc)
   : _feature(feature), _description(std::move(desc)), _state(READY),
-    _actionCreated(secs_since_epoch()), _progress(0) {
+    _progress(0) {
 
+  init();
+}
+
+void ActionBase::init() {
   _hash = _description.hash();
   _clientId = std::to_string(_hash);
   _id = _feature.nextActionId();
 
+  // initialization of duration struct is not guaranteed in atomic form
+  _actionCreated = secs_since_epoch();
+  _actionStarted = std::chrono::system_clock::duration::zero();
+  _actionLastStat = std::chrono::system_clock::duration::zero();
+  _actionDone = std::chrono::system_clock::duration::zero();
 }
+
 
 ActionBase::~ActionBase() {
 }
 
 
 void ActionBase::notify() {
+
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "Job " << _description << " calling syncDBServerStatusQuo";
   auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");	

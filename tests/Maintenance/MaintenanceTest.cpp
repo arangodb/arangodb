@@ -211,7 +211,6 @@ void createPlanShards (
   
   auto servers = shortNames;
   std::shuffle(servers.begin(), servers.end(), g);
-  auto cid = localId++;
 
   col.add("numberOfShards", VPackValue(1));
   col.add("replicationFactor", VPackValue(2));

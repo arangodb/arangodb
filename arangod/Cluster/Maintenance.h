@@ -86,19 +86,6 @@ arangodb::Result diffLocalCurrent (
   VPackSlice const& local, VPackSlice const& current,
   std::string const& serverId, Transactions& report);
 
-/**
- * @brief          Synchronise Shards
- *
- * @param local    Snapshot of local state
- * @param current  Snapshot of agency's current state
- * @param serverId This server's UUID
- * @param report   Resulting agency transaction, which is to be sent
- *
- * @return         Result
- */
-arangodb::Result synchroniseShards (
-  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local);
-
 
 /**
  * @brief          Phase one: Execute plan, shard replication startups

@@ -37,6 +37,7 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
@@ -65,23 +66,7 @@ static VPackValue const VP_SET("set");
 static std::string const OP("op");
 static std::string const UNDERSCORE("_");
 
-template<typename T> int indexOf(VPackSlice const& slice, T const& t) {
-  size_t counter = 0;
-  if (slice.isArray()) {
-    for (auto const& entry : VPackArrayIterator(slice)) {
-      if (entry.isNumber()) {
-        if (entry.getNumber<T>() == t) {
-          return counter;
-        }
-      }
-      counter++;
-    }
-    return -1;
-  }
-}
-
-template<> int indexOf<std::string> (
-  VPackSlice const& slice, std::string const& val) {
+static int indexOf(VPackSlice const& slice, std::string const& val) {
   size_t counter = 0;
   if (slice.isArray()) {
     for (auto const& entry : VPackArrayIterator(slice)) {
@@ -96,22 +81,14 @@ template<> int indexOf<std::string> (
   return -1;
 }
 
-std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
-  auto builder = std::make_shared<VPackBuilder>();
+static std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
   TRI_ASSERT(s.isObject());
-  { VPackObjectBuilder b(builder.get());
-    for (auto const& attr : VPackObjectIterator(s)) {
-      std::string const key = attr.key.copyString();
-      if (key == ID || key == NAME) {
-        continue;
-      }
-      builder->add(key, attr.value);
-    }}
-  return builder;
+  return std::make_shared<VPackBuilder>(
+    arangodb::velocypack::Collection::remove(s,
+    std::unordered_set<std::string>({ID, NAME})));
 }
 
-
-std::shared_ptr<VPackBuilder> compareRelevantProps (
+static std::shared_ptr<VPackBuilder> compareRelevantProps (
   VPackSlice const& first, VPackSlice const& second) {
   auto result = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(result.get());
@@ -469,68 +446,64 @@ arangodb::Result arangodb::maintenance::phaseOne (
 }
 
 VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
-  VPackBuilder ret;
-  { VPackObjectBuilder o(&ret);
-    for (auto const& i : VPackObjectIterator(index)) {
-      auto const& key = i.key.copyString();
-      if (key != SELECTIVITY_ESTIMATE) {
-        ret.add(key, i.value);
-      }
-    }
-  }
-  return ret;
+  TRI_ASSERT(index.isObject());
+  return arangodb::velocypack::Collection::remove(index,
+      std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
 }
 
-VPackBuilder assembleLocalCollectioInfo(
+VPackBuilder assembleLocalCollectionInfo(
   VPackSlice const& info, VPackSlice const& planServers,
   std::string const& database, std::string const& shard,
   std::string const& ourselves) {
 
   VPackBuilder ret;
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
+  try {
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
+
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection == nullptr) {
+      std::string errorMsg(
+        "Maintenance::assembleLocalCollectionInfo: Failed to lookup collection ");
+      errorMsg += shard;
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
+      { VPackObjectBuilder o(&ret); }
+      return ret;
+    }
+
+    { VPackObjectBuilder r(&ret);
+      ret.add(ERROR, VPackValue(false));
+      ret.add(ERROR_MESSAGE, VPackValue(std::string()));
+      ret.add(ERROR_NUM, VPackValue(0));
+      ret.add(VPackValue(INDEXES));
+      { VPackArrayBuilder ixs(&ret);
+        if (info.get(INDEXES).isArray()) {
+          for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
+            ret.add(removeSelectivityEstimate(index).slice());
+          }}}
+      ret.add(VPackValue(SERVERS));
+      { VPackArrayBuilder a(&ret);
+        ret.add(VPackValue(ourselves));
+        auto current = *(collection->followers()->get());
+        for (auto const& server : VPackArrayIterator(planServers)) {
+          if (std::find(current.begin(), current.end(), server.copyString())
+              != current.end()) {
+            ret.add(server);
+          }
+        }}}
+    
+    return ret;
+  } catch (std::exception const& e) { 
     std::string errorMsg(
       "Maintenance::assembleLocalCollectionInfo: Failed to lookup database ");
     errorMsg += database;
+    errorMsg += " exception: ";
+    errorMsg += e.what();
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }
-
-  auto collection = vocbase->lookupCollection(shard);
-  if (collection == nullptr) {
-    std::string errorMsg(
-      "Maintenance::assembleLocalCollectionInfo: Failed to lookup collection ");
-    errorMsg += shard;
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
-    { VPackObjectBuilder o(&ret); }
-    return ret;
-  }
-
-  { VPackObjectBuilder r(&ret);
-    ret.add(ERROR, VPackValue(false));
-    ret.add(ERROR_MESSAGE, VPackValue(std::string()));
-    ret.add(ERROR_NUM, VPackValue(0));
-    ret.add(VPackValue(INDEXES));
-    { VPackArrayBuilder ixs(&ret);
-      if (info.get(INDEXES).isArray()) {
-        for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
-          ret.add(removeSelectivityEstimate(index).slice());
-        }}}
-    ret.add(VPackValue(SERVERS));
-    { VPackArrayBuilder a(&ret);
-      ret.add(VPackValue(ourselves));
-      auto current = *(collection->followers()->get());
-      for (auto const& server : VPackArrayIterator(planServers)) {
-        if (std::find(current.begin(), current.end(), server.copyString())
-            != current.end()) {
-          ret.add(server);
-        }
-      }}}
-  
-  return ret;
-  
 }
 
 bool equivalent(VPackSlice const& local, VPackSlice const& current) {
@@ -546,28 +519,32 @@ VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
 
   VPackBuilder ret;
   
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
+  try {
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
+
+    { VPackObjectBuilder o(&ret);
+      ret.add(ERROR, VPackValue(false));
+      ret.add(ERROR_NUM, VPackValue(0));
+      ret.add(ERROR_MESSAGE, VPackValue(""));
+      ret.add(ID, VPackValue(std::to_string(vocbase->id())));
+      ret.add("name", VPackValue(vocbase->name())); }
+
+    return ret;
+  } catch(std::exception const& e) {
     std::string errorMsg(
       "Maintenance::assembleLocalDatabaseInfo: Failed to lookup database ");
     errorMsg += database;
+    errorMsg += " exception: ";
+    errorMsg += e.what();
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }
-
-  { VPackObjectBuilder o(&ret);
-    ret.add(ERROR, VPackValue(false));
-    ret.add(ERROR_NUM, VPackValue(0));
-    ret.add(ERROR_MESSAGE, VPackValue(""));
-    ret.add(ID, VPackValue(std::to_string(vocbase->id())));
-    ret.add("name", VPackValue(vocbase->name())); }
-
-  return ret;
 }
 
 
-// udateCurrentForCollections
+// updateCurrentForCollections
 // diff current and local and prepare agency transactions or whatever
 // to update current. Will report the errors created locally to the agency
 arangodb::Result arangodb::maintenance::reportInCurrent(
@@ -607,7 +584,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (shSlice.get(LEADER).copyString().empty()) { // Leader
 
         auto const localCollectionInfo =
-          assembleLocalCollectioInfo(
+          assembleLocalCollectionInfo(
             shSlice, shardMap.slice().get(shName), dbName, shName, serverId);
         // Collection no longer exists
         if (localCollectionInfo.slice().isEmptyObject()) { 
@@ -824,12 +801,5 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   
   return result;
   
-}
-
-
-arangodb::Result arangodb::maintenance::synchroniseShards (
-  VPackSlice const&, VPackSlice const&, VPackSlice const&) {
-  arangodb::Result result;
-  return result;
 }
 

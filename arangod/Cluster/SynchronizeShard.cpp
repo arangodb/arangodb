@@ -213,57 +213,60 @@ arangodb::Result addShardFollower (
       TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
   }
 
-  auto vocbase = Databases::lookup(database);
-  if (vocbase == nullptr) {
+  try {
+    DatabaseGuard guard(database);
+    auto vocbase = &guard.database();
+
+    auto collection = vocbase->lookupCollection(shard);
+    if (collection == nullptr) {
+      std::string errorMsg(
+        "SynchronizeShard::addShardFollower: Failed to lookup collection ");
+      errorMsg += shard;
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
+      return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+    }
+
+    size_t c;
+    count(collection, c);
+    VPackBuilder body;
+    { VPackObjectBuilder b(&body);
+      body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
+      body.add(SHARD, VPackValue(shard));
+      body.add("checksum", VPackValue(std::to_string(c)));
+      if (lockJobId != 0) {
+        body.add("readLockId", VPackValue(lockJobId));
+      }}
+
+    auto comres = cc->syncRequest(
+      clientId, 1, endpoint, rest::RequestType::PUT,
+      DB + database + REPL_ADD_FOLLOWER, body.toJson(),
+      std::unordered_map<std::string, std::string>(), timeout);
+
+    auto result = comres->result;
+    std::string errorMessage (
+      "addShardFollower: could not add us to the leader's follower list. ");
+    if (result == nullptr || result->getHttpReturnCode() != 200) {
+      if (lockJobId != 0) {
+        errorMessage += comres->stringifyErrorMessage();
+        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+      } else {
+        errorMessage += "with shortcut.";
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
+      }
+      return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
+    }
+
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
+    return arangodb::Result();
+  } catch (std::exception const& e) {
     std::string errorMsg(
       "SynchronizeShard::addShardFollower: Failed to lookup database ");
     errorMsg += database;
+    errorMsg += " exception: ";
+    errorMsg += e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
-
-  auto collection = vocbase->lookupCollection(shard);
-  if (collection == nullptr) {
-    std::string errorMsg(
-      "SynchronizeShard::addShardFollower: Failed to lookup collection ");
-    errorMsg += shard;
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMsg;
-    return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
-  }
-
-  size_t c;
-  count(collection, c);
-  VPackBuilder body;
-  { VPackObjectBuilder b(&body);
-    body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
-    body.add(SHARD, VPackValue(shard));
-    body.add("checksum", VPackValue(std::to_string(c)));
-    if (lockJobId != 0) {
-      body.add("readLockId", VPackValue(lockJobId));
-    }}
-
-  auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::PUT,
-    DB + database + REPL_ADD_FOLLOWER, body.toJson(),
-    std::unordered_map<std::string, std::string>(), timeout);
-
-  auto result = comres->result;
-  std::string errorMessage (
-    "addShardFollower: could not add us to the leader's follower list. ");
-  if (result == nullptr || result->getHttpReturnCode() != 200) {
-    if (lockJobId != 0) {
-      errorMessage += comres->stringifyErrorMessage();
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
-    } else {
-      errorMessage += "with shortcut.";
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
-    }
-    return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
-  }
-
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "cancelReadLockOnLeader: success";
-  return arangodb::Result();
-
 }
 
 
@@ -396,8 +399,6 @@ arangodb::Result SynchronizeShard::getReadLock(
   std::string const& collection, std::string const& clientId,
   uint64_t rlid, double timeout) {
 
-  auto start = steady_clock::now();
-
   auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
@@ -447,13 +448,7 @@ arangodb::Result SynchronizeShard::getReadLock(
         << putres->stringifyErrorMessage();
     }
 
-  }
-
-  std::this_thread::sleep_for(duration<double>(.5));
-  if (std::chrono::duration_cast<std::chrono::seconds>(
-        steady_clock::now() - start).count() > timeout) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
-    return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
+    std::this_thread::sleep_for(duration<double>(.5));
   }
 
   LOG_TOPIC(ERR, Logger::MAINTENANCE) << "startReadLockOnLeader: giving up";
