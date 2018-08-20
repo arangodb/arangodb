@@ -450,9 +450,9 @@ arangodb::Result SynchronizeShard::getReadLock(
         << putres->stringifyErrorMessage();
     }
 
+    std::this_thread::sleep_for(duration<double>(.5));
   }
 
-  std::this_thread::sleep_for(duration<double>(.5));
   if (std::chrono::duration_cast<std::chrono::seconds>(
         steady_clock::now() - start).count() > timeout) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
