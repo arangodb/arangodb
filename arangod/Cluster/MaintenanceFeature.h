@@ -83,10 +83,16 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     std::shared_ptr<maintenance::Action> action, bool executeNow=false);
 
   /// @brief Internal API that allows existing actions to create pre actions
+  /// FIXDOC: Please explain how this works in a lot more detail, for example,
+  /// say if this can be called in the code of an Action and if the already
+  /// running action is postponed in this case. Explain semantics such that
+  /// somebody not knowing the code can use it.
   std::shared_ptr<maintenance::Action> preAction(
     std::shared_ptr<maintenance::ActionDescription> const & description);
   
   /// @brief Internal API that allows existing actions to create post actions
+  /// FIXDOC: Please explain how this works in a lot more detail, such that
+  /// somebody not knowing the code can use it.
   std::shared_ptr<maintenance::Action> postAction(
     std::shared_ptr<maintenance::ActionDescription> const & description);
   
