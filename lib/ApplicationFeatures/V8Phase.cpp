@@ -22,10 +22,10 @@
 
 #include "V8Phase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-V8FeaturePhase::V8FeaturePhase(ApplicationServer* server)
+V8FeaturePhase::V8FeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "V8Phase") {
   setOptional(false);
   startsAfter("ClusterPhase");
@@ -34,3 +34,6 @@ V8FeaturePhase::V8FeaturePhase(ApplicationServer* server)
   startsAfter("V8Dealer");
   startsAfter("V8Platform");
 }
+
+} // application_features
+} // arangodb

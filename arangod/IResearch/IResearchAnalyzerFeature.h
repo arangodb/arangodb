@@ -88,7 +88,7 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
   };
 
   explicit IResearchAnalyzerFeature(
-    application_features::ApplicationServer* server
+    arangodb::application_features::ApplicationServer& server
   );
 
   std::pair<AnalyzerPool::ptr, bool> emplace(

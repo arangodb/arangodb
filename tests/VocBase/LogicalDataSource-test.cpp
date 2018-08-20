@@ -39,12 +39,12 @@ struct LogicalDataSourceSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  LogicalDataSourceSetup(): server(nullptr, nullptr) {
+  LogicalDataSourceSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ShardingFeature(&server), false); 
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);

@@ -32,20 +32,17 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+
 class SslServerFeature : public application_features::ApplicationFeature {
  public:
   static SslServerFeature* SSL;
 
- public:
-  explicit SslServerFeature(application_features::ApplicationServer* server);
+  explicit SslServerFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
-
- public:
   virtual void verifySslOptions();
 
  protected:
@@ -66,9 +63,9 @@ class SslServerFeature : public application_features::ApplicationFeature {
     return *_context.get();
   }
 
- private:
   std::string _rctx;
 };
+
 }
 
 #endif

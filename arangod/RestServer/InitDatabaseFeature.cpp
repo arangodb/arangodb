@@ -35,13 +35,16 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
-    std::vector<std::string> const& nonServerFeatures)
+namespace arangodb {
+
+InitDatabaseFeature::InitDatabaseFeature(
+    application_features::ApplicationServer& server,
+    std::vector<std::string> const& nonServerFeatures
+)
   : ApplicationFeature(server, "InitDatabase"),
     _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -187,3 +190,5 @@ doexit:
   TRI_EXIT_FUNCTION(code, nullptr);
   exit(code);
 }
+
+} // arangodb
