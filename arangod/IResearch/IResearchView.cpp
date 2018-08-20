@@ -1649,12 +1649,11 @@ int IResearchView::insert(
     if (properties.hasKey(StaticStrings::LinksField)) {
       auto links = properties.get(StaticStrings::LinksField);
 
+      // Ignore errors
       std::unordered_set<TRI_voc_cid_t> collections;
-      auto res = IResearchLinkHelper::updateLinks(
+      IResearchLinkHelper::updateLinks(
         collections, vocbase, *view, links
       );
-
-      THROW_ARANGO_EXCEPTION_IF_FAIL(res);
     }
   }
 

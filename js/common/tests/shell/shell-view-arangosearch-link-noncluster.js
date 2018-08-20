@@ -43,7 +43,7 @@ var ERRORS = arangodb.errors;
 
 function IResearchLinkSuite () {
   'use strict';
-  var collection = null;
+  var collection = null, collection2 = null;
 
   return {
     ////////////////////////////////////////////////////////////////////////////
@@ -52,6 +52,8 @@ function IResearchLinkSuite () {
     setUp : function () {
       internal.db._drop('testCollection');
       collection = internal.db._create('testCollection');
+      internal.db._drop('testCollection2');
+      collection2 = internal.db._create('testCollection2');
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -63,6 +65,8 @@ function IResearchLinkSuite () {
       try {
         collection.unload();
         collection.drop();
+        collection2.unload();
+        collection2.drop();
       } catch (err) {
       }
       collection = null;
@@ -76,7 +80,36 @@ function IResearchLinkSuite () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
       var view = db._createView("badView", "arangosearch", meta);
       var links = view.properties().links;
-      assertEqual(links['testCollection'], undefined);
+      assertNotEqual(links["testCollection"], undefined);
+      view.drop();
+    },
+
+    testHandlingCreateWithMultipleLinks : function () {
+      var meta = { links: { 'testCollection' : { includeAllFields: true },
+        'testCollection2' : { includeAllFields: true } } };
+      var view = db._createView("badView", "arangosearch", meta);
+      var links = view.properties().links;
+      assertNotEqual(links["testCollection"], undefined);
+      assertNotEqual(links["testCollection2"], undefined);
+      view.drop();
+    },
+
+    testHandlingCreateWithBadLinks : function () {
+      var meta = { links: { 'nonExistingCollection' : { includeAllFields: true } } };
+      var view = db._createView("badView", "arangosearch", meta);
+      var links = view.properties().links;
+      assertNotEqual(links, undefined);
+      view.drop();
+    },
+
+    testHandlingCreateWithSomeBadLinks : function () {
+      var meta = { links: {
+        'testCollection' : { includeAllFields: true },
+        'nonExistingCollection' : { includeAllFields: true },
+        'testCollection2' : { includeAllFields: true }  } };
+      var view = db._createView("badView", "arangosearch", meta);
+      var links = view.properties().links;
+      assertNotEqual(links, undefined); // no link should be set
       view.drop();
     },
 
