@@ -183,6 +183,7 @@ APIs:
   - `GET /_admin/routing/routes`
   - `GET /_admin/statistics/short`
   - `GET /_admin/statistics/long`
+  - `GET /_admin/auth/reload`
 
 - `GET /_api/index` will now return type `geo` for geo indexes, not type `geo1`
   or `geo2` as previous versions did.
@@ -540,8 +541,8 @@ In the ArangoShell, the undocumented JavaScript module `@arangodb/actions` has
 been removed. This module contained the methods `printRouting` and `printFlatRouting`,
 which were used for debugging purposes only.
 
-In the ArangoShell, the undocumented JavaScript function `routingCache` has been
-removed from the `internal` module.
+In the ArangoShell, the undocumented JavaScript functions `reloadAuth` and `routingCache`
+have been removed from the `internal` module.
 
 
 Foxx applications
