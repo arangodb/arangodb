@@ -84,7 +84,8 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   bool extractPart(SearchHelper*);
 
 private:
-  bool executeNextHandler();
+  void executeNextHandler();
+  void processSubHandlerResult(std::shared_ptr<RestHandler> handler);
 
   MultipartMessage _multipartMessage;
   SearchHelper _helper;

@@ -67,13 +67,75 @@ RestStatus RestBatchHandler::executeVst() {
   return RestStatus::DONE;
 }
 
-bool RestBatchHandler::executeNextHandler() {
+void RestBatchHandler::processSubHandlerResult(std::shared_ptr<RestHandler> handler)
+{
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+
+  HttpResponse* partResponse =
+      dynamic_cast<HttpResponse*>(handler->response());
+
+  if (partResponse == nullptr) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                  "could not create a response for batch part request");
+    continueHandlerExecution();
+    return ;
+  }
+
+  rest::ResponseCode const code = partResponse->responseCode();
+
+  // count everything above 400 as error
+  if (int(code) >= 400) {
+    ++_errors;
+  }
+
+  // append the boundary for this subpart
+  httpResponse->body().appendText(_boundary + "\r\nContent-Type: ");
+  httpResponse->body().appendText(StaticStrings::BatchContentType);
+
+  // append content-id if it is present
+  if (_helper.contentId != nullptr) {
+    httpResponse->body().appendText(
+        "\r\nContent-Id: " +
+        std::string(_helper.contentId, _helper.contentIdLength));
+  }
+
+  httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
+
+  // remove some headers we don't need
+  partResponse->setConnectionType(rest::ConnectionType::C_NONE);
+  partResponse->setHeaderNC(StaticStrings::Server, "");
+
+  // append the part response header
+  partResponse->writeHeader(&httpResponse->body());
+
+  // append the part response body
+  httpResponse->body().appendText(partResponse->body());
+  httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+
+
+  // we've read the last part
+  if (!_helper.containsMore) {
+    // complete the handler
+
+    // append final boundary + "--"
+    httpResponse->body().appendText(_boundary + "--");
+
+    if (_errors > 0) {
+      httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(_errors));
+    }
+    continueHandlerExecution();
+  } else {
+    executeNextHandler();
+  }
+}
+
+void RestBatchHandler::executeNextHandler() {
 
   auto self(shared_from_this());
 
   // Post the sub handler creation on the Scheduler. This is fast, but a user
   // request.
-  return SchedulerFeature::SCHEDULER->queue(
+  bool ok = SchedulerFeature::SCHEDULER->queue(
     PriorityRequestLane(RequestLane::CLIENT_FAST), [this, self]() {
 
       // get authorization header. we will inject this into the subparts
@@ -171,88 +233,32 @@ bool RestBatchHandler::executeNextHandler() {
       // now scheduler the real handler
       bool ok = SchedulerFeature::SCHEDULER->queue(
         PriorityRequestLane(handler->lane()), [this, self, handler]() {
-          HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
           // start to work for this handler
-          {
-            // ignore any errors here, will be handled later by inspecting the response
-            try {
-              ExecContextScope scope(nullptr);// workaround because of assertions
-              handler->runHandler([](RestHandler*) {});
-            } catch (...) {
-            }
+          // ignore any errors here, will be handled later by inspecting the response
+          try {
+            ExecContextScope scope(nullptr);// workaround because of assertions
+            handler->runHandler([this, self, handler](RestHandler*) {
+              processSubHandlerResult (handler);
 
-
-
-            HttpResponse* partResponse =
-                dynamic_cast<HttpResponse*>(handler->response());
-
-            if (partResponse == nullptr) {
-              generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                            "could not create a response for batch part request");
-
-              //return RestStatus::DONE;
-              continueHandlerExecution();
-              return ;
-            }
-
-            rest::ResponseCode const code = partResponse->responseCode();
-
-            // count everything above 400 as error
-            if (int(code) >= 400) {
-              ++_errors;
-            }
-
-            // append the boundary for this subpart
-            httpResponse->body().appendText(_boundary + "\r\nContent-Type: ");
-            httpResponse->body().appendText(StaticStrings::BatchContentType);
-
-            // append content-id if it is present
-            if (_helper.contentId != nullptr) {
-              httpResponse->body().appendText(
-                  "\r\nContent-Id: " +
-                  std::string(_helper.contentId, _helper.contentIdLength));
-            }
-
-            httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
-
-            // remove some headers we don't need
-            partResponse->setConnectionType(rest::ConnectionType::C_NONE);
-            partResponse->setHeaderNC(StaticStrings::Server, "");
-
-            // append the part response header
-            partResponse->writeHeader(&httpResponse->body());
-
-            // append the part response body
-            httpResponse->body().appendText(partResponse->body());
-            httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-          }
-
-          // we've read the last part
-          if (!_helper.containsMore) {
-            // complete the handler
-
-            // append final boundary + "--"
-            httpResponse->body().appendText(_boundary + "--");
-
-            if (_errors > 0) {
-              httpResponse->setHeaderNC(StaticStrings::Errors, StringUtils::itoa(_errors));
-            }
-
-
-            continueHandlerExecution();
-          } else {
-            executeNextHandler();
+            });
+          } catch (...) {
+            processSubHandlerResult (handler);
           }
         }
       );
 
       if (!ok) {
-        //generateError(); -- add some error here pls!
+        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_BAD_PARAMETER);
         continueHandlerExecution();
       }
     }
   );
+
+  if (!ok) {
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_BAD_PARAMETER);
+    continueHandlerExecution();
+  }
 }
 
 RestStatus RestBatchHandler::executeHttp() {
