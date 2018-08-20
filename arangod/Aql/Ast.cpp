@@ -1418,7 +1418,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
           static_cast<int>(numExpectedArguments.second));
     }
 
-    if (!func->canRunOnDBServer) {
+    if (!func->hasFlag(Function::Flags::CanRunOnDBServer)) {
       // this also qualifies a query for potentially reading or modifying
       // documents via function calls!
       _functionsMayAccessDocuments = true;
@@ -2003,7 +2003,7 @@ void Ast::validateAndOptimize() {
       auto func = static_cast<Function*>(node->getData());
 
       if (ctx->hasSeenAnyWriteNode &&
-          !func->canRunOnDBServer) {
+          !func->hasFlag(Function::Flags::CanRunOnDBServer)) {
         // if canRunOnDBServer is true, then this is an indicator for a
         // document-accessing function
         std::string name("function ");
@@ -3183,7 +3183,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     }
   }
 
-  if (!func->isDeterministic) {
+  if (!func->hasFlag(Function::Flags::Deterministic)) {
     // non-deterministic function
     return node;
   }
