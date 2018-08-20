@@ -41,7 +41,7 @@ struct Function {
 
   /// @brief arbitrary function flags. note that these must be mutually exclusive
   /// when bit-ORed  
-  enum class Flags : uint32_t { 
+  enum class Flags : uint8_t { 
     None = 0,
   
     /// @brief whether or not the function is deterministic (i.e. its results are
@@ -57,11 +57,11 @@ struct Function {
 
   /// @brief helper for building flags
   template <typename... Args>
-  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+  static inline std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
     return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
   }
   
-  static std::underlying_type<Flags>::type makeFlags() {
+  static inline std::underlying_type<Flags>::type makeFlags() {
     return static_cast<std::underlying_type<Flags>::type>(Flags::None);
   }
 
