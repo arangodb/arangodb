@@ -1419,6 +1419,7 @@
       this.queryPreview.getSession().setMode('ace/mode/aql');
       this.queryPreview.setReadOnly(true);
       this.queryPreview.setFontSize('13px');
+      this.queryPreview.setShowPrintMargin(false);
 
       // auto focus this editor
       $('#aqlEditor .ace_text-input').focus();
@@ -2795,6 +2796,9 @@
           if (originCallback) {
             originCallback();
           }
+        },
+        error: function (data, resp) {
+          arangoHelper.arangoError('User Queries', resp.responseText);
         }
       });
     },
@@ -2814,7 +2818,7 @@
             // if nested array or object found, do not offer csv download
             try {
               tmp = JSON.parse(entry);
-              // if parse succes -> arr or obj found
+              // if parse success -> arr or obj found
               if (typeof tmp === 'object') {
                 status = false;
               }

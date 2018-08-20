@@ -53,6 +53,10 @@ class IResearchMMFilesLink final
   virtual int drop() override {
     return IResearchLink::drop();
   }
+    
+  void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();

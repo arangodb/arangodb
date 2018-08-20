@@ -263,10 +263,8 @@ function setReadOnly(endpoint, ro) {
   assertTrue(json.mode === (ro ? "readonly" : "default"));
 }
 
-// Testsuite that quickly checks some of the basic premises of
-// the active failover functionality. It is designed as a quicker
-// variant of the node resilience tests (for active failover).
-// Things like Foxx resilience are not tested
+// Testsuite that checks the read-only mode in the context
+// of the active-failover setup
 function ActiveFailoverSuite() {
   let servers = getClusterEndpoints();
   assertTrue(servers.length >= 4, "This test expects four single instances");

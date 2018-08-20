@@ -55,26 +55,24 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(argv[0], "Usage: arangorestore [<options>]",
                                     "For more information use:",
                                     BIN_DIRECTORY));
-
     ApplicationServer server(options, BIN_DIRECTORY);
-
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(&server, true));
-    server.addFeature(new application_features::GreetingsFeaturePhase(&server, true));
-    server.addFeature(new ClientFeature(&server, false));
-    server.addFeature(new ConfigFeature(&server, "arangorestore"));
-    server.addFeature(new LoggerFeature(&server, false));
-    server.addFeature(new RandomFeature(&server));
-    server.addFeature(new RestoreFeature(&server, ret));
-    server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"Restore"}));
-    server.addFeature(new SslFeature(&server));
-    server.addFeature(new TempFeature(&server, "arangorestore"));
-    server.addFeature(new VersionFeature(&server));
+    server.addFeature(new application_features::BasicFeaturePhase(server, true));
+    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
+    server.addFeature(new ClientFeature(server, false));
+    server.addFeature(new ConfigFeature(server, "arangorestore"));
+    server.addFeature(new LoggerFeature(server, false));
+    server.addFeature(new RandomFeature(server));
+    server.addFeature(new RestoreFeature(server, ret));
+    server.addFeature(new ShellColorsFeature(server));
+    server.addFeature(new ShutdownFeature(server, {"Restore"}));
+    server.addFeature(new SslFeature(server));
+    server.addFeature(new TempFeature(server, "arangorestore"));
+    server.addFeature(new VersionFeature(server));
 
 #ifdef USE_ENTERPRISE
-    server.addFeature(new EncryptionFeature(&server));
+    server.addFeature(new EncryptionFeature(server));
 #endif
 
     try {

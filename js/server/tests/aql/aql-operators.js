@@ -3031,7 +3031,10 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(1, UNARY_PLUS(true));
       assertEqual(0, UNARY_PLUS(' '));
       assertEqual(0, UNARY_PLUS('abc'));
-      assertEqual(1, UNARY_PLUS('1abc'));
+      assertEqual(0, UNARY_PLUS('1abc'));
+      assertEqual(0, UNARY_PLUS('abc1'));
+      assertEqual(1, UNARY_PLUS('1  '));
+      assertEqual(1, UNARY_PLUS('  1  '));
       assertEqual(0, UNARY_PLUS(''));
       assertEqual(-1, UNARY_PLUS('-1'));
       assertEqual(0, UNARY_PLUS('0'));
@@ -3070,7 +3073,10 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(0, UNARY_MINUS(''));
       assertEqual(0, UNARY_MINUS(' '));
       assertEqual(0, UNARY_MINUS('abc'));
-      assertEqual(-1, UNARY_MINUS('1abc'));
+      assertEqual(0, UNARY_MINUS('1abc'));
+      assertEqual(0, UNARY_MINUS('abc1'));
+      assertEqual(-1, UNARY_MINUS(' 1'));
+      assertEqual(-1, UNARY_MINUS('1 '));
       assertEqual(1, UNARY_MINUS('-1'));
       assertEqual(0, UNARY_MINUS('0'));
       assertEqual(-1, UNARY_MINUS('1'));
@@ -3502,6 +3508,10 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual([ [ -4, -3, -2, -1, 0, 1, 2, 3, 4, 5 ] ], AQL_EXECUTE("RETURN -1 - 3..3 + 2").json);
       assertEqual([ [ 0, 1, 2, 3 ] ], AQL_EXECUTE("RETURN 1..2..3").json);
       assertEqual([ [ 1, 2, 3, 4 ] ], AQL_EXECUTE("RETURN 1..1..4").json);
+    },
+    
+    testNumberConversion: function() {
+      assertEqual([ [ true, 0, 0 ] ], AQL_EXECUTE('LET str = "3a" RETURN [ 0 + str == TO_NUMBER(str), 0 + str, TO_NUMBER(str) ]').json);
     }
 
   };

@@ -44,7 +44,7 @@ class SystemDatabaseFeature final:
   typedef std::unique_ptr<TRI_vocbase_t, VocbaseReleaser> ptr;
 
   SystemDatabaseFeature(
-    application_features::ApplicationServer* server,
+    arangodb::application_features::ApplicationServer& server,
     TRI_vocbase_t* vocbase = nullptr
   );
   static std::string const& name() noexcept;

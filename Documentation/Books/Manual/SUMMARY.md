@@ -270,6 +270,7 @@
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
     * [Upgrading on Linux](Upgrading/OSSpecificInfo/Linux.md)
+    * [Upgrading on MacOS](Upgrading/OSSpecificInfo/MacOS.md)
   * [Upgrading _Starter_ Deployments](Upgrading/Starter/README.md)  
   * [Upgrading Manual Deployments](Upgrading/Manually/README.md)
     * [Upgrading a Cluster](Upgrading/Manually/Cluster.md)	
@@ -316,7 +317,9 @@
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
 # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter Recovery Procedure](Administration/Starter/README.md)    
+  * [ArangoDB Starter Administration](Administration/Starter/README.md)
+    * [ArangoDB Starter Removal Procedure](Administration/Starter/Removal.md)
+    * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption](Administration/Encryption/README.md)

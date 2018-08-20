@@ -498,7 +498,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       url += "&flush=false";
     } else {
       // only flush WAL once
-      url += "&flush=true&flushWait=15";
+      url += "&flush=true&flushWait=180";
       _config.flushed = true;
     }
 
@@ -957,6 +957,8 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
       *coll,
       AccessMode::Type::EXCLUSIVE
     );
+    trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+    trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1147,6 +1149,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
               *col,
               AccessMode::Type::EXCLUSIVE
             );
+            trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+            trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
             Result res = trx.begin();
 
             if (!res.ok()) {

@@ -48,6 +48,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace transaction {
 class Context;
@@ -56,6 +57,10 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+}
+
+namespace graph {
+class Graph;
 }
 
 namespace aql {
@@ -75,7 +80,7 @@ enum QueryPart { PART_MAIN, PART_DEPENDENT };
 class Query {
 
  private:
-   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+  enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
  private:
   Query(Query const&) = delete;
@@ -280,7 +285,7 @@ class Query {
   std::string getStateString() const;
 
   /// @brief look up a graph in the _graphs collection
-  Graph const* lookupGraphByName(std::string const& name);
+  graph::Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
@@ -293,6 +298,9 @@ class Query {
   std::shared_ptr<SharedQueryState> sharedState() const { 
     return _sharedState;
   }
+  
+  /// @brief pass-thru a resolver object from the transaction context
+  CollectionNameResolver const& resolver();
   
  private:
   /// @brief initializes the query
@@ -319,18 +327,18 @@ class Query {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query. Synchronous variant,
-  //         will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int, VPackBuilder* statsBuilder = nullptr) noexcept;
+  /// @brief cleanup plan and engine for current query. synchronous variant,
+  /// will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
-
+  
   /// @brief returns the next query id
-  static TRI_voc_tick_t NextId();
+  static TRI_voc_tick_t nextId();
 
  public:
   constexpr static uint64_t DontCache = 0;
@@ -355,7 +363,7 @@ class Query {
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, std::unique_ptr<Graph>> _graphs;
+  std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief the actual query string
   QueryString _queryString;

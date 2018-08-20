@@ -486,8 +486,7 @@ function ahuacatlProfilerTestSuite () {
           node => (
             node.fromStats ?
             {
-            // type: node.fromPlan.type,
-            type: node.fromStats.blockType,
+            type: node.type,
             calls: node.fromStats.calls,
             items: node.fromStats.items,
           } : {})

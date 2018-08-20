@@ -61,5 +61,5 @@ In addition to the paragraph above, rolling upgrades via the tool _Starter_ are 
 as documented in the _Section_ [Upgrading Starter Deployments](../Starter/README.md),
 with the following limitations:
 
-- Rolling upgrades between 3.2 and 3.3 are not supported before 3.2.15 and 3.3.8.
+- Rolling upgrades between 3.2 and 3.3 are not supported before 3.2.15 and 3.3.9.
   

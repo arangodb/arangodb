@@ -54,6 +54,10 @@ class IResearchRocksDBLink final
     writeRocksWalMarker();
     return IResearchLink::drop();
   }
+    
+  virtual void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();

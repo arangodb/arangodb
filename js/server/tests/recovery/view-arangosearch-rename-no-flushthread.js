@@ -77,7 +77,7 @@ function recoverySuite () {
 
       assertNull(db._view('UnitTestsRecovery1'));
       assertNotNull(db._view('UnitTestsRecovery2'));
-      res = AQL_EXECUTE('FOR doc IN VIEW `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
+      res = AQL_EXECUTE('FOR doc IN  `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
       assertEqual(res.length, 2);
     }
 
