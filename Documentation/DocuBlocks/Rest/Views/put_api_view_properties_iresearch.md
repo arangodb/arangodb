@@ -12,11 +12,7 @@ The name of the view.
 The view properties. If specified, then *properties* should be a JSON object
 containing the following attributes:
 
-
-@RESTSTRUCT{commit,post_api_view_props,object,optional,post_api_view_props_commit}
-Commit options for regular operations.
-
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props_commit,integer,optional,uint64}
+@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing index data changes and
 making them visible to queries (default: 60000, to disable use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until
@@ -26,7 +22,7 @@ For the case where there are a few inserts/updates, a higher value will impact
 performance and waste disk space for each commit call without any added
 benefits.
 
-@RESTSTRUCT{cleanupIntervalStep,post_api_view_props_commit,integer,optional,uint64}
+@RESTSTRUCT{cleanupIntervalStep,post_api_view_props,integer,optional,uint64}
 Wait at least this many commits between removing unused files in data
 directory (default: 10, to disable use: 0).
 For the case where the consolidation policies merge segments often (i.e. a lot
@@ -37,7 +33,7 @@ inserts/deletes), a higher value will impact performance without any added
 benefits.
 
 
-@RESTSTRUCT{consolidate,post_api_view_props_commit,object,optional,post_api_view_props_consolidation}
+@RESTSTRUCT{consolidate,post_api_view_props,object,optional,post_api_view_props_consolidation}
 
 
 @RESTSTRUCT{bytes,post_api_view_props_consolidation,object,optional,post_api_view_props_consolidation_bytes}
@@ -116,10 +112,6 @@ additional value retrieval optimizations, one of:
 - *none*: Do not store values by the view
 - *id*: Store only information about value presence, to allow use of the EXISTS() function
 (default "none").
-
-
-@RESTSTRUCT{locale,post_api_view_props,string,optional,string}
-The default locale used for queries on analyzed string values (default: *C*).
 
 
 @RESTDESCRIPTION

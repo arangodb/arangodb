@@ -49,20 +49,9 @@ function ArangoDatabase (connection) {
     this[name] = obj;
   };
 
-  this._viewList = {};
   this._registerView = function (name, obj) {
     // store the view in our own list
-    this._viewList[name] = obj;
-  };
-  this._unregisterView = function(name) {
-    if (this._viewList[name] !== undefined) {
-      delete this._viewList[name];
-    }
-  };
-  this._renameView = function (from, to) {
-    // store the view in our own list
-    this._viewList[to] = this._viewList[from];
-    delete this._viewList[from];
+    this[name] = obj;
   };
 }
 
@@ -356,8 +345,8 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'smartGraphAttribute', 'avoidServers',
-      'cacheEnabled'].forEach(function (p) {
+      'replicationFactor', 'shardingStrategy', 'smartGraphAttribute', 
+      'avoidServers', 'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -396,8 +385,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     body.type = type;
   }
 
-  var requestResult = this._connection.POST(this._collectionurl() + urlAddon,
-    JSON.stringify(body));
+  var requestResult = this._connection.POST(this._collectionurl() + urlAddon, body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -759,7 +747,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.DELETE(url);
   } else {
-    requestResult = this._connection.DELETE(url,
+    requestResult = this._connection.DELETE(url, null,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -828,9 +816,9 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._connection.PUT(url, JSON.stringify(data));
+    requestResult = this._connection.PUT(url, data);
   } else {
-    requestResult = this._connection.PUT(url, JSON.stringify(data),
+    requestResult = this._connection.PUT(url, data,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -908,9 +896,9 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._connection.PATCH(url, JSON.stringify(data));
+    requestResult = this._connection.PATCH(url, data);
   } else {
-    requestResult = this._connection.PATCH(url, JSON.stringify(data),
+    requestResult = this._connection.PATCH(url, data,
       {'if-match': JSON.stringify(rev) });
   }
 
@@ -992,10 +980,10 @@ ArangoDatabase.prototype._parse = function (query) {
   if (typeof query === 'object' && typeof query.toAQL === 'function') {
     query = { query: query.toAQL() };
   } else {
-    query = { query: query };
+    query = { query };
   }
 
-  const requestResult = this._connection.POST('/_api/query', JSON.stringify(query));
+  const requestResult = this._connection.POST('/_api/query', query);
 
   if (requestResult && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1017,7 +1005,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
     users: users || []
   };
 
-  var requestResult = this._connection.POST('/_api/database', JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/database', data);
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1169,7 +1157,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data.action = String(data.action);
   }
 
-  var requestResult = this._connection.POST('/_api/transaction', JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/transaction', data);
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -1199,8 +1187,7 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
     body['type'] = type;
   }
 
-  var requestResult = this._connection.POST(this._viewurl(),
-    JSON.stringify(body));
+  var requestResult = this._connection.POST(this._viewurl(), body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -1208,7 +1195,7 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
 
   if (nname !== undefined) {
     this._registerView(nname, new this._viewConstructor(this, requestResult));
-    return this._viewList[nname];
+    return this[nname];
   }
 
   return undefined;
@@ -1221,9 +1208,9 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
 ArangoDatabase.prototype._dropView = function (id) {
   var name;
 
-  for (name in this._viewList) {
-    if (this._viewList.hasOwnProperty(name)) {
-      var view = this._viewList[name];
+  for (name in this) {
+    if (this.hasOwnProperty(name)) {
+      var view = this[name];
 
       if (view instanceof this._viewConstructor) {
         if (view._id === id || view._name === id) {
@@ -1234,6 +1221,7 @@ ArangoDatabase.prototype._dropView = function (id) {
   }
 
   var v = this._view(id);
+
   if (v) {
     return v.drop();
   }
@@ -1279,10 +1267,13 @@ ArangoDatabase.prototype._views = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._view = function (id) {
-  if (this._viewList[id] && this._viewList[id] instanceof
-      this._viewConstructor) {
-    return this._viewList[id];
+  if (typeof id !== 'number'
+      && this.hasOwnProperty(id)
+      && this[id]
+      && this[id] instanceof this._viewConstructor) {
+    return this[id];
   }
+
   var url = this._viewurl(id);
   var requestResult = this._connection.GET(url);
 
@@ -1300,7 +1291,7 @@ ArangoDatabase.prototype._view = function (id) {
 
   if (name !== undefined) {
     this._registerView(name, new this._viewConstructor(this, requestResult));
-    return this._viewList[name];
+    return this[name];
   }
 
   return null;

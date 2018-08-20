@@ -26,6 +26,7 @@
 #include <boost/optional.hpp>
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 
@@ -57,7 +58,13 @@ namespace arangodb {
 template <typename T>
 class ResultT : public arangodb::Result {
  public:
-  ResultT static success(T val) { return ResultT(val, TRI_ERROR_NO_ERROR); }
+  ResultT static success(T const& val) {
+    return ResultT(val, TRI_ERROR_NO_ERROR);
+  }
+
+  ResultT static success(T&& val) {
+    return ResultT(std::move(val), TRI_ERROR_NO_ERROR);
+  }
 
   ResultT static error(int errorNumber) {
     return ResultT(boost::none, errorNumber);
@@ -67,17 +74,23 @@ class ResultT : public arangodb::Result {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
-  // This is not explicit on purpose
-  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
+  // These are not explicit on purpose
   ResultT(Result const& other) : Result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
-  // This is not explicit on purpose
-  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-  ResultT(T&& val) : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) {}
+  ResultT(Result&& other) : Result(std::move(other)) {
+    // .ok() is not allowed here, as _val should be expected to be initialized
+    // iff .ok() is true.
+    TRI_ASSERT(other.fail());
+  }
+
+  // These are not explicit on purpose
+  ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
+
+  ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;
 
@@ -90,6 +103,8 @@ class ResultT : public arangodb::Result {
     _val = std::move(val_);
     return *this;
   }
+
+  Result copy_result() const { return *this; }
 
   // These would be very convenient, but also make it very easy to accidentally
   // use the value of an error-result. So don't add them.
@@ -139,11 +154,20 @@ class ResultT : public arangodb::Result {
   boost::optional<T> _val;
 
   ResultT(boost::optional<T>&& val_, int errorNumber)
-      : Result(errorNumber), _val(val_) {}
+      : Result(errorNumber), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T>&& val_, int errorNumber,
           std::string const& errorMessage)
-      : Result(errorNumber, errorMessage), _val(val_) {}
+      : Result(errorNumber, errorMessage),
+        _val(val_) {}
+
+  ResultT(boost::optional<T>const& val_, int errorNumber)
+      : Result(errorNumber), _val(std::move(val_)) {}
+
+  ResultT(boost::optional<T>const& val_, int errorNumber,
+          std::string const& errorMessage)
+      : Result(errorNumber, errorMessage),
+        _val(val_) {}
 };
 
 }  // namespace arangodb

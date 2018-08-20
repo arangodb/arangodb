@@ -6,12 +6,12 @@ ArangoSearch is a natively integrated AQL extension making use of the IResearch 
 
 Arangosearch allows one to:
 * join documents located in different collections to one result list
-* filter documents based on AQL boolean expressions and functions
-* sort the result set based on how closely each document matched the filter
+* search documents based on AQL boolean expressions and functions
+* sort the result set based on how closely each document matched the search condition
 
 A concept of value 'analysis' that is meant to break up a given value into
 a set of sub-values internally tied together by metadata which influences both
-the filter and sort stages to provide the most appropriate match for the
+the search and sort stages to provide the most appropriate match for the
 specified conditions, similar to queries to web search engines.
 
 In plain terms this means a user can for example:
@@ -26,12 +26,12 @@ IResearch s a cross-platform open source indexing and searching engine written i
 optimized for speed and memory footprint, with source available from:
 https://github.com/iresearch-toolkit/iresearch
 
-IResearch is a framework for indexing, filtering and sorting of data. The indexing stage can
+IResearch is a framework for indexing, searching and sorting of data. The indexing stage can
 treat each data item as an atom or use custom 'analyzers' to break the data item
 into sub-atomic pieces tied together with internally tracked metadata.
 
 The IResearch framework in general can be further extended at runtime with
-custom implementations of analyzers (used during the indexing and filtering
+custom implementations of analyzers (used during the indexing and searching
 stages) and scorers (used during the sorting stage) allowing full control over
 the behavior of the engine.
 
@@ -47,7 +47,7 @@ scorer. The first argument to any scorer function is the reference to the
 current document emitted by the `FOR` statement, i.e. it would be 'doc' for this
 statement:
 
-    FOR doc IN VIEW someView
+    FOR doc IN someView
 
 IResearch provides a 'bm25' scorer implementing the
 [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). This scorer
@@ -97,7 +97,7 @@ point in time, so ArangoDB comes with a few default-initialized scores:
 
 But fulltext searching is a subset of its available functionality, supported via
 the 'text' analyzer and 'tfidf'/'bm25' scorers, without impact to performance
-when specifying documents from different collections or filtering on multiple
+when specifying documents from different collections or searching on multiple
 document attributes.
 
 ### View datasource
@@ -105,7 +105,7 @@ document attributes.
 The IResearch functionality is exposed to ArangoDB via the the ArangoSearch view
 API because the ArangoSearch view is merely an identity transformation applied
 onto documents stored in linked collections of the same ArangoDB database.
-In plain terms an ArangoSearch view only allows filtering and sorting of documents
+In plain terms an ArangoSearch view only allows searching and sorting of documents
 located in collections of the same database.
 The matching documents themselves are returned as-is from their corresponding collections.
 
@@ -150,82 +150,79 @@ During view creation the following directives apply:
 * id: (optional) the desired view identifier
 * name: (required) the view name
 * type: \<required\> the value "arangosearch"
-  any of the directives from the section [View properties](#view-properties-modifiable)
+  any of the directives from the section [View properties](#view-properties-updatable)
 
 During view modification the following directives apply:
 * links: (optional)
   a mapping of collection-name/collection-identifier to one of:
   * link creation - link definition as per the section [Link properties](#link-properties)
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
-    any of the directives from the section [modifiable view properties ](#view-properties-modifiable)
+    any of the directives from the section [modifiable view properties](#view-properties-updatable)
 
-
-### View properties (modifiable)
-
-* commit: (optional; default: use defaults for all values)
-  configure ArangoSearch View commit policy for single-item inserts/removals,
-  e.g. when adding removing documents from a linked ArangoDB collection
-
-  * cleanupIntervalStep: (optional; default: `10`; to disable use: `0`)
-    wait at least this many commits between removing unused files in the
-    ArangoSearch data directory
-    for the case where the consolidation policies merge segments often (i.e. a
-    lot of commit+consolidate), a lower value will cause a lot of disk space to
-    be wasted
-    for the case where the consolidation policies rarely merge segments (i.e.
-    few inserts/deletes), a higher value will impact performance without any
-    added benefits
-
-  * commitIntervalMsec: (optional; default: `60000`; to disable use: `0`)
-    wait at least *count* milliseconds between committing view data store
-    changes and making documents visible to queries
-    for the case where there are a lot of inserts/updates, a lower value will
-    cause the view not to account for them, (unlit commit), and memory usage
-    would continue to grow
-    for the case where there are a few inserts/updates, a higher value will
-    impact performance and waste disk space for each commit call without any
-    added benefits
-
-  * consolidate: (optional; default: `none`)
-    a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
-    store segment merge candidates, if specified then only the listed policies
-    are used, keys are any of:
-
-    * bytes: (optional; for default values use an empty object: `{}`)
-
-      * segmentThreshold: (optional, default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
-
-    * bytes_accum: (optional; for default values use: `{}`)
-
-      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
-
-    * count: (optional; for default values use: `{}`)
-
-      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
-
-    * fill: (optional)
-      if specified, use empty object for default values, i.e. `{}`
-
-      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * threshold: (optional; default: `0.85`)
-        consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
+### View properties (non-updatable)
 
 * locale: (optional; default: `C`)
   the default locale used for ordering processed attribute names
+
+### View properties (updatable)
+
+* cleanupIntervalStep: (optional; default: `10`; to disable use: `0`)
+  wait at least this many commits between removing unused files in the
+  ArangoSearch data directory
+  for the case where the consolidation policies merge segments often (i.e. a
+  lot of commit+consolidate), a lower value will cause a lot of disk space to
+  be wasted
+  for the case where the consolidation policies rarely merge segments (i.e.
+  few inserts/deletes), a higher value will impact performance without any
+  added benefits
+
+* commitIntervalMsec: (optional; default: `60000`; to disable use: `0`)
+  wait at least *count* milliseconds between committing view data store
+  changes and making documents visible to queries
+  for the case where there are a lot of inserts/updates, a lower value will
+  cause the view not to account for them, (unlit commit), and memory usage
+  would continue to grow
+  for the case where there are a few inserts/updates, a higher value will
+  impact performance and waste disk space for each commit call without any
+  added benefits
+
+* consolidate: (optional; default: `none`)
+  a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
+  store segment merge candidates, if specified then only the listed policies
+  are used, keys are any of:
+
+  * bytes: (optional; for default values use an empty object: `{}`)
+
+    * segmentThreshold: (optional, default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
+
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
+
+  * bytes_accum: (optional; for default values use: `{}`)
+
+    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
+
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
+
+  * count: (optional; for default values use: `{}`)
+
+    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
+
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
+
+  * fill: (optional)
+    if specified, use empty object for default values, i.e. `{}`
+
+    * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+      apply consolidation policy IFF {segmentThreshold} >= #segments
+
+    * threshold: (optional; default: `0.85`)
+      consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
 ### Link properties
 

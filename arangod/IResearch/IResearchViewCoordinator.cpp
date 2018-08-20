@@ -81,7 +81,7 @@ arangodb::Result createLink(
     arangodb::velocypack::Value(IResearchLinkHelper::type())
   );
   builder.add(
-    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.guid())
   );
 
   if (!mergeSliceSkipKeys(builder, link, acceptor)) {
@@ -437,6 +437,9 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
 
+    // reset non-updatable values to match current meta
+    meta._locale = _meta._locale;
+
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {
       auto* engine = arangodb::ClusterInfo::instance();
@@ -451,13 +454,13 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-        meta.json(builder);
+      meta.json(builder);
 
-        auto result = toVelocyPack(builder, false, true);
+      auto result = toVelocyPack(builder, false, true);
 
-        if (!result.ok()) {
-          return result;
-        }
+      if (!result.ok()) {
+        return result;
+      }
 
       builder.close();
       result = engine->setViewPropertiesCoordinator(
@@ -570,7 +573,10 @@ Result IResearchViewCoordinator::drop() {
     );
 
     if (!res.ok()) {
-      return res;
+      return arangodb::Result(
+        res.errorNumber(),
+        std::string("failed to remove links while removing IResearch view '") + name() + "': " + res.errorMessage()
+      );
     }
   }
 

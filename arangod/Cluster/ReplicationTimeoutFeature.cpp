@@ -25,14 +25,17 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::options;
-  
+
+namespace arangodb {
+
 double ReplicationTimeoutFeature::timeoutFactor = 1.0;
 double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
 double ReplicationTimeoutFeature::lowerLimit = 0.5;
 
-ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer* server)
+ReplicationTimeoutFeature::ReplicationTimeoutFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
   startsAfter("DatabasePhase");
@@ -55,3 +58,5 @@ void ReplicationTimeoutFeature::prepare() {
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   lowerLimit = EngineSelectorFeature::ENGINE->minimumSyncReplicationTimeout();
 }
+
+} // arangodb

@@ -177,6 +177,10 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
+  void afterTruncate() override {
+    _edgesFrom.clear();
+    _edgesTo.clear();
+  }
 
   void toVelocyPack(
       VPackBuilder& builder,
@@ -946,9 +950,11 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
 
-StorageEngineMock::StorageEngineMock()
+StorageEngineMock::StorageEngineMock(
+    arangodb::application_features::ApplicationServer& server
+)
   : StorageEngine(
-      nullptr,
+      server,
       "Mock",
       "",
       std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())
@@ -959,11 +965,6 @@ StorageEngineMock::StorageEngineMock()
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
-}
-
-void StorageEngineMock::addAqlFunctions() {
-  before();
-  // NOOP
 }
 
 void StorageEngineMock::addOptimizerRules() {
@@ -990,9 +991,8 @@ void StorageEngineMock::changeCollection(
   // NOOP, assume physical collection changed OK
 }
 
-void StorageEngineMock::changeView(
+arangodb::Result StorageEngineMock::changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
 ) {
@@ -1004,6 +1004,7 @@ void StorageEngineMock::changeView(
   view.toVelocyPack(builder, true, true);
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
+  return {};
 }
 
 std::string StorageEngineMock::collectionPath(
@@ -1092,13 +1093,21 @@ std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransaction
   );
 }
 
-void StorageEngineMock::createView(
+arangodb::Result StorageEngineMock::createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
 ) {
   before();
-  // NOOP, assume physical view created OK
+  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) == views.end()); // called after createView()
+  arangodb::velocypack::Builder builder;
+  
+  builder.openObject();
+  view.toVelocyPack(builder, true, true);
+  builder.close();
+  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
+  
+  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view persisted OK
 }
 
 void StorageEngineMock::getViewProperties(
@@ -1290,22 +1299,6 @@ arangodb::Result StorageEngineMock::persistCollection(
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection persisted OK
 }
 
-arangodb::Result StorageEngineMock::persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
-) {
-  before();
-  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) == views.end()); // called after createView()
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  view.toVelocyPack(builder, true, true);
-  builder.close();
-  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
-
-  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view persisted OK
-}
-
 void StorageEngineMock::prepareDropDatabase(
     TRI_vocbase_t& vocbase,
     bool useWriteMarker,
@@ -1343,23 +1336,6 @@ arangodb::Result StorageEngineMock::renameCollection(
 ) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_INTERNAL);
-}
-
-arangodb::Result StorageEngineMock::renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& newName
-) {
-  before();
-  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) != views.end());
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  view.toVelocyPack(builder, true, true);
-  builder.close();
-  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
-
-  return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view renames OK
 }
 
 int StorageEngineMock::saveReplicationApplierConfiguration(
@@ -1409,10 +1385,6 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  TRI_ASSERT(false);
-}
-
-void StorageEngineMock::waitForSyncTimeout(double timeout) {
   TRI_ASSERT(false);
 }
 

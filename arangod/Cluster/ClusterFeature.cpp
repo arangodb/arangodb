@@ -34,17 +34,20 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
       _enableCluster(false),
@@ -198,8 +201,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     };
 
     if (std::find(disallowedRoles.begin(), disallowedRoles.end(), _requestedRole) != disallowedRoles.end()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided. Possible values: PRIMARY, "
-                    "SECONDARY, COORDINATOR";
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided for `--cluster.my-role`. Possible values: DBSERVER, PRIMARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
@@ -413,24 +415,31 @@ void ClusterFeature::start() {
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
 
-  VPackBuilder builder;
-  try {
-    VPackObjectBuilder b(&builder);
-    builder.add("endpoint", VPackValue(_myAddress));
-    builder.add("host", VPackValue(ServerState::instance()->getHost()));
-  } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
-    FATAL_ERROR_EXIT();
-  }
+  while (true) {
+    VPackBuilder builder;
+    try {
+      VPackObjectBuilder b(&builder);
+      builder.add("endpoint", VPackValue(_myAddress));
+      builder.add("host", VPackValue(ServerState::instance()->getHost()));
+      builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
+      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+    } catch (...) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
+      FATAL_ERROR_EXIT();
+    }
 
-  result.clear();
-  result = comm.setValue("Current/ServersRegistered/" + myId,
-                         builder.slice(), 0.0);
+    result = comm.setValue("Current/ServersRegistered/" + myId,
+                           builder.slice(), 0.0);
 
-  if (!result.successful()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
-               << result.httpCode() << ", body: " << result.body();
-    FATAL_ERROR_EXIT();
+    if (result.successful()) {
+      break;
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "failed to register server in agency: http code: "	
+        << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
+    }
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   comm.increment("Current/Version");
@@ -555,3 +564,5 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
     std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
+
+} // arangodb

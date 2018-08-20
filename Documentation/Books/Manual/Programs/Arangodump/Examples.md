@@ -9,13 +9,13 @@ This will connect to an ArangoDB server and dump all non-system collections from
 the default database (*_system*) into an output directory named *dump*.
 Invoking _arangodump_ will fail if the output directory already exists. This is
 an intentional security measure to prevent you from accidentally overwriting already
-dumped data. If you are positive that you want to overwrite data in the output 
+dumped data. If you are positive that you want to overwrite data in the output
 directory, you can use the parameter *--overwrite true* to confirm this:
 
     arangodump --output-directory "dump" --overwrite true
 
 _arangodump_ will by default connect to the *_system* database using the default
-endpoint. If you want to connect to a different database or a different endpoint, 
+endpoint. If you want to connect to a different database or a different endpoint,
 or use authentication, you can use the following command-line options:
 
 - *--server.database <string>*: name of the database to connect to
@@ -30,20 +30,21 @@ Here's an example of dumping data from a non-standard endpoint, using a dedicate
 
     arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
 
-When finished, _arangodump_ will print out a summary line with some aggregate 
+When finished, _arangodump_ will print out a summary line with some aggregate
 statistics about what it did, e.g.:
 
     Processed 43 collection(s), wrote 408173500 byte(s) into datafiles, sent 88 batch(es)
 
 By default, _arangodump_ will dump both structural information and documents from all
-non-system collections. To adjust this, there are the following command-line 
+non-system collections. To adjust this, there are the following command-line
 arguments:
 
-- *--dump-data <bool>*: set to *true* to include documents in the dump. Set to *false* 
+- *--dump-data <bool>*: set to *true* to include documents in the dump. Set to *false*
   to exclude documents. The default value is *true*.
 - *--include-system-collections <bool>*: whether or not to include system collections
-  in the dump. The default value is *false*.
-  
+  in the dump. The default value is *false*. **Set to _true_ if you are using named
+  graphs that you are interested in restoring.**
+
 For example, to only dump structural information of all collections (including system
 collections), use:
 
@@ -51,29 +52,28 @@ collections), use:
 
 To restrict the dump to just specific collections, there is is the *--collection* option.
 It can be specified multiple times if required:
-    
+
     arangodump --collection myusers --collection myvalues --output-directory "dump"
 
-Structural information for a collection will be saved in files with name pattern 
-*<collection-name>.structure.json*. Each structure file will contains a JSON object 
+Structural information for a collection will be saved in files with name pattern
+*<collection-name>.structure.json*. Each structure file will contains a JSON object
 with these attributes:
 - *parameters*: contains the collection properties
 - *indexes*: contains the collection indexes
 
-Document data for a collection will be saved in files with name pattern 
+Document data for a collection will be saved in files with name pattern
 *<collection-name>.data.json*. Each line in a data file is a document insertion/update or
 deletion marker, alongside with some meta data.
+
+Cluster Backup
+--------------
 
 Starting with Version 2.1 of ArangoDB, the *arangodump* tool also
 supports sharding. Simply point it to one of the coordinators and it
 will behave exactly as described above, working on sharded collections
 in the cluster.
 
-However, as opposed to the single instance situation, this operation 
-does not guarantee to dump a consistent snapshot if write operations 
-happen during the dump operation. It is therefore recommended not to 
-perform any data-modification operations on the cluster whilst *arangodump* 
-is running.
+Please see the [Limitations](Limitations.md).
 
 As above, the output will be one structure description file and one data
 file per sharded collection. Note that the data in the data file is
@@ -81,71 +81,101 @@ sorted first by shards and within each shard by ascending timestamp. The
 structural information of the collection contains the number of shards
 and the shard keys.
 
-Note that the version of the arangodump client tool needs to match the 
+Note that the version of the arangodump client tool needs to match the
 version of the ArangoDB server it connects to.
 
-Advanced cluster options
-------------------------
+### Advanced Cluster Options
 
-Starting with version 3.1.17, collections may be created with shard
-distribution identical to an existing prototypical collection;
-i.e. shards are distributed in the very same pattern as in the
-prototype collection. Such collections cannot be dumped without the
-reference collection or arangodump yields an error.
+Starting with version 3.1.17, collections may be [created with shard
+distribution](../../DataModeling/Collections/DatabaseMethods.md#create)
+identical to an existing prototypical collection; i.e. shards are distributed in
+the very same pattern as in the prototype collection. Such collections cannot be
+dumped without the referenced collection or arangodump yields an error.
 
     arangodump --collection clonedCollection --output-directory "dump"
 
     ERROR Collection clonedCollection's shard distribution is based on a that of collection prototypeCollection, which is not dumped along. You may dump the collection regardless of the missing prototype collection by using the --ignore-distribute-shards-like-errors parameter.
 
 There are two ways to approach that problem.
-Dump the prototype collection along:
+Dump the prototype collection as well:
 
     arangodump --collection clonedCollection --collection prototypeCollection --output-directory "dump"
-    
+
     Processed 2 collection(s), wrote 81920 byte(s) into datafiles, sent 1 batch(es)
 
-Or override that behavior to be able to dump the collection
+Or override that behavior to be able to dump the collection in isolation
 individually:
 
-    arangodump --collection B clonedCollection --output-directory "dump" --ignore-distribute-shards-like-errors
-    
+    arangodump --collection clonedCollection --output-directory "dump" --ignore-distribute-shards-like-errors
+
     Processed 1 collection(s), wrote 34217 byte(s) into datafiles, sent 1 batch(es)
 
-Note that in consequence, restoring such a collection without its
-prototype is affected. [arangorestore](../Arangorestore/README.md)
+Note that in consequence, restoring such a collection without its prototype is
+affected. See documentation on [arangorestore](../Arangorestore/README.md) for
+more details about restoring the collection.
 
 Encryption
 ----------
 
-In the ArangoDB Enterprise Edition there are the additional parameters:
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
 
-### Encryption key stored in file
+Starting from version 3.3 encryption of the dump is supported.
 
-*--encryption.keyfile path-of-keyfile*
+The dump is encrypted using an encryption keyfile, which must contain exactly 32
+bytes of data (required by the AES block cipher).
 
-The file `path-to-keyfile` must contain the encryption key. This
-file must be secured, so that only `arangod` can access it. You should
-also ensure that in case some-one steals the hardware, he will not be
-able to read the file. For example, by encryption `/mytmpfs` or
-creating a in-memory file-system under `/mytmpfs`.
-
-### Encryption key generated by a program
-
-*--encryption.key-generator path-to-my-generator*
-
-The program `path-to-my-generator` must output the encryption on
-standard output and exit.
-
-### Creating keys
-
-The encryption keyfile must contain 32 bytes of random data.
-
-You can create it with a command line this.
+The keyfile can be created by an external program, or, on Linux, by using a command
+like the following:
 
 ```
 dd if=/dev/random bs=1 count=32 of=yourSecretKeyFile
 ```
 
-For security, it is best to create these keys offline (away from your
+For security reasons, it is best to create these keys offline (away from your
 database servers) and directly store them in you secret management
 tool.
+
+
+In order to create an encrypted backup, add the `--encryption.keyfile`
+option when invoking _arangodump_, in addition to any other option you
+are already using. The following example assumes that your secret key
+is stored in ~/SECRET-KEY:
+
+```
+arangodump --collection "secret-collection" dump --encryption.keyfile ~/SECRET-KEY
+```
+
+Note that _arangodump_ will not store the key anywhere. It is the responsibility
+of the user to find a safe place for the key. However, _arangodump_ will store
+the used encryption method in a file named `ENCRYPTION` in the dump directory.
+That way _arangorestore_ can later find out whether it is dealing with an
+encrypted dump or not.
+
+Trying to restore the encrypted dump without specifying the key will fail:
+
+```
+arangorestore --collection "secret-collection" dump --create-collection true
+```
+
+and _arangorestore_ will report the following error:
+
+```
+the dump data seems to be encrypted with aes-256-ctr, but no key information was specified to decrypt the dump
+it is recommended to specify either `--encryption.keyfile` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump
+```
+
+It is required to use the exact same key when restoring the data. Again this is
+done by providing the `--encryption.keyfile` parameter:
+
+```
+arangorestore --collection "secret-collection" dump --create-collection true --encryption.keyfile ~/SECRET-KEY
+```
+
+Using a different key will lead to the backup being non-recoverable.
+
+Note that encrypted backups can be used together with the already existing 
+RocksDB encryption-at-rest feature, but they can also be used for the MMFiles
+engine, which does not have encryption-at-rest.

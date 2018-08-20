@@ -388,9 +388,9 @@ function dumpTestSuite () {
       assertEqual(0, res.length);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test view restoring
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test view restoring
+////////////////////////////////////////////////////////////////////////////////
     
     testView : function () {
       try {
@@ -408,6 +408,21 @@ function dumpTestSuite () {
       assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
+      assertEqual(5000, res.length);
+
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+      assertEqual(2500, res.length);
+
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+      assertEqual(0, res.length);
+
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      assertEqual(1, res.length);
     }
 
   };

@@ -198,7 +198,7 @@ typedef long suseconds_t;
 
 #define TRI_ASSERT(expr)                             \
   do {                                               \
-    if (!(TRI_LIKELY(expr))) {                       \
+    if (!(ADB_LIKELY(expr))) {                       \
       TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
       TRI_PrintBacktrace();                          \
       std::abort();                                  \
@@ -218,9 +218,9 @@ typedef long suseconds_t;
 #define FATAL_ERROR_EXIT_CODE(code)                             \
   do {                                                          \
     TRI_LogBacktrace();                                         \
-    arangodb::basics::CleanupFunctions::run(code, nullptr);     \
-    arangodb::Logger::flush();                                  \
-    arangodb::Logger::shutdown();                               \
+    ::arangodb::basics::CleanupFunctions::run(code, nullptr);   \
+    ::arangodb::Logger::flush();                                \
+    ::arangodb::Logger::shutdown();                             \
     TRI_EXIT_FUNCTION(code, nullptr);                           \
     exit(code);                                                 \
   } while (0)

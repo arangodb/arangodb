@@ -60,7 +60,7 @@ IResearchLink::IResearchLink(
   TRI_idx_iid_t iid,
   arangodb::LogicalCollection& collection
 ): _collection(collection),
-   _defaultId(0), // 0 is never a valid id
+   _defaultGuid(""), // "" is never a valid guid
    _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
@@ -141,16 +141,33 @@ int IResearchLink::drop() {
   }
 
   _dropCollectionInDestructor = false; // will do drop now
-  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _defaultGuid = _view->guid(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  
+  TRI_voc_cid_t vid = _view->id();
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 
   // FIXME TODO this workaround should be in ClusterInfo when moving 'Plan' to 'Current', i.e. IResearchViewDBServer::drop
   if (arangodb::ServerState::instance()->isDBServer()) {
-    return _collection.vocbase().dropView(_defaultId, true).errorNumber(); // cluster-view in ClusterInfo should already not have cid-view
+    return _collection.vocbase().dropView(vid, true).errorNumber(); // cluster-view in ClusterInfo should already not have cid-view
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+void IResearchLink::afterTruncate() {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+  
+  if (!_view) {
+    return;
+    //return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+  
+  int res = _view->truncate(_view->id());
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -183,7 +200,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   }
 
   if (!definition.isObject()
-      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+      || !(definition.get(StaticStrings::ViewIdField).isString() ||
+           definition.get(StaticStrings::ViewIdField).isNumber<TRI_voc_cid_t>())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "error finding view for link '" << _id << "'";
     TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -191,8 +209,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false;
   }
 
-  auto identifier = definition.get(StaticStrings::ViewIdField);
-  auto viewId = identifier.getNumber<uint64_t>();
+  // we continue to support the old and new ID format
+  auto idSlice = definition.get(StaticStrings::ViewIdField);
+  std::string viewId = idSlice.isString() ? idSlice.copyString() : std::to_string(idSlice.getUInt());
   auto& vocbase = _collection.vocbase();
   auto logicalView = vocbase.lookupView(viewId); // will only contain IResearchView (even for a DBServer)
 
@@ -208,21 +227,19 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       return false;
     }
 
-    auto logicalWiew = ci->getView(vocbase.name(), std::to_string(viewId));
+    auto logicalWiew = ci->getView(vocbase.name(), viewId);
     auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
-
     if (wiew) {
-      auto collection = vocbase.lookupCollection(_collection.id());
-
+      // FIXME figure out elegant way of testing for cluster wide LogicalCollection
+      if (_collection.id() == _collection.planId() && _collection.isAStub()) {
       // this is a cluster-wide collection/index/link (per-cid view links have their corresponding collections in vocbase)
-      if (!collection) {
         auto clusterCol = ci->getCollectionCurrent(
           vocbase.name(), std::to_string(_collection.id())
         );
 
         if (clusterCol) {
           for (auto& entry: clusterCol->errorNum()) {
-            collection = vocbase.lookupCollection(entry.first); // find shard collection
+            auto collection = vocbase.lookupCollection(entry.first); // find shard collection
 
             if (collection) {
               // ensure the shard collection is registered with the cluster-wide view
@@ -288,7 +305,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
     if (engine && engine->inRecovery()) {
-      _defaultId = _view->id();
+      _defaultGuid = _view->guid();
     }
   }
 
@@ -351,12 +368,11 @@ bool IResearchLink::json(
 
   if (_view) {
     builder.add(
-      StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->id())
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->guid())
     );
-  } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
-  //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
+  } else if (!_defaultGuid.empty()) { // _defaultGuid.empty() == no view name in source jSON
     builder.add(
-      StaticStrings::ViewIdField, arangodb::velocypack::Value(_defaultId)
+      StaticStrings::ViewIdField, VPackValue(_defaultGuid)
     );
   }
 
@@ -377,11 +393,9 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     }
 
     auto identifier = slice.get(StaticStrings::ViewIdField);
-
-    if (!identifier.isNumber()
-        || uint64_t(identifier.getInt()) != identifier.getUInt()
-        || identifier.getUInt() != _view->id()) {
-      return false; // iResearch View names of current object and slice do not match
+    if (!((identifier.isString() && identifier.isEqualString(_view->guid())) ||
+          (identifier.isNumber<TRI_voc_cid_t>() && identifier.getUInt() != _view->id()))) {
+      return false;  // iResearch View names of current object and slice do not match
     }
   } else if (_view) {
     return false; // slice has no 'name' but the current object does
@@ -493,7 +507,7 @@ int IResearchLink::unload() {
   }
 
   _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
-  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _defaultGuid = _view->guid(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 

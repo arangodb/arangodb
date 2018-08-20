@@ -252,8 +252,49 @@ function TraditionalSuite () {
 
       for (let i = 0; i < 100; ++i) {
         let doc = c.insert({});
+        assertEqual(16, doc._key.length);
         assertMatch(/^[0-9a-f]{16}$/, doc._key);
       }
+    },
+    
+    testTraditionalTracking : function () {
+      let c = db._create(cn, { keyOptions: { type: "traditional" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertTrue(options.allowUserKeys);
+
+      let lastKey = null;
+      for (let i = 0; i < 100; ++i) {
+        let key = c.insert({})._key;
+        if (lastKey !== null) {
+          assertTrue(Number(key) > Number(lastKey));
+        }
+        lastKey = key;
+      }
+
+      assertEqual(lastKey, c.properties().keyOptions.lastValue);
+    },
+
+    testPaddedTracking : function () {
+      let c = db._create(cn, { keyOptions: { type: "padded" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("padded", options.type);
+      assertTrue(options.allowUserKeys);
+
+      let lastKey = null;
+      for (let i = 0; i < 100; ++i) {
+        let key = c.insert({})._key;
+        assertEqual(16, key.length);
+        if (lastKey !== null) {
+          assertTrue(key > lastKey);
+        }
+        lastKey = key;
+      }
+
+      let hex = c.properties().keyOptions.lastValue.toString(16);
+      assertEqual(lastKey, Array(16 + 1 - hex.length).join("0") + hex);
     }
 
   };

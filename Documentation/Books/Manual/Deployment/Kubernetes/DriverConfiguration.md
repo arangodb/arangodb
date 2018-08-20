@@ -94,36 +94,42 @@ This results in a file called `ca.crt` containing a PEM encoded, x509 CA certifi
 
 ## Query requests
 
-For most client requests made by a driver, it does not matter if there is any kind
-of load-balancer between your client application and the ArangoDB deployment.
+For most client requests made by a driver, it does not matter if there is any
+kind of load-balancer between your client application and the ArangoDB
+deployment.
 
 {% hint 'info' %}
-Note that even a simple `Service` of type `ClusterIP` already behaves as a load-balancer.
+Note that even a simple `Service` of type `ClusterIP` already behaves as a
+load-balancer.
 {% endhint %}
 
-The exception to this is cursor related requests made to an ArangoDB `Cluster` deployment.
-The coordinator that handles an initial query request (that results in a `Cursor`)
-will save some in-memory state in that coordinator, if the result of the query
-is too big to be transfer back in the response of the initial request.
+The exception to this is cursor-related requests made to an ArangoDB `Cluster`
+deployment. The coordinator that handles an initial query request (that results
+in a `Cursor`) will save some in-memory state in that coordinator, if the result
+of the query is too big to be transfer back in the response of the initial
+request.
 
-Follow-up requests have to be made to fetch the remaining data.
-These follow-up requests must be handled by the same coordinator to which the initial
-request was made.
+Follow-up requests have to be made to fetch the remaining data. These follow-up
+requests must be handled by the same coordinator to which the initial request
+was made. As soon as there is a load-balancer between your client application
+and the ArangoDB cluster, it is uncertain which coordinator will receive the
+follow-up request.
 
-As soon as there is a load-balancer between your client application and the ArangoDB cluster,
-it is uncertain which coordinator will actually handle the follow-up request.
+ArangoDB will transparently forward any mismatched requests to the correct
+coordinator, so the requests can be answered correctly without any additional
+configuration. However, this incurs a small latency penalty due to the extra
+request across the internal network.
 
-To resolve this uncertainty, make sure to run your client application in the same
-Kubernetes cluster and synchronize your endpoints before making the
-initial query request.
-This will result in the use (by the driver) of internal DNS names of all coordinators.
-A follow-up request can then be sent to exactly the same coordinator.
+To prevent this uncertainty client-side, make sure to run your client
+application in the same Kubernetes cluster and synchronize your endpoints before
+making the initial query request. This will result in the use (by the driver) of
+internal DNS names of all coordinators. A follow-up request can then be sent to
+exactly the same coordinator.
 
-If your client application is running outside the Kubernetes cluster this is much harder
-to solve.
-The easiest way to work around it, is by making sure that the query results are small
-enough.
-When that is not feasible, it is also possible to resolve this
-when the internal DNS names of your Kubernetes cluster are exposed to your client application
-and the resulting IP addresses are routable from your client application.
-To expose internal DNS names of your Kubernetes cluster, your can use [CoreDNS](https://coredns.io).
+If your client application is running outside the Kubernetes cluster the easiest
+way to work around it is by making sure that the query results are small enough
+to be returned by a single request. When that is not feasible, it is also
+possible to resolve this when the internal DNS names of your Kubernetes cluster
+are exposed to your client application and the resulting IP addresses are
+routable from your client application. To expose internal DNS names of your
+Kubernetes cluster, your can use [CoreDNS](https://coredns.io).
