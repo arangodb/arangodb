@@ -1,18 +1,17 @@
-
 @startDocuBlock general_graph_vertex_create_http_examples
 @brief create a new vertex
 
-@RESTHEADER{POST /_api/gharial/{graph-name}/vertex/{collection-name}, Create a vertex}
+@RESTHEADER{POST /_api/gharial/{graph}/vertex/{collection}, Create a vertex}
 
 @RESTDESCRIPTION
 Adds a vertex to the given collection.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name,string,required}
+@RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection-name,string,required} 
+@RESTURLPARAM{collection,string,required} 
 The name of the vertex collection the vertex belongs to.
 
 @RESTQUERYPARAMETERS
@@ -28,11 +27,82 @@ The body has to be the JSON object to be stored.
 @RESTRETURNCODE{201}
 Returned if the vertex could be added and waitForSync is true.
 
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is false in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{vertex,object,required,vertex_representation_1}
+The internal attributes for the vertex.
+
+@RESTSTRUCT{_id,vertex_representation_1,string,required,}
+The _id value of the new vertex.
+
+@RESTSTRUCT{_key,vertex_representation_1,string,required,}
+The _key value of the new vertex.
+
+@RESTSTRUCT{_rev,vertex_representation_1,string,required,}
+The _rev value of the new vertex.
+
 @RESTRETURNCODE{202}
 Returned if the request was successful but waitForSync is false.
 
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is false in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{vertex,object,required,vertex_representation_2}
+
+@RESTSTRUCT{_id,vertex_representation_2,string,required,}
+The _id value of the new vertex.
+
+@RESTSTRUCT{_key,vertex_representation_2,string,required,}
+The _key value of the new vertex.
+
+@RESTSTRUCT{_rev,vertex_representation_2,string,required,}
+The _rev value of the new vertex.
+
+@RESTRETURNCODE{403}
+Returned if your user has insufficient rights.
+In order to insert vertices into the graph  you at least need to have the following privileges:
+
+  1. `Read Only` access on the Database.
+  2. `Write` access on the given collection.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false).
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
+
 @RESTRETURNCODE{404}
-Returned if no graph or no vertex collection with this name could be found.
+Returned if no graph with this name could be found.
+Or if a graph is found but this collection is not part of the graph.
+
+@RESTREPLYBODY{error,boolean,required,}
+Flag if there was an error (true) or not (false)
+It is true in this response.
+
+@RESTREPLYBODY{code,integer,required,}
+The response code.
+
+@RESTREPLYBODY{errorNum,integer,required,}
+ArangoDB error number for the error that occured.
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A message created for this error.
 
 @EXAMPLES
 
