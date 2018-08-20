@@ -53,6 +53,23 @@ std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
   return transaction::SmartContext::Create(_vocbase);
 };
 
+void GraphOperations::checkForUsedEdgeCollections(
+    const Graph& graph, const std::string& collectionName,
+    std::unordered_set<std::string>& possibleEdgeCollections) {
+  for (auto const& it : graph.edgeDefinitions()) {
+    for (auto const& from : it.second.getFrom()) {
+      if (from == collectionName) {
+        possibleEdgeCollections.emplace(it.second.getName());
+      }
+    }
+    for (auto const& to : it.second.getTo()) {
+      if (to == collectionName) {
+        possibleEdgeCollections.emplace(it.second.getName());
+      }
+    }
+  }
+}
+
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
     const Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
@@ -636,19 +653,72 @@ OperationResult GraphOperations::removeEdge(const std::string& definitionName,
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
   VPackSlice search{searchBuffer->data()};
 
-  SingleCollectionTransaction trx{ctx(), definitionName,
-                                  AccessMode::Type::WRITE};
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  // check for used edge definitions in ALL graphs
+  GraphManager gmngr{_vocbase};
+  VPackBuilder graphsBuilder;
+  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  VPackSlice graphs = graphsBuilder.slice();
 
-  Result res = trx.begin();
+  if (!graphs.get("graphs").isArray()) {
+    return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+  }
+
+  std::unordered_set<std::string> possibleEdgeCollections;
+  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
+    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
+    checkForUsedEdgeCollections(*(graph.get()), definitionName, possibleEdgeCollections);
+  }
+
+  transaction::Options trxOptions;
+  trxOptions.waitForSync = waitForSync;
+  std::vector<std::string> readCollections;
+  std::vector<std::string> writeCollections;
+
+  writeCollections.emplace_back(definitionName);
+  for (auto const& col : possibleEdgeCollections) {
+    writeCollections.emplace_back(col);
+  }
+
+  std::unique_ptr<transaction::Methods> trx(new UserTransaction(
+          ctx(), readCollections, writeCollections, {}, trxOptions));
+
+  Result res = trx->begin();
 
   if (!res.ok()) {
     return OperationResult(res);
   }
 
-  OperationResult result = trx.remove(definitionName, search, options);
+  OperationResult result = trx->remove(definitionName, search, options);
+  auto context = ctx();
+  {
+    aql::QueryString const queryString = aql::QueryString{
+            "FOR e IN @@collection "
+            "FILTER e._from == @vertexId "
+            "OR e._to == @vertexId "
+            "REMOVE e IN @@collection"};
 
-  res = trx.finish(result.result);
+    std::string const vertexId = definitionName + "/" + key;
+
+    for (auto const& edgeCollection : possibleEdgeCollections) {
+      std::shared_ptr<VPackBuilder> bindVars{std::make_shared<VPackBuilder>()};
+
+      bindVars->add(VPackValue(VPackValueType::Object));
+      bindVars->add("@collection", VPackValue(edgeCollection));
+      bindVars->add("vertexId", VPackValue(vertexId));
+      bindVars->close();
+
+      arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
+                                 nullptr, arangodb::aql::PART_DEPENDENT);
+      query.setTransactionContext(context);
+
+      auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+
+      if (queryResult.code != TRI_ERROR_NO_ERROR) {
+        return OperationResult(queryResult.code);
+      }
+    }
+  }
+  res = trx->finish(result.result);
 
   if (result.ok() && res.fail()) {
     return OperationResult(res);
@@ -899,13 +969,33 @@ OperationResult GraphOperations::removeVertex(
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
   VPackSlice search{searchBuffer->data()};
 
-  auto const& edgeCollections = _graph.edgeCollections();
+  // check for used edge definitions in ALL graphs
+  GraphManager gmngr{_vocbase};
+  VPackBuilder graphsBuilder;
+  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  VPackSlice graphs = graphsBuilder.slice();
+
+  if (!graphs.get("graphs").isArray()) {
+    return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+  }
+
+  std::unordered_set<std::string> possibleEdgeCollections;
+  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
+    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
+    checkForUsedEdgeCollections(*(graph.get()), collectionName, possibleEdgeCollections);
+  }
+
+  auto edgeCollections = _graph.edgeCollections();
   std::vector<std::string> trxCollections;
 
   trxCollections.emplace_back(collectionName);
 
   for (auto const& it : edgeCollections) {
     trxCollections.emplace_back(it);
+  }
+  for (auto const& it : possibleEdgeCollections) {
+    trxCollections.emplace_back(it); // add to trx collections
+    edgeCollections.emplace(it); // but also to edgeCollections for later iteration
   }
 
   transaction::Options trxOptions;

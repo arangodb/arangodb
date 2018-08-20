@@ -166,6 +166,10 @@ class GraphOperations {
       const Graph& graph, const EdgeDefinition& edgeDefinition,
       bool waitForSync, transaction::Methods& trx);
 
+  void checkForUsedEdgeCollections(
+      const Graph& graph, const std::string& collectionName,
+      std::unordered_set<std::string>& possibleEdgeCollections);
+
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
