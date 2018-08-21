@@ -139,11 +139,7 @@ struct IResearchQueryExistsSetup {
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    irs::utf8_path testFilesystemPath;
-
-    testFilesystemPath /= TRI_GetTempPath();
-    testFilesystemPath /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath.utf8();
+    setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryExistsSetup() {

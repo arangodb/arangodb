@@ -49,6 +49,8 @@ class Isolate; // forward declaration
 
 namespace arangodb {
 
+class DatabasePathFeature; // forward declaration
+
 namespace aql {
 class ExpressionContext;
 }

@@ -150,8 +150,6 @@ struct IResearchIndexSetup {
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(server), true); // required for arangodb::aql::Query(...)
     features.emplace_back(new arangodb::DatabasePathFeature(server), false); // requires for IResearchView::open()
-    auto d = static_cast<arangodb::DatabasePathFeature*>(features.back().first);
-    d->setDirectory(TRI_GetTempPath());
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
@@ -184,6 +182,9 @@ struct IResearchIndexSetup {
 
     analyzers->emplace("test_A", "TestInsertAnalyzer", "X"); // cache analyzer
     analyzers->emplace("test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchIndexSetup() {

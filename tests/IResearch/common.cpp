@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "Transaction/StandaloneContext.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -239,6 +240,14 @@ uint64_t getCurrentPlanVersion() {
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();
+}
+
+void setDatabasePath(arangod::DatabasePathFeature& feature) {
+  irs::utf8_path path;
+
+  path /= TRI_GetTempPath();
+  path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
+  const_cast<std::string&>(feature.directory()) = path.utf8();
 }
 
 } // tests
