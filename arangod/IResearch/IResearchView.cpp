@@ -443,7 +443,7 @@ bool syncStore(
   // ...........................................................................
 
   // skip if interval not reached or no valid policy to execute
-  if (policy.policy() && policy.segmentThreshold() > segmentCount.load()) {
+  if (policy.policy() && policy.segmentThreshold() < segmentCount.load()) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "registering consolidation policy '" << size_t(policy.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
