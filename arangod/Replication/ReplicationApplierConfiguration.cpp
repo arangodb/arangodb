@@ -201,12 +201,13 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     if (value.isString()) {
       configuration._jwt = value.copyString();
     } else {
+      // use internal JWT token in any cluster setup
       auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
       if (cluster->isEnabled()) {
         auto af = AuthenticationFeature::instance();
         if (af != nullptr) {
           // nullptr happens only during controlled shutdown
-          configuration._jwt = af->tokenCache()->jwtToken();
+          configuration._jwt = af->tokenCache().jwtToken();
         }
       }
     }

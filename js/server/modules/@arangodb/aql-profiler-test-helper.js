@@ -77,36 +77,36 @@ const nodeTypesList = [
   SubqueryNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
-const CalculationBlock = 'CalculationBlock';
-const CountCollectBlock = 'CountCollectBlock';
-const DistinctCollectBlock = 'DistinctCollectBlock';
-const EnumerateCollectionBlock = 'EnumerateCollectionBlock';
-const EnumerateListBlock = 'EnumerateListBlock';
-const FilterBlock = 'FilterBlock';
-const HashedCollectBlock = 'HashedCollectBlock';
-const IndexBlock = 'IndexBlock';
-const LimitBlock = 'LimitBlock';
-const NoResultsBlock = 'NoResultsBlock';
-const RemoteBlock = 'RemoteBlock';
-const ReturnBlock = 'ReturnBlock';
-const ShortestPathBlock = 'ShortestPathBlock';
-const SingletonBlock = 'SingletonBlock';
-const SortBlock = 'SortBlock';
-const SortedCollectBlock = 'SortedCollectBlock';
-const SortingGatherBlock = 'SortingGatherBlock';
-const SubqueryBlock = 'SubqueryBlock';
-const TraversalBlock = 'TraversalBlock';
-const UnsortingGatherBlock = 'UnsortingGatherBlock';
-const RemoveBlock = 'RemoveBlock';
-const InsertBlock = 'InsertBlock';
-const UpdateBlock = 'UpdateBlock';
-const ReplaceBlock = 'ReplaceBlock';
-const UpsertBlock = 'UpsertBlock';
-const ScatterBlock = 'ScatterBlock';
-const DistributeBlock = 'DistributeBlock';
-const IResearchViewUnorderedBlock = 'IResearchViewUnorderedBlock';
-const IResearchViewBlock = 'IResearchViewBlock';
-const IResearchViewOrderedBlock = 'IResearchViewOrderedBlock';
+const CalculationBlock = 'CalculationNode';
+const CountCollectBlock = 'CountCollectNode';
+const DistinctCollectBlock = 'DistinctCollectNode';
+const EnumerateCollectionBlock = 'EnumerateCollectionNode';
+const EnumerateListBlock = 'EnumerateListNode';
+const FilterBlock = 'FilterNode';
+const HashedCollectBlock = 'HashedCollectNode';
+const IndexBlock = 'IndexNode';
+const LimitBlock = 'LimitNode';
+const NoResultsBlock = 'NoResultsNode';
+const RemoteBlock = 'RemoteNode';
+const ReturnBlock = 'ReturnNode';
+const ShortestPathBlock = 'ShortestPathNode';
+const SingletonBlock = 'SingletonNode';
+const SortBlock = 'SortNode';
+const SortedCollectBlock = 'SortedCollectNode';
+const SortingGatherBlock = 'SortingGatherNode';
+const SubqueryBlock = 'SubqueryNode';
+const TraversalBlock = 'TraversalNode';
+const UnsortingGatherBlock = 'UnsortingGatherNode';
+const RemoveBlock = 'RemoveNode';
+const InsertBlock = 'InsertNode';
+const UpdateBlock = 'UpdateNode';
+const ReplaceBlock = 'ReplaceNode';
+const UpsertBlock = 'UpsertNode';
+const ScatterBlock = 'ScatterNode';
+const DistributeBlock = 'DistributeNode';
+const IResearchViewUnorderedBlock = 'IResearchUnorderedViewNode';
+const IResearchViewBlock = 'IResearchViewNode';
+const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 
 const blockTypesList = [
   CalculationBlock, CountCollectBlock, DistinctCollectBlock,
@@ -118,6 +118,33 @@ const blockTypesList = [
   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
   IResearchViewBlock, IResearchViewOrderedBlock
 ];
+
+let translateType = function(nodes, node) {
+  let types = {};
+  nodes.forEach(function(node) { 
+    let type = node.type;
+    if (type === 'CollectNode') {
+      if (node.collectOptions.method === 'sorted') {
+        type = 'SortedCollectNode';
+      } else if (node.collectOptions.method === 'hash') {
+        type = 'HashedCollectNode';
+      } else if (node.collectOptions.method === 'distinct') {
+        type = 'DistinctCollectNode';
+      } else if (node.collectOptions.method === 'count') {
+        type = 'CountCollectNode';
+      }
+    } else if (node.type === 'GatherNode') {
+      if (node.sortmode === 'minelement' || node.sortmode === 'heap') {
+        type = 'SortingGatherNode';
+      } else {
+        type = 'UnsortingGatherNode';
+      }
+    }
+    types[node.id] = type;
+  });
+
+  return types[node.id];
+};
 
 /// @brief check that numbers in actual are in the range specified by
 /// expected. Each element in expected may either be
@@ -161,11 +188,15 @@ function zipPlanNodesIntoStatsNodes (profile) {
     },
     {}
   );
-
+  
   // Note: We need to take the order plan.nodes here, not stats.nodes,
   // as stats.nodes is sorted by id.
   return profile.plan.nodes.map(node => (
-    { id: node.id, fromStats: statsNodesById[node.id], fromPlan: node }
+    { 
+      id: node.id, 
+      type: translateType(profile.plan.nodes, node), 
+      fromStats: statsNodesById[node.id], fromPlan: node 
+    }
   ));
 }
 
@@ -174,8 +205,7 @@ function getCompactStatsNodes (profile) {
   // of the plan, not from the stats (which is sorted by id).
   return zipPlanNodesIntoStatsNodes(profile).map(
     node => ({
-      // type: node.fromPlan.type,
-      type: node.fromStats.blockType,
+      type: translateType(profile.plan.nodes, node),
       calls: node.fromStats.calls,
       items: node.fromStats.items,
     })
@@ -195,7 +225,7 @@ function getStatsNodesWithId (profile) {
   return profile.stats.nodes.map(
     node => ({
       id: node.id,
-      blockType: node.blockType,
+      type: node.type,
     })
   );
 }
@@ -422,7 +452,6 @@ function assertStatsNodesMatchPlanNodes (profile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function assertNodesItemsAndCalls (expected, actual, details = {}) {
-
   // assert node types first
   assert.assertEqual(
     expected.map(node => node.type),
@@ -527,8 +556,6 @@ function createBinaryTree (vertexCol, edgeCol, numVertices) {
       ))
   );
 }
-
-
 
 exports.colName = colName;
 exports.edgeColName = edgeColName;

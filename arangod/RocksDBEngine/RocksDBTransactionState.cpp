@@ -481,7 +481,8 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
-    TRI_voc_document_operation_e operationType) {
+    TRI_voc_document_operation_e operationType,
+    bool& hasPerformedIntermediateCommit) {
   size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
   if (currentSize > _options.maxTransactionSize) {
     // we hit the transaction size limit
@@ -526,7 +527,7 @@ Result RocksDBTransactionState::addOperation(
   }
 
   // perform an intermediate commit if necessary
-  return checkIntermediateCommit(currentSize);
+  return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
 }
 
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
@@ -561,7 +562,9 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
 }
 
-Result RocksDBTransactionState::triggerIntermediateCommit() {
+Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedIntermediateCommit) {
+  TRI_ASSERT(!hasPerformedIntermediateCommit);
+
   TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -579,6 +582,8 @@ Result RocksDBTransactionState::triggerIntermediateCommit() {
     // FIXME: do we abort the transaction ?
     return res;
   }
+
+  hasPerformedIntermediateCommit = true;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -600,7 +605,9 @@ Result RocksDBTransactionState::triggerIntermediateCommit() {
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
+Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit) {
+  hasPerformedIntermediateCommit = false;
+
   if (hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
     auto numOperations = _numInserts + _numUpdates + _numRemoves;
     // perform an intermediate commit
@@ -608,7 +615,7 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
     // "transaction size" counters have reached their limit
     if (_options.intermediateCommitCount <= numOperations ||
         _options.intermediateCommitSize <= newSize) {
-      return triggerIntermediateCommit();
+      return triggerIntermediateCommit(hasPerformedIntermediateCommit);
     }
   }
   return TRI_ERROR_NO_ERROR;

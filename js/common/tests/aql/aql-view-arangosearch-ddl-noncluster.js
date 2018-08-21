@@ -90,27 +90,14 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(60000, properties.commitIntervalMsec);
       assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(4, Object.keys(properties.consolidate).length);
-      assertTrue(Object === properties.consolidate.bytes.constructor);
-      assertEqual(300, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.bytes_accum.constructor);
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.count.constructor);
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.fill.constructor);
-      assertEqual(300, properties.consolidate.fill.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.fill.threshold.toFixed(6));
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual("bytes_accum", properties.consolidate.type);
+      assertEqual(300, properties.consolidate.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.threshold.toFixed(6));
 
       meta = {
         commitIntervalMsec: 10000,
-        consolidate: {
-          bytes: { segmentThreshold: 20, threshold: 0.5 },
-          bytes_accum: {},
-          count: {}
-        }
+        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
       properties = view.properties();
@@ -119,19 +106,13 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10000, properties.commitIntervalMsec);
       assertTrue(Object === properties.consolidate.constructor);
       assertEqual(3, Object.keys(properties.consolidate).length);
-      assertTrue(Object === properties.consolidate.bytes.constructor);
-      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.bytes_accum.constructor);
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.count.constructor);
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual("bytes", properties.consolidate.type);
+      assertEqual(20, properties.consolidate.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
 
       meta = {
         cleanupIntervalStep: 20,
-        consolidate: { count: { segmentThreshold: 30, threshold: 0.75 } }
+        consolidate: { segmentThreshold: 30, threshold: 0.75, type: "count" }
       };
       view.properties(meta, false); // full update
       properties = view.properties();
@@ -139,10 +120,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(60000, properties.commitIntervalMsec);
       assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(1, Object.keys(properties.consolidate).length);
-      assertTrue(Object === properties.consolidate.count.constructor);
-      assertEqual(30, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.75).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual("count", properties.consolidate.type);
+      assertEqual(30, properties.consolidate.segmentThreshold);
+      assertEqual((0.75).toFixed(6), properties.consolidate.threshold.toFixed(6));
 
 
       // locale
@@ -423,11 +404,7 @@ function iResearchFeatureAqlTestSuite () {
 
       meta = {
         commitIntervalMsec: 10000,
-        consolidate: {
-          bytes: { segmentThreshold: 20, threshold: 0.5 },
-          bytes_accum: {},
-          count: {}
-        },
+        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
@@ -439,12 +416,9 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(10000, properties.commitIntervalMsec);
       assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual("bytes", properties.consolidate.type);
+      assertEqual(20, properties.consolidate.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       col0.save({ name: "quarter", text: "quick over" });
@@ -468,11 +442,7 @@ function iResearchFeatureAqlTestSuite () {
 
       meta = {
         commitIntervalMsec: 10000,
-        consolidate: {
-          bytes: { segmentThreshold: 20, threshold: 0.5 },
-          bytes_accum: {},
-          count: {}
-        },
+        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
@@ -488,12 +458,9 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(10000, properties.commitIntervalMsec);
       assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual("bytes", properties.consolidate.type);
+      assertEqual(20, properties.consolidate.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       // 2 non-empty collections
@@ -517,11 +484,7 @@ function iResearchFeatureAqlTestSuite () {
 
       meta = {
         commitIntervalMsec: 10000,
-        consolidate: {
-          bytes: { segmentThreshold: 20, threshold: 0.5 },
-          bytes_accum: {},
-          count: {}
-        },
+        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
@@ -537,12 +500,9 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(10000, properties.commitIntervalMsec);
       assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual("bytes", properties.consolidate.type);
+      assertEqual(20, properties.consolidate.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       // 1 empty collection + 2 non-empty collections
@@ -569,11 +529,7 @@ function iResearchFeatureAqlTestSuite () {
 
       meta = {
         commitIntervalMsec: 10000,
-        consolidate: {
-          bytes: { segmentThreshold: 20, threshold: 0.5 },
-          bytes_accum: {},
-          count: {}
-        },
+        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
         locale: "en_US.UTF-8"
       };
       view.properties(meta, true); // partial update
@@ -589,12 +545,9 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(10000, properties.commitIntervalMsec);
       assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual("bytes", properties.consolidate.type);
+      assertEqual(20, properties.consolidate.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
 
       view.properties({}, false); // full update (reset to defaults)
@@ -605,19 +558,10 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(60000, properties.commitIntervalMsec);
       assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(4, Object.keys(properties.consolidate).length);
-      assertTrue(Object === properties.consolidate.bytes.constructor);
-      assertEqual(300, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.bytes_accum.constructor);
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.count.constructor);
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
-      assertTrue(Object === properties.consolidate.fill.constructor);
-      assertEqual(300, properties.consolidate.fill.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.fill.threshold.toFixed(6));
+      assertEqual(3, Object.keys(properties.consolidate).length);
+      assertEqual("bytes_accum", properties.consolidate.type);
+      assertEqual(300, properties.consolidate.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidate.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);

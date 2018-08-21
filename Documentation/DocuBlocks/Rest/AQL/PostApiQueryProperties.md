@@ -31,13 +31,17 @@ The server will respond with *HTTP 400* in case of a malformed request,
 or if the query contains a parse error. The body of the response will
 contain the error details embedded in a JSON object.
 
+@RESTRETURNCODE{404}
+The server will respond with *HTTP 404* in case the query refers to an
+unknown collection or view.
+
 @EXAMPLES
 
-a Valid query
+a valid query
 
     @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
     var url = "/_api/query";
-    var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
+    var body = '{ "query" : "FOR i IN 1..100 FILTER i > 10 LIMIT 2 RETURN i * 3" }';
 
     var response = logCurlRequest('POST', url, body);
 
@@ -46,15 +50,28 @@ a Valid query
     logJsonResponse(response);
     @END_EXAMPLE_ARANGOSH_RUN
 
-an Invalid query
+an invalid query
 
     @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
     var url = "/_api/query";
-    var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
+    var body = '{ "query" : "FOR i IN 1..100 FILTER i = 1 LIMIT 2 RETURN i * 3" }';
 
     var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 400);
+
+    logJsonResponse(response);
+    @END_EXAMPLE_ARANGOSH_RUN
+
+an query referring to a non-existing collection
+
+    @EXAMPLE_ARANGOSH_RUN{RestQueryNonExisting}
+    var url = "/_api/query";
+    var body = '{ "query" : "FOR doc IN collectionThatDoesNotExist RETURN doc._key" }';
+
+    var response = logCurlRequest('POST', url, body);
+
+    assert(response.code === 404);
 
     logJsonResponse(response);
     @END_EXAMPLE_ARANGOSH_RUN

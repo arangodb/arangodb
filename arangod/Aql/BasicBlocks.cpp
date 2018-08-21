@@ -55,15 +55,6 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(
     _inputRegisterValues.reset(items->slice(pos, _whitelist));
   }
 
-  // This could be omitted if ExecutionBlock::initializeCursor() was called
-  // here.
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    // Set block type in per-block statistics.
-    // Intentionally using operator[], which inserts a new element if it can't
-    // find one.
-    _engine->_stats.nodes[getPlanNode()->id()].type = this->getType();
-  }
-
   _done = false;
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
@@ -458,6 +449,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
 
   auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
     return res;
   }
 

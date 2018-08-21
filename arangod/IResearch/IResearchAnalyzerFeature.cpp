@@ -223,8 +223,12 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
     "TOKENS", // name
     ".,.", // positional arguments (data,analyzer)
-    true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
-    true, // can be run on server
+    // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     aqlFnTokens // function implementation
   });
 }

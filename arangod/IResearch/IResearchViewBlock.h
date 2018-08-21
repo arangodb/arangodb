@@ -139,10 +139,6 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
     IResearchViewNode const& node
   );
 
-  Type getType() const override {
-    return Type::IRESEARCH_VIEW_UNORDERED;
-  }
-
  protected:
   virtual void reset() override final {
     IResearchViewBlockBase::reset();
@@ -176,10 +172,6 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
     IResearchViewNode const& node
   );
 
-  Type getType() const override final {
-    return Type::IRESEARCH_VIEW;
-  }
-
  protected:
   virtual bool next(
     aql::AqlItemBlock& res,
@@ -207,10 +199,6 @@ class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
-
-  Type getType() const override final {
-    return Type::IRESEARCH_VIEW_ORDERED;
-  }
 
  protected:
   virtual void reset() override {
