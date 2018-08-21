@@ -385,7 +385,7 @@ function SynchronousReplicationSuite () {
 /// @brief view operations:
 ////////////////////////////////////////////////////////////////////////////////
   function viewOperations(type, options = null, exec = null) {
-    var useView = true;
+    var useView = false;
     // check if arangosearch views are supported and could be used
     if (useView == true && db._views() !== 0) {
       var name = (typeof options !== "undefined" && options != null && options.hasOwnProperty("name")) ? options.name : "vn";
