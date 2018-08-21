@@ -53,10 +53,11 @@ const servers = getDBServers();
 
 function MovingShardsSuite () {
   'use strict';
-  var cn = "UnitTestMovingShards";
-  var count = 0;
-  var c = [];
-  var dbservers = getDBServers();
+  const cn = "UnitTestMovingShards";
+  let count = 0;
+  let c = [];
+  let v = [];
+  let dbservers = getDBServers();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for a collection
@@ -398,6 +399,42 @@ function MovingShardsSuite () {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create some views for existing collections
+////////////////////////////////////////////////////////////////////////////////
+
+  function createSomeViews(n) {
+    assertTrue(c.length > 0);
+    console.info("Creating views on existing collections.");
+    for (let i = 0; i < n; i++) {
+      let vn = cn + "View" + i;
+      let view = db._createView(vn, "arangosearch", {});
+      let props = {links: {}};
+      for (let x = 0; x < c.length; x++) {
+        props.links[c[x].name()] = { includeAllFields: true, analyzers: ['text_en'] };
+        /*for (let y = 0; y < 1000; y++) {
+          c[x].save({ value: "the quick brown foxx jumped over the lazy dog"});
+        }*/
+      }
+      view.properties(props);
+      v.push(view);
+    }
+    console.info("Successfully created views.");
+  }
+
+  function checkViews() {
+    assertTrue(v.length > 0);
+    v.forEach( view => {
+      let props = view.properties();
+      let colls = Object.keys(props.links);
+      assertTrue(colls.length > 0);
+      /*colls.forEach(cc => assertEqual(db._collection(cc).count(), 1000));
+      const q = "FOR doc IN @@vv SEARCH PHRASE(doc.text, 'foxx jumped', 'text_en') RETURN doc";
+      let res = db._query(q, {"@vv": view.name()}).toArray();
+      assertTrue(colls.length * 1000, res.length);*/
+    });
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief find server not on a list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -454,10 +491,14 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      for (var i = 0; i < c.length; ++i) {
+      for (let i = 0; i < c.length; ++i) {
         c[i].drop();
       }
       c = [];
+      for (let i = 0; i < v.length; ++i) {
+        v[i].drop();
+      }
+      v = [];
       resetCleanedOutServers();
     },
 
@@ -494,6 +535,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollower : function() {
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var fromServer = servers[1];
@@ -504,6 +546,7 @@ function MovingShardsSuite () {
       assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,6 +554,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromLeader : function() {
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var fromServer = servers[0];
@@ -521,6 +565,7 @@ function MovingShardsSuite () {
       assertTrue(moveShard("_system", c[0]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,6 +574,7 @@ function MovingShardsSuite () {
 
     testMoveShardFromLeaderNoReplication : function() {
       createSomeCollections(1, 1, 1);
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[0];
@@ -539,6 +585,7 @@ function MovingShardsSuite () {
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -547,6 +594,7 @@ function MovingShardsSuite () {
 
     testMoveShardFromFollowerRepl3_1 : function() {
       createSomeCollections(1, 1, 3);
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var fromServer = servers[1];
@@ -557,6 +605,7 @@ function MovingShardsSuite () {
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,12 +649,14 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCleanOutFollower : function() {
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,12 +664,14 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCleanOutLeader : function() {
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,12 +680,14 @@ function MovingShardsSuite () {
 
     testCleanOutMultipleCollections : function() {
       createSomeCollections(10, 1, 2);
+      createSomeViews(2);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
+      checkViews();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -655,6 +710,7 @@ function MovingShardsSuite () {
 
     testCleanOutMultipleShards : function() {
       createSomeCollections(1, 10, 2);
+      createSomeViews(1);
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[1].name());
       var toClean = servers[1];

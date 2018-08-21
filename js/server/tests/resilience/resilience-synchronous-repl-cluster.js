@@ -187,7 +187,8 @@ function SynchronousReplicationSuite () {
 
     viewOperations("assert", null, function assert() {
       assertEqual(
-        viewOperations("query", { query: "FOR d IN @@vn COLLECT WITH COUNT into iCount RETURN iCount", bind: '{ "@vn" : name }' }).toArray()[0], 1) } );
+        viewOperations("query", { query: "FOR d IN @@vn COLLECT WITH COUNT into iCount RETURN iCount", 
+        bind: '{ "@vn" : name }' }).toArray()[0], 1); } );
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
@@ -357,7 +358,7 @@ function SynchronousReplicationSuite () {
       var result = viewOperations("query", { query: "FOR d IN @@vn  RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
-      assertEqual(undefined, result.find(e => e._key == doc));
+      assertEqual(undefined, result.find(e => e._key === doc));
     });
 
     if (healing.place === 16) { healFailure(healing); }
@@ -387,15 +388,15 @@ function SynchronousReplicationSuite () {
   function viewOperations(type, options = null, exec = null) {
     var useView = false;
     // check if arangosearch views are supported and could be used
-    if (useView == true && db._views() !== 0) {
+    if (useView === true && db._views() !== 0) {
       var name = (typeof options !== "undefined" && options != null && options.hasOwnProperty("name")) ? options.name : "vn";
       
       var checkArgument = (parameter, argument = null, type = "object") => {
-        if (type == "object") {
+        if (type === "object") {
           return (typeof parameter === type && parameter != null && parameter.hasOwnProperty(argument) && parameter[argument] !== null);
         }
-        if (type == "function") {
-          return (typeof parameter === "function" && parameter.name == argument);
+        if (type === "function") {
+          return (typeof parameter === "function" && parameter.name === argument);
         }
 
         return false;

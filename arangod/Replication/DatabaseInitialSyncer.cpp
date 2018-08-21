@@ -216,13 +216,16 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
     }
     
-    if (_config.applier._restrictCollections.empty()) {
+    if (!_config.applier._skipCreateDrop &&
+        _config.applier._restrictCollections.empty()) {
       r = handleViewCreation(views); // no requests to master
       if (r.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "Error during initial sync: " << r.errorMessage();
+        << "Error during intial sync view creation: " << r.errorMessage();
         return r;
       }
+    } else {
+      _config.progress.set("view creation skipped because of configuration");
     }
 
     // strip eventual objectIDs and then dump the collections
