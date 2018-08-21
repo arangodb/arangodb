@@ -340,7 +340,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((9U == slice.length()));
+    CHECK((11U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
@@ -363,7 +363,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((6U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -641,7 +641,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -667,8 +667,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._commit._cleanupIntervalStep = 42;
-        expected._commit._commitIntervalMsec = 50;
+        expected._cleanupIntervalStep = 42;
+        expected._commitIntervalMsec = 50;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
@@ -692,7 +692,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commitIntervalMsec\": 42 }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -718,8 +718,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._commit._cleanupIntervalStep = 42;
-        expected._commit._commitIntervalMsec = 42;
+        expected._cleanupIntervalStep = 42;
+        expected._commitIntervalMsec = 42;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
@@ -1882,7 +1882,8 @@ SECTION("test_update_links_partial_add") {
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto* origExecContext = ExecContext::CURRENT;
     auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
@@ -3158,7 +3159,8 @@ SECTION("test_drop_link") {
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto* origExecContext = ExecContext::CURRENT;
     auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });

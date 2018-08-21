@@ -63,7 +63,7 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
 #endif
   }
   if (!result) {
-    throw std::logic_error("unsupported socket type");
+    throw std::logic_error("unsupported socket or protocol type");
   }
   
   // Start the connection implementation

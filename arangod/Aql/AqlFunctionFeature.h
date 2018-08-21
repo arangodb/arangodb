@@ -30,9 +30,7 @@
 namespace arangodb {
 
 namespace velocypack {
-
 class Builder;
-
 }
 
 namespace aql {

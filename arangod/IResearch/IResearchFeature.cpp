@@ -162,8 +162,11 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
-    true,   // deterministic
-    true,   // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
@@ -178,48 +181,66 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
     ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
     ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "MIN_MATCH",   // name
     ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "BOOST",       // name
     ".,.",         // positional arguments (filter expression, boost)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "ANALYZER",    // name
     ".,.",         // positional arguments (filter expression, analyzer)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 }
@@ -287,8 +308,11 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
     arangodb::iresearch::addFunction(functions, {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
-      true,   // deterministic
-      true,   // can be run on server
+      arangodb::aql::Function::makeFlags(
+        arangodb::aql::Function::Flags::Deterministic, 
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ), 
       &scorer // function implementation (use function name as placeholder)
     });
 

@@ -715,7 +715,6 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   
   uint64_t found = 0;
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
-    
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
     VPackSlice doc = VPackSlice(iter->value().data());
@@ -742,15 +741,17 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    res = state->addOperation(_logicalCollection.id(), docId.id(),
-                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    bool hasPerformedIntermediateCommit = false;
     
-    // transaction size limit reached
+    res = state->addOperation(_logicalCollection.id(), docId.id(),
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, hasPerformedIntermediateCommit);
+    
     if (res.fail()) {
       // This should never happen...
       THROW_ARANGO_EXCEPTION(res);
     }
-    guard.commit();
+    guard.finish(hasPerformedIntermediateCommit);
+
     trackWaitForSync(trx, options);
     iter->Next();
   }
@@ -889,16 +890,18 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       TRI_ASSERT(!mdr.empty());
     }
 
+    bool hasPerformedIntermediateCommit = false;
+
     auto result = state->addOperation(
-      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT
+      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT,
+      hasPerformedIntermediateCommit
     );
 
-    // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.commit();
+    guard.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1001,16 +1004,18 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
       TRI_ASSERT(!mdr.empty());
     }
 
+    bool hasPerformedIntermediateCommit = false;
+
     auto result = state->addOperation(
-      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_UPDATE
+      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_UPDATE,
+      hasPerformedIntermediateCommit
     );
 
-    // transaction size limit reached -- fail hard
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.commit();
+    guard.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1109,16 +1114,18 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       TRI_ASSERT(!mdr.empty());
     }
 
+    bool hasPerformedIntermediateCommit = false;
+
     auto result = state->addOperation(
-      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REPLACE
+      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REPLACE,
+      hasPerformedIntermediateCommit
     );
 
-    // transaction size limit reached -- fail
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.commit();
+    guard.finish(hasPerformedIntermediateCommit);
   }
 
   return opResult;
@@ -1182,17 +1189,18 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   if (res.ok()) {
     trackWaitForSync(trx, options);
 
-    // report key size
+    bool hasPerformedIntermediateCommit = false;
+
     res = state->addOperation(
-      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE
+      _logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REMOVE,
+      hasPerformedIntermediateCommit
     );
 
-    // transaction size limit reached -- fail
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    guard.commit();
+    guard.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
