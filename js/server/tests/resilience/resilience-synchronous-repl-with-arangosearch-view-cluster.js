@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+/// @author Vadim Kondratyev
+/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -43,19 +43,31 @@ const download = require('internal').download;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function SynchronousReplicationSuite () {
+function SynchronousReplicationWithViewSuite () {
   'use strict';
   var cn = "UnitTestSyncRep";
   var c;
   var cinfo;
   var ccinfo;
   var shards;
+  // FIXME: remove it after issue #2900 of planning is fixed
+  var useView = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for the system collections
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
+    var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
+    var shard = Object.keys(cinfo.shards)[0];
+    return cinfo.shards[shard];
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find out servers for the shards of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+  function findCollectionShardServers(database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
@@ -185,11 +197,21 @@ function SynchronousReplicationSuite () {
     var id = c.insert({Hallo:12});
     assertEqual(1, c.count());
 
+    viewOperations("assert", null, function assert() {
+      assertEqual(
+        viewOperations("query", { query: "FOR d IN @@vn COLLECT WITH COUNT into iCount RETURN iCount",
+        bind: '{ "@vn" : name }' }).toArray()[0], 1) } );
+
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
     
     var doc = c.document(id._key);
     assertEqual(12, doc.Hallo);
+    viewOperations("assert", null, function assert() {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo == 12 RETURN d.Hallo", bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], 12);
+    });
 
     if (healing.place === 2) { healFailure(healing); }
     if (failure.place === 3) { makeFailure(failure); }
@@ -197,6 +219,10 @@ function SynchronousReplicationSuite () {
     var ids = c.insert([{Hallo:13}, {Hallo:14}]);
     assertEqual(3, c.count());
     assertEqual(2, ids.length);
+    viewOperations("assert", null, function assert() {
+      var result = viewOperations("query", { query: "FOR d IN @@vn RETURN d", bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(result.length, 3);
+    });
 
     if (healing.place === 3) { healFailure(healing); }
     if (failure.place === 4) { makeFailure(failure); }
@@ -205,6 +231,15 @@ function SynchronousReplicationSuite () {
     assertEqual(2, docs.length);
     assertEqual(13, docs[0].Hallo);
     assertEqual(14, docs[1].Hallo);
+    viewOperations("assert", null, function assert(inFilter = ids) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
+                                                    + inFilter.map(e => "'" + e._key + "'").join(",") 
+                                                    + "] SORT d._key RETURN d", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(2, result.length);
+      assertEqual(13, result[0].Hallo);
+      assertEqual(14, result[1].Hallo);
+    });
 
     if (healing.place === 4) { healFailure(healing); }
     if (failure.place === 5) { makeFailure(failure); }
@@ -217,6 +252,12 @@ function SynchronousReplicationSuite () {
 
     doc = c.document(id._key);
     assertEqual(100, doc.Hallo);
+    viewOperations("assert", null, function assert(inFilter = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' RETURN d",
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(1, result.length);
+      assertEqual(100, result[0].Hallo);
+    });
 
     if (healing.place === 6) { healFailure(healing); }
     if (failure.place === 7) { makeFailure(failure); }
@@ -230,6 +271,15 @@ function SynchronousReplicationSuite () {
     assertEqual(2, docs.length);
     assertEqual(101, docs[0].Hallo);
     assertEqual(102, docs[1].Hallo);
+    viewOperations("assert", null, function assert(inFilter = ids) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
+                                                    + inFilter.map(e => "'" + e._key + "'").join(",") 
+                                                    + "] SORT d._key RETURN d", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(2, result.length);
+      assertEqual(101, result[0].Hallo);
+      assertEqual(102, result[1].Hallo);
+    });
 
     if (healing.place === 8) { healFailure(healing); }
     if (failure.place === 9) { makeFailure(failure); }
@@ -243,6 +293,13 @@ function SynchronousReplicationSuite () {
     doc = c.document(id._key);
     assertEqual(100, doc.Hallo);
     assertEqual(105, doc.Hallox);
+    viewOperations("assert", null, function assert(inFilter = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' RETURN d", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(1, result.length);
+      assertEqual(100, result[0].Hallo);
+      assertEqual(105, result[0].Hallox);
+    });
 
     if (healing.place === 10) { healFailure(healing); }
     if (failure.place === 11) { makeFailure(failure); }
@@ -258,6 +315,17 @@ function SynchronousReplicationSuite () {
     assertEqual(102, docs[1].Hallo);
     assertEqual(106, docs[0].Hallox);
     assertEqual(107, docs[1].Hallox);
+    viewOperations("assert", null, function assert(inFilter = ids) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
+                                                    + inFilter.map(e => "'" + e._key + "'").join(",") 
+                                                    + "] SORT d._key RETURN d", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(2, result.length);
+      assertEqual(101, result[0].Hallo);
+      assertEqual(102, result[1].Hallo);
+      assertEqual(106, result[0].Hallox);
+      assertEqual(107, result[1].Hallox);
+    });
 
     if (healing.place === 12) { healFailure(healing); }
     if (failure.place === 13) { makeFailure(failure); }
@@ -270,6 +338,12 @@ function SynchronousReplicationSuite () {
     docs = q.toArray();
     assertEqual(3, docs.length);
     assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], docs);
+    viewOperations("assert", null, function assert() {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo > 0 SORT d.Hallo RETURN {'Hallo': d.Hallo}", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(3, result.length);
+      assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
+    });
 
     if (healing.place === 13) { healFailure(healing); }
     if (failure.place === 14) { makeFailure(failure); }
@@ -292,6 +366,12 @@ function SynchronousReplicationSuite () {
     if (failure.place === 16) { makeFailure(failure); }
 
     assertEqual(2, c.count());
+    viewOperations("assert", null, function assert(doc = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn  RETURN d", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(2, result.length);
+      assertEqual(undefined, result.find(e => e._key === doc));
+    });
 
     if (healing.place === 16) { healFailure(healing); }
     if (failure.place === 17) { makeFailure(failure); }
@@ -305,8 +385,70 @@ function SynchronousReplicationSuite () {
     assertEqual(2, docs.length);
     assertTrue(docs[0].error);
     assertTrue(docs[1].error);
+    viewOperations("assert", null, function assert(doc = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn  RETURN d", 
+                                  bind: '{ "@vn" : name }' }).toArray();
+      assertEqual(0, result.length);
+    });
 
     if (healing.place === 18) { healFailure(healing); }
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief view operations:
+////////////////////////////////////////////////////////////////////////////////
+  function viewOperations(type, options = null, exec = null) {
+    // check if arangosearch views are supported and could be used
+    // FIXME: remove useView check after issue #2900 of planning is fixed
+    if (useView === true && db._views() !== 0) {
+      var name = (typeof options !== "undefined" && options != null && options.hasOwnProperty("name")) ? options.name : "vn";
+      
+      var checkArgument = (parameter, argument = null, type = "object") => {
+        if (type === "object") {
+          return (typeof parameter === type && parameter != null && parameter.hasOwnProperty(argument) && parameter[argument] !== null);
+        }
+        if (type === "function") {
+          return (typeof parameter === "function" && parameter.name === argument);
+        }
+
+        return false;
+      };
+
+      switch(type) {
+        case "drop":
+          try {
+            return db._view(name).drop();
+          } catch (ignored) { }
+        break;
+        case "create":
+          let view = db._createView(name, "arangosearch", {});
+          if (checkArgument(options, "properties")) {
+            view.properties(options.properties);
+          }
+          return view;
+        break;
+        case "query":
+          if (checkArgument(options, "query")) {
+            if (checkArgument(options, "bind")) {
+              var binded;
+              eval("binded = " + options.bind );
+              return db._query(options.query, binded, { waitForSync: true });
+            } else {
+              return db._query(options.query, null, { waitForSync: true });
+            }
+          } else {
+            return null;
+          }
+        break;
+        case "assert":
+          if (checkArgument(exec, "assert", "function")) {
+            exec();
+          } else {
+            fail();
+          }
+        break;
+      }
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,6 +468,10 @@ function SynchronousReplicationSuite () {
         db._drop(cn);
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
                             avoidServers: systemCollServers});
+        
+        viewOperations("drop");//try { db._view("vn1").drop(); } catch(ignore) { }
+        viewOperations("create", { properties: { links: { [cn]: { includeAllFields: true } } } });
+
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
@@ -343,6 +489,7 @@ function SynchronousReplicationSuite () {
 
     tearDown : function () {
       db._drop(cn);
+      viewOperations("drop");
       //global.ArangoAgency.set('Target/FailedServers', {});
     },
 
@@ -807,7 +954,7 @@ function SynchronousReplicationSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief just to allow a trailing comma at the end of the last test
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -822,7 +969,7 @@ function SynchronousReplicationSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(SynchronousReplicationSuite);
+jsunity.run(SynchronousReplicationWithViewSuite);
 
 return jsunity.done();
 
