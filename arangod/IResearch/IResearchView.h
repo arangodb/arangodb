@@ -172,9 +172,10 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
-  ///        also remove 'cid' from the persisted list of tracked collection IDs
+  /// @param unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
   ////////////////////////////////////////////////////////////////////////////////
-  int drop(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid, bool unlink = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions

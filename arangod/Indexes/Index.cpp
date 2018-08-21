@@ -186,6 +186,8 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
       return 5;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return 6;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
+      return 7;
     default:
       return 42; /* OPST_CIRCUS */
   }
@@ -644,11 +646,6 @@ int Index::drop() {
   return TRI_ERROR_NO_ERROR;
 }
 
-// called after the collection was truncated
-int Index::afterTruncate() {
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief default implementation for sizeHint
 int Index::sizeHint(transaction::Methods*, size_t) {
   // do nothing
@@ -750,10 +747,12 @@ bool Index::canUseConditionPart(
             other->isNullValue()) {
           // != null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
                    !other->isNullValue()) {
           // >= non-null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
 
         if (other->isNullValue() &&
@@ -765,6 +764,7 @@ bool Index::canUseConditionPart(
             return false;
           }
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
 
         if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -776,6 +776,8 @@ bool Index::canUseConditionPart(
               return false;
             }
           }
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
       } else {
         // !other->isConstant()
@@ -803,21 +805,25 @@ bool Index::canUseConditionPart(
     return false;
   }
 
-  // test if the reference variable is contained on both side of the expression
+  // test if the reference variable is contained on both sides of the expression
   std::unordered_set<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
-      if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
-          variables.find(reference) != variables.end()) {
-        variables.clear();
-        arangodb::aql::Ast::getReferencedVariables(other, variables);
-      }
+    if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+        variables.find(reference) != variables.end()) {
+      variables.clear();
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   } else {
     // a.b == value  OR  a.b IN values
-    arangodb::aql::Ast::getReferencedVariables(other, variables);
+    if (!other->isConstant()) {
+      // don't look for referenced variables if we only access a 
+      // constant value (there will be no variables then...)
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   }
 
   if (variables.find(reference) != variables.end()) {

@@ -526,7 +526,7 @@ void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t f) {
 
 void ADB_WindowsExitFunction(int exitCode, void* data) {
   if (serviceAbort != nullptr) {
-    serviceAbort();
+    serviceAbort(exitCode);
   }
 
   exit(exitCode);

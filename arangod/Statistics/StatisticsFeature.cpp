@@ -119,7 +119,8 @@ class arangodb::StatisticsThread final : public Thread {
 StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
 StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _descriptions(new stats::Descriptions()) {

@@ -193,6 +193,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
       clusterInfo->loadPlan();
     }
+
   }
   return RestStatus::DONE;
 }

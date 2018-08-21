@@ -1,13 +1,14 @@
-### Analyzers:
+ArangoSearch Analyzers
+======================
 
 To simplify query syntax ArangoSearch provides a concept of named analyzers which
 are merely aliases for type+configuration of IResearch analyzers. Management of
-named analyzers is exposed via both REST, GUI and JavaScript APIs, e.g.
+named analyzers is exposed via REST, GUI and JavaScript APIs e.g.
 
 `db._globalSettings("iresearch.analyzers")`
 
 A user then merely uses these analyzer names in ArangoSearch view configurations
-and AQL queries, e.g.
+and AQL queries.
 
 ArangoSearch provides a 'text' analyzer to analyze human readable text. A required
 configuration parameter for this type of analyzer is 'locale' used to specify
@@ -27,7 +28,7 @@ The ArangoDB administrator may then set up a named analyzer 'text_des':
 
 The user is then immediately able to run queries with the said analyzer, e.g.
 
-`FILTER doc.description IN TOKENS('Ein brauner Fuchs springt', 'text_des')`
+`SEARCH doc.description IN TOKENS('Ein brauner Fuchs springt', 'text_des')`
 
 Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaSeq':
 
@@ -41,7 +42,7 @@ Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaSeq':
 
 The user is then immediately able to run queries with the said analyzer, e.g.
 
-`FILTER doc.dna IN TOKENS('ACGTCGTATGCACTGA', 'DnaSeq')`
+`SEARCH doc.dna IN TOKENS('ACGTCGTATGCACTGA', 'DnaSeq')`
 
 To a limited degree the concept of 'analysis' is even available in non-IResearch
 AQL, e.g. the `TOKENS(...)` function will utilize the power of IResearch to break
@@ -53,9 +54,9 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
 
     FOR doc IN someCollection
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
-      RETRUN doc
+      RETURN doc
 
-Runtime-plugging functionality for analyzers is not avaiable in ArangoDB at this
+Runtime-plugging functionality for analyzers is not available in ArangoDB at this
 point in time, so ArangoDB comes with a few default-initialized analyzers:
 
 * `identity`

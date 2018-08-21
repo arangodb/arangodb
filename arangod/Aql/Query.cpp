@@ -39,22 +39,22 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifndef USE_PLAN_CACHE
 #undef USE_PLAN_CACHE
@@ -64,7 +64,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-static std::atomic<TRI_voc_tick_t> NextQueryId(1);
+static std::atomic<TRI_voc_tick_t> nextQueryId(1);
 }
 
 /// @brief creates a query
@@ -1279,7 +1279,7 @@ void Query::init() {
     return;
   }
   TRI_ASSERT(_id == 0);
-  _id = Query::NextId();
+  _id = nextId();
   TRI_ASSERT(_id != 0);
 
   TRI_ASSERT(_profile == nullptr);
@@ -1431,40 +1431,48 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
-  if (_transactionContext) {
-    return _transactionContext;
-  }
-  if (_contextOwnedByExterior) {
-    // we must use v8
-    return transaction::V8Context::Create(_vocbase, true);
+  if (!_transactionContext) {
+    if (_contextOwnedByExterior) {
+      // we must use v8
+      _transactionContext = transaction::V8Context::Create(_vocbase, true);
+    } else {
+      _transactionContext = transaction::StandaloneContext::Create(_vocbase);
+    }
   }
 
-  return transaction::StandaloneContext::Create(_vocbase);
+  TRI_ASSERT(_transactionContext != nullptr);
+
+  return _transactionContext;
+}
+  
+/// @brief pass-thru a resolver object from the transaction context
+CollectionNameResolver const& Query::resolver() {
+  return createTransactionContext()->resolver();
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
-Graph const* Query::lookupGraphByName(std::string const& name) {
+graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 
-  if (it == _graphs.end()) {
-    std::unique_ptr<arangodb::aql::Graph> g(
-        arangodb::lookupGraphByName(createTransactionContext(), name));
- 
-    if (g == nullptr) {
-      return nullptr;
-    }
- 
-    auto result = _graphs.emplace(name, std::move(g));
-    TRI_ASSERT(result.second);
-    it = result.first;
+  if (it != _graphs.end()) {
+    return it->second.get();
   }
- 
-  TRI_ASSERT((*it).second != nullptr);
-  return (*it).second.get();
+  graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
+
+  auto g = graphManager.lookupGraphByName(name);
+
+  if (g.fail()) {
+    return nullptr;
+  }
+
+  auto graph = g.get().get();
+  _graphs.emplace(name, std::move(g.get()));
+
+  return graph;
 }
 
 /// @brief returns the next query id
-TRI_voc_tick_t Query::NextId() {
-  return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
+TRI_voc_tick_t Query::nextId() {
+  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }

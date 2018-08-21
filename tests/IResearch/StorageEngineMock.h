@@ -141,8 +141,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 
-  StorageEngineMock();
-  virtual void addAqlFunctions() override;
+  StorageEngineMock(arangodb::application_features::ApplicationServer& server);
   virtual void addOptimizerRules() override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
@@ -199,7 +198,6 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual void waitForSyncTick(TRI_voc_tick_t tick) override;
-  virtual void waitForSyncTimeout(double maxWait) override;
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual arangodb::WalAccess const* walAccess() const override;
   virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;

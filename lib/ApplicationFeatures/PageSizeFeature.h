@@ -26,17 +26,18 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class PageSizeFeature final : public application_features::ApplicationFeature {
  public:
-  explicit PageSizeFeature(application_features::ApplicationServer* server);
+  explicit PageSizeFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
   static size_t getPageSize() { return PageSize; }
 
  private:
   static size_t PageSize;
 };
+
 }
 
 #endif

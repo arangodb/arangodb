@@ -81,12 +81,12 @@ uint32_t RestTasksHandler::forwardingTarget() {
       type != rest::RequestType::PUT &&
       type != rest::RequestType::GET &&
       type != rest::RequestType::DELETE_REQ) {
-    return false;
+    return 0;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return false;
+    return 0;
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
@@ -157,10 +157,6 @@ void RestTasksHandler::registerTask(bool byId) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "registering a task needs db RW permissions");
-      return;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_READ_ONLY,
-                    "server is in read-only mode");
       return;
     }
   }
@@ -309,10 +305,6 @@ void RestTasksHandler::deleteTask() {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "unregister task needs db RW permissions");
-      return;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_READ_ONLY,
-                    "server is in read-only mode");
       return;
     }
   }

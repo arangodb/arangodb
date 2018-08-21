@@ -11,7 +11,6 @@ if (USE_IRESEARCH)
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
-#    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
     IResearch/ExpressionFilter-test.cpp
     IResearch/ExecutionBlockMock.cpp
@@ -52,10 +51,13 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
+    IResearch/RestHandlerMock.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
+    RestHandler/RestViewHandler-test.cpp
     Utils/CollectionNameResolver-test.cpp
+    V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
     VocBase/vocbase-test.cpp
   )

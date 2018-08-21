@@ -164,8 +164,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     trx.finish(res);
   }
 
-  double selectivity = 0, memory = 0, cacheSize = 0, cacheLifeTimeHitRate = 0,
-         cacheWindowedHitRate = 0;
+  double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
+         cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
 
   VPackArrayBuilder a(&result);
   for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
@@ -207,6 +207,10 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
           if ((val = figures.get("cacheSize")).isNumber()) {
             cacheSize += val.getNumber<double>();
           }
+          
+          if ((val = figures.get("cacheUsage")).isNumber()) {
+            cacheUsage += val.getNumber<double>();
+          }
 
           if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
             cacheLifeTimeHitRate += val.getNumber<double>();
@@ -231,6 +235,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
             merge.add("memory", VPackValue(memory));
             if (useCache) {
               merge.add("cacheSize", VPackValue(cacheSize));
+              merge.add("cacheUsage", VPackValue(cacheUsage));
               merge.add("cacheLifeTimeHitRate",
                         VPackValue(cacheLifeTimeHitRate / 2));
               merge.add("cacheWindowedHitRate",
@@ -340,10 +345,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
         (lvl == auth::Level::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
-    if (create && !exec->isSuperuser() && ServerState::readOnly()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
-    }
   }
 
   VPackBuilder normalized;
@@ -373,13 +374,13 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
        allowed:
 
        shardKeys     indexKeys
-       a             a        ok
-       a             b    not ok
-       a           a b        ok
-       a b             a    not ok
-       a b             b    not ok
-       a b           a b        ok
-       a b         a b c        ok
+       a             a            ok
+       a             b        not ok
+       a             a b          ok
+       a b             a      not ok
+       a b             b      not ok
+       a b           a b          ok
+       a b           a b c        ok
        a b c           a b    not ok
        a b c         a b c        ok
        */

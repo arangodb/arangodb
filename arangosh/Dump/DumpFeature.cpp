@@ -472,7 +472,7 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
       name{n},
       type{t} {}
 
-DumpFeature::DumpFeature(application_features::ApplicationServer* server,
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
                          int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
       _clientManager{Logger::DUMP},
@@ -832,7 +832,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
           return {
               TRI_ERROR_INTERNAL,
               std::string("Collection ") + name +
-                  "'s shard distribution is based on a that of collection " +
+                  "'s shard distribution is based on that of collection " +
                   prototypeCollection +
                   ", which is not dumped along. You may dump the collection "
                   "regardless of the missing prototype collection by using "
@@ -1026,10 +1026,10 @@ void DumpFeature::start() {
       res = runClusterDump(*httpClient, dbName);
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
     res = {TRI_ERROR_INTERNAL};
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
     res = {TRI_ERROR_INTERNAL};
   }
 

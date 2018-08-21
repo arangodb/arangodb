@@ -1,4 +1,5 @@
 !include "StrStr.nsh"
+Var PathToAdd
 
 ;--------------------------------
 ; path functions

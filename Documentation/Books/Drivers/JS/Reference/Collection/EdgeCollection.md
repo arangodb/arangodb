@@ -4,19 +4,26 @@
 The _EdgeCollection API_ extends the
 [_Collection API_](README.md) with the following methods.
 
-## edgeCollection.edge
+## edgeCollection.document
 
-`async edgeCollection.edge(documentHandle): Object`
+`async edgeCollection.document(documentHandle, [graceful]): Object`
+
+Alias: `edgeCollection.edge`.
 
 Retrieves the edge with the given _documentHandle_ from the collection.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the edge to retrieve. This can be either the `_id` or the `_key`
   of an edge in the collection, or an edge (i.e. an object with an `_id` or
   `_key` property).
+
+* **graceful**: `boolean` (Default: `false`)
+
+  If set to `true`, the method will return `null` instead of throwing an error
+  if the edge does not exist.
 
 **Examples**
 
@@ -24,17 +31,50 @@ Retrieves the edge with the given _documentHandle_ from the collection.
 const db = new Database();
 const collection = db.edgeCollection('edges');
 
-const edge = await collection.edge('some-key');
+const edge = await collection.document('some-key');
 // the edge exists
 assert.equal(edge._key, 'some-key');
 assert.equal(edge._id, 'edges/some-key');
 
 // -- or --
 
-const edge = await collection.edge('edges/some-key');
+const edge = await collection.document('edges/some-key');
 // the edge exists
 assert.equal(edge._key, 'some-key');
 assert.equal(edge._id, 'edges/some-key');
+
+// -- or --
+
+const edge = await collection.document('some-key', true);
+if (edge === null) {
+  // the edge does not exist
+}
+```
+
+## edgeCollection.documentExists
+
+`async edgeCollection.documentExists(documentHandle): boolean`
+
+Checks whether the edge with the given _documentHandle_ exists.
+
+**Arguments**
+
+- **documentHandle**: `string`
+
+  The handle of the edge to retrieve. This can be either the `_id` or the
+  `_key` of a edge in the collection, or an edge (i.e. an object with an
+  `_id` or `_key` property).
+
+**Examples**
+
+```js
+const db = new Database();
+const collection = db.edgeCollection('my-docs');
+
+const exists = await collection.documentExists('some-key');
+if (exists === false) {
+  // the edge does not exist
+}
 ```
 
 ## edgeCollection.save
@@ -46,51 +86,51 @@ _data_ and returns an object containing the edge's metadata.
 
 **Arguments**
 
-* **data**: `Object`
+- **data**: `Object`
 
   The data of the new edge. If _fromId_ and _toId_ are not specified, the _data_
   needs to contain the properties `_from` and `_to`.
 
-* **fromId**: `string` (optional)
+- **fromId**: `string` (optional)
 
   The handle of the start vertex of this edge. This can be either the `_id` of a
   document in the database, the `_key` of an edge in the collection, or a
   document (i.e. an object with an `_id` or `_key` property).
 
-* **toId**: `string` (optional)
+- **toId**: `string` (optional)
 
   The handle of the end vertex of this edge. This can be either the `_id` of a
   document in the database, the `_key` of an edge in the collection, or a
   document (i.e. an object with an `_id` or `_key` property).
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   If _opts_ is set, it must be an object with any of the following properties:
 
-  * **waitForSync**: `boolean` (Default: `false`)
+  - **waitForSync**: `boolean` (Default: `false`)
 
     Wait until document has been synced to disk.
 
-  * **returnNew**: `boolean` (Default: `false`)
+  - **returnNew**: `boolean` (Default: `false`)
 
     If set to `true`, return additionally the complete new documents under the
     attribute `new` in the result.
 
-  * **returnOld**: `boolean` (Default: `false`)
+  - **returnOld**: `boolean` (Default: `false`)
 
     If set to `true`, return additionally the complete old documents under the
     attribute `old` in the result.
 
-  * **silent**: `boolean` (Default: `false`)
+  - **silent**: `boolean` (Default: `false`)
 
     If set to true, an empty object will be returned as response. No meta-data
     will be returned for the created document. This option can be used to save
     some network traffic.
 
-  * **overwrite**: `boolean` (Default: `false`)
+  - **overwrite**: `boolean` (Default: `false`)
 
     If set to true, the insert becomes a replace-insert. If a document with the
-    same _key already exists the new document is not rejected with unique
+    same \_key already exists the new document is not rejected with unique
     constraint violated but will replace the old document.
 
 If a boolean is passed instead of an options object, it will be interpreted as
@@ -134,7 +174,7 @@ Retrieves a list of all edges of the document with the given _documentHandle_.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve the edges of. This can be either the
   `_id` of a document in the database, the `_key` of an edge in the collection,
@@ -165,7 +205,7 @@ _documentHandle_.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve the edges of. This can be either the
   `_id` of a document in the database, the `_key` of an edge in the collection,
@@ -196,7 +236,7 @@ _documentHandle_.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve the edges of. This can be either the
   `_id` of a document in the database, the `_key` of an edge in the collection,
@@ -227,13 +267,13 @@ contained in this edge collection.
 
 **Arguments**
 
-* **startVertex**: `string`
+- **startVertex**: `string`
 
   The handle of the start vertex. This can be either the `_id` of a document in
   the database, the `_key` of an edge in the collection, or a document (i.e. an
   object with an `_id` or `_key` property).
 
-* **opts**: `Object`
+- **opts**: `Object`
 
   See
   [the HTTP API documentation](../../../..//HTTP/Traversal/index.html)

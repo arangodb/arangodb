@@ -17,3 +17,5 @@ public class Relation {
 
 }
 ```
+
+**Note**: Since arangodb-spring-data 3.0.0 the annotation `@Relations` also work on non-collection/non-array fields. If multiple documents are linked with the entity, it is not guaranteed that the same document is returned every time. Use at your own risk.

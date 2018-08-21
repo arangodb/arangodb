@@ -88,7 +88,8 @@ VPackSlice QueryResultCursor::next() {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder, std::function<void()>&) {
+std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder,
+                                                          std::function<void()> const&) {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
   return {ExecutionState::DONE, res};
@@ -196,19 +197,22 @@ QueryStreamCursor::~QueryStreamCursor() {
   }
 
   if (_query) {  // cursor is canceled or timed-out
+    // now remove the continue handler we may have registered in the query
+    _query->sharedState()->setContinueCallback();
     // Query destructor will  cleanup plan and abort transaction
     _query.reset();
   }
 }
 
-std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder, std::function<void()>& continueHandler) {
+std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
+                                                          std::function<void()> const& ch) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _query->queryString().extract(1024) << "'";
 
   // We will get a different RestHandler on every dump, so we need to update the Callback
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-  ss->setContinueHandler(continueHandler);
+  ss->setContinueHandler(ch);
 
   try {
     ExecutionState state = prepareDump();
@@ -315,16 +319,19 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
     while(rowsWritten < batchSize() && !_queryResults.empty()) {
       std::unique_ptr<AqlItemBlock>& block = _queryResults.front();
       TRI_ASSERT(_queryResultPos < block->size());
-      AqlValue const& value
-        = block->getValueReference(_queryResultPos, resultRegister);
-
-      TRI_ASSERT(!value.isEmpty());
-      value.toVelocyPack(_query->trx(), builder, false);
-      ++rowsWritten;
-      ++_queryResultPos;
-
-      // get next block
+      
+      while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
+        AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
+        if (!value.isEmpty()) {
+          value.toVelocyPack(_query->trx(), builder, false);
+          ++rowsWritten;
+        }
+        ++_queryResultPos;
+      }
+      
       if (_queryResultPos == block->size()) {
+        // get next block
+        TRI_ASSERT(_queryResultPos == block->size());
         engine->_itemBlockManager.returnBlock(std::move(block));
         _queryResults.pop_front();
         _queryResultPos = 0;

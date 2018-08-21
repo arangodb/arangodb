@@ -1126,7 +1126,6 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-
   traceGetSomeBegin(atMost);
 
   if (_lastError.fail()) {
@@ -1177,6 +1176,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  traceGetSomeEnd(nullptr, ExecutionState::WAITING);
   return {ExecutionState::WAITING, nullptr};
 
   // cppcheck-suppress style

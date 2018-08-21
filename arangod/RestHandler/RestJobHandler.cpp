@@ -77,7 +77,7 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it form the manager
+  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it from the manager
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -248,12 +248,12 @@ uint32_t RestJobHandler::forwardingTarget() {
   if (type != rest::RequestType::GET &&
       type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
-    return false;
+    return 0;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return false;
+    return 0;
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);

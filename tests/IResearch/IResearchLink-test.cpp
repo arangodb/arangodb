@@ -71,7 +71,7 @@ struct IResearchLinkSetup {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
-  IResearchLinkSetup(): server(nullptr, nullptr) {
+  IResearchLinkSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -84,22 +84,22 @@ struct IResearchLinkSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::ShardingFeature(&server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::FlushFeature(server), false); // do not start the thread
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -119,13 +119,10 @@ struct IResearchLinkSetup {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    testFilesystemPath = (
-      (irs::utf8_path()/=
-      TRI_GetTempPath())/=
-      (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
-      ).utf8();
+
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature->directory();
 
     long systemError;
     std::string systemErrorStr;

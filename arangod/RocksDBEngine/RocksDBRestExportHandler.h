@@ -40,7 +40,6 @@ class RocksDBRestExportHandler : public RestCursorHandler {
 
  public:
   RestStatus execute() override;
-  RestStatus continueExecute() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

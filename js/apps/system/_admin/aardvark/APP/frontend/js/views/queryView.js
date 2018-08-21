@@ -73,6 +73,7 @@
     events: {
       'click #executeQuery': 'executeQuery',
       'click #explainQuery': 'explainQuery',
+      'click #profileQuery': 'profileQuery',
       'click #debugQuery': 'debugDownloadDialog',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
@@ -296,7 +297,7 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'importQuery', 'exportQuery'
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -505,16 +506,31 @@
       }
     },
 
-    explainQuery: function () {
+    profileQuery: function () {
+      this.explainQuery(true);
+    },
+
+    explainQuery: function (profile) {
+      if (profile !== true) {
+        profile = false;
+      } else {
+        profile = true;
+      }
+
       if (this.verifyQueryAndParams()) {
         return;
       }
 
       this.lastSentQueryString = this.aqlEditor.getValue();
 
+      var type = 'Explain';
+      if (profile) {
+        type = 'Profile';
+      }
+
       this.$(this.outputDiv).prepend(this.outputTemplate.render({
         counter: this.outputCounter,
-        type: 'Explain'
+        type: type
       }));
 
       var counter = this.outputCounter;
@@ -532,7 +548,7 @@
         bindParam: this.bindParamTableObj
       };
 
-      this.fillExplain(outputEditor, counter);
+      this.fillExplain(outputEditor, counter, profile);
       this.outputCounter++;
     },
 
@@ -544,7 +560,16 @@
         window.modalView.createReadOnlyEntry(
           'debug-download-package-disclaimer',
           'Disclaimer',
-          'This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include collection names and created indexes, including attribute names and bind parameters. All string values will be obfuscated in a not-reversable way. If the below check box is not checked this package will not include any data. If the below check box is checked it will include a sample data-set again obfuscating all string values, all number values are not obfuscated. In order to check if any sensitive data is shared open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before. Including this package in bug reports will lower the amout of questioning back and forth until the issue is reproduced.',
+          '<p>This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include:</p>' +
+            '<ul>' +
+            '<li>collection names</li>' +
+            '<li>collection indexes</li>' +
+            '<li>attribute names</li>' +
+            '<li>bind parameters</li>' +
+            '</ul>' +
+            '<p>Additionally, samples of your data will be included with all <b>string values obfuscated</b> in a non-reversible way if below checkbox is ticked.</p>' +
+            '<p>If disabled, this package will not include any data.</p>' +
+            '<p>Please open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before uploading. Including this package in bug reports will lower the amount of questioning back and forth to reproduce the issue on our side and is much appreciated.</p>',
           undefined,
           false,
           false
@@ -555,7 +580,7 @@
           'debug-download-package-examples',
           'Include obfuscated examples',
           'includeExamples',
-          'Includes an example set of documents, obfuscating all String values inside the data. This helps the Team in many ways as many issues are related to the document structure / format and the indexes defined on them.',
+          'Includes an example set of documents, obfuscating all string values inside the data. This helps the ArangoDB Team as many issues are related to the document structure / format and the indexes defined on them.',
           true
         )
       );
@@ -592,9 +617,15 @@
       }
     },
 
-    fillExplain: function (outputEditor, counter) {
+    fillExplain: function (outputEditor, counter, profile) {
       var self = this;
-      var queryData = this.readQueryData();
+      var queryData;
+
+      if (profile) {
+        queryData = this.readQueryData(null, null, true);
+      } else {
+        queryData = this.readQueryData();
+      }
 
       if (queryData === 'false') {
         return;
@@ -611,16 +642,27 @@
           $('#outputEditorWrapper' + counter + ' .switchAce').show();
         };
 
+        var url;
+        if (profile) {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/query/profile');
+        } else {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/query/explain');
+        }
+
         $.ajax({
           type: 'POST',
-          url: arangoHelper.databaseUrl('/_admin/aardvark/query/explain/'),
+          url: url,
           data: queryData,
           contentType: 'application/json',
           processData: false,
           success: function (data) {
             if (data.msg && data.msg.errorMessage) {
               self.removeOutputEditor(counter);
-              arangoHelper.arangoError('Explain', data.msg);
+              if (profile) {
+                arangoHelper.arangoError('Profile', data.msg);
+              } else {
+                arangoHelper.arangoError('Explain', data.msg);
+              }
             } else {
               // cache explain results
               self.cachedQueries[counter] = data;
@@ -639,9 +681,17 @@
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError('Explain', temp.errorMessage);
+              if (profile) {
+                arangoHelper.arangoError('Profile', temp.errorMessage);
+              } else {
+                arangoHelper.arangoError('Explain', temp.errorMessage);
+              }
             } catch (e) {
-              arangoHelper.arangoError('Explain', 'ERROR');
+              if (profile) {
+                arangoHelper.arangoError('Profile', 'ERROR');
+              } else {
+                arangoHelper.arangoError('Explain', 'ERROR');
+              }
             }
             self.handleResult(counter);
             self.removeOutputEditor(counter);
@@ -1378,6 +1428,7 @@
       this.queryPreview.getSession().setMode('ace/mode/aql');
       this.queryPreview.setReadOnly(true);
       this.queryPreview.setFontSize('13px');
+      this.queryPreview.setShowPrintMargin(false);
 
       // auto focus this editor
       $('#aqlEditor .ace_text-input').focus();
@@ -1692,11 +1743,13 @@
       }
     },
 
-    readQueryData: function (selected, forExecute) {
+    readQueryData: function (selected, forExecute, forProfile) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
-      var data = {
-        id: 'currentFrontendQuery'
-      };
+      var data = {};
+
+      if (!forProfile) {
+        data.id = 'currentFrontendQuery';
+      }
 
       if (selected) {
         data.query = this.aqlEditor.getSelectedText();
@@ -2079,7 +2132,11 @@
         }
 
         if (data.msg) {
-          $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          if (data.extra.profile) {
+            $('#outputEditorWrapper' + counter + ' .toolbarType').html('Profile');
+          } else {
+            $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          }
           outputEditor.setValue(data.msg, 1);
         }
 
@@ -2748,6 +2805,9 @@
           if (originCallback) {
             originCallback();
           }
+        },
+        error: function (data, resp) {
+          arangoHelper.arangoError('User Queries', resp.responseText);
         }
       });
     },
@@ -2767,7 +2827,7 @@
             // if nested array or object found, do not offer csv download
             try {
               tmp = JSON.parse(entry);
-              // if parse succes -> arr or obj found
+              // if parse success -> arr or obj found
               if (typeof tmp === 'object') {
                 status = false;
               }

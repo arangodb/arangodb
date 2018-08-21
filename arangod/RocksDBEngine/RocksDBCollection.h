@@ -127,6 +127,10 @@ class RocksDBCollection final : public PhysicalCollection {
   LocalDocumentId lookupKey(transaction::Methods* trx,
                             velocypack::Slice const& key) const override;
 
+  bool lookupRevision(transaction::Methods* trx,
+                      velocypack::Slice const& key,
+                      TRI_voc_rid_t& revisionId) const;
+
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
 
@@ -279,8 +283,8 @@ inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
   return rv;
 }
 
-inline RocksDBCollection* toRocksDBCollection(LogicalCollection* logical) {
-  auto phys = logical->getPhysical();
+inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
+  auto phys = logical.getPhysical();
   TRI_ASSERT(phys != nullptr);
   return toRocksDBCollection(phys);
 }

@@ -77,3 +77,5 @@ and the representation of `Relation` in collection _relations_:
 }
 ...
 ```
+
+**Note**: Since arangodb-spring-data 3.0.0 the annotations `@From` and `@To` also work on non-collection/non-array fields. If multiple edges are linked with the entity, it is not guaranteed that the same edge is returned every time. Use at your own risk.

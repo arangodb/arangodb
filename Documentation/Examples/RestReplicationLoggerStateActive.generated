@@ -1,20 +1,21 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-state
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-state</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"13437"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"13437"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">4498</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-07-11T09:51:53Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"104479"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"104479"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35178</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-21T10:22:52Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
     <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.devel"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"265613711104796"</span> 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"18264673549088"</span>, 
+    <span class="hljs-string">"engine"</span> : <span class="hljs-string">"mmfiles"</span> 
   }, 
   <span class="hljs-string">"clients"</span> : [ ] 
 }

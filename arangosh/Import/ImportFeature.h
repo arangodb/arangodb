@@ -28,18 +28,20 @@
 #include "Shell/ClientFeature.h"
 
 namespace arangodb {
+
 namespace httpclient {
+
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
+
 }
 
 class ImportFeature final : public application_features::ApplicationFeature,
                             public ArangoClientHelper {
  public:
-  ImportFeature(application_features::ApplicationServer* server, int* result);
+  ImportFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
@@ -73,6 +75,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   int* _result;
   bool _latencyStats;
 };
+
 }
 
 #endif

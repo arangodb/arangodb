@@ -1,27 +1,27 @@
-shell> curl --dump - http://localhost:8529/hello/world
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/hello/world</span>
 
-HTTP/1.1 200 OK
+HTTP/1.1 undefined
 content-type: text/plain
 x-content-type-options: nosniff
 
 "Match No 1"
-shell> curl --dump - http://localhost:8529/hello/emil
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/hello/emil</span>
 
-HTTP/1.1 200 OK
+HTTP/1.1 undefined
 content-type: text/plain
 x-content-type-options: nosniff
 
 "Match No 2"
-shell> curl --dump - http://localhost:8529/your/world
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/your/world</span>
 
-HTTP/1.1 200 OK
+HTTP/1.1 undefined
 content-type: text/plain
 x-content-type-options: nosniff
 
 "Match No 3"
-shell> curl --dump - http://localhost:8529/hi/you
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/hi/you</span>
 
-HTTP/1.1 200 OK
+HTTP/1.1 undefined
 content-type: text/plain
 x-content-type-options: nosniff
 

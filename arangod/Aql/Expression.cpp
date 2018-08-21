@@ -91,7 +91,6 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _ast(ast),
       _node(node),
       _type(UNPROCESSED),
-      _canThrow(true),
       _canRunOnDBServer(false),
       _isDeterministic(false),
       _willUseV8(false),
@@ -329,7 +328,6 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 }
 
 void Expression::initConstantExpression() {
-  _canThrow = false;
   _canRunOnDBServer = true;
   _isDeterministic = true;
   _willUseV8 = false;
@@ -339,7 +337,6 @@ void Expression::initConstantExpression() {
 }
 
 void Expression::initSimpleExpression() {
-  _canThrow = _node->canThrow();
   _canRunOnDBServer = _node->canRunOnDBServer();
   _isDeterministic = _node->isDeterministic();
   _willUseV8 = _node->willUseV8();
@@ -971,7 +968,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
   mustDestroy = false;
 
   {
-
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;

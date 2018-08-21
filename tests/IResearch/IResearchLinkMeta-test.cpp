@@ -98,7 +98,7 @@ struct IResearchLinkMetaSetup {
   std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
 
-  IResearchLinkMetaSetup(): server(nullptr, nullptr) {
+  IResearchLinkMetaSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -111,29 +111,29 @@ struct IResearchLinkMetaSetup {
       features.emplace(name, std::make_pair(ftr, start));
     };
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
 
 
     // setup required application features
-    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), true);
-    buildFeatureEntry(new arangodb::DatabaseFeature(&server), false);
-    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), true);
+    buildFeatureEntry(new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
 
     // We need this feature to be added now in order to create the system database
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
 
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
-      buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -156,7 +156,7 @@ struct IResearchLinkMetaSetup {
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
 
-    analyzers->emplace("empty", "empty", "en"); // cache the 'empty' analyzer
+    analyzers->emplace("empty", "empty", "en", irs::flags{ TestAttribute::type() }); // cache the 'empty' analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -206,12 +206,12 @@ SECTION("test_defaults") {
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
-  CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(meta._analyzers.begin()))->features())); // FIXME remove increment, term_attribute
+  CHECK((irs::flags({irs::norm::type(), irs::frequency::type() }) == (*(meta._analyzers.begin()))->features()));
   CHECK(false == !meta._analyzers.begin()->get());
 }
 
 SECTION("test_inheritDefaults") {
-  arangodb::iresearch::IResearchAnalyzerFeature analyzers(nullptr);
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(s.server);
   arangodb::iresearch::IResearchLinkMeta defaults;
   arangodb::iresearch::IResearchLinkMeta meta;
   std::unordered_set<std::string> expectedFields = { "abc" };
@@ -248,7 +248,7 @@ SECTION("test_inheritDefaults") {
         CHECK(1U == actual._analyzers.size());
         CHECK((*(actual._analyzers.begin())));
         CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
-        CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(actual._analyzers.begin()))->features())); // FIXME remove increment, term_attribute
+        CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(actual._analyzers.begin()))->features()));
         CHECK(false == !actual._analyzers.begin()->get());
       }
     }
@@ -263,7 +263,7 @@ SECTION("test_inheritDefaults") {
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("empty" == (*(meta._analyzers.begin()))->name()));
-  CHECK((irs::flags({TestAttribute::type()}) == (*(meta._analyzers.begin()))->features()));
+  CHECK((irs::flags() == (*(meta._analyzers.begin()))->features()));
   CHECK(false == !meta._analyzers.begin()->get());
 }
 
@@ -280,7 +280,7 @@ SECTION("test_readDefaults") {
   CHECK(1U == meta._analyzers.size());
   CHECK((*(meta._analyzers.begin())));
   CHECK(("identity" == (*(meta._analyzers.begin()))->name()));
-  CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(meta._analyzers.begin()))->features())); // FIXME remove increment, term_attribute
+  CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(meta._analyzers.begin()))->features()));
 
   CHECK(false == !meta._analyzers.begin()->get());
 }
@@ -330,7 +330,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(1U == actual._analyzers.size());
           CHECK((*(actual._analyzers.begin())));
           CHECK(("identity" == (*(actual._analyzers.begin()))->name()));
-          CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(actual._analyzers.begin()))->features())); // FIXME remove increment, term_attribute
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*(actual._analyzers.begin()))->features()));
           CHECK(false == !actual._analyzers.begin()->get());
         } else if ("all" == fieldOverride.key()) {
           CHECK(2U == actual._fields.size());
@@ -358,7 +358,7 @@ SECTION("test_readCustomizedValues") {
           ++itr;
           CHECK((*itr));
           CHECK(("identity" == (*itr)->name()));
-          CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features())); // FIXME remove increment, term_attribute
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
           CHECK(false == !itr->get());
         } else if ("none" == fieldOverride.key()) {
           CHECK(true == actual._fields.empty()); // not inherited
@@ -373,7 +373,7 @@ SECTION("test_readCustomizedValues") {
           ++itr;
           CHECK((*itr));
           CHECK(("identity" == (*itr)->name()));
-          CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features())); // FIXME remove increment, term_attribute
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
           CHECK(false == !itr->get());
         }
       }
@@ -392,7 +392,7 @@ SECTION("test_readCustomizedValues") {
     ++itr;
     CHECK((*itr));
     CHECK(("identity" == (*itr)->name()));
-    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));  // FIXME remove increment, term_attribute
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == (*itr)->features()));
     CHECK(false == !itr->get());
   }
 }
@@ -426,7 +426,7 @@ SECTION("test_writeDefaults") {
 }
 
 SECTION("test_writeCustomizedValues") {
-  arangodb::iresearch::IResearchAnalyzerFeature analyzers(nullptr);
+  arangodb::iresearch::IResearchAnalyzerFeature analyzers(s.server);
   arangodb::iresearch::IResearchLinkMeta meta;
 
   analyzers.emplace("identity", "identity", "");

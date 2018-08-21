@@ -144,14 +144,14 @@ arangodb::LogicalDataSource::Type const& readType(
 ///        modifications and can be freed
 LogicalCollection::LogicalCollection(LogicalCollection const& other)
     : LogicalDataSource(other),
+      _version(other._version),
       _internalVersion(0),
-      _isAStub(other._isAStub),
       _type(other.type()),
       _status(other.status()),
+      _isAStub(other._isAStub),
       _isSmart(other.isSmart()),
       _isLocal(false),
       _waitForSync(other.waitForSync()),
-      _version(other._version),
       _allowUserKeys(other.allowUserKeys()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
@@ -194,18 +194,18 @@ LogicalCollection::LogicalCollection(
      ),
      Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)
    ),
+      _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
       _internalVersion(0),
-      _isAStub(isAStub),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
         info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN)
       ),
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
+      _isAStub(isAStub),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
-      _version(Helper::readNumericValue<uint32_t>(info, "version",
-                                                  currentVersion())),
+
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _keyOptions(nullptr),
       _keyGenerator(),
@@ -602,7 +602,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
                                              "statusString", "version",
-                                             "distributeShardsLike", "objectId"};
+                                             "distributeShardsLike", "objectId",
+                                             "indexes"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
 
@@ -877,8 +878,6 @@ void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  // We have not yet persisted this collection!
-  TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   auto path = engine->createCollection(vocbase(), id(), *this);
 
@@ -1033,12 +1032,8 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   std::string const revisionId = TRI_RidToString(physical->revision(&trx));
   uint64_t hash = 0;
 
-  ManagedDocumentResult mmdr;
-
-  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](LocalDocumentId const& token) {
-    if (collection->readDocument(&trx, token, mmdr)) {
-      VPackSlice const slice(mmdr.vpack());
-
+  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection](LocalDocumentId const& token) {
+    collection->readDocumentWithCallback(&trx, token, [&](LocalDocumentId const&, VPackSlice slice) {
       uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
 
       if (withRevisions) {
@@ -1070,7 +1065,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
       }
 
       hash ^= localHash;
-    }
+    });
     return true;
   });
 

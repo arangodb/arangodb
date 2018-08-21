@@ -67,20 +67,6 @@ RestStatus RestSimpleQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
-
-RestStatus RestSimpleQueryHandler::continueExecute() {
-  // extract the sub-request type
-  rest::RequestType const type = _request->requestType();
-
-  if (type == rest::RequestType::PUT) {
-    return processQuery();
-  }
-
-  // NOT YET IMPLEMENTED
-  TRI_ASSERT(false);
-  return RestStatus::DONE;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSA_put_api_simple_all
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,10 +154,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  if (registerQueryOrCursor(data.slice())) {
-    return processQuery();
-  }
-  return RestStatus::DONE;
+  return registerQueryOrCursor(data.slice());
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -235,15 +218,9 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.openObject();  // bindVars
   data.add("@collection", VPackValue(collectionName));
   data.close();  // bindVars
-
   data.close();
 
-  if (registerQueryOrCursor(data.slice())) {
-    // We do not support streaming here!
-    // now run the actual query and handle the result
-    return processQuery();
-  }
-  return RestStatus::DONE;
+  return registerQueryOrCursor(data.slice());
 }
 
 static void buildExampleQuery(VPackBuilder& result,
@@ -334,8 +311,5 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  if (registerQueryOrCursor(data.slice())) {
-    return processQuery();
-  }
-  return RestStatus::DONE;
+  return registerQueryOrCursor(data.slice());
 }

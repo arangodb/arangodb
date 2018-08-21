@@ -772,7 +772,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // prepare transaction for parallel read access
   RocksDBTransactionState::toState(trx)->prepareForParallelReads();
 
-  auto rocksColl = toRocksDBCollection(&_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
 
@@ -851,8 +851,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& lower,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto rocksColl = toRocksDBCollection(&_collection);
-  ManagedDocumentResult mmdr;
+  auto rocksColl = toRocksDBCollection(_collection);
   bool needsInsert = false;
   std::string previous = "";
   VPackBuilder builder;
@@ -944,17 +943,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue, key);
-      if (rocksColl->readDocument(trx, docId, mmdr)) {
+      if (!rocksColl->readDocumentWithCallback(trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
         builder.add(VPackValue(docId.id()));
-
-        VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =
             _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
                          : transaction::helpers::extractFromFromDocument(doc);
         TRI_ASSERT(toFrom.isString());
         builder.add(toFrom);
+      })) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      } else {
         // Data Inconsistency.
         // We have a revision id without a document...
         TRI_ASSERT(false);
@@ -1084,7 +1081,14 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   return true;
 }
 
+void RocksDBEdgeIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
+  RocksDBIndex::afterTruncate();
+}
+
 void RocksDBEdgeIndex::recalculateEstimates() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
