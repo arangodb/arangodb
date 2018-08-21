@@ -62,14 +62,14 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager()
-    : _globalVersion(0), _internalVersion(0), _queryRegistry(nullptr) {}
+    : _globalVersion(1), _internalVersion(0), _queryRegistry(nullptr) {}
 #else
 auth::UserManager::UserManager()
-    : _globalVersion(0), _internalVersion(0),
+    : _globalVersion(1), _internalVersion(0),
       _queryRegistry(nullptr), _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(std::unique_ptr<auth::Handler> handler)
-    : _globalVersion(0),
+    : _globalVersion(1),
       _internalVersion(0),
       _queryRegistry(nullptr),
       _authHandler(std::move(handler)) {}
