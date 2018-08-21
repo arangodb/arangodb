@@ -23,8 +23,8 @@ In plain terms this means a user can for example:
 
 ### The IResearch Library
 
-IResearch s a cross-platform open source indexing and searching engine written in C++,
-optimized for speed and memory footprint, with source available from:
+IResearch is a cross-platform open source indexing and searching engine written
+in C++, optimized for speed and memory footprint, with source available from:
 https://github.com/iresearch-toolkit/iresearch
 
 IResearch is a framework for indexing, searching and sorting of data. The indexing stage can
