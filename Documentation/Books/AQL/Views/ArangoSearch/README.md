@@ -82,7 +82,7 @@ By default, context contains `Identity` analyzer.
 `BOOST(search-expression, boost)`
 
 Override boost in a context of **search-expression** with a specified value,
-making it available for scorer funtions.
+making it available for scorer functions.
 
 - *search-expression* - any valid search expression
 - *boost* - numeric boost value
@@ -176,49 +176,58 @@ are satisfied.
 
 to match documents which have a 'name' attribute
 
-    FOR doc IN someView SEARCH EXISTS(doc.name)
+    FOR doc IN someView
+      SEARCH EXISTS(doc.name)
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH EXISTS(doc['name'])
+    FOR doc IN someView
+      SEARCH EXISTS(doc['name'])
       RETURN doc
 
 to match documents where 'body' was analyzed via the 'text_en' analyzer
 
-    FOR doc IN someView SEARCH EXISTS(doc.body, 'analyzer', 'text_en')
+    FOR doc IN someView
+      SEARCH EXISTS(doc.body, 'analyzer', 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH EXISTS(doc['body'], 'analyzer', 'text_en')
+    FOR doc IN someView
+      SEARCH EXISTS(doc['body'], 'analyzer', 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH ANALYZER(EXISTS(doc['body'], 'analyzer'), 'text_en')
+    FOR doc IN someView
+      SEARCH ANALYZER(EXISTS(doc['body'], 'analyzer'), 'text_en')
       RETURN doc
 
 to match documents which have an 'age' attribute of type number
 
-    FOR doc IN someView SEARCH EXISTS(doc.age, 'numeric')
+    FOR doc IN someView
+      SEARCH EXISTS(doc.age, 'numeric')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH EXISTS(doc['age'], 'numeric')
+    FOR doc IN someView
+      SEARCH EXISTS(doc['age'], 'numeric')
       RETURN doc
 
 to match documents where 'description' contains word 'quick' or word
 'brown' and has been analyzed with 'text_en' analyzer
 
-    FOR doc IN someView SEARCH ANALYZER(doc.description == 'quick' OR doc.description == 'brown', 'text_en')
+    FOR doc IN someView
+      SEARCH ANALYZER(doc.description == 'quick' OR doc.description == 'brown', 'text_en')
       RETURN doc
 
 to match documents where 'description' contains at least 2 of 3 words 'quick', 
 'brown', 'fox' and has been analyzed with 'text_en' analyzer
 
-    FOR doc IN someView SEARCH ANALYZER(
+    FOR doc IN someView
+      SEARCH ANALYZER(
         MIN_MATCH(doc.description == 'quick', doc.description == 'brown', doc.description == 'fox', 2),
         'text_en'
       )
@@ -226,44 +235,52 @@ to match documents where 'description' contains at least 2 of 3 words 'quick',
 
 to match documents where 'description' contains a phrase 'quick brown'
 
-    FOR doc IN someView SEARCH PHRASE(doc.description, [ 'quick brown' ], 'text_en')
+    FOR doc IN someView
+      SEARCH PHRASE(doc.description, [ 'quick brown' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH PHRASE(doc['description'], [ 'quick brown' ], 'text_en')
+    FOR doc IN someView
+      SEARCH PHRASE(doc['description'], [ 'quick brown' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH ANALYZER(PHRASE(doc['description'], [ 'quick brown' ]), 'text_en')
+    FOR doc IN someView
+      SEARCH ANALYZER(PHRASE(doc['description'], [ 'quick brown' ]), 'text_en')
       RETURN doc
 
 to match documents where 'body' contains the phrase consisting of a sequence
 like this:
 'quick' * 'fox jumps' (where the asterisk can be any single word)
 
-    FOR doc IN someView SEARCH PHRASE(doc.body, [ 'quick', 1, 'fox jumps' ], 'text_en')
+    FOR doc IN someView
+      SEARCH PHRASE(doc.body, [ 'quick', 1, 'fox jumps' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ], 'text_en')
+    FOR doc IN someView
+      SEARCH PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ], 'text_en')
       RETURN doc
 
 or
 
-    FOR doc IN someView SEARCH ANALYZER(PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ]), 'text_en')
+    FOR doc IN someView
+      SEARCH ANALYZER(PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ]), 'text_en')
       RETURN doc
 
 to match documents where 'story' starts with 'In the beginning'
 
-    FOR doc IN someView SEARCH STARTS_WITH(doc.story, 'In the beginning')
+    FOR doc IN someView
+      SEARCH STARTS_WITH(doc.story, 'In the beginning')
       RETURN DOC
 
 or
 
-    FOR doc IN someView SEARCH STARTS_WITH(doc['story'], 'In the beginning')
+    FOR doc IN someView
+      SEARCH STARTS_WITH(doc['story'], 'In the beginning')
       RETURN DOC
 
 to watch the analyzer doing its work
@@ -272,7 +289,8 @@ to watch the analyzer doing its work
 
 to match documents where 'description' best matches 'a quick brown fox'
 
-    FOR doc IN someView SEARCH ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'text_en')
+    FOR doc IN someView
+      SEARCH ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'text_en')
       RETURN doc
 
 ArangoSearch sort
@@ -283,7 +301,7 @@ based on the creation-time search conditions and zero or more sorting functions.
 The sorting functions are meant to be user-defined.
 
 Note: Similar to other sorting functions on regular collections the first
-  argument to any sorting function is _always_ either the document emmited by 
+  argument to any sorting function is _always_ either the document emitted by
   the `FOR` statement, or some sub-attribute of it. 
 
 The sorting functions are meant to be user-defined. The following functions are already built in:
@@ -388,7 +406,8 @@ We now want to search for documents where the attribute `body` starts with "This
 
 A simple AQL query executing this prefix search:
 
-    FOR doc IN someView SEARCH STARTS_WITH(doc.body, 'ThisIs')
+    FOR doc IN someView
+      SEARCH STARTS_WITH(doc.body, 'ThisIs')
       RETURN doc
 
 It will find the documents with the ids `1`, `2`, `3`, `4`, but not `5`.
