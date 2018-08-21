@@ -80,7 +80,7 @@ struct IResearchViewMeta {
     Type type() const noexcept;
 
    private:
-    friend class IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
+    friend struct IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
     irs::index_writer::consolidation_policy_t _policy;
     size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
     float _threshold; // consolidation policy threshold
