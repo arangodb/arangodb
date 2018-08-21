@@ -31,6 +31,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Utils/DatabaseGuard.h"
+#include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -112,26 +113,52 @@ VPackBuilder compareIndexes(
     if (plan.isArray()) {
       for (auto const& pindex : VPackArrayIterator(plan)) {
 
-        // Skip unique on _key
+        // Skip primary and edge indexes
         auto const& ptype   = pindex.get(TYPE).copyString();
         if (ptype == PRIMARY || ptype == EDGE) { 
           continue;
         }
-        indis.emplace(shname + "/" + pindex.get(ID).copyString());
+        std::string planIdWithColl = shname + "/" + pindex.get(ID).copyString();
+        indis.emplace(planIdWithColl);
       
+        // See, if we already have an index with the id given in the Plan:
         bool found = false;
         if (local.isArray()) {
           for (auto const& lindex : VPackArrayIterator(local)) {
 
-            // Skip unique and edge indexes
+            // Skip primary and edge indexes
             auto const& ltype   = lindex.get(TYPE).copyString();
             if (ltype == PRIMARY || ltype == EDGE) { 
               continue;
             }
 
-            // Already have
-            if (VPackNormalizedCompare::equals(pindex.get(ID), lindex.get(ID))) {
+            VPackSlice localId = lindex.get(ID);
+            TRI_ASSERT(localId.isString());
+            // The local ID has the form <collectionName>/<ID>, to compare,
+            // we need to extract the local ID:
+            std::string localIdS = localId.copyString();
+            auto pos = localIdS.find('/');
+            if (pos != std::string::npos) {
+              localIdS = localIdS.substr(pos+1);
+            }
+
+            VPackSlice planId = pindex.get(ID);
+            TRI_ASSERT(planId.isString());
+            std::string planIdS = planId.copyString();
+            if (localIdS == planIdS) {
+              // Already have this id, so abort search:
               found = true;
+              // We should be done now, this index already exists, and since
+              // one cannot legally change the properties of an index, we
+              // should be fine. However, for robustness sake, we compare,
+              // if the local index found actually has the right properties,
+              // if not, we schedule a dropIndex action:
+              if (!arangodb::Index::Compare(pindex, lindex)) {
+                // To achieve this, we remove the long version of the ID
+                // from the indis set. This way, the local index will be
+                // dropped further down in handleLocalShard:
+                indis.erase(planIdWithColl);
+              }
               break;
             }
           }
