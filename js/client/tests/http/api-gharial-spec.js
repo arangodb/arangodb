@@ -313,6 +313,128 @@ describe('_api/gharial', () => {
     expect(db._collection(vName)).to.not.be.null;
   });
 
+  it('should also remove an edge in a second graph if connection in first graph is removed', () => {
+    // G1 = X ---- e ----> Y
+    // G2 = A --^               // A points to e in G1
+    //      A ---- b ----> B    // A points to B in G2
+
+    // TODO tests failing because of no proper cleanup (angeblich)
+    var graph = require("@arangodb/general-graph");
+    // G1
+    var g1 = graph._create("firstGraph",
+      graph._edgeDefinitions(
+        graph._relation("firstEdge", ["firstFrom"], ["firstTo"])
+      )
+    );
+    var vertexFrom1 = db["firstFrom"].save({});
+    var vertexIDFrom1 = vertexFrom1._id;
+    var vertexTo1 = db["firstTo"].save({});
+    var vertexIDTo1 = vertexTo1._id;
+
+    var edge1 = db["firstEdge"].save(vertexIDTo1, vertexIDFrom1, {_key: "1"});
+    var edgeID1 = edge1._id;
+
+    // G2
+    var g2 = graph._create("secondGraph",
+      graph._edgeDefinitions(
+        graph._relation("secondEdge", ["secondFrom"], ["firstEdge"])
+      )
+    );
+    var vertexFrom2 = db["secondFrom"].save({});
+    var vertexIDFrom2 = vertexFrom2._id;
+
+    // create edge from G2 to G1 using HTTP API
+    const edgeDef = {
+      _from: vertexIDFrom2,
+      _to: edgeID1
+    };
+
+    // create edge pointing from g2 to g1 (edge)
+    let req = request.post(url + '/' + 'secondGraph' + '/edge/secondEdge', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(202);
+    let toBeRemovedEdgeID = req.json.edge._id;
+
+    // now delete the target edge of g1
+    let req2 = request.delete(url + '/' + 'firstGraph' + '/edge/' + edgeID1);
+    expect(req2.statusCode).to.equal(202);
+
+    var deleted = false;
+    try {
+      let deletedEdge = db._document(toBeRemovedEdgeID);
+    } catch (e) {
+      expect(e.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      deleted = true;
+    }
+
+    graph._drop("firstGraph", true);
+    graph._drop("secondGraph", true);
+
+    expect(deleted).to.equal(true);
+  });
+
+  it('should also remove an edge in a second graph if connected vertex in first graph is removed', () => {
+    // G1 = X ---- e ----> Y
+    // G2 = A -------------^    // A points to Y in G1
+    //      A ---- b ----> B    // A points to B in G2
+
+    // TODO tests failing because of no proper cleanup (angeblich)
+    var graph = require("@arangodb/general-graph");
+    // G1
+    var g1 = graph._create("firstGraph",
+      graph._edgeDefinitions(
+        graph._relation("firstEdge", ["firstFrom"], ["firstTo"])
+      )
+    );
+    var vertexFrom1 = db["firstFrom"].save({});
+    var vertexIDFrom1 = vertexFrom1._id;
+    var vertexTo1 = db["firstTo"].save({});
+    var vertexIDTo1 = vertexTo1._id;
+
+    var edge1 = db["firstEdge"].save(vertexIDTo1, vertexIDFrom1, {_key: "1"});
+    var edgeID1 = edge1._id;
+
+    // G2
+    var g2 = graph._create("secondGraph",
+      graph._edgeDefinitions(
+        graph._relation("secondEdge", ["secondFrom"], ["firstTo"])
+      )
+    );
+    var vertexFrom2 = db["secondFrom"].save({});
+    var vertexIDFrom2 = vertexFrom2._id;
+
+    // create edge from G2 to G1 using HTTP API
+    const edgeDef = {
+      _from: vertexIDFrom2,
+      _to: vertexIDTo1
+    };
+
+    // create edge pointing from g2 to g1 (edge)
+    let req = request.post(url + '/' + 'secondGraph' + '/edge/secondEdge', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(202);
+    let toBeRemovedEdgeID = req.json.edge._id;
+
+    // now delete the target edge of g1 (a vertex)
+    let req2 = request.delete(url + '/' + 'firstGraph' + '/vertex/' + vertexIDTo1);
+    expect(req2.statusCode).to.equal(202);
+
+    var deleted = false;
+    try {
+      let deletedEdge = db._document(toBeRemovedEdgeID);
+    } catch (e) {
+      expect(e.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      deleted = true;
+    }
+
+    graph._drop("firstGraph", true);
+    graph._drop("secondGraph", true);
+
+    expect(deleted).to.equal(true);
+  });
+
   it('should check if the if-match header is working - positive', () => {
     const examples = require('@arangodb/graph-examples/example-graph');
     const exampleGraphName = 'knows_graph';
