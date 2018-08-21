@@ -106,6 +106,14 @@ class IRESEARCH_API directory_reader final
     impl_.reset();
   }
 
+  bool operator==(const directory_reader& rhs) const NOEXCEPT {
+    return impl_ == rhs.impl_;
+  }
+
+  bool operator!=(const directory_reader& rhs) const NOEXCEPT {
+    return !(*this == rhs);
+  }
+
  private:
   typedef std::shared_ptr<composite_reader> impl_ptr;
 
