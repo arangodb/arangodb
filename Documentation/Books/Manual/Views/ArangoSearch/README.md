@@ -43,3 +43,12 @@ To get more familiar with ArangoSearch usage, you may start with [Getting Starte
  [Detailed Overview](DetailedOverview.md),
  [Analyzers](Analyzers.md)
  and [Scorers](Scorers.md) topics.
+    currently supported types are:
+    - *bytes*:
+      Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)
+    - *bytes_accum*:
+      Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+    - *count*:
+      Consolidate IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+    - *fill*:
+      Consolidate IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
