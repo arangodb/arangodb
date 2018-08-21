@@ -30,8 +30,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
-#include "Utils/DatabaseGuard.h"
 #include "Indexes/Index.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -118,7 +118,10 @@ VPackBuilder compareIndexes(
         if (ptype == PRIMARY || ptype == EDGE) { 
           continue;
         }
-        std::string planIdWithColl = shname + "/" + pindex.get(ID).copyString();
+        VPackSlice planId = pindex.get(ID);
+        TRI_ASSERT(planId.isString());
+        std::string planIdS = planId.copyString();
+        std::string planIdWithColl = shname + "/" + planIdS;
         indis.emplace(planIdWithColl);
       
         // See, if we already have an index with the id given in the Plan:
@@ -142,9 +145,6 @@ VPackBuilder compareIndexes(
               localIdS = localIdS.substr(pos+1);
             }
 
-            VPackSlice planId = pindex.get(ID);
-            TRI_ASSERT(planId.isString());
-            std::string planIdS = planId.copyString();
             if (localIdS == planIdS) {
               // Already have this id, so abort search:
               found = true;
