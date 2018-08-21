@@ -4062,7 +4062,7 @@ yyreduce:
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
         auto const& resolver = parser->query()->resolver();
-        node = ast->createNodeDataSource(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::READ, true, false);
+        node = ast->createNodeDataSource(resolver, (yyvsp[0].strval).value, (yyvsp[0].strval).length, arangodb::AccessMode::Type::READ);
       }
 
       TRI_ASSERT(node != nullptr);

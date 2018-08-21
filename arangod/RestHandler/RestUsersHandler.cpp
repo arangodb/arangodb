@@ -71,12 +71,12 @@ RestStatus RestUsersHandler::execute() {
 }
 
 bool RestUsersHandler::isAdminUser() const {
-  if (ExecContext::CURRENT != nullptr) {
+  if (!ExecContext::isAuthEnabled()) {
+    return true;
+  } else if (ExecContext::CURRENT != nullptr) {
     return ExecContext::CURRENT->isAdminUser();
   }
-  AuthenticationFeature* auth = AuthenticationFeature::instance();
-  // if authentication is deactivated authorize anyway
-  return auth != nullptr && !auth->isActive();
+  return false;
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {

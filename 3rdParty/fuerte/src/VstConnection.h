@@ -72,10 +72,13 @@ class VstConnection final : public Connection {
   /// Activate the connection.
   void startConnection() override final;
   
-  /// called on shutdown, always call superclass
-  void shutdownConnection(const ErrorCondition) override;
+  /// @brief cancel the connection, unusable afterwards
+  void cancel() override final;
 
  private:
+  
+  /// shutdown connection, cancel async operations
+  void shutdownConnection(const ErrorCondition);
   
   void restartConnection(const ErrorCondition);
   
@@ -151,7 +154,8 @@ class VstConnection final : public Connection {
   static_assert((WRITE_LOOP_ACTIVE & READ_LOOP_ACTIVE) == 0, "");
   
   /// elements to send out
-  boost::lockfree::queue<vst::RequestItem*> _writeQueue;
+  boost::lockfree::queue<vst::RequestItem*,
+    boost::lockfree::capacity<1024>> _writeQueue;
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst
