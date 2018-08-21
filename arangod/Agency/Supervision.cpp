@@ -559,13 +559,23 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 bool Supervision::earlyBird() const {
 
   std::vector<std::string> tpath {"Sync","ServerStates"};
-  std::vector<std::string> ppath {"Plan","DBServers"};
+  std::vector<std::string> pdbpath {"Plan","DBServers"};
+  std::vector<std::string> pcpath {"Plan","Coordinators"};
   
   VPackSlice serverStates;
   VPackSlice dbservers;
+  VPackSlice coordinators;
 
-  if (_snapshot.has(ppath)) {
-    dbservers = _snapshot(ppath).toBuilder().slice();
+  if (_snapshot.has(pdbpath)) {
+    dbservers = _snapshot(pdbpath).toBuilder().slice();
+  } else {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "No Plan/DBServers key in persistent store";
+    return false;
+  }
+
+  if (_snapshot.has(pcpath)) {
+    coordinators = _snapshot(pcpath).toBuilder().slice();
   } else {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "No Plan/DBServers key in persistent store";
@@ -582,6 +592,13 @@ bool Supervision::earlyBird() const {
 
   // every db server in plan accounted for in transient store?
   for (auto const& server : VPackObjectIterator(dbservers)) {
+    auto serverId = server.key.copyString();
+    if (!serverStates.hasKey(serverId)) {
+      return false;
+    }
+  }
+  // every db server in plan accounted for in transient store?
+  for (auto const& server : VPackObjectIterator(coordinators)) {
     auto serverId = server.key.copyString();
     if (!serverStates.hasKey(serverId)) {
       return false;
