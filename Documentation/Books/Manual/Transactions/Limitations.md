@@ -64,8 +64,7 @@ systems support. In cluster mode, single-document operations are also fully ACID
 Multi-document / multi-collection queries in a cluster are not ACID, which is
 equally the case with competing database systems. Transactions in a cluster
 will be supported in a future version of ArangoDB and make these operations
-fully ACID as well. Note that for non-sharded collections in a cluster, the
-transactional properties of a single server apply (fully ACID).
+fully ACID as well.
 
 
 With RocksDB storage engine
