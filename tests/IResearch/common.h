@@ -86,6 +86,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 
 uint64_t getCurrentPlanVersion();
 
+void setDatabasePath(arangod::DatabasePathFeature& feature);
+
 }
 }
 
