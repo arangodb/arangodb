@@ -123,7 +123,10 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 * [ArangoSearch Views](Views/ArangoSearch/README.md)
+  * [Getting Started](Views/ArangoSearch/GettingStarted.md)
+  * [Detailed Overview](Views/ArangoSearch/DetailedOverview.md)
   * [Analyzers](Views/ArangoSearch/Analyzers.md)
+  * [Scorers](Views/ArangoSearch/Scorers.md)
 
 ## ADVANCED TOPICS
 
