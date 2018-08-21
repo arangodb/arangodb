@@ -69,7 +69,6 @@ class Methods;
 namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
-struct QueryProfile;
 
 class ExecutionBlock {
  public:
@@ -79,54 +78,6 @@ class ExecutionBlock {
 
   ExecutionBlock(ExecutionBlock const&) = delete;
   ExecutionBlock operator=(ExecutionBlock const&) = delete;
-
-  /// @brief type of the block. only the blocks actually instantiated are
-  // needed, so e.g. ModificationBlock or ExecutionBlock are omitted.
-  enum class Type {
-    _UNDEFINED,
-    CALCULATION,
-    COUNT_COLLECT,
-    DISTINCT_COLLECT,
-    ENUMERATE_COLLECTION,
-    ENUMERATE_LIST,
-    FILTER,
-    HASHED_COLLECT,
-    INDEX,
-    LIMIT,
-    NO_RESULTS,
-    REMOTE,
-    RETURN,
-    SHORTEST_PATH,
-    SINGLETON,
-    SINGLEOPERATION,
-    SORT,
-    SORTED_COLLECT,
-    SORTING_GATHER,
-    SUBQUERY,
-    TRAVERSAL,
-    UNSORTING_GATHER,
-    REMOVE,
-    INSERT,
-    UPDATE,
-    REPLACE,
-    UPSERT,
-    SCATTER,
-    DISTRIBUTE,
-#ifdef USE_IRESEARCH
-    IRESEARCH_VIEW,
-    IRESEARCH_VIEW_ORDERED,
-    IRESEARCH_VIEW_UNORDERED,
-#endif
-  };
-  // omitted in this list are (because):
-  // WaitingExecutionBlockMock (mock)
-  // ExecutionBlockMock (mock)
-  // ModificationBlock (insert, update, etc.)
-  // BlockWithClients (scatter, distribute)
-  // IResearchViewBlockBase (IResearchView*)
-
-  static std::string typeToString(Type type);
-  static Type typeFromString(std::string const& type);
 
  public:
   /// @brief batch size value
@@ -186,7 +137,7 @@ class ExecutionBlock {
       size_t atMost);
 
   void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state) const;
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
  
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
@@ -212,8 +163,6 @@ class ExecutionBlock {
   RegisterId getNrInputRegisters() const;
 
   RegisterId getNrOutputRegisters() const;
-
-  virtual Type getType() const {return Type::_UNDEFINED;}
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager

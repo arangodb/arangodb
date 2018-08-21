@@ -235,7 +235,8 @@ SECTION("test_auth") {
     CHECK((vocbase.views().empty()));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -330,7 +331,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -447,7 +449,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -565,7 +568,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -695,7 +699,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -845,7 +850,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -950,7 +956,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -1052,7 +1059,8 @@ SECTION("test_auth") {
     };
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();

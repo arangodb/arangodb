@@ -52,17 +52,6 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief Send a request to the server and wait into a response it received.
   std::unique_ptr<Response> sendRequest(std::unique_ptr<Request> r);
 
-  /// @brief sed request synchronously, only save to use if the
-  virtual std::unique_ptr<Response> sendRequestSync(std::unique_ptr<Request> r) {
-    return sendRequest(std::move(r));
-  }
-  
-  // Send a request to the server and wait into a response it received.
-  /*std::unique_ptr<Response> sendRequest(Request const& r) {
-    std::unique_ptr<Request> copy(new Request(r));
-    return sendRequest(std::move(copy));
-  }*/
-
   // Send a request to the server and return immediately.
   // When a response is received or an error occurs, the corresponding
   // callbackis called. The callback is executed on a specific
@@ -70,29 +59,24 @@ class Connection : public std::enable_shared_from_this<Connection> {
   virtual MessageID sendRequest(std::unique_ptr<Request> r,
                                 RequestCallback cb) = 0;
 
-  // Send a request to the server and return immediately.
-  // When a response is received or an error occurs, the corresponding
-  // callback is called.
-  /*MessageID sendRequest(Request const& r, RequestCallback cb) {
-    std::unique_ptr<Request> copy(new Request(r));
-    return sendRequest(std::move(copy), cb);
-  }*/
 
   // Return the number of requests that have not yet finished.
   virtual std::size_t requestsLeft() const = 0;
   
   /// @brief connection state
   virtual State state() const = 0;
-
-  /// @brief Activate the connection.
-  virtual void startConnection() = 0;
-  virtual void shutdownConnection(const ErrorCondition) = 0;
+  
+  /// @brief cancel the connection, unusable afterwards
+  virtual void cancel() = 0;
   
   std::string endpoint() const;
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf)
       : _config(conf) {}
+  
+  /// @brief Activate the connection.
+  virtual void startConnection() = 0;
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
