@@ -135,8 +135,10 @@ struct IResearchQueryStringTermSetup {
     functions->add(arangodb::aql::Function{
       "_NONDETERM_",
       ".",
-      false, // fake non-deterministic
-      true,
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -146,8 +148,12 @@ struct IResearchQueryStringTermSetup {
     functions->add(arangodb::aql::Function{
       "_FORWARD_",
       ".",
-      true, // fake deterministic
-      true,
+      arangodb::aql::Function::makeFlags(
+        // fake deterministic
+        arangodb::aql::Function::Flags::Deterministic,
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -159,6 +165,9 @@ struct IResearchQueryStringTermSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryStringTermSetup() {

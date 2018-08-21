@@ -108,7 +108,7 @@ class GeneralRequest {
 
   /// @brief User exists on this server or on external auth system
   ///  and password was checked. Must not imply any access rights
-  ///  to any specific resource
+  ///  to any specific resource.
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
 

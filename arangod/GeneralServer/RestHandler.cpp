@@ -154,7 +154,7 @@ bool RestHandler::forwardRequest() {
     }
     VPackSlice slice = builder.slice();
     headers.emplace(StaticStrings::Authorization,
-                    "bearer " + auth->tokenCache()->generateJwt(slice));
+                    "bearer " + auth->tokenCache().generateJwt(slice));
   }
 
   auto& values = _request->values();

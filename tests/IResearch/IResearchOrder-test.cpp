@@ -256,7 +256,10 @@ struct IResearchOrderSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function invalid("INVALID", "|.", false, true);
+    arangodb::aql::Function invalid("INVALID", "|.",
+      arangodb::aql::Function::makeFlags(
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      )); 
 
     functions.add(invalid);
   }

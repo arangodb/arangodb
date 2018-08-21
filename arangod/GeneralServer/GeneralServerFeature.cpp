@@ -43,6 +43,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -211,13 +212,6 @@ void GeneralServerFeature::start() {
 
   for (auto& server : _servers) {
     server->startListening();
-  }
-
-  // initially populate the authentication cache. otherwise no one
-  // can access the new database
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um != nullptr) {
-    um->outdate();
   }
 }
 
@@ -492,6 +486,10 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
+  _handlerFactory->addPrefixHandler(
+      "/_admin/database/target-version",
+      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);

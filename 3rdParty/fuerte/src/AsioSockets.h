@@ -38,8 +38,10 @@ struct Socket<SocketType::Tcp>  {
     : resolver(ctx), socket(ctx) {}
   
   ~Socket() {
-    resolver.cancel();
-    shutdown();
+    try {
+      resolver.cancel();
+      shutdown();
+    } catch(...) {}
   }
   
   template<typename CallbackT>
@@ -63,10 +65,10 @@ struct Socket<SocketType::Tcp>  {
   }
   void shutdown() {
     if (socket.is_open()) {
-      asio_ns::error_code error; // prevents exceptions
-      socket.cancel(error);
-      socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, error);
-      socket.close(error);
+      asio_ns::error_code ec; // prevents exceptions
+      socket.cancel(ec);
+      socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      socket.close(ec);
     }
   }
   
@@ -81,8 +83,10 @@ struct Socket<fuerte::SocketType::Ssl> {
   : resolver(ctx), socket(ctx, loop.sslContext()) {}
   
   ~Socket() {
-    resolver.cancel();
-    shutdown();
+    try {
+      resolver.cancel();
+      shutdown();
+    } catch(...) {}
   }
   
   template<typename CallbackT>
@@ -124,12 +128,10 @@ struct Socket<fuerte::SocketType::Ssl> {
     resolver.async_resolve({config._host, config._port}, rcb);
   }
   void shutdown() {
-    //socket.cancel();
-    if (socket.lowest_layer().is_open()) {
-      asio_ns::error_code error;
-      socket.shutdown(error);
-      socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, error);
-      socket.lowest_layer().close(error);
+    if (socket.next_layer().is_open()) {
+      asio_ns::error_code ec;
+      socket.next_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      socket.shutdown(ec);
     }
   }
   

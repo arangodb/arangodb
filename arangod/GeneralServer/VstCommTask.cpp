@@ -286,25 +286,16 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
-  if (_auth->isActive()) { // will just fail if method is NONE
-    auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
-    _authorized = entry.authenticated();
-    if (_authorized) {
-      _authenticatedUser = std::move(entry._username);
-    } else {
-      _authenticatedUser.clear();
-    }
-  } else {
-    _authorized = true;
-    _authenticatedUser = std::move(user); // may be empty
-  }
+  auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authorized = entry.authenticated();
   
-  if (_authorized) {
-    // mop: hmmm...user should be completely ignored if there is no auth IMHO
-    // obi: user who sends authentication expects a reply
+  if (_authorized || !_auth->isActive()) {
+    _authenticatedUser = std::move(entry._username);
+    // simon: drivers expect a response for their auth request
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
                      "auth successful");
   } else {
+    _authenticatedUser.clear();
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
                      TRI_ERROR_HTTP_UNAUTHORIZED);
   }

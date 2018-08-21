@@ -78,7 +78,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
 
   SECTION("Granting RW access on database * will grant access to all databases") {
     auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::LOCAL);
+    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
     testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
@@ -89,7 +89,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
 
   SECTION("Setting ServerState to readonly will make all users effective RO users") {
     auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::LOCAL);
+    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
     testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
@@ -102,7 +102,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
 
   SECTION("In readonly mode the configured access level will still be accessible") {
     auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::LOCAL);
+    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
     testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
@@ -115,7 +115,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
 
   SECTION("Setting ServerState to readonly will make all users effective RO users (collection level)") {
     auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::LOCAL);
+    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
     testUser.grantDatabase("*", auth::Level::RW);
     testUser.grantCollection("test", "test", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
@@ -129,7 +129,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
 
   SECTION("In readonly mode the configured access level will still be accessible (collection level)") {
     auth::UserMap userEntryMap;
-    auto testUser = auth::User::newUser("test", "test", auth::Source::LOCAL);
+    auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
     testUser.grantDatabase("*", auth::Level::RW);
     testUser.grantCollection("test", "test", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
