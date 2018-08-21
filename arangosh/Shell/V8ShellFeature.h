@@ -76,7 +76,7 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void initGlobals();
   void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
   void loadModules(ShellFeature::RunMode);
-  std::unique_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context, bool,
+  std::shared_ptr<V8ClientConnection> setup(v8::Local<v8::Context>& context, bool,
                                             std::vector<std::string> const&,
                                             bool* promptError = nullptr);
 

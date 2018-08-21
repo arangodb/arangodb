@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_server_mode
 @brief Update the mode of this server (read-only or default)
 
-@RESTHEADER{GET /_admin/server/mode, Return whether or not a server is in read-only mode}
+@RESTHEADER{GET /_admin/server/mode, Update whether or not a server is in read-only mode}
 
 @RESTBODYPARAM{mode,string,required,string}
 The mode of the server `readonly` or `default`.
