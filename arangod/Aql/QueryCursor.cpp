@@ -319,16 +319,19 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
     while(rowsWritten < batchSize() && !_queryResults.empty()) {
       std::unique_ptr<AqlItemBlock>& block = _queryResults.front();
       TRI_ASSERT(_queryResultPos < block->size());
-      AqlValue const& value
-        = block->getValueReference(_queryResultPos, resultRegister);
-
-      TRI_ASSERT(!value.isEmpty());
-      value.toVelocyPack(_query->trx(), builder, false);
-      ++rowsWritten;
-      ++_queryResultPos;
-
-      // get next block
+      
+      while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
+        AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
+        if (!value.isEmpty()) {
+          value.toVelocyPack(_query->trx(), builder, false);
+          ++rowsWritten;
+        }
+        ++_queryResultPos;
+      }
+      
       if (_queryResultPos == block->size()) {
+        // get next block
+        TRI_ASSERT(_queryResultPos == block->size());
         engine->_itemBlockManager.returnBlock(std::move(block));
         _queryResults.pop_front();
         _queryResultPos = 0;
