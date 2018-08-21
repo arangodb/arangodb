@@ -175,27 +175,32 @@ struct ConnectionConfiguration {
       : _socketType(SocketType::Tcp),
         _protocolType(ProtocolType::Vst),
         _vstVersion(vst::VST1_1),
-        _verifyHost(false),
         _host("localhost"),
+        _port("8529"),
+        _verifyHost(false),
         _connectionTimeout(60000),
+        _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),
         _password(""),
         _jwtToken("") {}
 
+  ConnectionFailureCallback _onFailure;
   SocketType _socketType;  // tcp, ssl or unix
   ProtocolType _protocolType;  // vst or http
   vst::VSTVersion _vstVersion;
-  bool _verifyHost;
-
+  
   std::string _host;
   std::string _port;
+  bool _verifyHost;
+  
   std::chrono::milliseconds _connectionTimeout;
+  unsigned _maxConnectRetries;
+  
   AuthenticationType _authenticationType;
   std::string _user;
   std::string _password;
   std::string _jwtToken;
-  ConnectionFailureCallback _onFailure;
 };
 }  // namespace detail
 }}}  // namespace arangodb::fuerte::v1

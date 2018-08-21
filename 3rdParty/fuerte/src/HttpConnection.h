@@ -64,14 +64,19 @@ class HttpConnection final : public fuerte::Connection {
   Connection::State state() const override final {
     return _state.load(std::memory_order_acquire);
   }
-  
-  // Activate this connection
-  void startConnection() override;
 
   /// @brief cancel the connection, unusable afterwards
   void cancel() override;
   
+ protected:
+  
+  // Activate this connection
+  void startConnection() override;
+  
  private:
+  
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries);
   
   // shutdown connection, cancel async operations
   void shutdownConnection(const ErrorCondition);
