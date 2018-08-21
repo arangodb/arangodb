@@ -298,7 +298,8 @@ void handleOnStatusDBServer(
     transisted.status = Supervision::HEALTH_STATUS_BAD;
   } else if ( // New state: FAILED persisted: BAD (-> Job)
     persisted.status == Supervision::HEALTH_STATUS_BAD &&
-    transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
+    transisted.status == Supervision::HEALTH_STATUS_FAILED &&
+    agent->leaderFor() > 10) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
       FailedServer(snapshot, agent, std::to_string(jobId),
@@ -342,12 +343,12 @@ void handleOnStatusSingle(
             envelope->add("op", VPackValue("delete")); }}}
     }
   } else if ( // New state: FAILED persisted: GOOD (-> BAD)
-             persisted.status == Supervision::HEALTH_STATUS_GOOD &&
-             transisted.status != Supervision::HEALTH_STATUS_GOOD) {
+    persisted.status == Supervision::HEALTH_STATUS_GOOD &&
+    transisted.status != Supervision::HEALTH_STATUS_GOOD) {
     transisted.status = Supervision::HEALTH_STATUS_BAD;
   } else if ( // New state: FAILED persisted: BAD (-> Job)
-             persisted.status == Supervision::HEALTH_STATUS_BAD &&
-             transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
+    persisted.status == Supervision::HEALTH_STATUS_BAD &&
+    transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
       ActiveFailoverJob(snapshot, agent, std::to_string(jobId),
@@ -374,13 +375,13 @@ void handleOnStatus(
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Unknown server type. No supervision action taken. " << serverID;
   }
-
+  
 }
 
 // Build transaction for removing unattended servers from health monitoring
 query_t arangodb::consensus::removeTransactionBuilder(
   std::vector<std::string> const& todelete) {
-
+  
   query_t del = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(del.get());
     { VPackArrayBuilder trx(del.get());
@@ -698,7 +699,7 @@ void Supervision::run() {
               upgradeAgency();
             }
 
-            if (_agent->leaderFor() > 10) {
+            if (true) {
               try {
                 doChecks();
               } catch (std::exception const& e) {
