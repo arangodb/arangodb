@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTestHandler.h"
@@ -38,7 +37,7 @@ using namespace arangodb::rest;
 
 RestTestHandler::RestTestHandler(GeneralRequest* request,
                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response), _count(0) {}
 
 RestTestHandler::~RestTestHandler() {}
 
@@ -46,22 +45,25 @@ RestTestHandler::~RestTestHandler() {}
 /// @brief was docuBlock JSF_batch_processing
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace {
+#define LANE_ENTRY(s) {#s, RequestLane:: s},
+static const std::map<std::string, RequestLane> lanes = {
+  LANE_ENTRY(CLIENT_FAST)
+  LANE_ENTRY(CLIENT_AQL)
+  LANE_ENTRY(CLIENT_V8)
+  LANE_ENTRY(CLIENT_SLOW)
+  LANE_ENTRY(AGENCY_INTERNAL)
+  LANE_ENTRY(AGENCY_CLUSTER)
+  LANE_ENTRY(CLUSTER_INTERNAL)
+  LANE_ENTRY(CLUSTER_V8)
+  LANE_ENTRY(CLUSTER_ADMIN)
+  LANE_ENTRY(SERVER_REPLICATION)
+  LANE_ENTRY(TASK_V8)
+};
+}
+
 ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string &str)
 {
-  #define LANE_ENTRY(s) {#s, RequestLane:: s},
-  static std::map<std::string, RequestLane> lanes = {
-    LANE_ENTRY(CLIENT_FAST)
-    LANE_ENTRY(CLIENT_AQL)
-    LANE_ENTRY(CLIENT_V8)
-    LANE_ENTRY(CLIENT_SLOW)
-    LANE_ENTRY(AGENCY_INTERNAL)
-    LANE_ENTRY(AGENCY_CLUSTER)
-    LANE_ENTRY(CLUSTER_INTERNAL)
-    LANE_ENTRY(CLUSTER_V8)
-    LANE_ENTRY(CLUSTER_ADMIN)
-    LANE_ENTRY(SERVER_REPLICATION)
-    LANE_ENTRY(TASK_V8)
-  };
 
   auto entry = lanes.find(str);
 
@@ -93,7 +95,7 @@ RestStatus RestTestHandler::execute() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::NOT_FOUND,
             TRI_ERROR_HTTP_NOT_FOUND,
-            "expecting GET /_devel/test/<request-lane>");
+            "expecting GET /_api/test/<request-lane>");
     return RestStatus::DONE;
   }
 
