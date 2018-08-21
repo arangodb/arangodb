@@ -123,6 +123,9 @@ class Supervision : public arangodb::CriticalThread {
 
  private:
 
+  /// @brief decide, if we can start supervision ahead of armageddon delay
+  bool earlyBird() const;
+
   /// @brief Upgrade agency with FailedServers an object from array
   void upgradeZero(VPackBuilder&);
 

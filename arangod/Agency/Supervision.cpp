@@ -298,8 +298,7 @@ void handleOnStatusDBServer(
     transisted.status = Supervision::HEALTH_STATUS_BAD;
   } else if ( // New state: FAILED persisted: BAD (-> Job)
     persisted.status == Supervision::HEALTH_STATUS_BAD &&
-    transisted.status == Supervision::HEALTH_STATUS_FAILED &&
-    agent->leaderFor() > 10) {
+    transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
       FailedServer(snapshot, agent, std::to_string(jobId),
@@ -343,12 +342,12 @@ void handleOnStatusSingle(
             envelope->add("op", VPackValue("delete")); }}}
     }
   } else if ( // New state: FAILED persisted: GOOD (-> BAD)
-    persisted.status == Supervision::HEALTH_STATUS_GOOD &&
-    transisted.status != Supervision::HEALTH_STATUS_GOOD) {
+             persisted.status == Supervision::HEALTH_STATUS_GOOD &&
+             transisted.status != Supervision::HEALTH_STATUS_GOOD) {
     transisted.status = Supervision::HEALTH_STATUS_BAD;
   } else if ( // New state: FAILED persisted: BAD (-> Job)
-    persisted.status == Supervision::HEALTH_STATUS_BAD &&
-    transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
+             persisted.status == Supervision::HEALTH_STATUS_BAD &&
+             transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
       ActiveFailoverJob(snapshot, agent, std::to_string(jobId),
@@ -375,13 +374,13 @@ void handleOnStatus(
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Unknown server type. No supervision action taken. " << serverID;
   }
-  
+
 }
 
 // Build transaction for removing unattended servers from health monitoring
 query_t arangodb::consensus::removeTransactionBuilder(
   std::vector<std::string> const& todelete) {
-  
+
   query_t del = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(del.get());
     { VPackArrayBuilder trx(del.get());
@@ -557,6 +556,42 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   return ret;
 }
 
+bool Supervision::earlyBird() const {
+
+  std::vector<std::string> tpath {"Sync","ServerStates"};
+  std::vector<std::string> ppath {"Plan","DBServers"};
+  
+  VPackSlice serverStates;
+  VPackSlice dbservers;
+
+  if (_snapshot.has(ppath)) {
+    dbservers = _snapshot(ppath).toBuilder().slice();
+  } else {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "No Plan/DBServers key in persistent store";
+    return false;
+  }
+
+  if (_transient.has(tpath)) {
+    serverStates = _transient(tpath).toBuilder().slice();
+  } else {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "No Sync/ServerStates key in transient store";
+    return false;
+  }
+
+  // every db server in plan accounted for in transient store?
+  for (auto const& server : VPackObjectIterator(dbservers)) {
+    auto serverId = server.key.copyString();
+    if (!serverStates.hasKey(serverId)) {
+      return false;
+    }
+  }
+
+  return true;
+
+}
+
 
 // Update local agency snapshot, guarded by callers
 bool Supervision::updateSnapshot() {
@@ -699,7 +734,7 @@ void Supervision::run() {
               upgradeAgency();
             }
 
-            if (true) {
+            if (_agent->leaderFor() > 120 || earlyBird()) {
               try {
                 doChecks();
               } catch (std::exception const& e) {
@@ -709,6 +744,8 @@ void Supervision::run() {
                 LOG_TOPIC(ERR, Logger::SUPERVISION) <<
                   "Supervision::doChecks() generated an uncaught exception.";
               }
+            } else {
+              
             }
 
             handleJobs();
