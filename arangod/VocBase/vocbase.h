@@ -186,18 +186,11 @@ struct TRI_vocbase_t {
   void* _userStructures;
 
  public:
-  /// @brief checks if a database or collection name is allowed
+  /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
   static bool IsAllowedName(arangodb::velocypack::Slice slice) noexcept;
   static bool IsAllowedName(
     bool allowSystem,
-    arangodb::velocypack::StringRef const& name
-  ) noexcept;
-  
-  /// @brief checks if collection name is valid when referring to an existing collection
-  /// this is different to the above method because here we also allow accessing
-  /// collections by their numeric ID
-  static bool IsAllowedNameForExistingCollection(
     arangodb::velocypack::StringRef const& name
   ) noexcept;
 
