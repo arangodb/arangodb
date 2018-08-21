@@ -968,7 +968,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
   mustDestroy = false;
 
   {
-
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;

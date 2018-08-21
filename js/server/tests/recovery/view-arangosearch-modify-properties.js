@@ -49,11 +49,7 @@ function runSetup () {
 
   meta = {
     commitIntervalMsec: 10000,
-    consolidate: {
-      bytes: { segmentThreshold: 20, threshold: 0.5 },
-      bytes_accum: {},
-      count: {}
-    },
+    consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
     locale: "en_US.UTF-8"
   };
   view.properties(meta, true); // partial update
@@ -95,12 +91,9 @@ function recoverySuite () {
       assertEqual(10, properties.cleanupIntervalStep);
       assertEqual(10000, properties.commitIntervalMsec);
       assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual(20, properties.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.count.threshold.toFixed(6));
+      assertEqual("bytes", properties.consolidate.type);
+      assertEqual(20, properties.consolidate.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
       assertEqual("de_DE.UTF-16", properties.locale);
     }
 

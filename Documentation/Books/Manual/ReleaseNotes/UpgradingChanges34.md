@@ -213,8 +213,16 @@ APIs:
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
+- the REST API for parsing AQL queries at endpoint `POST /_api/query` now may
+  return other error codes than HTTP 400 in case the query cannot be parsed.
+
+  Previous versions of ArangoDB always returned HTTP code 400 (Bad request) when a 
+  query could not be parsed. ArangoDB 3.4 will return HTTP 400 in case of regular parse
+  errors, but may also return more specific HTTP status codes, such as HTTP 404
+  (Not found) if the query refers to an unknown collection or view.
+
 - if authentication is turned on, requests to databases by users with insufficient 
-  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+  access rights will be answered with HTTP 401 (Forbidden) instead of HTTP 404 (Not found).
 
 
 The following APIs have been added or augmented:
