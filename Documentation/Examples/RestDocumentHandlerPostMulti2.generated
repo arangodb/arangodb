@@ -1,21 +1,21 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/document/products?returnNew=<span class="hljs-literal">true</span></span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products?returnNew=<span class="hljs-literal">true</span></span> &lt;&lt;EOF
 {"Hello":"World"}
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: <span class="hljs-string">"_XTuACm2--A"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">103418</span>
 x-content-type-options: nosniff
-etag: <span class="hljs-string">"_XPb9r7C--_"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">102790</span>
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/102790"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102790"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9r7C--_"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103418"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103418"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XTuACm2--A"</span>, 
   <span class="hljs-string">"new"</span> : { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102790"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/102790"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9r7C--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103418"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103418"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XTuACm2--A"</span>, 
     <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
   } 
 }
