@@ -227,11 +227,10 @@ class Ast {
   
   /// @brief create an AST datasource
   /// this function will return either an AST collection or an AST view node
-  /// if failIfDoesNotExist is true, the function will throw if the specified
-  /// data source does not exist 
+  /// the function will throw if the specified data source does not exist 
   AstNode* createNodeDataSource(arangodb::CollectionNameResolver const& resolver,
                                 char const* name, size_t nameLength, 
-                                AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist);
+                                AccessMode::Type accessType);
 
   /// @brief create an AST collection node
   AstNode* createNodeCollection(char const* name, size_t nameLength, AccessMode::Type accessType);
@@ -565,7 +564,7 @@ class Ast {
   AstNode* createNode(AstNodeType);
 
   /// @brief validate the name of the given datasource
-  std::string validateDataSourceName(char const* name, size_t nameLength, bool validateStrict);
+  std::string validateDataSourceName(char const* name, size_t nameLength);
   
   /// @brief create an AST collection node
   /// private function, does no validation
