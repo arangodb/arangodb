@@ -117,7 +117,6 @@ VPackBuilder compareIndexes(
         if (ptype == PRIMARY || ptype == EDGE) { 
           continue;
         }
-        auto const& pfields = pindex.get(FIELDS);
         indis.emplace(shname + "/" + pindex.get(ID).copyString());
       
         bool found = false;
@@ -129,10 +128,9 @@ VPackBuilder compareIndexes(
             if (ltype == PRIMARY || ltype == EDGE) { 
               continue;
             }
-            auto const& lfields = lindex.get(FIELDS);
 
             // Already have
-            if (VPackNormalizedCompare::equals(pfields, lfields) && ptype == ltype) { 
+            if (VPackNormalizedCompare::equals(pindex.get(ID), lindex.get(ID))) {
               found = true;
               break;
             }
