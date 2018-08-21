@@ -25,7 +25,9 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Query.h"
 #include "Basics/tri-strings.h"
+#include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 %}
 
@@ -197,8 +199,6 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_INTO "INTO keyword"
 %token T_AGGREGATE "AGGREGATE keyword"
 
-%token T_VIEW "VIEW keyword"
-
 %token T_GRAPH "GRAPH keyword"
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_DISTINCT "DISTINCT modifier"
@@ -321,6 +321,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
+%type <node> search;
 %type <node> object;
 %type <node> options;
 %type <node> optional_object_elements;
@@ -338,8 +339,8 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> reference;
 %type <node> simple_value;
 %type <node> value_literal;
-%type <node> collection_name;
 %type <node> in_or_into_collection;
+%type <node> in_or_into_collection_name;
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
@@ -460,14 +461,33 @@ statement_block_statement:
 
 for_statement:
     T_FOR variable_name T_IN expression {
+      // first open a new scope
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
 
-      auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
-      parser->ast()->addOperation(node);
+      // now create an out variable for the FOR statement
+      // now we can handle the optional search condition, which may
+      // or may not refer to the FOR's variable
+      parser->pushStack(parser->ast()->createNodeVariable($2.value, $2.length, true));
+    } search {
+      // now we can handle the optional search condition, which may
+      // or may not refer to the FOR's variable
+      AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      TRI_ASSERT(variableNode != nullptr);
+      Variable* variable = static_cast<Variable*>(variableNode->getData());
+      
+      if ($6 == nullptr) {
+        // no SEARCH clause. this is a regular FOR loop for a collection or an arbitrary expression
+        auto node = parser->ast()->createNodeFor(variable, $4);
+        parser->ast()->addOperation(node);
+      } else {
+        // we got a SEARCH clause. this is always a view.
+        auto node = parser->ast()->createNodeForView(variable, $4, $6);
+        parser->ast()->addOperation(node);
+      }
     }
-    | T_FOR traversal_statement {
+  | T_FOR traversal_statement {
     }
-    | T_FOR shortest_path_statement {
+  | T_FOR shortest_path_statement {
     }
   ;
 
@@ -537,7 +557,7 @@ let_element:
 
 count_into:
     T_WITH T_STRING T_INTO variable_name {
-      if (! TRI_CaseEqualString($2.value, "COUNT")) {
+      if (!TRI_CaseEqualString($2.value, "COUNT")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2.value, yylloc.first_line, yylloc.first_column);
       }
 
@@ -796,7 +816,7 @@ variable_list:
 
 keep:
     T_STRING {
-      if (! TRI_CaseEqualString($1.value, "KEEP")) {
+      if (!TRI_CaseEqualString($1.value, "KEEP")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1.value, yylloc.first_line, yylloc.first_column);
       }
 
@@ -880,17 +900,17 @@ return_statement:
   ;
 
 in_or_into_collection:
-    T_IN collection_name {
+    T_IN in_or_into_collection_name {
       $$ = $2;
     }
-  | T_INTO collection_name {
+  | T_INTO in_or_into_collection_name {
        $$ = $2;
      }
    ;
 
 remove_statement:
     T_REMOVE expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($3, $4)) {
+      if (!parser->configureWriteQuery($3, $4)) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
@@ -900,7 +920,7 @@ remove_statement:
 
 insert_statement:
     T_INSERT expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($3, $4)) {
+      if (!parser->configureWriteQuery($3, $4)) {
         YYABORT;
       }
       auto node = parser->ast()->createNodeInsert($2, $3, $4);
@@ -910,7 +930,7 @@ insert_statement:
 
 update_parameters:
     expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($2, $3)) {
+      if (!parser->configureWriteQuery($2, $3)) {
         YYABORT;
       }
 
@@ -918,7 +938,7 @@ update_parameters:
       parser->ast()->addOperation(node);
     }
   | expression T_WITH expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($4, $5)) {
+      if (!parser->configureWriteQuery($4, $5)) {
         YYABORT;
       }
 
@@ -934,7 +954,7 @@ update_statement:
 
 replace_parameters:
     expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($2, $3)) {
+      if (!parser->configureWriteQuery($2, $3)) {
         YYABORT;
       }
 
@@ -942,7 +962,7 @@ replace_parameters:
       parser->ast()->addOperation(node);
     }
   | expression T_WITH expression in_or_into_collection options {
-      if (! parser->configureWriteQuery($4, $5)) {
+      if (!parser->configureWriteQuery($4, $5)) {
         YYABORT;
       }
 
@@ -1289,6 +1309,23 @@ array_elements_list:
     }
   ;
 
+search:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING expression {
+      if ($2 == nullptr) {
+        ABORT_OOM
+      }
+
+      if (!TRI_CaseEqualString($1.value, "SEARCH")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = $2;
+    }
+  ;
+
 options:
     /* empty */ {
       $$ = nullptr;
@@ -1298,7 +1335,7 @@ options:
         ABORT_OOM
       }
 
-      if (! TRI_CaseEqualString($1.value, "OPTIONS")) {
+      if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
       }
 
@@ -1477,15 +1514,7 @@ graph_direction_steps:
   ;
 
 reference:
-  T_VIEW T_STRING {
-      auto* ast = parser->ast();
-      auto* node = ast->createNodeView($2.value);
-
-      TRI_ASSERT(node != nullptr);
-
-      $$ = node;
-    }
-  | T_STRING {
+    T_STRING {
       // variable or collection
       auto ast = parser->ast();
       AstNode* node = nullptr;
@@ -1509,8 +1538,9 @@ reference:
       }
 
       if (node == nullptr) {
-        // variable not found. so it must have been a collection
-        node = ast->createNodeCollection($1.value, arangodb::AccessMode::Type::READ);
+        // variable not found. so it must have been a collection or view
+        auto const& resolver = parser->query()->resolver();
+        node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ);
       }
 
       TRI_ASSERT(node != nullptr);
@@ -1682,12 +1712,12 @@ value_literal:
     }
   ;
 
-collection_name:
+in_or_into_collection_name:
     T_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
+      $$ = parser->ast()->createNodeCollection($1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | T_QUOTED_STRING {
-      $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
+      $$ = parser->ast()->createNodeCollection($1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
   | bind_parameter {
       $$ = $1;
@@ -1695,19 +1725,12 @@ collection_name:
   ;
 
 bind_parameter:
-  T_VIEW T_DATA_SOURCE_PARAMETER {
-      if ($2.length < 2 || $2.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $2.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameterView($2.value, $2.length);
-    }
-  | T_DATA_SOURCE_PARAMETER {
+    T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
-      $$ = parser->ast()->createNodeParameterCollection($1.value, $1.length);
+      $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
     }
   | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);

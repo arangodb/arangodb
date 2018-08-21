@@ -266,7 +266,7 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
       std::shared_ptr<asio_ns::deadline_timer> timer(
           newDeadlineTimer(boost::posix_time::millisec(timeout)));
       timer->async_wait(
-          [this, callback, isV8, t](const asio::error_code& error) {
+          [this, callback, isV8, t, timer](const asio::error_code& error) {
             if (error != asio::error::operation_aborted) {
               post(callback, isV8, t);
             }

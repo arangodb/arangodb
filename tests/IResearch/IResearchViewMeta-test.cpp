@@ -61,26 +61,19 @@ struct IResearchViewMetaSetup {
 TEST_CASE("IResearchViewMetaTest", "[iresearch][iresearch-viewmeta]") {
   IResearchViewMetaSetup s;
   UNUSED(s);
-  typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
+  typedef arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy ConsolidationPolicy;
 
 SECTION("test_defaults") {
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMetaState metaState;
 
   CHECK((true == metaState._collections.empty()));
-  CHECK(true == (10 == meta._commit._cleanupIntervalStep));
-  CHECK(true == (60 * 1000 == meta._commit._commitIntervalMsec));
-
-  std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
-
-  for (auto& entry: meta._commit._consolidationPolicies) {
-    CHECK(true == (1 == expectedItem.erase(entry.type())));
-    CHECK(true == (300 == entry.segmentThreshold()));
-    CHECK(true == (false == !entry.policy()));
-    CHECK(true == (0.85f == entry.threshold()));
-  }
-
-  CHECK(true == (expectedItem.empty()));
+  CHECK(true == (10 == meta._cleanupIntervalStep));
+  CHECK(true == (60 * 1000 == meta._commitIntervalMsec));
+  CHECK((ConsolidationPolicy::Type::BYTES_ACCUM == meta._consolidationPolicy.type()));
+  CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
+  CHECK((false == !meta._consolidationPolicy.policy()));
+  CHECK((0.85f == meta._consolidationPolicy.threshold()));
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
 }
 
@@ -93,13 +86,9 @@ SECTION("test_inheritDefaults") {
   std::string tmpString;
 
   defaultsState._collections.insert(42);
-  defaults._commit._cleanupIntervalStep = 654;
-  defaults._commit._commitIntervalMsec = 456;
-  defaults._commit._consolidationPolicies.clear();
-  defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES, 101, .11f);
-  defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 151, .151f);
-  defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
-  defaults._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
+  defaults._cleanupIntervalStep = 654;
+  defaults._commitIntervalMsec = 456;
+  defaults._consolidationPolicy = ConsolidationPolicy(ConsolidationPolicy::Type::BYTES, 101, .11f);
   defaults._locale = irs::locale_utils::locale("ru");
 
   {
@@ -108,39 +97,12 @@ SECTION("test_inheritDefaults") {
     CHECK((true == metaState.init(json->slice(), tmpString, defaultsState)));
     CHECK((1 == metaState._collections.size()));
     CHECK((42 == *(metaState._collections.begin())));
-    CHECK(654 == meta._commit._cleanupIntervalStep);
-    CHECK(456 == meta._commit._commitIntervalMsec);
-
-    std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
-
-    for (auto& entry: meta._commit._consolidationPolicies) {
-      CHECK(true == (1 == expectedItem.erase(entry.type())));
-
-      switch(entry.type()) {
-       case ConsolidationPolicy::Type::BYTES:
-        CHECK(true == (101 == entry.segmentThreshold()));
-        CHECK(true == (false == !entry.policy()));
-        CHECK(true == (.11f == entry.threshold()));
-        break;
-       case ConsolidationPolicy::Type::BYTES_ACCUM:
-        CHECK(true == (151 == entry.segmentThreshold()));
-        CHECK(true == (false == !entry.policy()));
-        CHECK(true == (.151f == entry.threshold()));
-        break;
-       case ConsolidationPolicy::Type::COUNT:
-        CHECK(true == (201 == entry.segmentThreshold()));
-        CHECK(true == (false == !entry.policy()));
-        CHECK(true == (.21f == entry.threshold()));
-        break;
-       case ConsolidationPolicy::Type::FILL:
-        CHECK(true == (301 == entry.segmentThreshold()));
-        CHECK(true == (false == !entry.policy()));
-        CHECK(true == (.31f == entry.threshold()));
-        break;
-      }
-    }
-
-    CHECK(true == (expectedItem.empty()));
+    CHECK(654 == meta._cleanupIntervalStep);
+    CHECK(456 == meta._commitIntervalMsec);
+    CHECK((ConsolidationPolicy::Type::BYTES == meta._consolidationPolicy.type()));
+    CHECK((101 == meta._consolidationPolicy.segmentThreshold()));
+    CHECK((false == !meta._consolidationPolicy.policy()));
+    CHECK((.11f == meta._consolidationPolicy.threshold()));
     CHECK(std::string("ru") == irs::locale_utils::name(meta._locale));
   }
 }
@@ -156,18 +118,12 @@ SECTION("test_readDefaults") {
     CHECK(true == meta.init(json->slice(), tmpString));
     CHECK((true == metaState.init(json->slice(), tmpString)));
     CHECK((true == metaState._collections.empty()));
-    CHECK(10 == meta._commit._cleanupIntervalStep);
-    CHECK(60 * 1000 == meta._commit._commitIntervalMsec);
-
-    std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
-
-    for (auto& entry: meta._commit._consolidationPolicies) {
-      CHECK(true == (1 == expectedItem.erase(entry.type())));
-      CHECK(true == (300 == entry.segmentThreshold()));
-      CHECK(true == (false == !entry.policy()));
-      CHECK(true == (.85f == entry.threshold()));
-    }
-
+    CHECK(10 == meta._cleanupIntervalStep);
+    CHECK(60 * 1000 == meta._commitIntervalMsec);
+    CHECK((ConsolidationPolicy::Type::BYTES_ACCUM == meta._consolidationPolicy.type()));
+    CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
+    CHECK((false == !meta._consolidationPolicy.policy()));
+    CHECK((0.85f == meta._consolidationPolicy.threshold()));
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
   }
 }
@@ -192,106 +148,84 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": \"invalid\" }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"commitIntervalMsec\": 0.5 }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit") == errorField);
+    CHECK(std::string("commitIntervalMsec") == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 0.5 } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 0.5 }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>commitIntervalMsec") == errorField);
+    CHECK(std::string("cleanupIntervalStep") == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 0.5 } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidate\": \"invalid\" }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>cleanupIntervalStep") == errorField);
+    CHECK(std::string("consolidate") == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": \"invalid\" } }");
-    CHECK((true == metaState.init(json->slice(), errorField)));
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidate\": { \"segmentThreshold\": 0.5 } }");
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>consolidate") == errorField);
+    CHECK((std::string("consolidate=>segmentThreshold") == errorField));
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"invalid\": \"abc\" } } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidate\": { \"threshold\": -0.5 } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>consolidate=>invalid") == errorField);
+    CHECK((std::string("consolidate=>threshold") == errorField));
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"invalid\": 0.5 } } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidate\": { \"threshold\": 1.5 } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>consolidate=>invalid") == errorField);
+    CHECK((std::string("consolidate=>threshold") == errorField));
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"segmentThreshold\": 0.5, \"threshold\": 1 } } } }");
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>consolidate=>bytes=>segmentThreshold") == errorField);
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"threshold\": -0.5 } } } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidate\": { \"type\": \"invalid\" } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>consolidate=>bytes=>threshold") == errorField);
-  }
-
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"threshold\": 1.5 } } } }");
-    CHECK((true == metaState.init(json->slice(), errorField)));
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK(std::string("commit=>consolidate=>bytes=>threshold") == errorField);
+    CHECK((std::string("consolidate=>type") == errorField));
   }
 
   // .............................................................................
   // test valid value
   // .............................................................................
 
-  // test disabled consolidate (all empty)
+  // test disabled consolidate
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"commit\": { \"consolidate\": {} } \
+      \"consolidate\": null \
     }");
     CHECK(true == meta.init(json->slice(), errorField));
     CHECK((true == metaState.init(json->slice(), errorField)));
-    CHECK(true == (meta._commit._consolidationPolicies.empty()));
-  }
-
-  // test disabled consolidate (implicit disable due to value)
-  {
-    std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"commit\": { \"consolidate\": { \"bytes_accum\": { \"segmentThreshold\": 0, \"threshold\": 0.2 }, \"fill\": { \"segmentThreshold\": 0 } } } \
-    }");
-    CHECK(true == meta.init(json->slice(), errorField));
-    CHECK((true == metaState.init(json->slice(), errorField)));
-    CHECK(true == (meta._commit._consolidationPolicies.empty()));
+    CHECK((ConsolidationPolicy::Type::BYTES_ACCUM == meta._consolidationPolicy.type()));
+    CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
+    CHECK((true == !meta._consolidationPolicy.policy()));
+    CHECK((.85f == meta._consolidationPolicy.threshold()));
   }
 
   // test all parameters set to custom values
   std::string errorField;
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
-        \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"consolidate\": { \"bytes\": { \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"segmentThreshold\": 1501, \"threshold\": 0.151 }, \"count\": { \"segmentThreshold\": 2001 }, \"fill\": {} } }, \
+        \"commitIntervalMsec\": 456, \
+        \"cleanupIntervalStep\": 654, \
+        \"consolidate\": { \"type\": \"bytes\", \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \
         \"locale\": \"ru_RU.KOI8-R\" \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
@@ -304,49 +238,16 @@ SECTION("test_readCustomizedValues") {
 
   CHECK(true == expectedCollections.empty());
   CHECK((42 == *(metaState._collections.begin())));
-  CHECK(654 == meta._commit._cleanupIntervalStep);
-  CHECK(456 == meta._commit._commitIntervalMsec);
-
-  std::set<ConsolidationPolicy::Type> expectedItem = { ConsolidationPolicy::Type::BYTES, ConsolidationPolicy::Type::BYTES_ACCUM, ConsolidationPolicy::Type::COUNT, ConsolidationPolicy::Type::FILL };
-
-  for (auto& entry: meta._commit._consolidationPolicies) {
-    CHECK(true == (1 == expectedItem.erase(entry.type())));
-
-    switch(entry.type()) {
-     case ConsolidationPolicy::Type::BYTES:
-      CHECK(true == (1001 == entry.segmentThreshold()));
-      CHECK(true == (false == !entry.policy()));
-      CHECK(true == (.11f == entry.threshold()));
-      break;
-     case ConsolidationPolicy::Type::BYTES_ACCUM:
-      CHECK(true == (1501 == entry.segmentThreshold()));
-      CHECK(true == (false == !entry.policy()));
-      CHECK(true == (.151f == entry.threshold()));
-      break;
-     case ConsolidationPolicy::Type::COUNT:
-      CHECK(true == (2001 == entry.segmentThreshold()));
-      CHECK(true == (false == !entry.policy()));
-      CHECK(true == (.85f == entry.threshold()));
-      break;
-     case ConsolidationPolicy::Type::FILL:
-      CHECK(true == (300 == entry.segmentThreshold()));
-      CHECK(true == (false == !entry.policy()));
-      CHECK(true == (.85f == entry.threshold()));
-      break;
-    }
-  }
-
-  CHECK(true == (expectedItem.empty()));
+  CHECK(654 == meta._cleanupIntervalStep);
+  CHECK(456 == meta._commitIntervalMsec);
+  CHECK((ConsolidationPolicy::Type::BYTES == meta._consolidationPolicy.type()));
+  CHECK((1001 == meta._consolidationPolicy.segmentThreshold()));
+  CHECK((false == !meta._consolidationPolicy.policy()));
+  CHECK((.11f == meta._consolidationPolicy.threshold()));
   CHECK(std::string("ru_RU.KOI8-R") == iresearch::locale_utils::name(meta._locale));
 }
 
 SECTION("test_writeDefaults") {
-  std::unordered_map<std::string, std::unordered_map<std::string, double>> expectedCommitItemConsolidate = {
-    { "bytes",{ { "segmentThreshold", 300 },{ "threshold", .85f } } },
-    { "bytes_accum",{ { "segmentThreshold", 300 },{ "threshold", .85f } } },
-    { "count",{ { "segmentThreshold", 300 },{ "threshold", .85f } } },
-    { "fill",{ { "segmentThreshold", 300 },{ "threshold", .85f } } }
-  };
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMetaState metaState;
   arangodb::velocypack::Builder builder;
@@ -360,62 +261,66 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((3U == slice.length()));
+  CHECK((5U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
-  tmpSlice = slice.get("commit");
+  tmpSlice = slice.get("cleanupIntervalStep");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 10 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("commitIntervalMsec");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("consolidate");
   CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
-  tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
-  CHECK((true == tmpSlice2.isNumber<size_t>() && 10 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("commitIntervalMsec");
-  CHECK((true == tmpSlice2.isNumber<size_t>() && 60000 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("consolidate");
-  CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
-
-  for (arangodb::velocypack::ObjectIterator itr(tmpSlice2); itr.valid(); ++itr) {
-    auto key = itr.key();
-    auto value = itr.value();
-    auto& expectedPolicy = expectedCommitItemConsolidate[key.copyString()];
-    CHECK(true == key.isString());
-    CHECK((true == value.isObject() && 2 == value.length()));
-
-    for (arangodb::velocypack::ObjectIterator itr2(value); itr2.valid(); ++itr2) {
-      auto key2 = itr2.key();
-      auto value2 = itr2.value();
-      CHECK((key2.isString() && expectedPolicy[key2.copyString()] == value2.getNumber<double>()));
-      expectedPolicy.erase(key2.copyString());
-    }
-
-    expectedCommitItemConsolidate.erase(key.copyString());
-  }
-
-  CHECK(true == expectedCommitItemConsolidate.empty());
+  tmpSlice2 = tmpSlice.get("segmentThreshold");
+  CHECK((tmpSlice2.isNumber<size_t>() && 300 == tmpSlice2.getNumber<size_t>()));
+  tmpSlice2 = tmpSlice.get("threshold");
+  CHECK((tmpSlice2.isNumber<float>() && .85f == tmpSlice2.getNumber<float>()));
+  tmpSlice2 = tmpSlice.get("type");
+  CHECK((tmpSlice2.isString() && std::string("bytes_accum") == tmpSlice2.copyString()));
   tmpSlice = slice.get("locale");
   CHECK((true == tmpSlice.isString() && std::string("C") == tmpSlice.copyString()));
 }
 
 SECTION("test_writeCustomizedValues") {
+  // test null consolidate
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidate\": null }");
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string tmpString;
+
+    CHECK((true == meta.init(json->slice(), tmpString)));
+
+    arangodb::velocypack::Builder builder;
+    arangodb::velocypack::Slice tmpSlice;
+
+    CHECK((true == meta.json(arangodb::velocypack::ObjectBuilder(&builder))));
+
+    auto slice = builder.slice();
+    tmpSlice = slice.get("consolidate");
+    CHECK((true == tmpSlice.isNull()));
+  }
+
   // test disabled consolidate
   {
     arangodb::iresearch::IResearchViewMeta meta;
     arangodb::iresearch::IResearchViewMetaState metaState;
-    meta._commit._consolidationPolicies.clear();
-    meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES, 0, ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::BYTES).threshold());
-    meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 0, std::numeric_limits<float>::infinity());
-    meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 0, ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::COUNT).threshold());
-    meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 0, .2f);
+    meta._consolidationPolicy = ConsolidationPolicy(ConsolidationPolicy::Type::FILL, 0, .2f);
 
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
+    arangodb::velocypack::Slice tmpSlice2;
 
     CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
     CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder))));
 
     auto slice = builder.slice();
-    tmpSlice = slice.get("commit");
-    CHECK(true == tmpSlice.isObject());
-    tmpSlice = tmpSlice.get("consolidate");
-    CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
+    tmpSlice = slice.get("consolidate");
+    CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
+    tmpSlice2 = tmpSlice.get("segmentThreshold");
+    CHECK((tmpSlice2.isNumber<size_t>() && 0 == tmpSlice2.getNumber<size_t>()));
+    tmpSlice2 = tmpSlice.get("threshold");
+    CHECK((tmpSlice2.isNumber<float>() && .2f == tmpSlice2.getNumber<float>()));
+    tmpSlice2 = tmpSlice.get("type");
+    CHECK((tmpSlice2.isString() && std::string("fill") == tmpSlice2.copyString()));
   }
 
   arangodb::iresearch::IResearchViewMeta meta;
@@ -425,22 +330,12 @@ SECTION("test_writeCustomizedValues") {
   metaState._collections.insert(42);
   metaState._collections.insert(52);
   metaState._collections.insert(62);
-  meta._commit._cleanupIntervalStep = 654;
-  meta._commit._commitIntervalMsec = 456;
-  meta._commit._consolidationPolicies.clear();
-  meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES, 101, .11f);
-  meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::BYTES_ACCUM, 151, .151f);
-  meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::COUNT, 201, .21f);
-  meta._commit._consolidationPolicies.emplace_back(ConsolidationPolicy::Type::FILL, 301, .31f);
+  meta._cleanupIntervalStep = 654;
+  meta._commitIntervalMsec = 456;
+  meta._consolidationPolicy = ConsolidationPolicy(ConsolidationPolicy::Type::BYTES, 101, .11f);
   meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
-  std::unordered_map<std::string, std::unordered_map<std::string, double>> expectedCommitItemConsolidate = {
-    { "bytes",{ { "segmentThreshold", 101 },{ "threshold", .11f } } },
-    { "bytes_accum",{ { "segmentThreshold", 151 },{ "threshold", .151f } } },
-    { "count",{ { "segmentThreshold", 201 },{ "threshold", .21f } } },
-    { "fill",{ { "segmentThreshold", 301 },{ "threshold", .31f } } }
-  };
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;
   arangodb::velocypack::Slice tmpSlice2;
@@ -452,7 +347,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((3U == slice.length()));
+  CHECK((5U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -462,33 +357,18 @@ SECTION("test_writeCustomizedValues") {
   }
 
   CHECK(true == expectedCollections.empty());
-  tmpSlice = slice.get("commit");
+  tmpSlice = slice.get("cleanupIntervalStep");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 654 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("commitIntervalMsec");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 456 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("consolidate");
   CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
-  tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
-  CHECK((true == tmpSlice2.isNumber<size_t>() && 654 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("commitIntervalMsec");
-  CHECK((true == tmpSlice2.isNumber<size_t>() && 456 == tmpSlice2.getNumber<size_t>()));
-  tmpSlice2 = tmpSlice.get("consolidate");
-  CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
-
-  for (arangodb::velocypack::ObjectIterator itr(tmpSlice2); itr.valid(); ++itr) {
-    auto key = itr.key();
-    auto value = itr.value();
-    auto& expectedPolicy = expectedCommitItemConsolidate[key.copyString()];
-    CHECK(true == key.isString());
-    CHECK((true == value.isObject() && 2 == value.length()));
-
-    for (arangodb::velocypack::ObjectIterator itr2(value); itr2.valid(); ++itr2) {
-      auto key2 = itr2.key();
-      auto value2 = itr2.value();
-      CHECK((true == key2.isString() && expectedPolicy[key2.copyString()] == value2.getNumber<double>()));
-      expectedPolicy.erase(key2.copyString());
-    }
-
-    expectedCommitItemConsolidate.erase(key.copyString());
-  }
-
-  CHECK(true == expectedCommitItemConsolidate.empty());
+  tmpSlice2 = tmpSlice.get("segmentThreshold");
+  CHECK((tmpSlice2.isNumber<size_t>() && 101 == tmpSlice2.getNumber<size_t>()));
+  tmpSlice2 = tmpSlice.get("threshold");
+  CHECK((tmpSlice2.isNumber<float>() && .11f == tmpSlice2.getNumber<float>()));
+  tmpSlice2 = tmpSlice.get("type");
+  CHECK((tmpSlice2.isString() && std::string("bytes") == tmpSlice2.copyString()));
   tmpSlice = slice.get("locale");
   CHECK((tmpSlice.isString() && std::string("en_UK.UTF-8") == tmpSlice.copyString()));
 }
@@ -503,13 +383,17 @@ SECTION("test_readMaskAll") {
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"collections\": [ 42 ], \
-    \"commit\": { \"commitIntervalMsec\": 654, \"cleanupIntervalStep\": 456, \"consolidate\": {\"bytes_accum\": { \"threshold\": 0.1 } } }, \
+    \"commitIntervalMsec\": 654, \
+    \"cleanupIntervalStep\": 456, \
+    \"consolidate\": { \"threshold\": 0.1 }, \
     \"locale\": \"ru_RU.KOI8-R\" \
   }");
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
   CHECK((true == maskState._collections));
-  CHECK(true == mask._commit);
+  CHECK(true == mask._commitIntervalMsec);
+  CHECK(true == mask._cleanupIntervalStep);
+  CHECK((true == mask._consolidationPolicy));
   CHECK(true == mask._locale);
 }
 
@@ -525,7 +409,9 @@ SECTION("test_readMaskNone") {
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
   CHECK((false == maskState._collections));
-  CHECK(false == mask._commit);
+  CHECK(false == mask._commitIntervalMsec);
+  CHECK(false == mask._cleanupIntervalStep);
+  CHECK((false == mask._consolidationPolicy));
   CHECK(false == mask._locale);
 }
 
@@ -544,13 +430,11 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((3U == slice.length()));
+  CHECK((5U == slice.length()));
   CHECK(true == slice.hasKey("collections"));
-  CHECK(true == slice.hasKey("commit"));
-  tmpSlice = slice.get("commit");
-  CHECK(true == tmpSlice.hasKey("cleanupIntervalStep"));
-  CHECK(true == tmpSlice.hasKey("commitIntervalMsec"));
-  CHECK(true == tmpSlice.hasKey("consolidate"));
+  CHECK(true == slice.hasKey("cleanupIntervalStep"));
+  CHECK(true == slice.hasKey("commitIntervalMsec"));
+  CHECK(true == slice.hasKey("consolidate"));
   CHECK(true == slice.hasKey("locale"));
 }
 
