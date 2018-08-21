@@ -242,7 +242,7 @@ uint64_t getCurrentPlanVersion() {
   return planVersionSlice.getNumber<uint64_t>();
 }
 
-void setDatabasePath(arangod::DatabasePathFeature& feature) {
+void setDatabasePath(arangodb::DatabasePathFeature& feature) {
   irs::utf8_path path;
 
   path /= TRI_GetTempPath();
