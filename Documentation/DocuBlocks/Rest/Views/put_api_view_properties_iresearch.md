@@ -38,7 +38,7 @@ The consolidation policy to apply for selecting which segments should be merged
 (default: {}, to disable use: null)
 
 
-@RESTSTRUCT{type,optional,post_api_view_props_consolidations,string,optional,string}
+@RESTSTRUCT{type,post_api_view_props_consolidations,string,optional,string}
 Currently supported types aren (default: "bytes_accum"):
 - *bytes*: Consolidate IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)
 - *bytes_accum*: Consolidate IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
