@@ -109,10 +109,6 @@ class RemoveBlock : public ModificationBlock {
   RemoveBlock(ExecutionEngine*, RemoveNode const*);
   ~RemoveBlock() = default;
 
-  Type getType() const override final {
-    return Type::REMOVE;
-  }
-
  protected:
   /// @brief the actual work horse for removing data
   std::unique_ptr<AqlItemBlock> work() override final;
@@ -122,10 +118,6 @@ class InsertBlock : public ModificationBlock {
  public:
   InsertBlock(ExecutionEngine*, InsertNode const*);
   ~InsertBlock() = default;
-
-  Type getType() const override final {
-    return Type::INSERT;
-  }
 
  protected:
   /// @brief the actual work horse for inserting data
@@ -137,10 +129,6 @@ class UpdateBlock : public ModificationBlock {
   UpdateBlock(ExecutionEngine*, UpdateNode const*);
   ~UpdateBlock() = default;
 
-  Type getType() const override final {
-    return Type::UPDATE;
-  }
-
  protected:
   /// @brief the actual work horse for updating data
   std::unique_ptr<AqlItemBlock> work() override final;
@@ -151,10 +139,6 @@ class ReplaceBlock : public ModificationBlock {
   ReplaceBlock(ExecutionEngine*, ReplaceNode const*);
   ~ReplaceBlock() = default;
 
-  Type getType() const override final {
-    return Type::REPLACE;
-  }
-
  protected:
   /// @brief the actual work horse for replacing data
   std::unique_ptr<AqlItemBlock> work() override final;
@@ -164,10 +148,6 @@ class UpsertBlock : public ModificationBlock {
  public:
   UpsertBlock(ExecutionEngine*, UpsertNode const*);
   ~UpsertBlock() = default;
-
-  Type getType() const override final {
-    return Type::UPSERT;
-  }
 
  protected:
   /// @brief the actual work horse for updating data

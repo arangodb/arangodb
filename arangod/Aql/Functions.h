@@ -161,7 +161,7 @@ struct Functions {
                           VPackFunctionParameters const&);
    static AqlValue EncodeURIComponent(arangodb::aql::Query*, transaction::Methods*,
                                        VPackFunctionParameters const&);
-   static AqlValue UUID(arangodb::aql::Query*, transaction::Methods*,
+   static AqlValue Uuid(arangodb::aql::Query*, transaction::Methods*,
                                        VPackFunctionParameters const&);
    static AqlValue Soundex(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
