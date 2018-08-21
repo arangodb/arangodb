@@ -2,6 +2,7 @@
   "async" : {
     "default" : false,
     "description" : "send asynchronous requests",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -9,6 +10,7 @@
   "batch-size" : {
     "default" : 0,
     "description" : "number of operations in one batch (0 disables batching)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -16,6 +18,7 @@
   "check-configuration" : {
     "default" : false,
     "description" : "check the configuration and exit",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -23,6 +26,7 @@
   "collection" : {
     "default" : "ArangoBenchmark",
     "description" : "collection name to use in tests (if they involve collections)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -30,6 +34,7 @@
   "complexity" : {
     "default" : 1,
     "description" : "complexity parameter for the test (meaning depends on test case)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -37,6 +42,7 @@
   "concurrency" : {
     "default" : 1,
     "description" : "number of parallel threads and connections",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -44,6 +50,7 @@
   "config" : {
     "default" : "",
     "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "string"
@@ -51,6 +58,7 @@
   "configuration" : {
     "default" : "",
     "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -59,6 +67,7 @@
     "default" : [
     ],
     "description" : "define key=value for a @key@ entry in config file",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "string..."
@@ -66,6 +75,7 @@
   "delay" : {
     "default" : false,
     "description" : "use a startup delay (necessary only when run in series)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -73,6 +83,7 @@
   "dump-dependencies" : {
     "default" : false,
     "description" : "dump dependency graph",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -80,6 +91,7 @@
   "dump-options" : {
     "default" : true,
     "description" : "dump configuration options in JSON format",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -87,6 +99,7 @@
   "junit-report-file" : {
     "default" : "",
     "description" : "filename to write junit style report to",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -94,6 +107,7 @@
   "keep-alive" : {
     "default" : true,
     "description" : "use HTTP keep-alive",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -103,6 +117,7 @@
       "info"
     ],
     "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "string..."
@@ -110,6 +125,7 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -117,6 +133,7 @@
   "log.escape" : {
     "default" : true,
     "description" : "escape characters when logging",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -124,6 +141,7 @@
   "log.file" : {
     "default" : "-",
     "description" : "shortcut for '--log.output file://<filename>'",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "string"
@@ -131,6 +149,7 @@
   "log.force-direct" : {
     "default" : false,
     "description" : "do not start a seperate thread for logging",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -138,6 +157,7 @@
   "log.foreground-tty" : {
     "default" : false,
     "description" : "also log to tty if backgrounded",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -145,6 +165,7 @@
   "log.keep-logrotate" : {
     "default" : false,
     "description" : "keep the old log file after receiving a sighup",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -154,6 +175,7 @@
       "info"
     ],
     "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "string..."
@@ -161,6 +183,7 @@
   "log.line-number" : {
     "default" : false,
     "description" : "append line number and file name",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -169,6 +192,7 @@
     "default" : [
     ],
     "description" : "log destination(s)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "string..."
@@ -176,6 +200,7 @@
   "log.performance" : {
     "default" : false,
     "description" : "shortcut for '--log.level performance=trace'",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -183,6 +208,7 @@
   "log.prefix" : {
     "default" : "",
     "description" : "prefix log message with this string",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "string"
@@ -190,6 +216,7 @@
   "log.role" : {
     "default" : false,
     "description" : "log server role",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -197,6 +224,7 @@
   "log.shorten-filenames" : {
     "default" : true,
     "description" : "shorten filenames in log output (use with --log.line-number)",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -204,6 +232,7 @@
   "log.thread" : {
     "default" : false,
     "description" : "show thread identifier in log message",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -211,6 +240,7 @@
   "log.thread-name" : {
     "default" : false,
     "description" : "show thread name in log message",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -218,6 +248,7 @@
   "log.use-local-time" : {
     "default" : false,
     "description" : "use local timezone instead of UTC",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -225,6 +256,7 @@
   "log.use-microtime" : {
     "default" : false,
     "description" : "use microtime instead",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -232,6 +264,7 @@
   "number-of-shards" : {
     "default" : 1,
     "description" : "number of shards of created collections (cluster only)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -239,6 +272,7 @@
   "progress" : {
     "default" : true,
     "description" : "log intermediate progress",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -246,6 +280,7 @@
   "quiet" : {
     "default" : false,
     "description" : "suppress status messages",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -253,6 +288,7 @@
   "random.generator" : {
     "default" : 1,
     "description" : "random number generator to use (1 = MERSENNE, 2 = RANDOM, 3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
@@ -261,6 +297,7 @@
   "replication-factor" : {
     "default" : 1,
     "description" : "replication factor of created collections (cluster only)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -268,6 +305,7 @@
   "requests" : {
     "default" : 1000,
     "description" : "total number of operations",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
@@ -275,13 +313,15 @@
   "runs" : {
     "default" : 1,
     "description" : "run test n times (and calculate statistics based on median)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "uint64"
   },
   "server.authentication" : {
-    "default" : true,
+    "default" : false,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "boolean"
@@ -289,6 +329,7 @@
   "server.connection-timeout" : {
     "default" : 5,
     "description" : "connection timeout in seconds",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "double"
@@ -296,20 +337,23 @@
   "server.database" : {
     "default" : "_system",
     "description" : "database name to use when connecting",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
   },
   "server.endpoint" : {
-    "default" : "tcp://127.0.0.1:8529",
+    "default" : "http+tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
   },
   "server.max-packet-size" : {
-    "default" : 134217728,
+    "default" : 1073741824,
     "description" : "maximum packet size (in bytes) for client/server communication",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "server",
     "type" : "uint64"
@@ -317,6 +361,7 @@
   "server.password" : {
     "default" : "",
     "description" : "password to use when connecting. If not specified and authentication is required, the user will be prompted for a password",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
@@ -324,6 +369,7 @@
   "server.request-timeout" : {
     "default" : 1200,
     "description" : "request timeout in seconds",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "double"
@@ -331,13 +377,15 @@
   "server.username" : {
     "default" : "root",
     "description" : "username to use when connecting",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
   },
   "ssl.protocol" : {
     "default" : 5,
-    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "ssl",
     "type" : "uint64",
@@ -346,6 +394,7 @@
   "temp.path" : {
     "default" : "",
     "description" : "path for temporary files",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "temp",
     "type" : "string"
@@ -353,6 +402,7 @@
   "test-case" : {
     "default" : "version",
     "description" : "test case to use",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string",
@@ -361,6 +411,7 @@
   "verbose" : {
     "default" : false,
     "description" : "print out replies if the HTTP header indicates DB errors",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -368,6 +419,7 @@
   "version" : {
     "default" : false,
     "description" : "reports the version and exits",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -375,6 +427,7 @@
   "wait-for-sync" : {
     "default" : false,
     "description" : "use waitForSync for created collections",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"

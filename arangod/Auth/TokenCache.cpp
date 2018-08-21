@@ -105,7 +105,7 @@ void auth::TokenCache::invalidateBasicCache() {
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     std::string const& secret) {
   if (_userManager == nullptr) { // server does not support users
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "Basic auth not supported";
+    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
   
