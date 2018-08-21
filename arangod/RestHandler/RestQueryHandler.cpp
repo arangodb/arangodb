@@ -319,7 +319,7 @@ bool RestQueryHandler::parseQuery() {
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::BAD, parseResult.code,
+    generateError(GeneralResponse::responseCode(parseResult.code), parseResult.code,
                   parseResult.details);
     return true;
   }
