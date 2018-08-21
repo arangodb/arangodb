@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/utf8_path.hpp"
+
 #include "catch.hpp"
 #include "common.h"
 #include "ExpressionContextMock.h"
@@ -29,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Basics/files.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "Transaction/StandaloneContext.h"

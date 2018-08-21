@@ -277,7 +277,7 @@ struct IResearchQueryJoinSetup {
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryJoinSetup() {
