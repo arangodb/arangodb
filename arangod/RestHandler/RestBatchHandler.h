@@ -36,8 +36,8 @@ struct MultipartMessage {
       : boundary(boundary),
         boundaryLength(boundaryLength),
         messageStart(messageStart),
-        messageEnd(messageEnd){};
-  MultipartMessage(){}
+        messageEnd(messageEnd) {} 
+  MultipartMessage() : MultipartMessage("", 0, "", "") {}
 
   char const* boundary;
   size_t boundaryLength;
@@ -47,7 +47,7 @@ struct MultipartMessage {
 
 // container for search data within multipart message
 struct SearchHelper {
-  MultipartMessage* message;
+  MultipartMessage message;
   char const* searchStart;
   char const* foundStart;
   size_t foundLength;
@@ -72,20 +72,20 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   RestStatus executeHttp();
   RestStatus executeVst();
   // extract the boundary from the body of a multipart message
-  bool getBoundaryBody(std::string*);
+  bool getBoundaryBody(std::string&);
 
   // extract the boundary from the HTTP header of a multipart message
-  bool getBoundaryHeader(std::string*);
+  bool getBoundaryHeader(std::string&);
 
   // extract the boundary of a multipart message
-  bool getBoundary(std::string*);
+  bool getBoundary(std::string&);
 
   // extract the next part from a multipart message
-  bool extractPart(SearchHelper*);
+  bool extractPart(SearchHelper&);
 
-private:
+ private:
   bool executeNextHandler();
-  void processSubHandlerResult(std::shared_ptr<RestHandler> handler);
+  void processSubHandlerResult(std::shared_ptr<RestHandler> const& handler);
 
   MultipartMessage _multipartMessage;
   SearchHelper _helper;

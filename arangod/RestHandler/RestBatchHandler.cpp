@@ -39,7 +39,8 @@ using namespace arangodb::rest;
 
 RestBatchHandler::RestBatchHandler(GeneralRequest* request,
                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response),
+      _errors(0) {}
 
 RestBatchHandler::~RestBatchHandler() {}
 
@@ -67,8 +68,7 @@ RestStatus RestBatchHandler::executeVst() {
   return RestStatus::DONE;
 }
 
-void RestBatchHandler::processSubHandlerResult(std::shared_ptr<RestHandler> handler)
-{
+void RestBatchHandler::processSubHandlerResult(std::shared_ptr<RestHandler> const& handler) {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   HttpResponse* partResponse =
@@ -140,7 +140,7 @@ bool RestBatchHandler::executeNextHandler() {
   _request->header(StaticStrings::Authorization);
 
   // get the next part from the multipart message
-  if (!extractPart(&_helper)) {
+  if (!extractPart(_helper)) {
     // error
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid multipart message received");
@@ -206,22 +206,20 @@ bool RestBatchHandler::executeNextHandler() {
                        authorization.c_str(), authorization.size());
   }
 
-  std::shared_ptr<RestHandler> handler = nullptr;
+  std::shared_ptr<RestHandler> handler;
 
   {
     std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR));
 
-    auto h = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-            std::move(request), std::move(response));
+    handler.reset(GeneralServerFeature::HANDLER_FACTORY->createHandler(
+            std::move(request), std::move(response)));
 
-    if (h == nullptr) {
+    if (handler == nullptr) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                     "could not create handler for batch part processing");
 
       return false;
     }
-
-    handler.reset(h);
   }
 
   // now scheduler the real handler
@@ -233,11 +231,11 @@ bool RestBatchHandler::executeNextHandler() {
       try {
         ExecContextScope scope(nullptr);// workaround because of assertions
         handler->runHandler([this, self, handler](RestHandler*) {
-          processSubHandlerResult (handler);
+          processSubHandlerResult(handler);
 
         });
       } catch (...) {
-        processSubHandlerResult (handler);
+        processSubHandlerResult(handler);
       }
     }
   );
@@ -275,7 +273,7 @@ RestStatus RestBatchHandler::executeHttp() {
 
 
   // invalid content-type or boundary sent
-  if (!getBoundary(&_boundary)) {
+  if (!getBoundary(_boundary)) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid content-type or boundary received");
     return RestStatus::DONE;
@@ -296,7 +294,7 @@ RestStatus RestBatchHandler::executeHttp() {
   _multipartMessage = MultipartMessage{_boundary.c_str(), _boundary.size(), bodyStr.c_str(),
                            bodyStr.c_str() + bodyStr.size()};
 
-  _helper.message = &_multipartMessage;
+  _helper.message = _multipartMessage;
   _helper.searchStart = _multipartMessage.messageStart;
 
   // and wait for completion
@@ -307,7 +305,7 @@ RestStatus RestBatchHandler::executeHttp() {
 /// @brief extract the boundary from the body of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryBody(std::string* result) {
+bool RestBatchHandler::getBoundaryBody(std::string& result) {
   HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request.get());
 
   if (req == nullptr) {
@@ -343,9 +341,7 @@ bool RestBatchHandler::getBoundaryBody(std::string* result) {
     return false;
   }
 
-  std::string boundary(p, (q - p));
-
-  *result = boundary;
+  result = std::string(p, (q - p));
   return true;
 }
 
@@ -353,7 +349,7 @@ bool RestBatchHandler::getBoundaryBody(std::string* result) {
 /// @brief extract the boundary from the HTTP header of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryHeader(std::string* result) {
+bool RestBatchHandler::getBoundaryHeader(std::string& result) {
   // extract content type
   std::string const contentType =
       StringUtils::trim(_request->header(StaticStrings::ContentTypeHeader));
@@ -395,7 +391,7 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
     return false;
   }
 
-  *result = "--" + boundary;
+  result = "--" + boundary;
   return true;
 }
 
@@ -403,7 +399,7 @@ bool RestBatchHandler::getBoundaryHeader(std::string* result) {
 /// @brief extract the boundary of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundary(std::string* result) {
+bool RestBatchHandler::getBoundary(std::string& result) {
   TRI_ASSERT(_request);
 
   // try peeking at header first
@@ -419,37 +415,37 @@ bool RestBatchHandler::getBoundary(std::string* result) {
 /// @brief extract the next part from a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::extractPart(SearchHelper* helper) {
-  TRI_ASSERT(helper->searchStart != nullptr);
+bool RestBatchHandler::extractPart(SearchHelper& helper) {
+  TRI_ASSERT(helper.searchStart != nullptr);
 
   // init the response
-  helper->foundStart = nullptr;
-  helper->foundLength = 0;
-  helper->containsMore = false;
-  helper->contentId = nullptr;
-  helper->contentIdLength = 0;
+  helper.foundStart = nullptr;
+  helper.foundLength = 0;
+  helper.containsMore = false;
+  helper.contentId = nullptr;
+  helper.contentIdLength = 0;
 
-  char const* searchEnd = helper->message->messageEnd;
+  char const* searchEnd = helper.message.messageEnd;
 
-  if (helper->searchStart >= searchEnd) {
+  if (helper.searchStart >= searchEnd) {
     // we're at the end already
     return false;
   }
 
   // search for boundary
-  char const* found = strstr(helper->searchStart, helper->message->boundary);
+  char const* found = strstr(helper.searchStart, helper.message.boundary);
 
   if (found == nullptr) {
     // not contained. this is an error
     return false;
   }
 
-  if (found != helper->searchStart) {
+  if (found != helper.searchStart) {
     // boundary not located at beginning. this is an error
     return false;
   }
 
-  found += helper->message->boundaryLength;
+  found += helper.message.boundaryLength;
 
   if (found + 1 >= searchEnd) {
     // we're outside the buffer. this is an error
@@ -545,8 +541,8 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
                     << StaticStrings::BatchContentType << "'";
         }
       } else if ("content-id" == key) {
-        helper->contentId = colon;
-        helper->contentIdLength = eol - colon;
+        helper.contentId = colon;
+        helper.contentIdLength = eol - colon;
       } else {
         // ignore other headers
       }
@@ -563,19 +559,19 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   }
 
   // we're at the start of the body part. set the return value
-  helper->foundStart = found;
+  helper.foundStart = found;
 
   // search for the end of the boundary
-  found = strstr(helper->foundStart, helper->message->boundary);
+  found = strstr(helper.foundStart, helper.message.boundary);
 
   if (found == nullptr || found >= searchEnd) {
     // did not find the end. this is an error
     return false;
   }
 
-  helper->foundLength = found - helper->foundStart;
+  helper.foundLength = found - helper.foundStart;
 
-  char const* p = found + helper->message->boundaryLength;
+  char const* p = found + helper.message.boundaryLength;
 
   if (p + 2 > searchEnd) {
     // end of boundary is outside the buffer
@@ -584,8 +580,8 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
 
   if (*p != '-' || *(p + 1) != '-') {
     // we've not reached the end yet
-    helper->containsMore = true;
-    helper->searchStart = found;
+    helper.containsMore = true;
+    helper.searchStart = found;
   }
 
   return true;
