@@ -1412,8 +1412,10 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
     auto numExpectedArguments = func->numArguments();
 
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
+      std::string const fname(functionName, length);
+
       THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, functionName,
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, fname.c_str(),
           static_cast<int>(numExpectedArguments.first),
           static_cast<int>(numExpectedArguments.second));
     }
