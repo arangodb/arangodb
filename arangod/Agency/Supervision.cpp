@@ -567,7 +567,8 @@ bool Supervision::earlyBird() const {
   VPackSlice coordinators;
 
   if (_snapshot.has(pdbpath)) {
-    dbservers = _snapshot(pdbpath).toBuilder().slice();
+    auto tmp = _snapshot(pdbpath).toBuilder();
+    dbservers = tmp.slice();
   } else {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "No Plan/DBServers key in persistent store";
@@ -575,14 +576,16 @@ bool Supervision::earlyBird() const {
   }
 
   if (_snapshot.has(pcpath)) {
-    coordinators = _snapshot(pcpath).toBuilder().slice();
+    auto tmp = _snapshot(pcpath).toBuilder();
+    coordinators = tmp.slice();
   } else {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
-      << "No Plan/DBServers key in persistent store";
+      << "No Plan/Coordinators key in persistent store";
     return false;
   }
 
   if (_transient.has(tpath)) {
+    auto tmp = _snapshot(tpath).toBuilder();
     serverStates = _transient(tpath).toBuilder().slice();
   } else {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
