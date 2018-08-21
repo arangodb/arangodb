@@ -128,6 +128,9 @@ struct IResearchViewNodeSetup {
         f.first->start();
       }
     }
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchViewNodeSetup() {
