@@ -168,6 +168,9 @@ class Index {
     return _useExpansion;
   }
 
+  /// @brief whether or not the index covers all the attributes passed in
+  virtual bool covers(std::unordered_set<std::string> const& attributes) const;
+
   /// @brief return the underlying collection
   inline LogicalCollection* collection() const { return &_collection; }
 

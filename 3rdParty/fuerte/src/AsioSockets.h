@@ -128,10 +128,11 @@ struct Socket<fuerte::SocketType::Ssl> {
     resolver.async_resolve({config._host, config._port}, rcb);
   }
   void shutdown() {
-    if (socket.next_layer().is_open()) {
+    if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec;
-      socket.next_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       socket.shutdown(ec);
+      socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      socket.lowest_layer().close(ec);
     }
   }
   

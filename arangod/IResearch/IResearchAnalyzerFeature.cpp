@@ -238,7 +238,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 ////////////////////////////////////////////////////////////////////////////////
 void ensureConfigCollection(TRI_vocbase_t& vocbase) {
   static const std::string json =
-    std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\"}";
+    std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"type\": 2}";
 
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     try {

@@ -57,6 +57,14 @@ class DocumentProducingNode {
     _projections = std::move(projections);
   }
   
+  void projections(std::unordered_set<std::string>&& projections) {
+    _projections.clear();
+    _projections.reserve(projections.size());
+    for (auto& it : projections) {
+      _projections.push_back(std::move(it));
+    }
+  }
+  
   std::vector<size_t> const& coveringIndexAttributePositions() const { 
     return _coveringIndexAttributePositions;
   }

@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
       server.addFeature(new ShellColorsFeature(server));
       server.addFeature(new ShellFeature(server, &ret));
       server.addFeature(new ShutdownFeature(server, {"Shell"}));
-      server.addFeature(new SslFeature(server));
+      //server.addFeature(new SslFeature(server));
       server.addFeature(new TempFeature(server, name));
       server.addFeature(new V8PlatformFeature(server));
       server.addFeature(new V8ShellFeature(server, name));

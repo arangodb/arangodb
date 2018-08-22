@@ -944,6 +944,33 @@ void Index::expandInSearchValues(VPackSlice const base,
   }
 }
 
+bool Index::covers(std::unordered_set<std::string> const& attributes) const {
+  // check if we can use covering indexes
+  if (_fields.size() < attributes.size()) {
+    // we will not be able to satisfy all requested projections with this index
+    return false;
+  }
+
+  std::string result;
+  size_t i = 0;
+  for (size_t j = 0; j < _fields.size(); ++j) {
+    bool found = false;
+    result.clear();
+    TRI_AttributeNamesToString(_fields[j], result, false);
+    for (auto const& it : attributes) {
+      if (result == it) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
+}
+
 void Index::warmup(arangodb::transaction::Methods*,
                    std::shared_ptr<basics::LocalTaskQueue>) {
   // Do nothing. If an index needs some warmup

@@ -1,4 +1,4 @@
-# Encryption 
+# Encryption at Rest 
 
 {% hint 'info' %}
 This feature is only available in the
