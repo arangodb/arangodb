@@ -436,6 +436,55 @@ std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
 
 std::string const SLASH("/");
 
+arangodb::Result MaintenanceFeature::storeDBError (
+  std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error) {
+
+  MUTEX_LOCKER(guard, _dbeLock);
+  auto const it = _dbErrors.find(database);
+  if (it != _dbErrors.end()) {
+    std::stringstream error;
+    error << "database " << database << " already has pending error";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+  try {
+    _dbErrors.emplace(database,error);
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_FAILED, e.what());
+  }
+
+  return Result();
+  
+}
+
+arangodb::Result MaintenanceFeature::dbError (
+  std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>>& error) const {
+
+  MUTEX_LOCKER(guard, _dbeLock);
+  auto const it = _dbErrors.find(database);
+  error = (it != _dbErrors.end()) ? it->second : nullptr;
+  return Result();
+  
+}
+
+arangodb::Result MaintenanceFeature::removeDBError (
+  std::string const& database) {
+
+  try {
+    MUTEX_LOCKER(guard, _seLock);
+    _shardErrors.erase(database);
+  } catch (std::exception const& e) {
+    std::stringstream error;
+    error << "erasing dataabse error for " << database << " failed";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+  return Result();
+  
+}
+
 arangodb::Result MaintenanceFeature::storeShardError (
   std::string const& database, std::string const& collection,
   std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {

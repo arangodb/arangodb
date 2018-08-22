@@ -187,7 +187,6 @@ public:
    * @param  database     database
    * @param  collection   collection
    * @param  shard        shard
-   * @param  indexId      index' id
    *
    * @return success 
    */
@@ -209,19 +208,49 @@ public:
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
 
   /**
-   * @brief remove 1+ errors from index error bucket
+   * @brief remove error from shard bucket
    *        Errors are removed by phaseOne, as soon as indexes no longer in plan
    *
    * @param  database     database
    * @param  collection   collection
    * @param  shard        shard
-   * @param  indexId      index' id
    *
    * @return success 
    */
   arangodb::Result removeShardError (
     std::string const& database, std::string const& collection,
     std::string const& shard);
+  
+  /**
+   * @brief add shard error to bucket
+   *        Errors are added by CreateCollection, UpdateCollection
+   *
+   * @param  database     database
+   *
+   * @return success 
+   */
+  arangodb::Result storeDBError (
+    std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error);
+
+  /**
+   * @brief get all pending shard errors
+   *
+   * @param  database     database
+   *
+   * @return success 
+   */
+  arangodb::Result dbError(
+    std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
+
+  /**
+   * @brief remove an error from db error bucket
+   *        Errors are removed by phaseOne, as soon as indexes no longer in plan
+   *
+   * @param  database     database
+   *
+   * @return success 
+   */
+  arangodb::Result removeDBError (std::string const& database);
   
 protected:
   /// @brief common code used by multiple constructors
@@ -299,6 +328,12 @@ protected:
   /// @brief pending errors raised by CreateCollection/UpdateCollection
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _shardErrors;
+
+  /// @brief lock for database error bucket
+  mutable arangodb::Mutex _dbeLock;
+  /// @brief pending errors raised by CreateDatabase
+  std::unordered_map<std::string,
+                     std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
 
            
 
