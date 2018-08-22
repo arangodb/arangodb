@@ -225,7 +225,7 @@ void handlePlanShard(
       actions.emplace_back(
         ActionDescription(
           {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
-            {DATABASE, dbname}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
+            {DATABASE, dbname}, {SERVER_ID, serverId}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     }
   }

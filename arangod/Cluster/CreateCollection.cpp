@@ -73,6 +73,11 @@ CreateCollection::CreateCollection(
   }
   TRI_ASSERT(desc.has(LEADER));
 
+  if (!desc.has(SERVER_ID)) {
+    error << "own server id must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SERVER_ID));
+
   if (!properties().hasKey(TYPE) || !properties().get(TYPE).isNumber()) {
     error << "properties slice must specify collection type. ";
   }
@@ -162,7 +167,23 @@ bool CreateCollection::first() {
             << "' for central '" << database << "/" << collection << "' failed: "
             << _result;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
-      _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+
+      // Error report for phaseTwo
+      VPackBuilder eb;
+      { VPackObjectuilder o(&eb);
+        eb.add("error", VPackValue(true));
+        eb.add("errorMessage", VPackValue(_result.errorMessage()));
+        eb.add("errorNum" VPackValue(_result.errorNumber()));
+        eb.add("indexes" VPackValue());
+        { VPackArrayBuilder a(&eb); } // []
+        eb.add("servers" VPackValue());
+        {VPackArrayBuilder a(&eb);    // [serverId]
+          eb.add(VPackValue(_description.get(SERVER_ID))); }}
+
+      // Steal buffer for maintenance feature
+      _feature.storeShardError(database, collection, shard, eb.steal());
+      
+      _result.reset(TRI_ERROR_FAILED, error.str());
       return false;
     }
     

@@ -67,6 +67,7 @@ static std::string const LEADER("theLeader");
 static std::string const LOCAL_LEADER("localLeader");
 static std::string const GLOB_UID("globallyUniqueId");
 static std::string const OBJECT_ID("objectId");
+static std::string const SERVER_ID("serverId");
 
 /**
  * @brief Action description for mainenance actions
