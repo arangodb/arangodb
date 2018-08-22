@@ -69,7 +69,7 @@ Background:
   released once old segments are no longer used.
 
 
-@RESTSTRUCT{type,optional,post_api_view_props_consolidations,string,optional,string}
+@RESTSTRUCT{type,post_api_view_props_consolidations,string,optional,string}
 The segment candidates for the "consolidation" operation are selected based
 upon several possible configurable formulas as defined by their types.
 The currently supported types are (default: "bytes_accum"):

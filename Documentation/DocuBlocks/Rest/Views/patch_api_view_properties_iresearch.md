@@ -68,7 +68,7 @@ Background:
   released once old segments are no longer used.
 
 
-@RESTSTRUCT{type,optional,post_api_view_props_consolidations,string,optional,string}
+@RESTSTRUCT{type,post_api_view_props_consolidations,string,optional,string}
 The segment candidates for the "consolidation" operation are selected based
 upon several possible configurable formulas as defined by their types.
 The currently supported types are (default: "bytes_accum"):
@@ -94,7 +94,7 @@ The currently supported types are (default: "bytes_accum"):
 Apply the "consolidation" operation if and only if (default: 300):
 {segmentThreshold} < number_of_segments
 
-@RESTSTRUCT{threshold,post_api_view_props_consolidation,float,optional,float}
+@RESTSTRUCT{threshold,post_api_view_props_consolidation,number,optional,float}
 Select a given segment for "consolidation" if and only if the formula based
 on *type* (as defined above) evaluates to true, valid value range [0.0, 1.0]
 (default: 0.85)
