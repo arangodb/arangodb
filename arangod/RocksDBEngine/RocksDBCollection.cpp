@@ -468,8 +468,9 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
     // Just report.
     return e.code();
   }
-  if (!newIdx) {
-    return TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
+  if (!newIdx) { // simon: probably something wrong with ArangoSearch Links
+    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
   }
   
   TRI_ASSERT(newIdx != nullptr);
