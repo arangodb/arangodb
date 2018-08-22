@@ -37,7 +37,7 @@ int64_t CountCache::get() const {
 int64_t CountCache::get(double ttl) const {
   int64_t count = get();
   if (count != CountCache::NotPopulated) {
-    double ts = timestamp.load(std::memory_order_acquire);
+    double ts = timestamp.load(std::memory_order_relaxed);
     if (ts + Ttl > TRI_microtime()) {
       // not yet expired
       return count;
@@ -48,6 +48,6 @@ int64_t CountCache::get(double ttl) const {
 
 void CountCache::store(int64_t value) {
   TRI_ASSERT(value >= 0);
-  timestamp.store(TRI_microtime(), std::memory_order_acquire);
+  timestamp.store(TRI_microtime(), std::memory_order_relaxed);
   count.store(value, std::memory_order_release);
 }
