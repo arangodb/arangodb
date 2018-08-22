@@ -5,8 +5,10 @@ Usage: `arangodump [<options>]`
 
 @startDocuBlock program_options_arangodump
 
-Encryption Options
-------------------
+Notes
+-----
+
+### Encryption Option Details
 
 {% hint 'info' %}
 This feature is only available in the
@@ -27,3 +29,4 @@ contain 32 bytes of data.
 This output is used if you want to use the program to generate your encryption key.
 The program `path-to-my-generator` must output the encryption on standard output
 and exit. The encryption keyfile must contain 32 bytes of data.
+
