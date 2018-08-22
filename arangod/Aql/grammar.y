@@ -321,7 +321,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> array;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
-%type <node> search;
+%type <node> for_options;
 %type <node> object;
 %type <node> options;
 %type <node> optional_object_elements;
@@ -465,25 +465,42 @@ for_statement:
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
 
       // now create an out variable for the FOR statement
-      // now we can handle the optional search condition, which may
+      // this prepares us to handle the optional SEARCH condition, which may
       // or may not refer to the FOR's variable
       parser->pushStack(parser->ast()->createNodeVariable($2.value, $2.length, true));
-    } search {
-      // now we can handle the optional search condition, which may
-      // or may not refer to the FOR's variable
+    } for_options {
+      // now we can handle the optional SEARCH condition and OPTIONS.
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
       TRI_ASSERT(variableNode != nullptr);
       Variable* variable = static_cast<Variable*>(variableNode->getData());
-      
-      if ($6 == nullptr) {
-        // no SEARCH clause. this is a regular FOR loop for a collection or an arbitrary expression
-        auto node = parser->ast()->createNodeFor(variable, $4);
-        parser->ast()->addOperation(node);
-      } else {
-        // we got a SEARCH clause. this is always a view.
-        auto node = parser->ast()->createNodeForView(variable, $4, $6);
-        parser->ast()->addOperation(node);
+     
+      AstNode* node = nullptr; 
+      AstNode* search = nullptr; 
+      AstNode* options = nullptr; 
+
+      if ($6 != nullptr) {
+        // we got a SEARCH and/or OPTIONS clause
+        TRI_ASSERT($6->type == NODE_TYPE_ARRAY);
+        TRI_ASSERT($6->numMembers() == 2);
+
+        search = $6->getMemberUnchecked(0);
+        if (search->type == NODE_TYPE_NOP) {
+          search = nullptr;
+        }
+        options = $6->getMemberUnchecked(1);
+        if (options->type == NODE_TYPE_NOP) {
+          options = nullptr;
+        }
       }
+
+      if (search != nullptr) {
+        // we got a SEARCH clause. this is always a view.
+        node = parser->ast()->createNodeForView(variable, $4, search, options);
+      } else {
+        node = parser->ast()->createNodeFor(variable, $4, options);
+      }
+        
+      parser->ast()->addOperation(node);
     }
   | T_FOR traversal_statement {
     }
@@ -1309,7 +1326,7 @@ array_elements_list:
     }
   ;
 
-search:
+for_options:
     /* empty */ {
       $$ = nullptr;
     }
@@ -1318,11 +1335,43 @@ search:
         ABORT_OOM
       }
 
-      if (!TRI_CaseEqualString($1.value, "SEARCH")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH'", $1.value, yylloc.first_line, yylloc.first_column);
+      // we always return an array with two values: SEARCH and OPTIONS
+      // as only one of these values will be set here, the other value is NOP
+      auto node = parser->ast()->createNodeArray(2);
+      // only one extra qualifier. now we need to check if it is SEARCH or OPTIONS
+
+      if (TRI_CaseEqualString($1.value, "SEARCH")) {
+        // found SEARCH
+        node->addMember($2);
+        node->addMember(parser->ast()->createNodeNop());
+      } else { 
+        // everything else must be OPTIONS
+        if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        }
+
+        node->addMember(parser->ast()->createNodeNop());
+        node->addMember($2);
       }
 
-      $$ = $2;
+      $$ = node;
+    }
+  | T_STRING expression T_STRING expression {
+      if ($2 == nullptr) {
+        ABORT_OOM
+      }
+      
+      // two extra qualifiers. we expect them in the order: SEARCH, then OPTIONS
+
+      if (!TRI_CaseEqualString($1.value, "SEARCH") ||
+          !TRI_CaseEqualString($3.value, "OPTIONS")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      auto node = parser->ast()->createNodeArray(2);
+      node->addMember($2);
+      node->addMember($4);
+      $$ = node;
     }
   ;
 

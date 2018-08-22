@@ -185,6 +185,7 @@ SECTION("construct") {
     logicalView, // view
     outVariable, // out variable
     nullptr, // no filter condition
+    nullptr, // no options
     {} // no sort condition
   );
 
@@ -340,6 +341,7 @@ SECTION("clone") {
       logicalView, // view
       outVariable,
       nullptr, // no filter condition
+      nullptr, // no options
       {} // no sort condition
     );
 
@@ -437,6 +439,7 @@ SECTION("clone") {
       logicalView, // view
       outVariable,
       nullptr, // no filter condition
+      nullptr, // no options
       {} // no sort condition
     );
 
@@ -564,6 +567,7 @@ SECTION("serialize") {
       logicalView, // view
       outVariable,
       nullptr, // no filter condition
+      nullptr, // no options
       {} // no sort condition
     );
 
@@ -699,6 +703,7 @@ SECTION("collections") {
     logicalView, // view
     outVariable,
     nullptr, // no filter condition
+    nullptr, // no options
     {} // no sort condition
   );
 
@@ -751,6 +756,7 @@ SECTION("createBlockSingleServer") {
       logicalView, // view
       outVariable,
       nullptr, // no filter condition
+      nullptr, // no options
       {} // no sort condition
     );
 
@@ -810,6 +816,7 @@ SECTION("createBlockCoordinator") {
     logicalView, // view
     outVariable,
     nullptr, // no filter condition
+    nullptr, // no options
     {} // no sort condition
   );
 

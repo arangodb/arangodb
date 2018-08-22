@@ -227,6 +227,7 @@ IResearchViewNode::IResearchViewNode(
     std::shared_ptr<const arangodb::LogicalView> const& view,
     arangodb::aql::Variable const& outVariable,
     arangodb::aql::AstNode* filterCondition,
+    arangodb::aql::AstNode* options, /* may be nullptr */
     std::vector<IResearchSort>&& sortCondition)
   : arangodb::aql::ExecutionNode(&plan, id),
     _vocbase(vocbase),
@@ -235,9 +236,12 @@ IResearchViewNode::IResearchViewNode(
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(filterCondition ? filterCondition : &ALL),
+    _options(options),
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+        
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "GOT OPTIONS: " << (options != nullptr) << ", GOT SEARCH: " << (filterCondition != nullptr);
 }
 
 IResearchViewNode::IResearchViewNode(
@@ -249,6 +253,7 @@ IResearchViewNode::IResearchViewNode(
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
+    _options(nullptr), // TODO: handle options here
     _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
   // view
   auto const viewIdSlice = base.get("viewId");
@@ -451,6 +456,7 @@ aql::ExecutionNode* IResearchViewNode::clone(
     _view,
     *outVariable,
     const_cast<aql::AstNode*>(_filterCondition),
+    const_cast<aql::AstNode*>(_options),
     decltype(_sortCondition)(_sortCondition)
   );
   node->_shards = _shards;

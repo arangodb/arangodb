@@ -71,6 +71,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     std::shared_ptr<const arangodb::LogicalView> const& view,
     aql::Variable const& outVariable,
     aql::AstNode* filterCondition,
+    aql::AstNode* options, /* may be nullptr */
     std::vector<IResearchSort>&& sortCondition
   );
 
@@ -209,6 +210,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief filter node to pass to view
   aql::AstNode const* _filterCondition;
+  
+  /// @brief view options. can be nullptr
+  aql::AstNode const* _options;
 
   /// @brief sortCondition to pass to the view
   std::vector<IResearchSort> _sortCondition;
