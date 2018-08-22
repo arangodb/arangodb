@@ -193,12 +193,13 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
-  node->reserve(2);
+  node->reserve(3);
 
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
+  node->addMember(&NopNode);
 
   return node;
 }
@@ -208,18 +209,21 @@ AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression, AstNo
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  AstNode* node = createNode(NODE_TYPE_FOR);
-  node->reserve(2 + (options != nullptr ? 1 : 0));
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
 
   AstNode* v = createNode(NODE_TYPE_VARIABLE);
   v->setData(static_cast<void*>(variable));
+  
+  AstNode* node = createNode(NODE_TYPE_FOR);
+  node->reserve(3);
 
   node->addMember(v);
   node->addMember(expression);
-  if (options != nullptr) {
-    node->addMember(options);
-  }
+  node->addMember(options);
 
   return node;
 }
@@ -234,19 +238,22 @@ AstNode* Ast::createNodeForView(Variable* variable,
   }
 
   TRI_ASSERT(search != nullptr);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
   
   AstNode* variableNode = createNode(NODE_TYPE_VARIABLE);
   variableNode->setData(static_cast<void*>(variable));
 
   AstNode* node = createNode(NODE_TYPE_FOR_VIEW);
-  node->reserve(3 + (options != nullptr ? 1 : 0));
+  node->reserve(4);
 
   node->addMember(variableNode);
   node->addMember(expression);
   node->addMember(createNodeFilter(search));
-  if (options != nullptr) {
-    node->addMember(options);
-  }
+  node->addMember(options);
 
   return node;
 }
@@ -3334,7 +3341,7 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
 AstNode* Ast::optimizeFor(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 2 || node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() == 3);
 
   AstNode* expression = node->getMember(1);
 

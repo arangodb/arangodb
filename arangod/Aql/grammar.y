@@ -490,6 +490,8 @@ for_statement:
         options = $6->getMemberUnchecked(1);
         if (options->type == NODE_TYPE_NOP) {
           options = nullptr;
+        } else if (!options->isConstObject()) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting constant object for 'OPTIONS'", yylloc.first_line, yylloc.first_column);
         }
       }
 
@@ -701,7 +703,7 @@ collect_statement:
           for (auto& it : groupVars) {
             if (variablesUsed.find(it) != variablesUsed.end()) {
               parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
-                "use of unknown variable '%s' in aggregate expression", it->name.c_str(), yylloc.first_line, yylloc.first_column);
+                "use of unknown variable '%s' in AGGREGATE expression", it->name.c_str(), yylloc.first_line, yylloc.first_column);
               break;
             }
           }
@@ -1386,6 +1388,10 @@ options:
 
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+      }
+        
+      if (!$2->isConstObject()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting constant object for 'OPTIONS'", yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $2;

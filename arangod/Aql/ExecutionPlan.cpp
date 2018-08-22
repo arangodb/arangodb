@@ -842,7 +842,7 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 2 || node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() == 3);
 
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
@@ -892,7 +892,10 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       );
     }
   
-    auto* options = node->numMembers() > 2 ? node->getMemberUnchecked(2) : nullptr;
+    auto* options = node->getMemberUnchecked(2);
+    if (options->type == NODE_TYPE_NOP) {
+      options = nullptr;
+    }
 
     en = registerNode(new iresearch::IResearchViewNode(
       *this, nextId(), vocbase, view, *v, nullptr, options, {}
@@ -920,7 +923,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR_VIEW);
-  TRI_ASSERT(node->numMembers() >= 3);
+  TRI_ASSERT(node->numMembers() == 4);
 
   auto const* variable = node->getMember(0);
   auto const* expression = node->getMember(1);
@@ -978,7 +981,10 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   TRI_ASSERT(search->type == NODE_TYPE_FILTER);
   TRI_ASSERT(search->numMembers() == 1);
 
-  auto* options = node->numMembers() > 3 ? node->getMemberUnchecked(3) : nullptr;
+  auto* options = node->getMemberUnchecked(3);
+  if (options->type == NODE_TYPE_NOP) {
+    options = nullptr;
+  }
   
   en = registerNode(new iresearch::IResearchViewNode(
     *this, nextId(), vocbase, view, *v, search->getMember(0), options, {}

@@ -682,6 +682,9 @@ struct AstNode {
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
+  
+  /// @brief validate that given node is an object with const-only values
+  bool isConstObject() const;
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible
