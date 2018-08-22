@@ -121,6 +121,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     emptyBuilder,
     arangodb::aql::PART_MAIN
   );
+  
+  query.queryOptions().cache = false;
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
@@ -461,7 +463,7 @@ Result auth::UserManager::enumerateUsers(
   Result res;
   {
     WRITE_LOCKER(writeGuard, _userCacheLock);
-    for (auth::User& u : toUpdate) {
+    for (auth::User const& u : toUpdate) {
       res = storeUserInternal(u, true);
       if (res.fail()) {
         break;  // do not return, still need to invalidate token cache

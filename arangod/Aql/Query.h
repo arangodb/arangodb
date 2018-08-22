@@ -142,6 +142,7 @@ class Query {
 
   velocypack::Slice optionsSlice() const { return _options->slice(); }
   TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions& queryOptions() { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
@@ -283,6 +284,9 @@ class Query {
 
   /// @brief get a description of the query's current state
   std::string getStateString() const;
+
+  /// @brief note that the query uses the view
+  void addView(std::string const& name) { _views.emplace(name); }
 
   /// @brief look up a graph in the _graphs collection
   graph::Graph const* lookupGraphByName(std::string const& name);
@@ -444,6 +448,9 @@ class Query {
 
   /// @brief shared state 
   std::shared_ptr<SharedQueryState> _sharedState;
+
+  /// @brief names of views used by the query. needed for the query cache
+  std::unordered_set<std::string> _views;
 };
 
 }

@@ -587,29 +587,36 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
           arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
           if (cacheEntry != nullptr) {
+            bool hasPermissions = true;
+
             ExecContext const* exe = ExecContext::CURRENT;
             // got a result from the query cache
-            if(exe != nullptr) {
-              for (std::string const& collectionName : cacheEntry->_collections) {
-                if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+            if (exe != nullptr) {
+              for (std::string const& dataSourceName : cacheEntry->_dataSources) {
+                if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
+                  // cannot use query cache result because of permissions
+                  hasPermissions = false;
+                  break;
                 }
               }
             }
 
-            // we don't have yet a transaction when we're here, so let's create
-            // a mimimal context to build the result
-            queryResult.context = transaction::StandaloneContext::Create(_vocbase);
-            queryResult.extra = std::make_shared<VPackBuilder>();
-            {
-              VPackObjectBuilder guard(queryResult.extra.get(), true);
-              addWarningsToVelocyPack(*queryResult.extra);
-            }
-            TRI_ASSERT(cacheEntry->_queryResult != nullptr);
-            queryResult.result = cacheEntry->_queryResult;
-            queryResult.cached = true;
+            if (hasPermissions) {
+              // we don't have yet a transaction when we're here, so let's create
+              // a mimimal context to build the result
+              queryResult.context = transaction::StandaloneContext::Create(_vocbase);
+              queryResult.extra = std::make_shared<VPackBuilder>();
+              {
+                VPackObjectBuilder guard(queryResult.extra.get(), true);
+                addWarningsToVelocyPack(*queryResult.extra);
+              }
+              TRI_ASSERT(cacheEntry->_queryResult != nullptr);
+              queryResult.result = cacheEntry->_queryResult;
+              queryResult.cached = true;
 
-            return ExecutionState::DONE;
+              return ExecutionState::DONE;
+            }
+            // if no permissions, fall through to regular querying
           }
         }
 
@@ -692,7 +699,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               queryHash,
               _queryString,
               _resultBuilder,
-              _trx->state()->collectionNames()
+              _trx->state()->collectionNames(_views)
             );
 
             if (result == nullptr) {
@@ -790,28 +797,34 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
+        bool hasPermissions = true;
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         ExecContext const* exe = ExecContext::CURRENT;
 
         // got a result from the query cache
         if (exe != nullptr) {
-          for (std::string const& collectionName : cacheEntry->_collections) {
-            if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+          for (std::string const& dataSourceName : cacheEntry->_dataSources) {
+            if (!exe->canUseCollection(dataSourceName, auth::Level::RO)) {
+              // cannot use query cache result because of permissions
+              hasPermissions = false;
+              break;
             }
           }
         }
 
-        // we don't have yet a transaction when we're here, so let's create
-        // a mimimal context to build the result
-        queryResult.context = ctx;
-        v8::Handle<v8::Value> values =
-            TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
-                          queryResult.context->getVPackOptions());
-        TRI_ASSERT(values->IsArray());
-        queryResult.result = v8::Handle<v8::Array>::Cast(values);
-        queryResult.cached = true;
-        return ExecutionState::DONE;
+        if (hasPermissions) {
+          // we don't have yet a transaction when we're here, so let's create
+          // a mimimal context to build the result
+          queryResult.context = ctx;
+          v8::Handle<v8::Value> values =
+              TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
+                            queryResult.context->getVPackOptions());
+          TRI_ASSERT(values->IsArray());
+          queryResult.result = v8::Handle<v8::Array>::Cast(values);
+          queryResult.cached = true;
+          return ExecutionState::DONE;
+        }
+        // if no permissions, fall through to regular querying
       }
     }
 
@@ -828,7 +841,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     v8::Handle<v8::Array> resArray = v8::Array::New(isolate);
 
     TRI_ASSERT(_engine != nullptr);
-
+            
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
     std::unique_ptr<AqlItemBlock> value;
@@ -884,7 +897,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
             queryHash,
             _queryString,
             builder,
-            _trx->state()->collectionNames()
+            _trx->state()->collectionNames(_views)
           );
         }
       } else {
@@ -1335,6 +1348,9 @@ uint64_t Query::hash() {
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
   if (_queryString.size() < 8) {
+    return false;
+  }
+  if (_isModificationQuery) {
     return false;
   }
 
