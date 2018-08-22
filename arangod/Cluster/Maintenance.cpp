@@ -42,6 +42,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
+#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -325,6 +326,31 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 }
 
 
+struct NotEmpty {
+  bool operator()(const std::string& s) { return !s.empty(); }
+};
+
+inline static std::vector<std::string> split(std::string const& key) {
+  
+  std::vector<std::string> result;
+  if (key.empty()) {
+    return result;
+  }
+  
+  std::string::size_type p = 0;
+  std::string::size_type q;
+  while ((q = key.find('/', p)) != std::string::npos) {
+    result.emplace_back(key, p, q - p);
+    p = q + 1;
+  }
+  result.emplace_back(key, p);
+  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
+               result.end());
+  return result;
+}
+
+
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
@@ -402,6 +428,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         } 
       }
     } 
+  }
+
+  // See if errors can be thrown out
+  for (auto& shard : errors.shards) {
+    std::vector<std::string> path = split(shard.first);
+    path.pop_back(); // Get rid of shard 
+    if (!plan.hasKey(path)) { // we can drop the local error
+      shard.second.reset();
+    }
   }
 
   return result;
@@ -533,7 +568,7 @@ arangodb::Result arangodb::maintenance::phaseOne (
         << "Error executing plan: " << e.what()
         << ". " << __FILE__ << ":" << __LINE__;
     }}
-
+  
   report.add(VPackValue("Plan"));
   { VPackObjectBuilder p(&report);
     report.add("Version", plan.get("Version"));}
