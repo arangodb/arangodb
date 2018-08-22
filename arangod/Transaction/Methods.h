@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
 #include "Utils/OperationResult.h"
-#include "Transaction/CountType.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -524,6 +524,9 @@ class Methods {
 
   OperationResult countCoordinator(std::string const& collectionName,
                                    CountType type);
+
+  OperationResult countCoordinatorHelper(
+      std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
 
   OperationResult countLocal(std::string const& collectionName, CountType type);
 

@@ -38,17 +38,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-static int64_t const UNINITIALIZED = -1;
-}
-
 /// @brief create a collection wrapper
 Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
                        AccessMode::Type accessType)
     : _collection(nullptr),
       _vocbase(vocbase),
       _name(name),
-      _numberDocuments(UNINITIALIZED),
       _accessType(accessType),
       _isReadWrite(false) {
   TRI_ASSERT(!_name.empty());
@@ -68,16 +63,12 @@ TRI_voc_cid_t Collection::id() const {
 
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
-  if (_numberDocuments == UNINITIALIZED) {
-    OperationResult res = trx->count(_name, transaction::CountType::TryCache);
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res.result);
-    }
-    TRI_ASSERT(res.ok());
-    _numberDocuments = res.slice().getInt();
+  // estimate for the number of documents in the collection. may be outdated...
+  OperationResult res = trx->count(_name, transaction::CountType::TryCache);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.result);
   }
-
-  return static_cast<size_t>(_numberDocuments);
+  return static_cast<size_t>(res.slice().getUInt());
 }
 
 /// @brief returns the collection's plan id

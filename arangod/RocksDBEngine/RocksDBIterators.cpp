@@ -28,7 +28,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Transaction/CountType.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 

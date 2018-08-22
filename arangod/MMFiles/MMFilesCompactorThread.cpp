@@ -41,7 +41,6 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/CountType.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -1024,7 +1023,7 @@ void MMFilesCompactorThread::run() {
 
 /// @brief determine the number of documents in the collection
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(
-    LogicalCollection const& collection
+    LogicalCollection& collection
 ) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),

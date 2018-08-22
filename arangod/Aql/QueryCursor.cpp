@@ -31,7 +31,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/CountType.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 

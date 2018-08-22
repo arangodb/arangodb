@@ -29,7 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
-#include "Transaction/CountType.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -148,7 +148,7 @@ class LogicalCollection: public LogicalDataSource {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type) const;
+  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
@@ -340,6 +340,8 @@ class LogicalCollection: public LogicalDataSource {
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  
+  transaction::CountCache& countCache() { return _countCache; }
 
   ChecksumResult checksum(bool, bool) const;
 
@@ -364,6 +366,8 @@ class LogicalCollection: public LogicalDataSource {
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
   void increaseInternalVersion();
+
+  transaction::CountCache _countCache;
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;

@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
-#include "Transaction/CountType.h"
+#include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/voc-types.h"
 
@@ -92,7 +92,8 @@ namespace helpers {
 
 
   OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
-                                   transaction::CountType type);
+                                   transaction::CountType type,
+                                   int64_t& total);
   
   /// @brief creates an id string from a custom _id value and the _key string
   std::string makeIdFromCustom(CollectionNameResolver const* resolver,

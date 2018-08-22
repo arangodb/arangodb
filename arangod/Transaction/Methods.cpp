@@ -2798,21 +2798,63 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
   return countLocal(collectionName, type);
 }
 
-/// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
+/// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
-  std::vector<std::pair<std::string, uint64_t>> count;
-  auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, *this, count 
-  );
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
+  
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(vocbase().name(), collectionName);
+  } catch (...) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  return buildCountResult(count, type);
+
+  return countCoordinatorHelper(collinfo, collectionName, type);
 }
+
 #endif
+
+OperationResult transaction::Methods::countCoordinatorHelper(
+    std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, transaction::CountType type) { 
+  TRI_ASSERT(collinfo != nullptr);
+  auto& cache = collinfo->countCache();
+
+  int64_t documents = CountCache::NotPopulated;
+  if (type == transaction::CountType::ForceCache) {
+    // always return from the cache, regardless what's in it
+    documents = cache.get();
+  } else if (type == transaction::CountType::TryCache) {
+    documents = cache.get(CountCache::Ttl);
+  }
+
+  if (documents == CountCache::NotPopulated) {
+    // no cache hit, or detailed results requested
+    std::vector<std::pair<std::string, uint64_t>> count;
+    auto res = arangodb::countOnCoordinator(
+      vocbase().name(), collectionName, *this, count 
+    );
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+    
+    int64_t total = 0;
+    OperationResult opRes = buildCountResult(count, type, total);
+    cache.store(total);
+    return opRes;
+  } 
+
+  // cache hit!
+  TRI_ASSERT(documents >= 0);
+  TRI_ASSERT(type != transaction::CountType::Detailed);
+
+  // return number from cache  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(documents));
+  return OperationResult(Result(), resultBuilder.buffer(), nullptr);
+}
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
