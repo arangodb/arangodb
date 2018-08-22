@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/Action.h"
@@ -432,3 +433,159 @@ VPackBuilder  MaintenanceFeature::toVelocyPack() const {
 std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
 } // MaintenanceFeature::toJson
 #endif
+
+std::string const SLASH("/");
+
+arangodb::Result MaintenanceFeature::storeShardError (
+  std::string const& database, std::string const& collection,
+  std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {
+
+  std::string key = database + SLASH + collection + SLASH + shard;
+  
+  MUTEX_LOCKER(guard, _seLock);
+  auto const it = _shardErrors.find(key);
+  if (it != _shardErrors.end()) {
+    std::stringstream error;
+    error << "shard " << key << " already has pending error";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+  try {
+    _shardErrors.emplace(key,error);
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_FAILED, e.what());
+  }
+
+  return Result();
+  
+}
+
+arangodb::Result MaintenanceFeature::shardError (
+  std::string const& database, std::string const& collection,
+  std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) const {
+
+  std::string key = database + SLASH + collection + SLASH + shard;
+
+  MUTEX_LOCKER(guard, _seLock);
+  auto const it = _shardErrors.find(key);
+  error = (it != _shardErrors.end()) ? it->second : nullptr;
+  return Result();
+  
+}
+
+arangodb::Result MaintenanceFeature::removeShardError (
+  std::string const& database, std::string const& collection,
+  std::string const& shard) {
+
+  std::string key = database + SLASH + collection + SLASH + shard;
+
+  try {
+    MUTEX_LOCKER(guard, _seLock);
+    _shardErrors.erase(key);
+  } catch (std::exception const& e) {
+    std::stringstream error;
+    error << "erasing shard error for " << key << " failed";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+  return Result();
+  
+}
+
+arangodb::Result MaintenanceFeature::storeIndexError (
+  std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& indexId,
+    std::shared_ptr<VPackBuffer<uint8_t>> error) {
+
+  std::string key = database + SLASH + collection + SLASH + shard;
+  
+  MUTEX_LOCKER(guard, _ieLock);
+  auto errors = _indexErrors[key]; 
+  auto const it = errors.find(indexId);
+
+  if (it != errors.end()) {
+    std::stringstream error;
+    error << "index " << indexId << " for shard "
+          << key << " already has pending error";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+  try {
+    errors.emplace(indexId,error);
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_FAILED, e.what());
+  }
+
+  return Result();
+  
+}
+
+arangodb::Result MaintenanceFeature::indexErrors (
+  std::string const& database, std::string const& collection,
+  std::string const& shard,
+  std::map<std::string,std::shared_ptr<VPackBuffer<uint8_t>>>& error) const {
+
+  std::string key = database + SLASH + collection + SLASH + shard;
+
+  MUTEX_LOCKER(guard, _ieLock);
+  auto const& it = _indexErrors.find(key);
+  if (it != _indexErrors.end()) {
+    error = it->second;
+  }
+  
+  return Result();
+  
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, std::set<T>const& st) {
+  size_t j = 0;
+  os << "[";
+  for (auto const& i : st) {
+    os << i;
+    if (++j < st.size()) {
+      os << ", ";
+    }
+  }
+  os << "]";
+  return os;
+}
+
+arangodb::Result MaintenanceFeature::removeIndexErrors (
+  std::string const& database, std::string const& collection,
+  std::string const& shard, std::set<std::string> indexIds) {
+
+  std::string key = database + SLASH + collection + SLASH + shard;
+
+  MUTEX_LOCKER(guard, _ieLock);
+
+  // If no entry for this shard exists bail out
+  auto kit = _indexErrors.find(key); 
+  if (kit == _indexErrors.end()) {
+    std::stringstream error;
+    error << "erasing index " << indexIds << " error for shard " << key
+          << " failed as no such key is found in index error bucket";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+  auto errors = kit->second; 
+
+  try {
+    for (auto const& indexId : indexIds) {
+      errors.erase(indexId);
+    }
+  } catch (std::exception const& e) {
+    std::stringstream error;
+    error << "erasing index errors " << indexIds << " for " << key << " failed";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
+    return Result(TRI_ERROR_FAILED, error.str());
+  }
+
+
+  return Result();
+  
+}
