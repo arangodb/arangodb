@@ -220,12 +220,20 @@ void handlePlanShard(
           }
         }
       }
-    } else {                   // Create the sucker!
-      actions.emplace_back(
-        ActionDescription(
-          {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
-            {DATABASE, dbname}, {SERVER_ID, serverId}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
-          props));
+    } else { // Create the sucker, if not a previous error stops us
+      if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
+          errors.shards.end()) {
+        actions.emplace_back(
+          ActionDescription(
+            {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
+             {DATABASE, dbname}, {SERVER_ID, serverId}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
+            props));
+      } else {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "Previous failure exists for creating local shard " << dbname 
+          << "/" << shname << "for central " << dbname << "/" << colname
+          <<"- skipping";
+      }
     }
   }
 }            
