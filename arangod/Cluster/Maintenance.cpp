@@ -497,10 +497,18 @@ static VPackBuilder assembleLocalCollectionInfo(
     }
 
     { VPackObjectBuilder r(&ret);
-      // FIXME: Add shard error here
-      ret.add(ERROR, VPackValue(false));
-      ret.add(ERROR_MESSAGE, VPackValue(std::string()));
-      ret.add(ERROR_NUM, VPackValue(0));
+      auto it = allErrors.shards.find(
+          database + "/" + std::to_string(collection->planId()) + "/" + shard);
+      if (it == allErrors.shards.end()) {
+        ret.add(ERROR, VPackValue(false));
+        ret.add(ERROR_MESSAGE, VPackValue(std::string()));
+        ret.add(ERROR_NUM, VPackValue(0));
+      } else {
+        VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
+        ret.add(ERROR, errs.get(ERROR));
+        ret.add(ERROR_NUM, errs.get(ERROR_NUM));
+        ret.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
+      }
       ret.add(VPackValue(INDEXES));
       { VPackArrayBuilder ixs(&ret);
         if (info.get(INDEXES).isArray()) {
@@ -639,11 +647,11 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
              !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
 
   
-        report.add(
-          VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" +shName));
-          { VPackObjectBuilder o(&report); 
-            report.add(OP, VP_SET);
-            report.add("payload", localCollectionInfo.slice()); }
+          report.add(
+            VPackValue(CURRENT_COLLECTIONS+dbName+"/"+colName+"/"+shName));
+            { VPackObjectBuilder o(&report); 
+              report.add(OP, VP_SET);
+              report.add("payload", localCollectionInfo.slice()); }
         }
       } else {  // Follower
   
@@ -742,6 +750,36 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             report.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
           }
         }
+      }
+    }
+  }
+
+  // Finally, let's find shard errors for shards which do not occur in
+  // Local but in Plan, we need to make sure that these errors are reported
+  // in Current:
+  for (auto const& p : allErrors.shards) {
+    // First split the key:
+    std::string const& key = p.first;
+    auto pos = key.find('/');
+    TRI_ASSERT(pos != std::string::npos);
+    std::string d = key.substr(0, pos);     // database
+    auto pos2 = key.find('/', pos + 1);     // collection
+    TRI_ASSERT(pos2 != std::string::npos);
+    std::string c = key.substr(pos + 1, pos2);
+    std::string s = key.substr(pos2 + 1);   // shard name
+
+    // Now find out if the shard appears in the Plan but not in Local:
+    VPackSlice inPlan = pdbs.get(std::vector<std::string>({d, c, "shards", s}));
+    VPackSlice inLoc = local.get(std::vector<std::string>({d, s}));
+    if (inPlan.isObject() && inLoc.isNone()) {
+      VPackSlice inCur = cdbs.get(std::vector<std::string>({d, c, s}));
+      VPackSlice theErr(static_cast<uint8_t const*>(p.second->data()));
+      if (inCur.isNone() || !equivalent(theErr, inCur)) {
+        report.add(
+          VPackValue(CURRENT_COLLECTIONS + d + "/" + c + "/" + s));
+            { VPackObjectBuilder o(&report); 
+              report.add(OP, VP_SET);
+              report.add("payload", theErr); }
       }
     }
   }
