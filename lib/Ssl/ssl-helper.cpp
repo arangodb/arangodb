@@ -27,6 +27,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/asio_ns.h"
+#include "Basics/make_unique.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -68,7 +69,7 @@ std::unique_ptr<asio::ssl::context> arangodb::sslContext(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
   }
 
-  std::unique_ptr<asio::ssl::context> sslctx(new asio::ssl::context(meth));
+  auto sslctx = std::make_unique<asio::ssl::context>(meth);
 
   if (sslctx->native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL

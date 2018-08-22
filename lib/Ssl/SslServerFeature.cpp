@@ -76,7 +76,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4, 5};
 
   options->addOption("--ssl.protocol",
-                     "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = "
+                     "ssl protocol (2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = "
                      "TLSv1, 5 = TLSv1.2)",
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
@@ -137,8 +137,6 @@ void SslServerFeature::createSslContext() {
       }
     }
 
-
-    // This code was
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
     if (!_ecdhCurve.empty()) {
       int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
