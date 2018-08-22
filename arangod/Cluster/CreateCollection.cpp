@@ -170,13 +170,13 @@ bool CreateCollection::first() {
 
       // Error report for phaseTwo
       VPackBuilder eb;
-      { VPackObjectuilder o(&eb);
+      { VPackObjectBuilder o(&eb);
         eb.add("error", VPackValue(true));
         eb.add("errorMessage", VPackValue(_result.errorMessage()));
-        eb.add("errorNum" VPackValue(_result.errorNumber()));
-        eb.add("indexes" VPackValue());
+        eb.add("errorNum", VPackValue(_result.errorNumber()));
+        eb.add(VPackValue("indexes"));
         { VPackArrayBuilder a(&eb); } // []
-        eb.add("servers" VPackValue());
+        eb.add(VPackValue("servers"));
         {VPackArrayBuilder a(&eb);    // [serverId]
           eb.add(VPackValue(_description.get(SERVER_ID))); }}
 
