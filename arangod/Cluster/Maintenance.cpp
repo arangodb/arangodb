@@ -421,9 +421,12 @@ arangodb::Result arangodb::maintenance::executePlan (
     for (auto const& action : actions) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "adding action " << action << " to feature ";
-      action.toVelocyPack(report);
+      { VPackObjectBuilder b(&report);
+        action.toVelocyPack(report);
+      }
       feature.addAction(std::make_shared<ActionDescription>(action), true);
-    }}
+    }
+  }
   
   return result;  
 }
