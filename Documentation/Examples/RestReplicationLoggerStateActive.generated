@@ -7,14 +7,14 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"104490"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"104490"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35180</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-21T16:40:02Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"104482"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"104482"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35178</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-22T18:45:55Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
     <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.devel"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"254801905349194"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"122327666155665"</span>, 
     <span class="hljs-string">"engine"</span> : <span class="hljs-string">"mmfiles"</span> 
   }, 
   <span class="hljs-string">"clients"</span> : [ ] 

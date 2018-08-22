@@ -36,6 +36,9 @@ x-content-type-options: nosniff
                   <span class="hljs-string">"value"</span> : <span class="hljs-number">100</span> 
                 } 
               ] 
+            }, 
+            { 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"no-op"</span> 
             } 
           ] 
         }, 
