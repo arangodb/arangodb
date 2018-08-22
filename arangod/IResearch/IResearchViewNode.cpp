@@ -240,8 +240,6 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
-        
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "GOT OPTIONS: " << (options != nullptr) << ", GOT SEARCH: " << (filterCondition != nullptr);
 }
 
 IResearchViewNode::IResearchViewNode(
