@@ -200,7 +200,7 @@ function SynchronousReplicationWithViewSuite () {
     viewOperations("assert", null, function assert() {
       assertEqual(
         viewOperations("query", { query: "FOR d IN @@vn COLLECT WITH COUNT into iCount RETURN iCount",
-        bind: '{ "@vn" : name }' }).toArray()[0], 1) } );
+        bind: '{ "@vn" : name }' }).toArray()[0], 1); } );
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }

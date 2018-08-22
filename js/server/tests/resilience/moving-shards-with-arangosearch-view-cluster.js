@@ -553,7 +553,8 @@ function MovingShardsWithViewSuite (options) {
         v[i].drop();
         c[i].drop();
       }
-      c = [], v = [];
+      c = []; 
+      v = [];
       resetCleanedOutServers();
     },
 
