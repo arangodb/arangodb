@@ -632,7 +632,7 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
-  auto errors = kit->second; 
+  auto& errors = kit->second; 
 
   try {
     for (auto const& indexId : indexIds) {

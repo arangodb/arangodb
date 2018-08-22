@@ -105,8 +105,11 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps (
 }
 
 
-VPackBuilder compareIndexes(
-  std::string const& shname, VPackSlice const& plan, VPackSlice const& local,
+static VPackBuilder compareIndexes(
+  std::string const& dbname, std::string const& collname,
+  std::string const& shname,
+  VPackSlice const& plan, VPackSlice const& local,
+  MaintenanceFeature::errors_t const& errors,
   std::unordered_set<std::string>& indis) {
   
   VPackBuilder builder;
@@ -165,7 +168,19 @@ VPackBuilder compareIndexes(
           }
         }
         if (!found) {
-          builder.add(pindex);
+          // Finally check if we have an error for this index:
+          bool haveError = false;
+          std::string errorKey = dbname + "/" + collname + "/" + shname;
+          auto it1 = errors.indexes.find(errorKey);
+          if (it1 != errors.indexes.end()) {
+            auto it2 = it1->second.find(planIdS);
+            if (it2 != it1->second.end()) {
+              haveError = true;
+            }
+          }
+          if (!haveError) {
+            builder.add(pindex);
+          }
         }
       }
     }
@@ -218,7 +233,8 @@ void handlePlanShard(
       if (cprops.hasKey(INDEXES)) {
         auto const& pindexes = cprops.get(INDEXES);
         auto const& lindexes = lcol.get(INDEXES);
-        auto difference = compareIndexes(shname, pindexes, lindexes, indis);
+        auto difference = compareIndexes(dbname, colname, shname,
+            pindexes, lindexes, errors, indis);
 
         if (difference.slice().isArray()) {
           for (auto const& index : VPackArrayIterator(difference.slice())) {
@@ -430,12 +446,39 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     } 
   }
 
-  // See if errors can be thrown out
+  // See if shard errors can be thrown out:
   for (auto& shard : errors.shards) {
     std::vector<std::string> path = split(shard.first);
     path.pop_back(); // Get rid of shard 
-    if (!plan.hasKey(path)) { // we can drop the local error
+    if (!pdbs.hasKey(path)) { // we can drop the local error
       shard.second.reset();
+    }
+  }
+
+  // See if index errors can be thrown out:
+  for (auto& shard : errors.indexes) {
+    std::vector<std::string> path = split(shard.first);
+    path.pop_back();
+    path.emplace_back(INDEXES);
+    VPackSlice indexes = pdbs.get(path);
+    if (!indexes.isArray()) { // collection gone, can drop errors
+      for (auto& index : shard.second) {
+        index.second.reset();
+      }
+    } else {   // need to look at individual errors and indexes:
+      for (auto& p : shard.second) {
+        std::string const& id = p.first;
+        bool found = false;
+        for (auto const& ind : VPackArrayIterator(indexes)) {
+          if (ind.get(ID).copyString() == id) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          p.second.reset();
+        }
+      }
     }
   }
 
@@ -604,9 +647,10 @@ static VPackBuilder assembleLocalCollectionInfo(
       return ret;
     }
 
+    std::string errorKey
+      = database + "/" + std::to_string(collection->planId()) + "/" + shard;
     { VPackObjectBuilder r(&ret);
-      auto it = allErrors.shards.find(
-          database + "/" + std::to_string(collection->planId()) + "/" + shard);
+      auto it = allErrors.shards.find(errorKey);
       if (it == allErrors.shards.end()) {
         ret.add(ERROR, VPackValue(false));
         ret.add(ERROR_MESSAGE, VPackValue(std::string()));
@@ -620,7 +664,7 @@ static VPackBuilder assembleLocalCollectionInfo(
       ret.add(VPackValue(INDEXES));
       { VPackArrayBuilder ixs(&ret);
         if (info.get(INDEXES).isArray()) {
-          auto it1 = allErrors.indexes.find(shard);
+          auto it1 = allErrors.indexes.find(errorKey);
           std::unordered_set<std::string> indexesDone;
           // First the indexes as they are in Local, potentially replaced
           // by an error:
