@@ -55,7 +55,11 @@ arangodb::Result diffPlanLocalForDatabases(
  */
 arangodb::Result diffPlanLocal(
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors, std::vector<ActionDescription>& actions);
+  MaintenanceFeature::errors_t const& errors,
+  std::vector<ActionDescription>& actions,
+  std::unordered_set<std::string>& databaseErrors,
+  std::unordered_set<std::string>& shardErrors,
+  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run 
@@ -72,6 +76,9 @@ arangodb::Result diffPlanLocal(
 arangodb::Result executePlan (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
   MaintenanceFeature::errors_t const& errors, arangodb::MaintenanceFeature& feature,
+  std::unordered_set<std::string>& databaseErrors,
+  std::unordered_set<std::string>& shardErrors,
+  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors,
   VPackBuilder& report);
 
 /**
