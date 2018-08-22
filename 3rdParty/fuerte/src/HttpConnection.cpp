@@ -172,30 +172,6 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   return id;
 }
   
-// Activate this connection.
-template <SocketType ST>
-void HttpConnection<ST>::startConnection() {
-  // start connecting only if state is disconnected
-  Connection::State exp = Connection::State::Disconnected;
-  if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
-    FUERTE_LOG_ERROR << "already resolving endpoint\n";
-    return;
-  }
-  
-  auto self = shared_from_this();
-  _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
-    if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-      shutdownConnection(ErrorCondition::CouldNotConnect);
-      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                           "connecting failed: " + ec.message());
-    } else {
-      _state.store(Connection::State::Connected, std::memory_order_release);
-      startWriting();  // starts writing queue if non-empty
-    }
-  });
-}
-  
 /// @brief cancel the connection, unusable afterwards
 template <SocketType ST>
 void HttpConnection<ST>::cancel() {
@@ -209,12 +185,45 @@ void HttpConnection<ST>::cancel() {
     }
   });
 }
+  
+// Activate this connection.
+template <SocketType ST>
+void HttpConnection<ST>::startConnection() {
+  // start connecting only if state is disconnected
+  Connection::State exp = Connection::State::Disconnected;
+  if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
+    tryConnect(_config._maxConnectRetries);
+  }
+}
+  
+// Connect with a given number of retries
+template <SocketType ST>
+void HttpConnection<ST>::tryConnect(unsigned retries) {
+  assert(_state.load(std::memory_order_acquire) == Connection::State::Connecting);
+  
+  auto self = shared_from_this();
+  _protocol.connect(_config, [self, this, retries](asio_ns::error_code const& ec) {
+    if (!ec) {
+      _state.store(Connection::State::Connected, std::memory_order_release);
+      startWriting();  // starts writing queue if non-empty
+      return;
+    }
+    FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+    if (retries > 0) {
+      tryConnect(retries - 1);
+    } else {
+      shutdownConnection(ErrorCondition::CouldNotConnect);
+      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+                "connecting failed: " + ec.message());
+    }
+  });
+}
 
 // shutdown the connection and cancel all pending messages.
 template<SocketType ST>
 void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection: this=" << this << "\n";
-  
+
   if (_state.load() != State::Failed) {
     _state.store(State::Disconnected);
   }

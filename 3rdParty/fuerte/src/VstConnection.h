@@ -68,14 +68,19 @@ class VstConnection final : public Connection {
   Connection::State state() const override final {
     return _state.load(std::memory_order_acquire);
   }
-
-  /// Activate the connection.
-  void startConnection() override final;
   
   /// @brief cancel the connection, unusable afterwards
   void cancel() override final;
+  
+ protected:
+ 
+  /// Activate the connection.
+  void startConnection() override final;
 
  private:
+  
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries);
   
   /// shutdown connection, cancel async operations
   void shutdownConnection(const ErrorCondition);
