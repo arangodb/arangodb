@@ -196,12 +196,21 @@ void handlePlanShard(
       // If comparison has brought any updates
       if (properties->slice() != VPackSlice::emptyObjectSlice()
           || leading != shouldBeLeading) {
-        actions.emplace_back(
-          ActionDescription(
-            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
+        
+        if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
+            errors.shards.end()) {
+          actions.emplace_back(
+            ActionDescription(
+              {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
               {LEADER, shouldBeLeading ? std::string() : leaderId},
               {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
-            properties));
+              properties));
+        } else {
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "Previous failure exists for local shard " << dbname 
+            << "/" << shname << "for central " << dbname << "/" << colname
+            <<"- skipping";
+        }
       }
       
       // Indexes
