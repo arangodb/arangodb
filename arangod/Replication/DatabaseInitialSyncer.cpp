@@ -1260,9 +1260,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (!res.ok()) {
       return res;
-    }
-    
-    if (isAborted()) {
+    } else if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -1270,17 +1268,23 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       reloadUsers();
     }
 
+    // schmutz++ creates indexes on DBServers
+    if (_config.applier._skipCreateDrop) {
+      _config.progress.set("creating indexes for " + collectionMsg +
+                           " skipped because of configuration");
+      return res;
+    }
+    
     // now create indexes
     TRI_ASSERT(indexes.isArray());
-    VPackValueLength const n = indexes.length();
-
-    if (n > 0) {
+    VPackValueLength const numIdx = indexes.length();
+    if (numIdx > 0) {
       if (!_config.isChild()) {
         _config.batch.extend(_config.connection, _config.progress);
         _config.barrier.extend(_config.connection);
       }
 
-      _config.progress.set("creating " + std::to_string(n) + " index(es) for " +
+      _config.progress.set("creating " + std::to_string(numIdx) + " index(es) for " +
                            collectionMsg);
 
       try {
