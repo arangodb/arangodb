@@ -469,16 +469,16 @@ arangodb::Result arangodb::maintenance::phaseOne (
   
 }
 
-VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
+static VPackBuilder removeSelectivityEstimate(VPackSlice const& index) {
   TRI_ASSERT(index.isObject());
   return arangodb::velocypack::Collection::remove(index,
       std::unordered_set<std::string>({SELECTIVITY_ESTIMATE}));
 }
 
-VPackBuilder assembleLocalCollectionInfo(
+static VPackBuilder assembleLocalCollectionInfo(
   VPackSlice const& info, VPackSlice const& planServers,
   std::string const& database, std::string const& shard,
-  std::string const& ourselves) {
+  std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors) {
 
   VPackBuilder ret;
 
@@ -497,12 +497,14 @@ VPackBuilder assembleLocalCollectionInfo(
     }
 
     { VPackObjectBuilder r(&ret);
+      // FIXME: Add shard error here
       ret.add(ERROR, VPackValue(false));
       ret.add(ERROR_MESSAGE, VPackValue(std::string()));
       ret.add(ERROR_NUM, VPackValue(0));
       ret.add(VPackValue(INDEXES));
       { VPackArrayBuilder ixs(&ret);
         if (info.get(INDEXES).isArray()) {
+          // FIXME: Add index errors here
           for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
             ret.add(removeSelectivityEstimate(index).slice());
           }}}
@@ -539,7 +541,10 @@ bool equivalent(VPackSlice const& local, VPackSlice const& current) {
   return true;
 }
 
-VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
+static VPackBuilder assembleLocalDatabaseInfo (std::string const& database,
+    MaintenanceFeature::errors_t const& allErrors) {
+  // This creates the VelocyPack that is put into 
+  // /Current/Databases/<dbname>/<serverID>  for a database.
 
   VPackBuilder ret;
   
@@ -548,9 +553,17 @@ VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
     auto vocbase = &guard.database();
 
     { VPackObjectBuilder o(&ret);
-      ret.add(ERROR, VPackValue(false));
-      ret.add(ERROR_NUM, VPackValue(0));
-      ret.add(ERROR_MESSAGE, VPackValue(""));
+      auto it = allErrors.databases.find(database);
+      if (it == allErrors.databases.end()) {
+        ret.add(ERROR, VPackValue(false));
+        ret.add(ERROR_NUM, VPackValue(0));
+        ret.add(ERROR_MESSAGE, VPackValue(""));
+      } else {
+        VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
+        ret.add(ERROR, errs.get(ERROR));
+        ret.add(ERROR_NUM, errs.get(ERROR_NUM));
+        ret.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
+      }
       ret.add(ID, VPackValue(std::to_string(vocbase->id())));
       ret.add("name", VPackValue(vocbase->name())); }
 
@@ -573,6 +586,7 @@ VPackBuilder assembleLocalDatabaseInfo (std::string const& database) {
 // to update current. Will report the errors created locally to the agency
 arangodb::Result arangodb::maintenance::reportInCurrent(
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  MaintenanceFeature::errors_t const& allErrors,
   std::string const& serverId, VPackBuilder& report) {
   arangodb::Result result;
 
@@ -585,7 +599,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     std::vector<std::string> const cdbpath {"Databases", dbName, serverId};
 
     if (!cur.hasKey(cdbpath)) {
-      auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName);
+      auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
       if (!localDatabaseInfo.slice().isEmptyObject()) {
         report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
         { VPackObjectBuilder o(&report);
@@ -609,7 +623,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
         auto const localCollectionInfo =
           assembleLocalCollectionInfo(
-            shSlice, shardMap.slice().get(shName), dbName, shName, serverId);
+            shSlice, shardMap.slice().get(shName), dbName, shName, serverId,
+            allErrors);
         // Collection no longer exists
         if (localCollectionInfo.slice().isEmptyObject()) { 
           continue;
@@ -630,7 +645,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             report.add(OP, VP_SET);
             report.add("payload", localCollectionInfo.slice()); }
         }
-      } else {
+      } else {  // Follower
   
         auto servers = std::vector<std::string>
           {COLLECTIONS, dbName, colName, shName, SERVERS};
@@ -669,6 +684,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
      // Database no longer in Plan and local
     if (!local.hasKey(dbName) && !pdbs.hasKey(dbName)) {
+      // This covers the case that the database is neither in Local nor in Plan
+      // It remains to make sure an error is reported to Current if there is
+      // a database in the Plan but not in Local
       report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
       { VPackObjectBuilder o(&report);
         report.add(OP, VP_DELETE); }
@@ -703,6 +721,31 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     }
   }
   
+  // Let's find database errors for databases which do not occur in Local
+  // but in Plan:
+  VPackSlice planDatabases = plan.get("Databases");
+  VPackSlice curDatabases = cur.get("Databases");
+  if (planDatabases.isObject() && curDatabases.isObject()) {
+    for (auto const& p : allErrors.databases) {
+      VPackSlice planDbEntry = planDatabases.get(p.first);
+      VPackSlice curDbEntry = curDatabases.get(p.first);
+      if (planDbEntry.isObject() && curDbEntry.isNone()) {
+        // Need to create an error entry:
+        report.add(VPackValue(CURRENT_DATABASES + p.first + "/" + serverId));
+        { VPackObjectBuilder o(&report);
+          report.add(OP, VP_SET);
+          report.add(VPackSlice("payload"));
+          { VPackObjectBuilder pp(&report);
+            VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
+            report.add(ERROR, errs.get(ERROR));
+            report.add(ERROR_NUM, errs.get(ERROR_NUM));
+            report.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
+          }
+        }
+      }
+    }
+  }
+
   return result;
 
 }
@@ -790,16 +833,17 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature& feature, VPackBuilder& report) {
 
+  MaintenanceFeature::errors_t allErrors;
+  feature.copyAllErrors(allErrors);
+
   arangodb::Result result;
-  // Report to DBServerAgencySync, that we need to rerun. A follower has not found
-  // leader's entry in current and will schedule a rerun of maintenance immediately.
   
   report.add(VPackValue("phaseTwo"));
   { VPackObjectBuilder p2(&report);
 
     // Update Current
     try {
-      result = reportInCurrent(plan, cur, local, serverId, report);
+      result = reportInCurrent(plan, cur, local, allErrors, serverId, report);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "Error reporting in current: " << e.what() << ". "
