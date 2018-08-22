@@ -213,11 +213,10 @@ void handlePlanShard(
         if (difference.slice().isArray()) {
           for (auto const& index : VPackArrayIterator(difference.slice())) {
             actions.emplace_back(
-              ActionDescription({{NAME, "EnsureIndex"}, {COLLECTION, shname},
-                {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
-                {FIELDS, index.get(FIELDS).toJson()}
-                }, std::make_shared<VPackBuilder>(index))
-              );
+              ActionDescription({{NAME, "EnsureIndex"}, {DATABASE, dbname}, 
+                  {COLLECTION, colname}, {TYPE, index.get(TYPE).copyString()},
+                  {FIELDS, index.get(FIELDS).toJson()}, {SHARD, shname}},
+                std::make_shared<VPackBuilder>(index)));
           }
         }
       }

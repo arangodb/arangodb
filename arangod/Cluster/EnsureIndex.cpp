@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -53,6 +54,11 @@ EnsureIndex::EnsureIndex(
     error << "cluster-wide collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
+
+  if (!desc.has(SHARD)) {
+    error << "shard must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SHARD));
 
   if (!properties().hasKey(ID)) {
     error << "index properties must include id. ";
@@ -85,6 +91,7 @@ bool EnsureIndex::first() {
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
+  auto const& shard = _description.get(SHARD);
   auto const& id = properties().get(ID).copyString();
 
   VPackBuilder body;
@@ -94,10 +101,10 @@ bool EnsureIndex::first() {
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
     
-    auto col = vocbase->lookupCollection(collection);
+    auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << collection
+      error << "failed to lookup local collection " << shard
             << " in database " + database;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
@@ -106,7 +113,7 @@ bool EnsureIndex::first() {
     
     auto const props = properties();
     { VPackObjectBuilder b(&body);
-      body.add(COLLECTION, VPackValue(collection));
+      body.add(COLLECTION, VPackValue(shard));
       for (auto const& i : VPackObjectIterator(props)) {
         body.add(i.key.copyString(), i.value);
       }}
@@ -125,6 +132,15 @@ bool EnsureIndex::first() {
       error << "failed to ensure index " << body.slice().toJson() << " "
             << _result.errorMessage();
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+
+      VPackBuilder eb;
+      { VPackObjectBuilder o(&eb);
+        eb.add("error", VPackValue(true));
+        eb.add("errorMessage", VPackValue(_result.errorMessage()));
+        eb.add("errorNum", VPackValue(_result.errorNumber()));
+        eb.add(ID, VPackValue(id)); }
+
+      _feature.storeIndexError(database, collection, shard, id, eb.steal());
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
