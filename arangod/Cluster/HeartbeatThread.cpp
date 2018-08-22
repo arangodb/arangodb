@@ -265,7 +265,7 @@ void HeartbeatThread::runDBServer() {
       if (version > _desiredVersions->plan) {
         _desiredVersions->plan = version;
         LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Desired Current Version is now " << _desiredVersions->plan;
+          << "Desired Plan Version is now " << _desiredVersions->plan;
         doSync = true;
       }
     }
@@ -287,6 +287,49 @@ void HeartbeatThread::runDBServer() {
     if (!registered) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
+
+  std::function<bool(VPackSlice const& result)> updateCurrent =
+    [=](VPackSlice const& result) {
+
+    if (!result.isNumber()) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+      << "Plan Version is not a number! " << result.toJson();
+      return false;
+    }
+
+    uint64_t version = result.getNumber<uint64_t>();
+    bool doSync = false;
+
+    {
+      MUTEX_LOCKER(mutexLocker, *_statusLock);
+      if (version > _desiredVersions->current) {
+        _desiredVersions->current = version;
+        LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+          << "Desired Current Version is now " << _desiredVersions->plan;
+        doSync = true;
+      }
+    }
+
+    if (doSync) {
+      syncDBServerStatusQuo(true);
+    }
+
+    return true;
+  };
+
+  auto currentAgencyCallback = std::make_shared<AgencyCallback>(
+      _agency, "Current/Version", updateCurrent, true);
+
+  registered = false;
+  while (!registered) {
+    registered =
+      _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
+    if (!registered) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+          << "Couldn't register current change in agency!";
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
@@ -416,6 +459,7 @@ void HeartbeatThread::runDBServer() {
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
           planAgencyCallback->refetchAndUpdate(true, false);
+          currentAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased
@@ -434,6 +478,7 @@ void HeartbeatThread::runDBServer() {
     }
   }
 
+  _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
@@ -997,7 +1042,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
           << ", Current " << result.currentVersion;
       _currentVersions = AgencyVersions(result);
     } else {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Sync request failed!";
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed!";
       // mop: we will retry immediately so wait at least a LITTLE bit
       doSleep = true;
     }
@@ -1005,8 +1050,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   if (doSleep) {
     // Sleep a little longer, since this might be due to some synchronization
     // of shards going on in the background
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   CONDITION_LOCKER(guard, _condition);
   _wasNotified = true;
@@ -1131,34 +1175,34 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
-  bool shouldUpdate = false;
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
-
+  bool shouldUpdate = false;
+    
   if (_desiredVersions->plan > _currentVersions.plan) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-        << "Plan version " << _currentVersions.plan
-        << " is lower than desired version " << _desiredVersions->plan;
+      << "Plan version " << _currentVersions.plan
+      << " is lower than desired version " << _desiredVersions->plan;
     shouldUpdate = true;
   }
   if (_desiredVersions->current > _currentVersions.current) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-        << "Current version " << _currentVersions.current
-        << " is lower than desired version " << _desiredVersions->current;
+      << "Current version " << _currentVersions.current
+      << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
   }
-
+    
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
   if (now > _lastSyncTime + 7.4 || asyncPush) {
     shouldUpdate = true;
   }
-
+    
   if (!shouldUpdate) {
     return;
   }
-
+    
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
   if (_desiredVersions->plan > ci->getPlanVersion()) {
@@ -1167,21 +1211,22 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
-
+    
   if (_backgroundJobScheduledOrRunning) {
     _launchAnotherBackgroundJob = true;
     return;
   }
-
+    
   // schedule a job for the change:
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
-
+    
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
   SchedulerFeature::SCHEDULER->post(
-      HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
+    HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
+  
 }
 
 ////////////////////////////////////////////////////////////////////////////////

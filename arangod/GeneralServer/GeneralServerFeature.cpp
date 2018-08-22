@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -456,6 +457,9 @@ void GeneralServerFeature::defineHandlers() {
       traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
+  _handlerFactory->addHandler(
+      "/_admin/actions", RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                        AsyncJobManager*>,

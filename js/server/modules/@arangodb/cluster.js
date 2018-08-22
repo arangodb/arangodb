@@ -601,14 +601,13 @@ function synchronizeOneShard (database, shard, planId, leader) {
         // Now start a read transaction to stop writes:
         var lockJobId = false;
         try {
-          lockJobId = startReadLockOnLeader(ep, database,
-            shard, 300);
+          lockJobId = startReadLockOnLeader(ep, database, shard, 300); 
           console.topic('heartbeat=debug', 'lockJobId:', lockJobId);
         } catch (err1) {
           console.topic('heartbeat=error', 'synchronizeOneShard: exception in startReadLockOnLeader:', err1, err1.stack);
         }
         finally {
-          cancelBarrier(ep, database, sy.barrierId);
+          cancelBarrier(ep, database, sy.barrierId); 
         }
         if (lockJobId !== false) {
           try {
@@ -2156,6 +2155,22 @@ function queryAgencyJob(id) {
   return {error: true, errorMsg: "Did not find job.", id, job: null};
 }
 
+function getLocalInfo () {
+  var db = require('internal').db;
+  var ret = { result: {}};
+  db._collections().forEach(
+    function(col) {          
+      if (col.name().charAt(0)!='_') {
+        ret.result[col.name()] = col.properties();
+        ret.result[col.name()].indexes = [];
+        col.getIndexes().forEach(function(i) {
+          ret.result[col.name()].indexes.push(i);
+        });
+      }
+    });
+  return ret;
+}
+
 exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
@@ -2175,6 +2190,8 @@ exports.waitForSyncRepl = waitForSyncRepl;
 exports.endpoints = endpoints;
 exports.fetchKey = fetchKey;
 exports.queryAgencyJob = queryAgencyJob;
+exports.getLocalDatabases = getLocalDatabases;
+exports.getLocalInfo = getLocalInfo;
 
 exports.executePlanForDatabases = executePlanForDatabases;
 exports.executePlanForCollections = executePlanForCollections;

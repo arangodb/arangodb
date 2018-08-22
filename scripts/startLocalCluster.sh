@@ -133,7 +133,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
-    $ARANGOD \
+    build/bin/arangod \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
@@ -153,6 +153,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -193,6 +194,7 @@ start() {
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
