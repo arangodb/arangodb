@@ -548,7 +548,7 @@ OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
   ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
-    return OperationResult{std::move(defRes.copy_result())};
+    return OperationResult{(defRes.copy_result()};
   }
   // Guaranteed to be non nullptr
   TRI_ASSERT(defRes.get() != nullptr);
@@ -886,18 +886,16 @@ OperationResult GraphOperations::removeEdgeOrVertex(
 
   // check for used edge definitions in ALL graphs
   GraphManager gmngr{_vocbase};
-  VPackBuilder graphsBuilder;
-  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
-  VPackSlice graphs = graphsBuilder.slice();
-
-  if (!graphs.get("graphs").isArray()) {
-    return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
-  }
 
   std::unordered_set<std::string> possibleEdgeCollections;
-  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
-    checkForUsedEdgeCollections(*(graph.get()), collectionName, possibleEdgeCollections);
+
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    checkForUsedEdgeCollections(*graph, collectionName, possibleEdgeCollections);
+    return Result{};
+  };
+  Result res = gmngr.applyOnAllGraphs(callback);
+  if (res.fail()) {
+    return OperationResult(res);
   }
 
   auto edgeCollections = _graph.edgeCollections();
@@ -918,7 +916,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   auto context = ctx();
   UserTransaction trx{context, {}, trxCollections, {}, trxOptions};
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
     return OperationResult(res);

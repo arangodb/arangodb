@@ -243,7 +243,7 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
     }
     return {TRI_ERROR_NO_ERROR};
   };
-  return  applyOnAllGraphs(callback);
+  return applyOnAllGraphs(callback);
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
