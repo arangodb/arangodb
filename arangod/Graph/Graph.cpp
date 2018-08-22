@@ -189,6 +189,29 @@ void Graph::addVertexCollection(std::string const& name) {
   _vertexColls.emplace(name);
 }
 
+void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition,
+                           EdgeDefinition const& newEdgeDefinition) {
+    // previous orphans may still be orphans...
+    std::set<std::string> orphans{orphanCollections()};
+
+    // previous vertex collections from the overwritten may be orphaned...
+    setUnion(orphans, oldEdgeDefinition.getFrom());
+    setUnion(orphans, oldEdgeDefinition.getTo());
+
+    // ...except they occur in any other edge definition, including the new one.
+    for (auto const& it : edgeDefinitions()) {
+      std::string const& edgeCollection = it.first;
+
+      EdgeDefinition const& edgeDef =
+          edgeCollection == newEdgeDefinition.getName() ? newEdgeDefinition
+                                                        : it.second;
+
+      setMinus(orphans, edgeDef.getFrom());
+      setMinus(orphans, edgeDef.getTo());
+    }
+    _orphanColls = orphans;
+}
+
 Result Graph::addOrphanCollection(std::string&& name) {
   if (_vertexColls.find(name) != _vertexColls.end()) {
     return TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF;
@@ -317,6 +340,23 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> EdgeDefinition::sortEdgeDefinition(
   return sortedBuilder.steal();
 }
 
+void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  builder.add("collection",
+                  VPackValue(this->getName()));
+  builder.add("from", VPackValue(VPackValueType::Array));
+  for (auto const& from : this->getFrom()) {
+    builder.add(VPackValue(from));
+  }
+  builder.close();  // array
+  builder.add("to", VPackValue(VPackValueType::Array));
+  for (auto const& to : this->getTo()) {
+    builder.add(VPackValue(to));
+  }
+  builder.close();  // array
+}
+
 ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
     VPackSlice edgeDefinition) {
   Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
@@ -392,6 +432,43 @@ Result Graph::validateOrphanCollection(VPackSlice const& orphanCollection) {
   }
   return Result();
 }
+
+bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
+  if (hasEdgeCollection(edgeDefinitionName)) {
+    _edgeColls.erase(edgeDefinitionName);
+    _edgeDefs.erase(edgeDefinitionName);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool Graph::replaceEdgeDefinition(
+        EdgeDefinition const& edgeDefinition) {
+
+  auto maybeOldEdgeDef = getEdgeDefinition(edgeDefinition.getName());
+  if (!maybeOldEdgeDef) {
+    // Graph doesn't contain this edge definition, no need to do anything.
+    return false;
+  }
+  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.get();
+
+  if (this->removeEdgeDefinition(edgeDefinition.getName())) {
+    VPackBuilder builder;
+    builder.openObject();
+    edgeDefinition.toVelocyPack(builder);
+    builder.close();
+
+    this->addEdgeDefinition(builder.slice());
+
+    // rebuild orphans, because they might have changed.
+    rebuildOrphans(oldEdgeDef, edgeDefinition);
+  } else {
+    return false;
+  }
+  return true;
+}
+
 
 ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
   auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);

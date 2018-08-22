@@ -54,69 +54,22 @@ std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
 };
 
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
-    const Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
+    Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
   std::string const& edgeDefinitionName = newEdgeDef.getName();
 
-  auto maybeOldEdgeDef = graph.getEdgeDefinition(edgeDefinitionName);
-  if (!maybeOldEdgeDef) {
+  VPackBuilder builder;
+  // remove old definition, insert the new one instead
+  if (graph.replaceEdgeDefinition(newEdgeDef)) {
+    builder.openObject();
+    graph.toPersistence(builder);
+    builder.close();
+  } else {
     // Graph doesn't contain this edge definition, no need to do anything.
     return OperationResult{};
   }
-  EdgeDefinition const& oldEdgeDef = maybeOldEdgeDef.get();
-
-  // replace edgeDefinition
-  VPackBuilder builder;
-  builder.openObject();
-  // build edge definitions start
-  builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
-  builder.add(StaticStrings::GraphEdgeDefinitions,
-              VPackValue(VPackValueType::Array));
-
-  // now we have to build a new VPackObject for updating the
-  // edgeDefinition
-  for (auto const &it : graph.edgeDefinitions()) {
-    auto const& edgeDef = it.second;
-
-    if (edgeDef.getName() == newEdgeDef.getName()) {
-      newEdgeDef.addToBuilder(builder);
-    } else {
-      edgeDef.addToBuilder(builder);
-    }
-  }
-  builder.close();  // array 'edgeDefinitions'
 
   GraphManager gmngr{_vocbase};
-
-  { // add orphans:
-
-    // previous orphans may still be orphans...
-    std::set<std::string> orphans{graph.orphanCollections()};
-
-    // previous vertex collections from the overwritten may be orphaned...
-    setUnion(orphans, oldEdgeDef.getFrom());
-    setUnion(orphans, oldEdgeDef.getTo());
-
-    // ...except they occur in any other edge definition, including the new one.
-    for (auto const &it : graph.edgeDefinitions()) {
-      std::string const &edgeCollection = it.first;
-
-      EdgeDefinition const &edgeDef =
-        edgeCollection == newEdgeDef.getName() ? newEdgeDef : it.second;
-
-      setMinus(orphans, edgeDef.getFrom());
-      setMinus(orphans, edgeDef.getTo());
-    }
-
-    builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-    for (auto const &orphan : orphans) {
-      builder.add(VPackValue(orphan));
-    }
-    builder.close(); // array 'orphanCollections'
-  }
-
-  builder.close();  // object (the graph)
-
   std::set<std::string> newCollections;
 
   // add collections that didn't exist in the graph before to newCollections:
@@ -538,7 +491,7 @@ OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
   ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
-    return OperationResult{std::move(defRes.copy_result())};
+    return OperationResult{defRes.copy_result()};
   }
   // Guaranteed to be non nullptr
   TRI_ASSERT(defRes.get() != nullptr);

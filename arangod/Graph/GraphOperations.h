@@ -163,7 +163,7 @@ class GraphOperations {
   /// collection, this does nothing and returns success.
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult changeEdgeDefinitionForGraph(
-      const Graph& graph, const EdgeDefinition& edgeDefinition,
+      Graph& graph, const EdgeDefinition& edgeDefinition,
       bool waitForSync, transaction::Methods& trx);
 
  private:
