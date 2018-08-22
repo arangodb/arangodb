@@ -330,10 +330,10 @@ struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
 };
 
-inline static std::vector<std::string> split(std::string const& str) {
+inline static std::vector<std::string> split(std::string const& key) {
   
   std::vector<std::string> result;
-  if (str.empty()) {
+  if (key.empty()) {
     return result;
   }
   
@@ -433,7 +433,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   // See if errors can be thrown out
   for (auto& shard : errors.shards) {
     std::vector<std::string> path = split(shard.first);
-    if (!plan.hasKey(path.pop_back())) { // we can drop the local error
+    path.pop_back(); // Get rid of shard 
+    if (!plan.hasKey(path)) { // we can drop the local error
       shard.second.reset();
     }
   }
