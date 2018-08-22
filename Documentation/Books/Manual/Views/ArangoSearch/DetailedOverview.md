@@ -65,16 +65,7 @@ During view modification the following directives apply:
   * link removal - JSON keyword *null* (i.e. nullify a link if present)
     any of the directives from the section [modifiable view properties](#view-properties-updatable)
 
-### View properties (non-updatable)
-
-* **locale** (_optional_; default: `"C"`)<br/>
-  The value format is any string representation of a locale name that is
-  recognised by [Boost](https://www.boost.org/) 
-  and [ICU](http://site.icu-project.org/home) can understand, e.g.
-  `{Language}_{Country}.{Encoding}@{Variant}`.
-  > Reserved for future use.
-
-## View properties (updatable)
+## View properties
 
 * **cleanupIntervalStep** (_optional_; default: `10`; to disable use: `0`)<br/>
   wait at least this many commits between removing unused files in the

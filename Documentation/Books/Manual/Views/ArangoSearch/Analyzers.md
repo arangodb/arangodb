@@ -3,7 +3,7 @@ ArangoSearch Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of named analyzers which
 are merely aliases for type+configuration of IResearch analyzers. Management of
-named analyzers will be exposed in upcoming ArangoDB versions via both REST, GUI
+named analyzers will be exposed in upcoming ArangoDB versions via REST, GUI
 and JavaScript APIs, e.g.
 
 `db._globalSettings("iresearch.analyzers")`
