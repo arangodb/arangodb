@@ -56,7 +56,6 @@ std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
     Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
-  std::string const& edgeDefinitionName = newEdgeDef.getName();
 
   VPackBuilder builder;
   // remove old definition, insert the new one instead
