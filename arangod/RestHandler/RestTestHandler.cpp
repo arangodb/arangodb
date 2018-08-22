@@ -37,17 +37,13 @@ using namespace arangodb::rest;
 
 RestTestHandler::RestTestHandler(GeneralRequest* request,
                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _count(0) {}
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestTestHandler::~RestTestHandler() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_batch_processing
-////////////////////////////////////////////////////////////////////////////////
-
 namespace {
 #define LANE_ENTRY(s) {#s, RequestLane:: s},
-static const std::map<std::string, RequestLane> lanes = {
+const std::map<std::string, RequestLane> lanes = {
   LANE_ENTRY(CLIENT_FAST)
   LANE_ENTRY(CLIENT_AQL)
   LANE_ENTRY(CLIENT_V8)
@@ -62,9 +58,7 @@ static const std::map<std::string, RequestLane> lanes = {
 };
 }
 
-ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string &str)
-{
-
+ResultT<RequestLane> RestTestHandler::requestLaneFromString(const std::string &str) {
   auto entry = lanes.find(str);
 
   if (entry != lanes.end()) {
@@ -112,26 +106,28 @@ RestStatus RestTestHandler::execute() {
     return RestStatus::DONE;
   }
 
-  if (!body.isObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                  "expecting JSON object body");
-    return RestStatus::DONE;
-  }
-
   LOG_TOPIC(TRACE, Logger::FIXME) << "Generating work on lane " << suffixes[0];
 
   clock::duration duration = std::chrono::milliseconds(100);
 
-  if (body.hasKey("workload")) {
-
-    auto workload = body.get("workload");
-
-    if (workload.isNumber()) {
-      duration = std::chrono::milliseconds(workload.getInt());
-    } else {
+  if (!body.isNone()) {
+    if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                  "expecting int for `workload`");
+                    "expecting JSON object body");
       return RestStatus::DONE;
+    }
+
+    if (body.hasKey("workload")) {
+
+      auto workload = body.get("workload");
+
+      if (workload.isNumber()) {
+        duration = std::chrono::milliseconds(workload.getInt());
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting int for `workload`");
+        return RestStatus::DONE;
+      }
     }
   }
 
@@ -142,15 +138,24 @@ RestStatus RestTestHandler::execute() {
     [this, self, duration]() {
       auto stop = clock::now() + duration;
 
+      uint64_t count = 0;
+
       // Please think of a better method to generate work.
       //  Do we actually need work or is a sleep ok?
       while (clock::now() < stop) {
         for (int i = 0; i < 10000; i++) {
-          _count += i * i;
+          count += i * i;
         }
       }
 
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder builder(buffer);
+      builder.openObject();
+      builder.add("count", VPackValue(count));
+      builder.close();
+
       resetResponse(rest::ResponseCode::OK);
+      _response->setPayload(std::move(buffer), true);
       continueHandlerExecution();
     });
 

@@ -45,8 +45,6 @@ private:
   typedef std::chrono::steady_clock clock;
   ResultT<RequestLane> requestLaneFromString(
     const std::string &str);
-protected:
-  uint64_t _count;
 };
 }
 
