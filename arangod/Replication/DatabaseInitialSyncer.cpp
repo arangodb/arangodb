@@ -217,13 +217,16 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
       }
     }
     
-    if (_config.applier._restrictCollections.empty()) {
+    if (!_config.applier._skipCreateDrop &&
+        _config.applier._restrictCollections.empty()) {
       r = handleViewCreation(views); // no requests to master
       if (r.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "Error during initial sync: " << r.errorMessage();
+        << "Error during intial sync view creation: " << r.errorMessage();
         return r;
       }
+    } else {
+      _config.progress.set("view creation skipped because of configuration");
     }
 
     // strip eventual objectIDs and then dump the collections
@@ -1258,9 +1261,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (!res.ok()) {
       return res;
-    }
-    
-    if (isAborted()) {
+    } else if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -1268,17 +1269,23 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       reloadUsers();
     }
 
+    // schmutz++ creates indexes on DBServers
+    if (_config.applier._skipCreateDrop) {
+      _config.progress.set("creating indexes for " + collectionMsg +
+                           " skipped because of configuration");
+      return res;
+    }
+    
     // now create indexes
     TRI_ASSERT(indexes.isArray());
-    VPackValueLength const n = indexes.length();
-
-    if (n > 0) {
+    VPackValueLength const numIdx = indexes.length();
+    if (numIdx > 0) {
       if (!_config.isChild()) {
         _config.batch.extend(_config.connection, _config.progress);
         _config.barrier.extend(_config.connection);
       }
 
-      _config.progress.set("creating " + std::to_string(n) + " index(es) for " +
+      _config.progress.set("creating " + std::to_string(numIdx) + " index(es) for " +
                            collectionMsg);
 
       try {
