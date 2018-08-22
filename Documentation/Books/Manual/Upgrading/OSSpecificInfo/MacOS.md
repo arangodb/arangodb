@@ -36,5 +36,5 @@ Upgrading more complex environments
 
 The procedure described in this _Section_
 is a first step to upgrade more complex deployments such as
-[Cluster](../../Scalability/Cluster/README.md)
-or [Active Failover](../../Scalability/ActiveFailover/README.md). 
+[Cluster](../../Architecture/DeploymentModes/Cluster/README.md)
+or [Active Failover](../../Architecture/DeploymentModes/ActiveFailover/README.md). 
