@@ -71,7 +71,7 @@ fi
        -c etc${PS}relative${PS}arangosh.conf \
        --log.level warning \
        --server.endpoint tcp://127.0.0.1:${PORT} \
-       --javascript.execute UnitTests${PS}unittest.js \
+       --javascript.execute tests${PS}unittest.js \
        -- \
        "$@" "${EXTRA_ARGS[@]}"
 )

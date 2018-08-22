@@ -139,7 +139,7 @@ if [ "$POOLSZ" == "" ]; then
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  SSLKEYFILE="--ssl.keyfile tests/server.pem"
   CURL="curl --insecure -ks https://"
 else
   SSLKEYFILE=""
@@ -158,7 +158,7 @@ printf " start-delays: %s," "$START_DELAYS"
 printf " random-delays: %s," "$RANDOM_DELAYS"
 printf " gossip-mode: %s\n" "$GOSSIP_MODE"
 
-if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
+if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d tests ] ; then
   echo Must be started in the main ArangoDB source directory.
   exit 1
 fi

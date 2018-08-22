@@ -57,7 +57,7 @@ Close and reopen the Administrator command window in order to continue with the 
 
 And manually install the requirements via the `Gemfile` fetched from the ArangoDB Git repository *(needs to be run with Administrator privileges)*:
 
-    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/UnitTests/HttpInterface/Gemfile
+    wget https://raw.githubusercontent.com/arangodb/arangodb/devel/tests/HttpInterface/Gemfile
     set PATH=%PATH%;C:\tools\DevKit2\bin;C:\tools\DevKit2\mingw\bin
     gem install bundler
     bundler
@@ -156,7 +156,7 @@ And variable name: `ICU_DATA` to the value: `c:\\Windows`
 
 ![HowtoSetEnv](../assets/CompilingUnderWindows/SetEnvironmentVar.png)
 
-Running Unit tests (Optional)
+Running tests (Optional)
 ---------------------------
 
 You can then run the unit tests in the cygwin shell like that:
@@ -165,7 +165,7 @@ You can then run the unit tests in the cygwin shell like that:
     -c etc/relative/arangosh.conf \
     --log.level warning \
     --server.endpoint tcp://127.0.0.1:1024 \
-    --javascript.execute UnitTests/unittest.js \
+    --javascript.execute tests/unittest.js \
       -- \
       all \
       --ruby c:/tools/ruby22/bin/ruby \

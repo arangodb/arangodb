@@ -86,8 +86,8 @@ const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
 
   if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('arangosh') && !fs.exists('UnitTests')) {
-    throw new Error('Must be in ArangoDB topdir to execute unit tests.');
+    !fs.exists('arangosh') && !fs.exists('tests')) {
+    throw new Error('Must be in ArangoDB topdir to execute tests.');
   }
 
   return topDir;
@@ -1171,7 +1171,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   args['log.file'] = fs.join(rootDir, 'log');
 
   if (protocol === 'ssl') {
-    args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');
+    args['ssl.keyfile'] = fs.join('tests', 'server.pem');
   }
 
   args = Object.assign(args, options.extraArgs);
