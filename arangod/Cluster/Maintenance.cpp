@@ -323,8 +323,14 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
-      actions.emplace_back(
-        ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
+      if (error.databases.find(dbname) == errors.databases.end()) {
+        actions.emplace_back(
+          ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
+      } else {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "Previous failure exists for creating database " << database
+          << "skipping";
+      }
     }
   }
 
