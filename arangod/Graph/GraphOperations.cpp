@@ -56,22 +56,15 @@ std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
 void GraphOperations::checkForUsedEdgeCollections(
     const Graph& graph, const std::string& collectionName,
     std::unordered_set<std::string>& possibleEdgeCollections) {
-  for (auto const& it : graph.edgeDefinitions()) {
-    for (auto const& from : it.second.getFrom()) {
-      if (from == collectionName) {
-        possibleEdgeCollections.emplace(it.second.getName());
-      }
-    }
-    for (auto const& to : it.second.getTo()) {
-      if (to == collectionName) {
-        possibleEdgeCollections.emplace(it.second.getName());
-      }
+  for (auto it : graph.edgeDefinitions()) {
+    if (it.second.isVertexCollectionUsed(collectionName)) {
+      possibleEdgeCollections.emplace(it.second.getName());
     }
   }
 }
 
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
-    const Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
+    Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
   std::string const& edgeDefinitionName = newEdgeDef.getName();
 
