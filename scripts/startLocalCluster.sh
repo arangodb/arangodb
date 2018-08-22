@@ -106,7 +106,7 @@ else
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  SSLKEYFILE="--ssl.keyfile tests/server.pem"
   CURL="curl --insecure $CURL_AUTHENTICATION -s -f -X GET https:"
 else
   SSLKEYFILE=""
