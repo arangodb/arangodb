@@ -31,10 +31,6 @@ The server will respond with *HTTP 400* in case of a malformed request,
 or if the query contains a parse error. The body of the response will
 contain the error details embedded in a JSON object.
 
-@RESTRETURNCODE{404}
-The server will respond with *HTTP 404* in case the query refers to an
-unknown collection or view.
-
 @EXAMPLES
 
 a valid query
@@ -59,19 +55,6 @@ an invalid query
     var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 400);
-
-    logJsonResponse(response);
-    @END_EXAMPLE_ARANGOSH_RUN
-
-an query referring to a non-existing collection
-
-    @EXAMPLE_ARANGOSH_RUN{RestQueryNonExisting}
-    var url = "/_api/query";
-    var body = '{ "query" : "FOR doc IN collectionThatDoesNotExist RETURN doc._key" }';
-
-    var response = logCurlRequest('POST', url, body);
-
-    assert(response.code === 404);
 
     logJsonResponse(response);
     @END_EXAMPLE_ARANGOSH_RUN
