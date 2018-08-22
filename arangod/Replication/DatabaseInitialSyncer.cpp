@@ -321,7 +321,7 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
   builder.add("waitForCollectorQueue", VPackValue(true));
-  builder.add("maxWaitTime", VPackValue(60.0));
+  builder.add("maxWaitTime", VPackValue(180.0));
   builder.close();
 
   VPackSlice bodySlice = builder.slice();
