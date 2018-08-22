@@ -311,6 +311,7 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
+  MaintenanceFeature::errors_t const& errors,
   std::vector<ActionDescription>& actions) {
 
   arangodb::Result result;
@@ -323,11 +324,18 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
-      actions.emplace_back(
-        ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
+      if (errors.databases.find(dbname) == errors.databases.end()) {
+        actions.emplace_back(
+          ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
+      } else {
+        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          << "Previous failure exists for creating database " << dbname
+          << "skipping";
+      }
     }
   }
 
+  // Drop databases, which are no longer in plan
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {"Databases", dbname})) {
@@ -335,6 +343,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
     }
   }
+
+  // Check errors for databases, which are no longer in plan and remove from errors
+  
+  for (auto const& database : errors.databases) {
+    if (!plan.hasKey(std::vector<std::string>{"Databases", database.first})) {
+      
+    }
+  }
+  
 
   // Create or modify if local collections are affected
   pdbs = plan.get(COLLECTIONS);
@@ -380,17 +397,23 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan (
   VPackSlice const& plan, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature) {
+  std::string const& serverId, MaintenanceFeature::errors_t const& errors,
+  MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
   
   // build difference between plan and local
   std::vector<ActionDescription> actions;
-  diffPlanLocal(plan, local, serverId, actions);
-  
+  diffPlanLocal(plan, local, serverId, errors, actions);
+
+  TRI_ASSERT(report.isOpenObject());
+  report.add(VPackValue("actions"));
+  VPackArrayBuilder a(&report);
   // enact all
   for (auto const& action : actions) {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "adding action " << action << " to feature ";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "adding action " << action << " to feature ";
+    action.toVelocyPack(report);
     feature.addAction(std::make_shared<ActionDescription>(action), true);
   }
   
@@ -448,13 +471,21 @@ arangodb::Result arangodb::maintenance::phaseOne (
   MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
+
+  MaintenanceFeature::errors_t errors;
+  result = feature.copyAllErrors(errors);
+  if (!result.ok()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) <<
+      "phaseOne: failed to acquire copy of errors from maintenance feature.";
+    return result;
+  }
   
   report.add(VPackValue("phaseOne"));
   { VPackObjectBuilder por(&report);
 
     // Execute database changes
     try {
-      result = executePlan(plan, local, serverId, feature);
+      result = executePlan(plan, local, serverId, errors, feature, report);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "Error executing plan: " << e.what()
@@ -879,31 +910,39 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   report.add(VPackValue("phaseTwo"));
   { VPackObjectBuilder p2(&report);
 
+    // agency transactions
+    report.add(VPackValue("agency"));
+    { VPackObjectBuilder agency(&report);
     // Update Current
-    try {
-      result = reportInCurrent(plan, cur, local, allErrors, serverId, report);
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "Error reporting in current: " << e.what() << ". "
-        << __FILE__ << ":" << __LINE__;
-    }
+      try {
+        result = reportInCurrent(plan, cur, local, allErrors, serverId, report);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+          << "Error reporting in current: " << e.what() << ". "
+          << __FILE__ << ":" << __LINE__;
+      }}
+  
+    // maintenace actions
+    report.add(VPackValue("actions"));
+    { VPackObjectBuilder agency(&report);
+      try {
+        std::vector<ActionDescription> actions;
+        result = syncReplicatedShardsWithLeaders(
+          plan, cur, local, serverId, actions);
 
-    try {
-      std::vector<ActionDescription> actions;
-      result = syncReplicatedShardsWithLeaders(plan, cur, local, serverId, actions);
-
-      for (auto const& action : actions) {
-        feature.addAction(std::make_shared<ActionDescription>(action), true);
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "Error scheduling shards: " << e.what() << ". "
-        << __FILE__ << ":" << __LINE__;
-    }}
-
-  report.add(VPackValue("Current"));
-  { VPackObjectBuilder p(&report);
-    report.add("Version", cur.get("Version"));}
+        for (auto const& action : actions) {
+          feature.addAction(std::make_shared<ActionDescription>(action), true);
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+          << "Error scheduling shards: " << e.what() << ". "
+          << __FILE__ << ":" << __LINE__;
+      }}
+    
+    report.add(VPackValue("Current"));
+    { VPackObjectBuilder p(&report);
+      report.add("Version", cur.get("Version")); }
+  }
   
   return result;
   

@@ -177,10 +177,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     auto report = rb.slice();
     if (report.isObject()) {
-    
-      if (report.hasKey("phaseTwo") && report.get("phaseTwo").isObject()) {
+
+      std::vector<std::string> agency = {"phaseTwo", "agency"};
+      if (report.hasKey(agency) && report.get(agency).isObject()) {
       
-        auto phaseTwo = report.get("phaseTwo");
+        auto phaseTwo = report.get(agency);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "DBServerAgencySync reporting to Current: " << phaseTwo.toJson();
       
@@ -188,7 +189,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         if (!phaseTwo.isEmptyObject()) {
         
           std::vector<AgencyOperation> operations;
-          for (auto const& ao : VPackObjectIterator(report.get("phaseTwo"))) {
+          for (auto const& ao : VPackObjectIterator(phaseTwo)) {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
             if (op == "set") {
