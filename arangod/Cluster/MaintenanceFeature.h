@@ -134,6 +134,95 @@ public:
   std::shared_ptr<maintenance::Action> findAction(
     std::shared_ptr<maintenance::ActionDescription> const desc);
 
+  /**
+   * @brief add index error to bucket
+   *        Errors are added by EnsureIndex
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  indexId      index' id
+   *
+   * @return success 
+   */
+  arangodb::Result storeIndexError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& indexId,
+    std::shared_ptr<VPackBuffer<uint8_t>> error);
+
+  /**
+   * @brief get all pending index errors for a specific shard
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  errors       errrors map returned to caller
+   *
+   * @return success 
+   */
+  arangodb::Result indexErrors(
+    std::string const& database, std::string const& collection,
+    std::string const& shard,
+    std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>& errors) const ;
+
+  /**
+   * @brief remove 1+ errors from index error bucket
+   *        Errors are removed by phaseOne, as soon as indexes no longer in plan
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  indexId      index' id
+   *
+   * @return success 
+   */
+  arangodb::Result removeIndexErrors (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::set<std::string> indexIds);
+  
+  /**
+   * @brief add shard error to bucket
+   *        Errors are added by CreateCollection, UpdateCollection
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  indexId      index' id
+   *
+   * @return success 
+   */
+  arangodb::Result storeShardError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error);
+
+  /**
+   * @brief get all pending shard errors
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   *
+   * @return success 
+   */
+  arangodb::Result shardError(
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
+
+  /**
+   * @brief remove 1+ errors from index error bucket
+   *        Errors are removed by phaseOne, as soon as indexes no longer in plan
+   *
+   * @param  database     database
+   * @param  collection   collection
+   * @param  shard        shard
+   * @param  indexId      index' id
+   *
+   * @return success 
+   */
+  arangodb::Result removeShardError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard);
+  
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -193,6 +282,25 @@ protected:
 
   /// @brief condition variable to indicate thread completion
   arangodb::basics::ConditionVariable _workerCompletion;
+
+  /// Errors are managed through raiseIndexError / removeIndexError and
+  /// raiseShardError / renoveShardError. According locks must be held in said
+  /// methods.
+  
+  /// @brief lock for index error bucket
+  mutable arangodb::Mutex _ieLock;
+  /// @brief pending errors raised by EnsureIndex
+  std::map<std::string,
+           std::map<std::string,
+                    std::shared_ptr<VPackBuffer<uint8_t>>>> _indexErrors;
+
+  /// @brief lock for shard error bucket
+  mutable arangodb::Mutex _seLock;
+  /// @brief pending errors raised by CreateCollection/UpdateCollection
+  std::unordered_map<std::string,
+                     std::shared_ptr<VPackBuffer<uint8_t>>> _shardErrors;
+
+           
 
 };
 
