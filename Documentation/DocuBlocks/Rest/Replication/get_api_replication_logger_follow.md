@@ -1,5 +1,5 @@
 
-@startDocuBlock get_api_replication_logger_returns
+@startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
 @RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
