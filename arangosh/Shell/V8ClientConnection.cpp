@@ -70,7 +70,6 @@ V8ClientConnection::V8ClientConnection()
 
 V8ClientConnection::~V8ClientConnection() {
   shutdownConnection();
-  _loop.forceStop();
 }
 
 void V8ClientConnection::createConnection() {
