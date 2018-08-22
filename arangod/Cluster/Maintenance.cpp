@@ -179,7 +179,7 @@ void handlePlanShard(
   std::string const& dbname, std::string const& colname, std::string const& shname,
   std::string const& serverId, std::string const& leaderId,
   std::unordered_set<std::string>& colis, std::unordered_set<std::string>& indis,
-  std::vector<ActionDescription>& actions) {
+  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions) {
 
   bool shouldBeLeading = serverId == leaderId;
   
@@ -311,11 +311,7 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors,
-  std::vector<ActionDescription>& actions,
-  std::unordered_set<std::string>& databaseErrors,
-  std::unordered_set<std::string>& shardErrors,
-  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors) {
+  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions) {
 
   arangodb::Result result;
   std::unordered_set<std::string> colis; // Intersection collections plan&local
@@ -348,12 +344,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   }
 
   // Check errors for databases, which are no longer in plan and remove from errors
-  for (auto const& database : errors.databases) {
+  for (auto& database : errors.databases) {
     if (!plan.hasKey(std::vector<std::string>{"Databases", database.first})) {
-      databaseErrors.emplace(database.first);
+      database.second.reset();
     }
   }
-  
 
   // Create or modify if local collections are affected
   pdbs = plan.get(COLLECTIONS);
@@ -369,7 +364,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
               handlePlanShard(
                 db, cprops, ldb, dbname, pcol.key.copyString(),
                 shard.key.copyString(), serverId, shard.value[0].copyString(),
-                colis, indis, actions);
+                colis, indis, errors, actions);
             }
           }
         }
@@ -399,21 +394,48 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan (
   VPackSlice const& plan, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature::errors_t const& errors,
-  MaintenanceFeature& feature, std::unordered_set<std::string>& databaseErrors,
-  std::unordered_set<std::string>& shardErrors,
-  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors,
+  std::string const& serverId, MaintenanceFeature& feature,
   VPackBuilder& report) {
 
   arangodb::Result result;
 
+  // Errors from maintenance feature
+  MaintenanceFeature::errors_t errors;
+  result = feature.copyAllErrors(errors);
+  if (!result.ok()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) <<
+      "phaseOne: failed to acquire copy of errors from maintenance feature.";
+    return result;
+  }
+  
   // build difference between plan and local
   std::vector<ActionDescription> actions;
   report.add(VPackValue("agency"));
   { VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, local, serverId, errors, actions, databaseErrors,
-                  shardErrors, indexErrors); }
-  
+    diffPlanLocal(plan, local, serverId, errors, actions); }
+
+  for (auto const& i : errors.databases) {
+    if (i.second == nullptr) {
+      feature.removeDBError(i.first);
+    }
+  }
+  for (auto const& i : errors.shards) {
+    if (i.second == nullptr) {    
+      feature.removeShardError(i.first);
+    }
+  }
+  for (auto const& i : errors.indexes) {
+    std::unordered_set<std::string> tmp;
+    for (auto const& index : i.second) {
+      if (index.second == nullptr) {
+        tmp.emplace(index.first);
+      }
+    }
+    if (!tmp.empty()) {
+      feature.removeIndexErrors(i.first, tmp);
+    }
+  }
+
   TRI_ASSERT(report.isOpenObject());
   report.add(VPackValue("actions"));
   { VPackArrayBuilder a(&report);
@@ -480,41 +502,18 @@ arangodb::Result arangodb::maintenance::phaseOne (
 
   arangodb::Result result;
 
-  MaintenanceFeature::errors_t errors;
-  result = feature.copyAllErrors(errors);
-  if (!result.ok()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) <<
-      "phaseOne: failed to acquire copy of errors from maintenance feature.";
-    return result;
-  }
-  
-  std::unordered_set<std::string> databaseErrors;
-  std::unordered_set<std::string> shardErrors;
-  std::unordered_map<std::string, std::unordered_set<std::string>> indexErrors;
-
   report.add(VPackValue("phaseOne"));
   { VPackObjectBuilder por(&report);
 
     // Execute database changes
     try {
-      result = executePlan(plan, local, serverId, errors, feature,
-                           databaseErrors, shardErrors, indexErrors, report);
+      result = executePlan(plan, local, serverId, feature, report);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "Error executing plan: " << e.what()
         << ". " << __FILE__ << ":" << __LINE__;
     }}
 
-  for (auto const& i : databaseErrors) {
-    feature.removeDBError(i);
-  }
-  for (auto const& i : shardErrors) {
-    feature.removeShardError(i);
-  }
-  for (auto const& i : indexErrors) {
-    feature.removeIndexErrors(i.first, i.second);
-  }
- 
   report.add(VPackValue("Plan"));
   { VPackObjectBuilder p(&report);
     report.add("Version", plan.get("Version"));}
