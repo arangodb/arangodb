@@ -103,8 +103,7 @@ arangodb::Result diffLocalCurrent (
  */
 arangodb::Result phaseOne (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors, MaintenanceFeature& feature,
-  VPackBuilder& report);
+  MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Phase two: Report in agency

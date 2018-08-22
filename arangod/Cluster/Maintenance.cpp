@@ -451,8 +451,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors, MaintenanceFeature& feature,
-  VPackBuilder& report) {
+  MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
   
