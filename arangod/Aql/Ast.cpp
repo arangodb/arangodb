@@ -359,18 +359,15 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
 
-
-
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
   }
 
   bool overwrite = false;
-  if (options->type == NODE_TYPE_OBJECT){
-      auto ops = ExecutionPlan::parseModificationOptions(options);
-      overwrite = ops.overwrite;
-
+  if (options->type == NODE_TYPE_OBJECT) {
+    auto ops = ExecutionPlan::parseModificationOptions(options);
+    overwrite = ops.overwrite;
   }
 
   node->reserve(overwrite ? 5: 4);

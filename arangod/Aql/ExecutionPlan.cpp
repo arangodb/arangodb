@@ -766,11 +766,8 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string const name = member->getString();
-        auto value = member->getMember(0);
-
-        TRI_ASSERT(value->isConstant());
-
         if (name == "method") {
+          auto value = member->getMember(0);
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getString());
@@ -894,9 +891,11 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
         "no view for EnumerateView"
       );
     }
+  
+    auto* options = node->numMembers() > 2 ? node->getMemberUnchecked(2) : nullptr;
 
     en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, view, *v, nullptr, nullptr, {}
+      *this, nextId(), vocbase, view, *v, nullptr, options, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
