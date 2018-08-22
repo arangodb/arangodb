@@ -379,6 +379,20 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 
+    // authorized (NONE user view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto result = v8::Function::Cast(*fn_dropView)->CallAsFunction(context, fn_dropView, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsUndefined()));
+      CHECK((vocbase.views().empty()));
+    }
+/* redundant because of above
     // not authorized (RO user view)
     {
       arangodb::auth::UserMap userMap;
@@ -413,6 +427,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsUndefined()));
       CHECK((vocbase.views().empty()));
     }
+*/
   }
 
   // test drop (instance)
@@ -497,6 +512,20 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 
+    // authorized (NONE user view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto result = v8::Function::Cast(*fn_drop)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsUndefined()));
+      CHECK((vocbase.views().empty()));
+    }
+/* redundant because of above
     // not authorized (RO user view)
     {
       arangodb::auth::UserMap userMap;
@@ -531,6 +560,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsUndefined()));
       CHECK((vocbase.views().empty()));
     }
+*/
   }
 
   // test rename
@@ -620,6 +650,23 @@ SECTION("test_auth") {
       CHECK((true == !view1));
     }
 
+    // authorized (NONE user view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsUndefined()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((true == !view));
+      auto view1 = vocbase.lookupView("testView1");
+      CHECK((false == !view1));
+    }
+/* redundant because of above
     // not authorized (RO user view)
     {
       arangodb::auth::UserMap userMap;
@@ -659,6 +706,7 @@ SECTION("test_auth") {
       auto view1 = vocbase.lookupView("testView1");
       CHECK((false == !view1));
     }
+*/
   }
 
   // test modify
@@ -747,6 +795,56 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 
+    // not authorized (NONE user view with failing toVelocyPack()) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_INTERNAL);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
+
+      arangodb::velocypack::Builder responce;
+      v8::TryCatch tryCatch(isolate.get());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((result.IsEmpty()));
+      CHECK((tryCatch.HasCaught()));
+      CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
+      auto slice = responce.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_INTERNAL == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      CHECK((!slice.isObject()));
+    }
+
+    // authorized (NONE user view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::velocypack::Builder responce;
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsObject()));
+      CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, result.ToLocalChecked(), false)));
+      auto slice = responce.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::DataSourceName) && slice.get(arangodb::StaticStrings::DataSourceName).isString() && std::string("testView") == slice.get(arangodb::StaticStrings::DataSourceName).copyString()));
+      CHECK((slice.hasKey("properties") && slice.get("properties").isObject() && slice.get("properties").hasKey("key") && slice.get("properties").get("key").isString() && std::string("value") == slice.get("properties").get("key").copyString()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey("key") && slice.get("key").isString() && std::string("value") == slice.get("key").copyString()));
+    }
+/* redundant because of above
     // not authorized (RO user view)
     {
       arangodb::auth::UserMap userMap;
@@ -817,6 +915,7 @@ SECTION("test_auth") {
       CHECK((slice.isObject()));
       CHECK((slice.hasKey("key") && slice.get("key").isString() && std::string("value") == slice.get("key").copyString()));
     }
+*/
   }
 
   // test get view (basic)
@@ -878,6 +977,25 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 
+    // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsObject()));
+      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      CHECK((false == !v8View));
+      CHECK((std::string("testView") == v8View->name()));
+      CHECK((std::string("testViewType") == v8View->type().name()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+    }
+/* redundant because of above
     // not authorized (NONE view)
     {
       arangodb::auth::UserMap userMap;
@@ -917,6 +1035,7 @@ SECTION("test_auth") {
       auto view = vocbase.lookupView("testView");
       CHECK((false == !view));
     }
+*/
   }
 
   // test get view (detailed)
@@ -984,6 +1103,26 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 
+    // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::velocypack::Builder responce;
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsObject()));
+      CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, result.ToLocalChecked(), false)));
+      auto slice = responce.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::DataSourceName) && slice.get(arangodb::StaticStrings::DataSourceName).isString() && std::string("testView") == slice.get(arangodb::StaticStrings::DataSourceName).copyString()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+    }
+/* redundant because of above
     // not authorized (NONE view)
     {
       arangodb::auth::UserMap userMap;
@@ -1024,6 +1163,7 @@ SECTION("test_auth") {
       auto view = vocbase.lookupView("testView");
       CHECK((false == !view));
     }
+*/
   }
 
   // test get all views
@@ -1089,6 +1229,28 @@ SECTION("test_auth") {
       CHECK((false == !view2));
     }
 
+    // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView1", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      vocbase.dropView(logicalView2->id(), true); // remove second view to make test result deterministic
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsArray()));
+      auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
+      CHECK((1U == resultArray->Length()));
+      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      CHECK((false == !v8View));
+      CHECK((std::string("testView1") == v8View->name()));
+      CHECK((std::string("testViewType") == v8View->type().name()));
+      auto view1 = vocbase.lookupView("testView1");
+      CHECK((false == !view1));
+    }
+/* redundant because of above
     // not authorized (NONE view)
     {
       arangodb::auth::UserMap userMap;
@@ -1132,6 +1294,7 @@ SECTION("test_auth") {
       auto view2 = vocbase.lookupView("testView2");
       CHECK((false == !view2));
     }
+*/
   }
 }
 
