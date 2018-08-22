@@ -1052,9 +1052,9 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
     // of shards going on in the background
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
-  CONDITION_LOCKER(guard, _condition);
-  _wasNotified = true;
-  _condition.signal();
+  //CONDITION_LOCKER(guard, _condition);
+  //_wasNotified = true;
+  //_condition.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
