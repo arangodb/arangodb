@@ -67,10 +67,10 @@ describe ArangoDB do
                  JSON
           doc = ArangoDB.log_post("#{prefix}-create-invalid-type", cmd, :body => body)
 
-          doc.code.should eq(400)
+          doc.code.should eq(500)
           doc.headers['content-type'].should eq("application/json; charset=utf-8")
           doc.parsed_response['error'].should eq(true)
-          doc.parsed_response['code'].should eq(400)
+          doc.parsed_response['code'].should eq(500)
           doc.parsed_response['errorNum'].should eq(10)
         end
 
