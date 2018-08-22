@@ -182,9 +182,9 @@ struct IResearchViewSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
 
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
- 
+
     buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::ShardingFeature(server), false); 
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
     buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
 
     #if USE_ENTERPRISE
@@ -229,13 +229,13 @@ struct IResearchViewSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       if (features.at((*f)->name()).second) {
         (*f)->stop();
       }
     }
 
-    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) {
       (*f)->unprepare();
     }
 
@@ -335,8 +335,8 @@ SECTION("test_defaults") {
     REQUIRE((false == !logicalView));
     std::set<TRI_voc_cid_t> cids;
     logicalView->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    CHECK((0 == cids.size()));
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((1 == cids.size()));
+    CHECK((false == logicalCollection->getIndexes().empty()));
   }
 
   // view definition with links
@@ -960,7 +960,7 @@ SECTION("test_drop_cid") {
     }
   }
 }
-  
+
 SECTION("test_truncate_cid") {
   static std::vector<std::string> const EMPTY;
 
