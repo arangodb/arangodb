@@ -43,6 +43,16 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   virtual ~MaintenanceFeature() {};
 
+  struct errors_t {
+    std::map<std::string,
+             std::map<std::string,
+                      std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
+    std::unordered_map<std::string,
+                       std::shared_ptr<VPackBuffer<uint8_t>>> shards;
+    std::unordered_map<std::string,
+                       std::shared_ptr<VPackBuffer<uint8_t>>> databases;
+  };
+
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
@@ -251,6 +261,14 @@ public:
    * @return success 
    */
   arangodb::Result removeDBError (std::string const& database);
+
+  /**
+   * @brief copy all error maps (shards, indexes and databases) for Maintenance
+   *
+   * @param  errors  errors struct into which all maintenace feature error are copied
+   * @return         success
+   */
+  arangodb::Result copyAllErrors(errors_t& errors) const;
   
 protected:
   /// @brief common code used by multiple constructors

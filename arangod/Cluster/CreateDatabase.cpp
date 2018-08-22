@@ -24,6 +24,7 @@
 
 #include "ActionBase.h"
 #include "CreateDatabase.h"
+#include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -73,6 +74,15 @@ bool CreateDatabase::first() {
     if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "CreateDatabase: failed to create database " << database << ": " << _result;
+
+      VPackBuilder eb;
+      { VPackObjectBuilder b(&eb);
+        eb.add(NAME, VPackValue(database));
+        eb.add("error", VPackValue(true));
+        eb.add("errorNum", VPackValue(_result.errorNumber()));
+        eb.add("errorMessage", VPackValue(_result.errorMessage())); }
+
+      _feature.storeDBError(database, eb.steal());
       return false;
     }
     

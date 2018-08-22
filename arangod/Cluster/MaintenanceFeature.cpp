@@ -634,7 +634,24 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
-
   return Result();
   
 }
+
+arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {
+  {
+    MUTEX_LOCKER(guard, _seLock);
+    errors.shards = _shardErrors;
+  }
+  {
+    MUTEX_LOCKER(guard, _ieLock);
+    errors.indexes = _indexErrors;
+  }
+  {
+    MUTEX_LOCKER(guard, _dbeLock);
+    errors.databases = _dbErrors;
+  }
+  return Result();
+}
+
+
