@@ -92,6 +92,12 @@ class GraphOperations {
                                boost::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
+  /// @brief Remove an edge or vertex and all incident edges in the graph
+  OperationResult removeEdgeOrVertex(const std::string& collectionName,
+                                     const std::string& key,
+                                     boost::optional<TRI_voc_rid_t> rev,
+                                     bool waitForSync, bool returnOld);
+
   OperationResult updateEdge(const std::string& definitionName,
                              const std::string& key, VPackSlice document,
                              boost::optional<TRI_voc_rid_t> rev,

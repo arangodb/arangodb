@@ -638,85 +638,7 @@ OperationResult GraphOperations::removeEdge(const std::string& definitionName,
                                             const std::string& key,
                                             boost::optional<TRI_voc_rid_t> rev,
                                             bool waitForSync, bool returnOld) {
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-  options.returnOld = returnOld;
-  options.ignoreRevs = !rev.is_initialized();
-
-  VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
-  VPackSlice search{searchBuffer->data()};
-
-  // check for used edge definitions in ALL graphs
-  GraphManager gmngr{_vocbase};
-  VPackBuilder graphsBuilder;
-  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
-  VPackSlice graphs = graphsBuilder.slice();
-
-  if (!graphs.get("graphs").isArray()) {
-    return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
-  }
-
-  std::unordered_set<std::string> possibleEdgeCollections;
-  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-    std::unique_ptr<Graph> graph = Graph::fromPersistence(singleGraph.resolveExternals(), _vocbase);
-    checkForUsedEdgeCollections(*(graph.get()), definitionName, possibleEdgeCollections);
-  }
-
-  transaction::Options trxOptions;
-  trxOptions.waitForSync = waitForSync;
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
-
-  writeCollections.emplace_back(definitionName);
-  for (auto const& col : possibleEdgeCollections) {
-    writeCollections.emplace_back(col);
-  }
-
-  std::unique_ptr<transaction::Methods> trx(new UserTransaction(
-          ctx(), readCollections, writeCollections, {}, trxOptions));
-
-  Result res = trx->begin();
-
-  if (!res.ok()) {
-    return OperationResult(res);
-  }
-
-  OperationResult result = trx->remove(definitionName, search, options);
-  auto context = ctx();
-  {
-    aql::QueryString const queryString = aql::QueryString{
-            "FOR e IN @@collection "
-            "FILTER e._from == @vertexId "
-            "OR e._to == @vertexId "
-            "REMOVE e IN @@collection"};
-
-    std::string const vertexId = definitionName + "/" + key;
-
-    for (auto const& edgeCollection : possibleEdgeCollections) {
-      std::shared_ptr<VPackBuilder> bindVars{std::make_shared<VPackBuilder>()};
-
-      bindVars->add(VPackValue(VPackValueType::Object));
-      bindVars->add("@collection", VPackValue(edgeCollection));
-      bindVars->add("vertexId", VPackValue(vertexId));
-      bindVars->close();
-
-      arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
-                                 nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(context);
-
-      auto queryResult = query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
-
-      if (queryResult.code != TRI_ERROR_NO_ERROR) {
-        return OperationResult(queryResult.code);
-      }
-    }
-  }
-  res = trx->finish(result.result);
-
-  if (result.ok() && res.fail()) {
-    return OperationResult(res);
-  }
-  return result;
+  return removeEdgeOrVertex(definitionName, key, rev, waitForSync, returnOld);
 }
 
 OperationResult GraphOperations::modifyDocument(
@@ -951,9 +873,9 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
                         returnNew);
 }
 
-OperationResult GraphOperations::removeVertex(
-    const std::string& collectionName, const std::string& key,
-    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+OperationResult GraphOperations::removeEdgeOrVertex(
+        const std::string& collectionName, const std::string& key,
+        boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
   OperationOptions options;
   options.waitForSync = waitForSync;
   options.returnOld = returnOld;
@@ -1007,18 +929,18 @@ OperationResult GraphOperations::removeVertex(
   {
     aql::QueryString const queryString = aql::QueryString{
         "FOR e IN @@collection "
-        "FILTER e._from == @vertexId "
-        "OR e._to == @vertexId "
+        "FILTER e._from == @toDeleteId "
+        "OR e._to == @toDeleteId "
         "REMOVE e IN @@collection"};
 
-    std::string const vertexId = collectionName + "/" + key;
+    std::string const toDeleteId = collectionName + "/" + key;
 
     for (auto const& edgeCollection : edgeCollections) {
       std::shared_ptr<VPackBuilder> bindVars{std::make_shared<VPackBuilder>()};
 
       bindVars->add(VPackValue(VPackValueType::Object));
       bindVars->add("@collection", VPackValue(edgeCollection));
-      bindVars->add("vertexId", VPackValue(vertexId));
+      bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
@@ -1039,6 +961,12 @@ OperationResult GraphOperations::removeVertex(
     return OperationResult(res);
   }
   return result;
+}
+
+OperationResult GraphOperations::removeVertex(
+    const std::string& collectionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+  return removeEdgeOrVertex(collectionName, key, rev, waitForSync, returnOld);
 }
 
 bool GraphOperations::collectionExists(std::string const& collection) const {
