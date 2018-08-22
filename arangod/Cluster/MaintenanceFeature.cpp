@@ -463,7 +463,7 @@ arangodb::Result MaintenanceFeature::storeShardError (
 
 arangodb::Result MaintenanceFeature::shardError (
   std::string const& database, std::string const& collection,
-  std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) const {
+  std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>>& error) const {
 
   std::string key = database + SLASH + collection + SLASH + shard;
 

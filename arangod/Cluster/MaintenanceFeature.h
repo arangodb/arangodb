@@ -206,7 +206,7 @@ public:
    */
   arangodb::Result shardError(
     std::string const& database, std::string const& collection,
-    std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) const;
+    std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
 
   /**
    * @brief remove 1+ errors from index error bucket
