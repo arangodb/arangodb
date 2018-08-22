@@ -2803,6 +2803,13 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type) {
   
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return OperationResult(TRI_ERROR_SHUTTING_DOWN);
+  }
+  
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
   try {
