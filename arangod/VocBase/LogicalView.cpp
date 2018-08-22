@@ -107,6 +107,14 @@ LogicalView::LogicalView(
   auto const viewType = basics::VelocyPackHelper::getStringRef(
     definition, StaticStrings::DataSourceType, ""
   );
+
+  ///////////////////////////////////////////////////
+  /// Add links checks here:
+  ///   - do all collections exist?
+  ///   -
+  ///////////////////////////////////////////////////
+
+
   auto const& dataSourceType =
     arangodb::LogicalDataSource::Type::emplace(viewType);
   auto const& viewFactory = viewTypes->factory(dataSourceType);
@@ -120,6 +128,50 @@ LogicalView::LogicalView(
   }
 
   auto view = viewFactory(vocbase, definition, isNew, planVersion, preCommit);
+
+  ////////////////////////////////////////////////////////////////////////////
+  // AT THIS POINT the view is already created but does not have links
+  // from the properties set-
+  //
+  // Add them now manually for arangosearch, because they unable to do it.
+  ////////////////////////////////////////////////////////////////////////////
+
+  if (view && viewType.compare("arangosearch") == 0) {
+
+    // updateProperties
+    if (definition.hasKey("links")) {
+      auto links = definition.get("links");
+
+      // create a standalone object
+      VPackBuilder linksprop;
+      linksprop.openObject();
+      linksprop.add("links", links);
+      linksprop.close();
+
+      LOG_TOPIC(ERR, Logger::VIEWS) << "Adding links: " << linksprop.toJson();
+
+      auto res = view->updateProperties (linksprop.slice(), true, true);
+
+      if (!res.ok()) {
+
+        LOG_TOPIC(ERR, Logger::VIEWS)
+          << "Failed to create links for new view, trying to rollback.";
+
+        // Link creation failed, try to delete the view
+        res = view->drop();
+
+        if (!res.ok()) {
+          // WOOPS! Inconsistent state, can't repair
+
+          LOG_TOPIC(ERR, Logger::VIEWS)
+            << "Failed to remove view - arrived at inconsistent state.";
+        }
+
+        return nullptr;
+      }
+
+    }
+  }
 
   if (!view) {
     LOG_TOPIC(ERR, Logger::VIEWS)

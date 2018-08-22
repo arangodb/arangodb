@@ -96,10 +96,18 @@ function IResearchLinkSuite () {
 
     testHandlingCreateWithBadLinks : function () {
       var meta = { links: { 'nonExistingCollection' : { includeAllFields: true } } };
-      var view = db._createView("badView", "arangosearch", meta);
-      var links = view.properties().links;
-      assertNotEqual(links, undefined);
-      view.drop();
+
+      try {
+        var view = db._createView("badView", "arangosearch", meta);
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+
+      try {
+        var view = db._view('badView');
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
+      }
     },
 
     testHandlingCreateWithSomeBadLinks : function () {
@@ -107,10 +115,18 @@ function IResearchLinkSuite () {
         'testCollection' : { includeAllFields: true },
         'nonExistingCollection' : { includeAllFields: true },
         'testCollection2' : { includeAllFields: true }  } };
-      var view = db._createView("badView", "arangosearch", meta);
-      var links = view.properties().links;
-      assertNotEqual(links, undefined); // no link should be set
-      view.drop();
+
+      try {
+        var view = db._createView("badView", "arangosearch", meta);
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+
+      try {
+        var view = db._view("badView");
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////
