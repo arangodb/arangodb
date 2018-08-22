@@ -180,10 +180,10 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseOk1 : function () {
-      var st = db._createStatement({ query : "for u in _graphs return u" });
+      var st = db._createStatement({ query : "for u in users return u" });
       var result = st.parse();
 
-      assertEqual([ "_graphs" ], result.collections);
+      assertEqual([ "users" ], result.collections);
       assertEqual([ ], result.bindVars);
       assertTrue(result.hasOwnProperty("ast"));
     },
@@ -193,10 +193,10 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseOk2 : function () {
-      var st = db._createStatement({ query : "for u in _graphs for f in _apps return u" });
+      var st = db._createStatement({ query : "for u in users for f in friends return u" });
       var result = st.parse();
 
-      assertEqual([ "_apps", "_graphs" ], result.collections.sort());
+      assertEqual([ "friends", "users" ], result.collections.sort());
       assertEqual([ ], result.bindVars);
       assertTrue(result.hasOwnProperty("ast"));
     },
@@ -220,11 +220,11 @@ function StatementSuite () {
 
     testParseBind2 : function () {
       var st = db._createStatement({
-        query : "for u in @@users for f in _users filter u.name == @name && f.friendId == u._id return u"
+        query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u"
       });
       var result = st.parse();
 
-      assertEqual([ "_users" ], result.collections);
+      assertEqual([ "friends" ], result.collections);
       assertEqual([ "@users", "name" ], result.bindVars.sort());
       assertTrue(result.hasOwnProperty("ast"));
     },

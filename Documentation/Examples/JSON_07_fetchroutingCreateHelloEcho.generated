@@ -2,7 +2,7 @@ arangosh&gt; arango.GET_RAW(<span class="hljs-string">"/hello/echo"</span>, { <s
 { 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"body"</span> : <span class="hljs-string">"{\"request\":{\"authorized\":true,\"user\":\"root\",\"database\":\"_system\",\"url\":\"/hello/echo\",\"protocol\":\"http\",\"server\":{\"address\":\"127.0.0.1\",\"port\":59414},\"client\":{\"address\":\"127.0.0.1\",\"port\":60132,\"id\":\"153484694413259\"},\"internals\":{},\"headers\":{\"accept\":\"ap..."</span>, 
+  <span class="hljs-string">"body"</span> : <span class="hljs-string">"{\"request\":{\"authorized\":true,\"user\":\"root\",\"database\":\"_system\",\"url\":\"/hello/echo\",\"protocol\":\"http\",\"server\":{\"address\":\"127.0.0.1\",\"port\":29913},\"client\":{\"address\":\"127.0.0.1\",\"port\":50732,\"id\":\"153486956593229\"},\"internals\":{},\"headers\":{\"accept\":\"ap..."</span>, 
   <span class="hljs-string">"headers"</span> : { 
     <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
     <span class="hljs-string">"content-length"</span> : <span class="hljs-string">"467"</span>, 

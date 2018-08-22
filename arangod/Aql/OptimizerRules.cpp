@@ -757,7 +757,9 @@ void arangodb::aql::removeCollectVariablesRule(
     if (outVariable != nullptr &&
         varsUsedLater.find(outVariable) == varsUsedLater.end()) {
       // outVariable not used later
-      collectNode->clearOutVariable();
+      if (!collectNode->count()) {
+        collectNode->clearOutVariable();
+      }
       modified = true;
     } else if (outVariable != nullptr && !collectNode->count() &&
                !collectNode->hasExpressionVariable() &&

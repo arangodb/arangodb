@@ -1630,6 +1630,7 @@ int IResearchView::insert(
 
   if (!impl._meta->init(properties, error)
       || !impl._metaState.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to initialize iResearch view from definition, error: " << error;
 
@@ -1647,6 +1648,7 @@ int IResearchView::insert(
     auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
 
     if (!res.ok()) {
+      TRI_set_errno(res.errorNumber());
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
 
