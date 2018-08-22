@@ -181,10 +181,12 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     _builder.authenticationType(fuerte::AuthenticationType::Jwt);
   }
+  
+  auto oldConnection = std::move(_connection);
+  if (oldConnection) {
+    oldConnection->cancel();
+  }
   try {
-    if (_connection) {
-      _connection->cancel();
-    }
     createConnection();
   } catch (...) {
     std::string errorMessage = "error in '" + client->endpoint() + "'";
