@@ -140,6 +140,9 @@ bool EnsureIndex::first() {
         eb.add("errorNum", VPackValue(_result.errorNumber()));
         eb.add(ID, VPackValue(id)); }
 
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "Reporting error " << eb.toJson();
+
       _feature.storeIndexError(database, collection, shard, id, eb.steal());
       _result.reset(TRI_ERROR_INTERNAL, error.str());
       return false;
