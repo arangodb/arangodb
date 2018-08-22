@@ -80,6 +80,8 @@ class IResearchLink {
   /// @brief called when the iResearch Link is dropped
   ////////////////////////////////////////////////////////////////////////////////
   int drop(); // arangodb::Index override
+  
+  void afterTruncate();
 
   bool hasBatchInsert() const; // arangodb::Index override
   bool hasSelectivityEstimate() const; // arangodb::Index override

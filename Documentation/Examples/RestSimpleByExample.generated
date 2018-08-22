@@ -1,4 +1,4 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example</span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/by-example</span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"example"</span> : { 
@@ -7,16 +7,22 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103590"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103590"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y8q--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104603"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104603"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XTzZevu--_"</span>, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104596"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104596"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XTzZevq--_"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
@@ -24,9 +30,9 @@ x-content-type-options: nosniff
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103600"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103600"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y8u--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104606"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104606"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XTzZevu--B"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span> 
@@ -34,18 +40,12 @@ x-content-type-options: nosniff
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103594"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103594"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y8q--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104600"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104600"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XTzZevq--B"</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
-      <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
-    }, 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103597"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103597"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y8q--D"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     } 
   ], 
@@ -60,7 +60,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001671314239501953</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0003466606140136719</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

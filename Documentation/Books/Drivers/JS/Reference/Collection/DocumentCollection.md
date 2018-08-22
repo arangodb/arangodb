@@ -6,17 +6,22 @@ The _DocumentCollection API_ extends the
 
 ## documentCollection.document
 
-`async documentCollection.document(documentHandle): Object`
+`async documentCollection.document(documentHandle, [graceful]): Object`
 
 Retrieves the document with the given _documentHandle_ from the collection.
 
 **Arguments**
 
-* **documentHandle**: `string`
+- **documentHandle**: `string`
 
   The handle of the document to retrieve. This can be either the `_id` or the
   `_key` of a document in the collection, or a document (i.e. an object with an
   `_id` or `_key` property).
+
+- **graceful**: `boolean` (Default: `false`)
+
+  If set to `true`, the method will return `null` instead of throwing an error
+  if the document does not exist.
 
 **Examples**
 
@@ -45,6 +50,39 @@ try {
   // something went wrong or
   // the document does not exist
 }
+
+// -- or --
+
+const doc = await collection.document('some-key', true);
+if (doc === null) {
+  // the document does not exist
+}
+```
+
+## documentCollection.documentExists
+
+`async documentCollection.documentExists(documentHandle): boolean`
+
+Checks whether the document with the given _documentHandle_ exists.
+
+**Arguments**
+
+- **documentHandle**: `string`
+
+  The handle of the document to retrieve. This can be either the `_id` or the
+  `_key` of a document in the collection, or a document (i.e. an object with an
+  `_id` or `_key` property).
+
+**Examples**
+
+```js
+const db = new Database();
+const collection = db.collection('my-docs');
+
+const exists = await collection.documentExists('some-key');
+if (exists === false) {
+  // the document does not exist
+}
 ```
 
 ## documentCollection.save
@@ -56,38 +94,38 @@ the document's metadata.
 
 **Arguments**
 
-* **data**: `Object`
+- **data**: `Object`
 
   The data of the new document, may include a `_key`.
 
-* **opts**: `Object` (optional)
+- **opts**: `Object` (optional)
 
   If _opts_ is set, it must be an object with any of the following properties:
 
-  * **waitForSync**: `boolean` (Default: `false`)
+  - **waitForSync**: `boolean` (Default: `false`)
 
     Wait until document has been synced to disk.
 
-  * **returnNew**: `boolean` (Default: `false`)
+  - **returnNew**: `boolean` (Default: `false`)
 
     If set to `true`, return additionally the complete new documents under the
     attribute `new` in the result.
 
-  * **returnOld**: `boolean` (Default: `false`)
+  - **returnOld**: `boolean` (Default: `false`)
 
     If set to `true`, return additionally the complete old documents under the
     attribute `old` in the result.
 
-  * **silent**: `boolean` (Default: `false`)
+  - **silent**: `boolean` (Default: `false`)
 
     If set to true, an empty object will be returned as response. No meta-data
     will be returned for the created document. This option can be used to save
     some network traffic.
 
-  * **overwrite**: `boolean` (Default: `false`)
+  - **overwrite**: `boolean` (Default: `false`)
 
     If set to true, the insert becomes a replace-insert. If a document with the
-    same _key already exists the new document is not rejected with unique
+    same \_key already exists the new document is not rejected with unique
     constraint violated but will replace the old document.
 
 If a boolean is passed instead of an options object, it will be interpreted as

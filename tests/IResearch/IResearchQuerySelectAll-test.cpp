@@ -136,6 +136,9 @@ struct IResearchQuerySelectAllSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQuerySelectAllSetup() {
@@ -276,7 +279,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView RETURN d"
+      "FOR d IN testView RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -302,7 +305,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT d.key ASC RETURN d"
+      "FOR d IN testView SORT d.key ASC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -324,7 +327,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT d.key DESC RETURN d"
+      "FOR d IN testView SORT d.key DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -351,7 +354,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT TFIDF(d) RETURN d"
+      "FOR d IN testView SORT TFIDF(d) RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -382,7 +385,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT TFIDF(d) DESC RETURN d"
+      "FOR d IN testView SORT TFIDF(d) DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -413,7 +416,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT BM25(d) RETURN d"
+      "FOR d IN testView SORT BM25(d) RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -444,7 +447,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT BM25(d) DESC RETURN d"
+      "FOR d IN testView SORT BM25(d) DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -470,7 +473,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT TFIDF(d), d.key ASC RETURN d"
+      "FOR d IN testView SORT TFIDF(d), d.key ASC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -492,7 +495,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView SORT TFIDF(d), d.key DESC RETURN d"
+      "FOR d IN testView SORT TFIDF(d), d.key DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 

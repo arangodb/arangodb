@@ -63,7 +63,7 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
 #endif
   }
   if (!result) {
-    throw std::logic_error("unsupported socket type");
+    throw std::logic_error("unsupported socket or protocol type");
   }
   
   // Start the connection implementation
@@ -148,7 +148,6 @@ ConnectionBuilder& ConnectionBuilder::endpoint(std::string const& host) {
   }
   
   // put hostname, port and path in seperate strings
-  std::string server;
   if (!(parsed.field_set & (1 << UF_HOST))) {
     throw std::runtime_error(std::string("invalid host: ") + host);
   }

@@ -198,7 +198,6 @@ class RocksDBEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
@@ -378,6 +377,8 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  bool canUseRangeDeleteInWal() const;
 
   rocksdb::Options const& rocksDBOptions() const {
     return _options;

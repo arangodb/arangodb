@@ -2354,6 +2354,7 @@ static void JS_TruncateVocbaseCol(
     ctx, *collection, AccessMode::Type::EXCLUSIVE
   );
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2653,6 +2654,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engine()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_name()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_path()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_parse()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));

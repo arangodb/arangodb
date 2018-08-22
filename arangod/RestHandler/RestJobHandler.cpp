@@ -77,7 +77,7 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it form the manager
+  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it from the manager
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job

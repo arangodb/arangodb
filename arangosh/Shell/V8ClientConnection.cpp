@@ -58,46 +58,29 @@ V8ClientConnection::V8ClientConnection()
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
-      _connection(nullptr),
       _loop(1),
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
+  _builder.onFailure([this](int error, std::string const& msg) {
+    _lastHttpReturnCode = 503;
+    _lastErrorMessage = msg;
+  });
 }
 
 V8ClientConnection::~V8ClientConnection() {
-  _connection.reset();
-  _loop.forceStop();
+  shutdownConnection();
 }
 
-void V8ClientConnection::init(ClientFeature* client) {
-  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
-  _username = client->username();
-  _password = client->password();
-  _databaseName = client->databaseName();
-
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(client->endpoint());
-  if (!client->username().empty()) {
-    builder.user(client->username()).password(client->password());
-    builder.authenticationType(fuerte::AuthenticationType::Basic);
-  } else if (!client->jwtSecret().empty()) {
-    builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
-    builder.authenticationType(fuerte::AuthenticationType::Jwt);
-  }
-  builder.onFailure([this](int error, std::string const& msg) {
-    _lastHttpReturnCode = 505;
-    _lastErrorMessage = msg;
-  });
-  
-  _connection.reset();
-  _connection = builder.connect(_loop);
+void V8ClientConnection::createConnection() {
+ 
+  _connection = _builder.connect(_loop);
   
   fuerte::StringMap params{{"details","true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
   req->header.database = _databaseName;
   try {
-    auto res = _connection->sendRequestSync(std::move(req));
+    auto res = _connection->sendRequest(std::move(req));
     _lastHttpReturnCode = res->statusCode();
     
     if (_lastHttpReturnCode == 200) {
@@ -132,28 +115,25 @@ void V8ClientConnection::init(ClientFeature* client) {
         if (version.first < 3) {
           // major version of server is too low
           //_client->disconnect();
-          _connection.reset();
+          shutdownConnection(); 
           _lastErrorMessage = "Server version number ('" + versionString +
           "') is too low. Expecting 3.0 or higher";
           return;
         }
       }
     }
-  } catch(fuerte::ErrorCondition const& e) { // connection error
+  } catch (fuerte::ErrorCondition const& e) { // connection error
     _lastErrorMessage = fuerte::to_string(e);
-    _lastHttpReturnCode = 505;
+    _lastHttpReturnCode = 503;
   }
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
-  if (_connection) {
-    if (interrupted) {
-      _connection->shutdownConnection(fuerte::ErrorCondition::Canceled);
-    } else {
-      if (_connection->state() == fuerte::Connection::State::Disconnected) {
-        _connection->startConnection();
-      }
-    }
+  if (interrupted && _connection.get() != nullptr) {
+    _connection->cancel();
+    _connection.reset();
+  } else if (!interrupted && _connection.get() == nullptr) {
+    createConnection();
   }
 }
 
@@ -169,12 +149,34 @@ std::string V8ClientConnection::endpointSpecification() const {
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
-  this->init(client);
+  TRI_ASSERT(client);
+  
+  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
+  _databaseName = client->databaseName();
+  _builder.endpoint(client->endpoint());
+  if (!client->username().empty()) {
+    _builder.user(client->username()).password(client->password());
+    _builder.authenticationType(fuerte::AuthenticationType::Basic);
+  } else if (!client->jwtSecret().empty()) {
+    _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+    _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  }
+  createConnection();
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
+  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
+  _databaseName = client->databaseName();
+  _builder.endpoint(client->endpoint());
+  if (!client->username().empty()) {
+    _builder.user(client->username()).password(client->password());
+    _builder.authenticationType(fuerte::AuthenticationType::Basic);
+  } else if (!client->jwtSecret().empty()) {
+    _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+    _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  }
   try {
-    init(client);
+    createConnection();
   } catch (...) {
     std::string errorMessage = "error in '" + client->endpoint() + "'";
     throw errorMessage;
@@ -187,7 +189,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
         << "'" << endpointSpecification() << "', "
         << "version " << _version << " [" << _mode << "], "
         << "database '" << _databaseName << "', "
-        << "username: '" << _username << "'";
+        << "username: '" << client->username() << "'";
   } else {
     if (client->getWarnConnect()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -1354,7 +1356,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   _lastHttpReturnCode = 0;
   if (!_connection) {
     _lastErrorMessage = "not connected";
-    _lastHttpReturnCode = 505;
+    _lastHttpReturnCode = 503;
     return v8::Null(isolate);
   }
   
@@ -1381,7 +1383,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
-  } else if (!body->IsUndefined() && !body->IsNull()) {
+  } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &_vpackOptions);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
@@ -1391,6 +1393,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     }
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
+  } else {
+    // body is null or undefined
+    if (req->header.contentType() == fuerte::ContentType::Unset) {
+      req->header.contentType(fuerte::ContentType::Json);
+    }
   }
   if (req->header.acceptType() == fuerte::ContentType::Unset) {
     req->header.acceptType(fuerte::ContentType::VPack);
@@ -1399,7 +1406,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequestSync(std::move(req));
+    response = _connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition const& ec) {
     return handleResult(isolate, nullptr, ec);
   }
@@ -1428,7 +1435,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
-  } else if (!body->IsUndefined() && !body->IsNull()) {
+  } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
     int res = TRI_V8ToVPack(isolate, builder, body, false);
@@ -1438,6 +1445,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     }
     req->addVPack(std::move(buffer));
     req->header.contentType(fuerte::ContentType::VPack);
+  } else {
+    // body is null or undefined
+    if (req->header.contentType() == fuerte::ContentType::Unset) {
+      req->header.contentType(fuerte::ContentType::Json);
+    }
   }
   if (req->header.acceptType() == fuerte::ContentType::Unset) {
     req->header.acceptType(fuerte::ContentType::VPack);
@@ -1446,10 +1458,10 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequestSync(std::move(req));
+    response = _connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition const& e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
-    _lastHttpReturnCode = 505;
+    _lastHttpReturnCode = 503;
   }
   
   v8::Local<v8::Object> result = v8::Object::New(isolate);
@@ -1743,4 +1755,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_ARANGO"),
                                WrapV8ClientConnection(isolate, this));
+}
+
+void V8ClientConnection::shutdownConnection() {
+  if (_connection) {
+    _connection->cancel();
+    _connection.reset();
+  }
 }

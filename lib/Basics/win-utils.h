@@ -83,7 +83,7 @@ int TRI_MapSystemError(DWORD);
 bool TRI_InitWindowsEventLog(void);
 void TRI_CloseWindowsEventlog(void);
 
-typedef void (*TRI_serviceAbort_t)(void);
+typedef void (*TRI_serviceAbort_t)(uint16_t exitCode);
 
 void TRI_SetWindowsServiceAbortFunction(TRI_serviceAbort_t);
 

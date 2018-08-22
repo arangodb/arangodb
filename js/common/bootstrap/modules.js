@@ -550,7 +550,7 @@
           msg += `\nFile: ${filename}`;
         }
         if (e.lineNumber !== undefined) {
-          msg += `\nLine: ${e.lineNumber-2}`;
+          msg += `\nLine: ${e.lineNumber}`;
         }
         if (e.columnNumber !== undefined) {
           msg += `\nColumn: ${e.columnNumber}`;

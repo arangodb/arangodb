@@ -180,8 +180,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
 
-  virtual void waitForSyncTimeout(double maxWait) = 0;
-
   virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
                           bool writeShutdownFile = false) = 0;
 

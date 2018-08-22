@@ -73,7 +73,7 @@ function optimizerCostsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEnumerateListNodeFunction : function () {
-      var query = "FOR i IN PASSTHRU([ 1, 2, 3 ]) RETURN i";
+      var query = "FOR i IN NOOPT([ 1, 2, 3 ]) RETURN i";
 
       var plan = AQL_EXPLAIN(query);
       var node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];

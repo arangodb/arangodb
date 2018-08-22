@@ -1833,8 +1833,8 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   // successfully opened collection. now adjust version number
-  if (LogicalCollection::VERSION_31 != _logicalCollection.version()) {
-    _logicalCollection.setVersion(LogicalCollection::VERSION_31);
+  if (LogicalCollection::VERSION_33 != _logicalCollection.version()) {
+    _logicalCollection.setVersion(LogicalCollection::VERSION_33);
 
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(

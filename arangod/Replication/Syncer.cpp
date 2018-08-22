@@ -597,6 +597,8 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
         *col,
         AccessMode::Type::WRITE
       );
+      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
 
       if (!res.ok()) {
@@ -908,7 +910,7 @@ void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   auth::UserManager* um = af->userManager();
   if (um != nullptr) {
-    um->outdate();
+    um->increaseGlobalVersion();
   }
 }
 

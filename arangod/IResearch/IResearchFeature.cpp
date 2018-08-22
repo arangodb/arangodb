@@ -144,12 +144,29 @@ typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
   arangodb::SmallVector<arangodb::aql::AqlValue> const&
 );
 
+size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
+  static const size_t MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
+  static const size_t MIN_THREADS = 1; // at least one thread is required
+  auto maxThreads = threadsLimit ? threadsLimit : MAX_THREADS;
+
+  return threads
+    ? threads
+    : std::max(
+        MIN_THREADS,
+        std::min(maxThreads, size_t(std::thread::hardware_concurrency()) / 4)
+      )
+    ;
+}
+
 void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
-    true,   // deterministic
-    true,   // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
@@ -164,48 +181,66 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
     ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
     ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "MIN_MATCH",   // name
     ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "BOOST",       // name
     ".,.",         // positional arguments (filter expression, boost)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
     "ANALYZER",    // name
     ".,.",         // positional arguments (filter expression, analyzer)
-    true,          // deterministic
-    true,          // can be run on server
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     &filter        // function implementation (use function name as placeholder)
   });
 }
@@ -273,8 +308,11 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
     arangodb::iresearch::addFunction(functions, {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
-      true,   // deterministic
-      true,   // can be run on server
+      arangodb::aql::Function::makeFlags(
+        arangodb::aql::Function::Flags::Deterministic, 
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ), 
       &scorer // function implementation (use function name as placeholder)
     });
 
@@ -382,11 +420,13 @@ class IResearchFeature::Async {
  public:
   typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
 
-  Async();
+  explicit Async(size_t poolSize = 0);
+  Async(size_t poolSize, Async&& other);
   ~Async();
 
   void emplace(std::shared_ptr<ResourceMutex> const& mutex, Fn &&fn); // add an asynchronous task
   void notify() const; // notify all tasks
+  size_t poolSize() { return _pool.size(); }
   void start();
 
  private:
@@ -419,10 +459,10 @@ class IResearchFeature::Async {
     mutable bool _wasNotified; // a notification was raised from another thread
 
     Thread(std::string const& name)
-      : arangodb::Thread(name), _terminate(nullptr), _wasNotified(false) {
+      : arangodb::Thread(name), _next(nullptr), _terminate(nullptr), _wasNotified(false) {
     }
     Thread(Thread&& other) // used in constructor before tasks are started
-      : arangodb::Thread(other.name()), _terminate(nullptr), _wasNotified(false) {
+      : arangodb::Thread(other.name()), _next(nullptr), _terminate(nullptr), _wasNotified(false) {
     }
     virtual bool isSystem() override { return true; } // or start(...) will fail
     virtual void run() override;
@@ -431,6 +471,8 @@ class IResearchFeature::Async {
   arangodb::basics::ConditionVariable _join; // mutex to join on
   std::vector<Thread> _pool; // thread pool (size fixed for the entire life of object)
   std::atomic<bool> _terminate; // unconditionaly terminate async tasks
+
+  void stop(Thread* redelegate = nullptr);
 };
 
 void IResearchFeature::Async::Thread::run() {
@@ -446,7 +488,7 @@ void IResearchFeature::Async::Thread::run() {
       SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
 
       if (_terminate->load()) {
-        return; // termination requested
+        break; // termination requested
       }
 
       // transfer any new pending tasks into active tasks
@@ -492,7 +534,7 @@ void IResearchFeature::Async::Thread::run() {
       _wasNotified = false; // ignore notification since woke up
 
       if (_terminate->load()) { // check again after sleep
-        return; // termination requested
+        break; // termination requested
       }
     }
 
@@ -557,15 +599,25 @@ void IResearchFeature::Async::Thread::run() {
       ++i;
     }
   }
+
+  // ...........................................................................
+  // move all tasks back into _pending in case the may neeed to be reasigned
+  // ...........................................................................
+  SCOPED_LOCK_NAMED(_mutex, lock); // '_pending' may be modified asynchronously
+
+  for (auto& task: pendingRedelegate) {
+    _pending.emplace_back(std::move(task));
+  }
+
+  for (auto& task: _tasks) {
+    _pending.emplace_back(std::move(task));
+  }
+
+  _tasks.clear();
 }
 
-IResearchFeature::Async::Async(): _terminate(false) {
-  static const unsigned int MAX_THREADS = 8; // arbitrary limit on the upper bound of threads in pool
-  static const unsigned int MIN_THREADS = 1; // at least one thread is required
-  auto const poolSize = std::max(
-    MIN_THREADS,
-    std::min(MAX_THREADS, std::thread::hardware_concurrency() / 4) // arbitrary fraction of available cores
-  );
+IResearchFeature::Async::Async(size_t poolSize): _terminate(false) {
+  poolSize = std::max(size_t(1), poolSize); // need at least one thread
 
   for (size_t i = 0; i < poolSize; ++i) {
     _pool.emplace_back(std::string("ArangoSearch #") + std::to_string(i));
@@ -579,23 +631,15 @@ IResearchFeature::Async::Async(): _terminate(false) {
     last = &thread;
     thread._terminate = &_terminate;
   }
+}
 
+IResearchFeature::Async::Async(size_t poolSize, Async&& other)
+  : Async(poolSize) {
+  other.stop(&_pool[0]);
 }
 
 IResearchFeature::Async::~Async() {
-  _terminate.store(true); // request stop asynchronous tasks
-  notify(); // notify all threads
-
-  CONDITION_LOCKER(lock, _join);
-
-  // join with all threads in pool
-  for (auto& thread: _pool) {
-    if (thread.hasStarted()) {
-      while(thread.isRunning()) {
-        _join.wait();
-      }
-    }
-  }
+  stop();
 }
 
 void IResearchFeature::Async::emplace(
@@ -632,6 +676,35 @@ void IResearchFeature::Async::start() {
     << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
+void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
+  _terminate.store(true); // request stop asynchronous tasks
+  notify(); // notify all threads
+
+  CONDITION_LOCKER(lock, _join);
+
+  // join with all threads in pool
+  for (auto& thread: _pool) {
+    if (thread.hasStarted()) {
+      while(thread.isRunning()) {
+        _join.wait();
+      }
+    }
+
+    // redelegate all thread tasks if requested
+    if (redelegate) {
+      SCOPED_LOCK(redelegate->_mutex);
+
+      for (auto& task: thread._pending) {
+        redelegate->_pending.emplace_back(std::move(task));
+        ++redelegate->_size;
+      }
+
+      thread._pending.clear();
+      redelegate->_cond.notify_all(); // notify thread about a new task (thread may be sleeping indefinitely)
+    }
+  }
+}
+
 IResearchFeature::IResearchFeature(
     arangodb::application_features::ApplicationServer& server
 )
@@ -642,7 +715,6 @@ IResearchFeature::IResearchFeature(
     _threadsLimit(0) {
   setOptional(true);
   startsAfter("V8Phase");
-
   startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
   startsAfter("AQLFunctions");
 }
@@ -716,6 +788,12 @@ void IResearchFeature::prepare() {
   // start the async task thread pool
   if (!ServerState::instance()->isCoordinator() && 
       !ServerState::instance()->isAgent()) {  
+    auto poolSize = computeThreadPoolSize(_threads, _threadsLimit);
+
+    if (_async->poolSize() != poolSize) {
+      _async = std::make_unique<Async>(poolSize, std::move(*_async));
+    }
+
     _async->start();
   }
 }
