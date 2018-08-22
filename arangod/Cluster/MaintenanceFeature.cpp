@@ -564,7 +564,7 @@ arangodb::Result MaintenanceFeature::storeIndexError (
       return Result(TRI_ERROR_FAILED, e.what());
     }
   }
-  auto errors = _indexErrors.find(key)->second;
+  auto& errors = _indexErrors.find(key)->second;
   auto const it = errors.find(indexId);
 
   if (it != errors.end()) {
