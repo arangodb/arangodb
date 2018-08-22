@@ -412,6 +412,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     {dbsIds[shortNames[1]], createNode(dbs1Str)},
     {dbsIds[shortNames[2]], createNode(dbs2Str)}};
 
+  MaintenanceFeature::errors_t errors;
   
   SECTION("In sync should have 0 effects") {
 
@@ -420,7 +421,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     for (auto const& node : localNodes) {
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
 
       if (actions.size() != 0) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -440,7 +441,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
-      localNodes.begin()->first, actions);
+      localNodes.begin()->first, errors, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -460,7 +461,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
     arangodb::maintenance::diffPlanLocal(
       plan.toBuilder().slice(), localNodes.begin()->second.toBuilder().slice(),
-      localNodes.begin()->first, actions);
+      localNodes.begin()->first, errors, actions);
 
     REQUIRE(actions.size() == 1);
     REQUIRE(actions.front().name() == "DropDatabase");
@@ -486,7 +487,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
 
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -517,7 +518,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
 
       if (actions.size() != 2) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -546,7 +547,8 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       auto local = node.second;
       
       arangodb::maintenance::diffPlanLocal(
-        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, actions);
+        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors,
+        actions);
 
       size_t n = 0;
       for (auto const& shard : shards) {
@@ -585,7 +587,8 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       auto local = node.second;
       
       arangodb::maintenance::diffPlanLocal(
-        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, actions);
+        plan.toBuilder().slice(), local.toBuilder().slice(), node.first, errors,
+        actions);
       
       size_t n = 0;
       for (auto const& shard : shards) {
@@ -617,7 +620,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
       
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -653,7 +656,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
 
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
@@ -691,7 +694,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
 
       if (check) {
         if (actions.size() != 1) {
@@ -724,7 +727,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, actions);
+        node.first, errors, actions);
 
       REQUIRE(actions.size() == node.second("db3").children().size());
       for (auto const& action : actions) {
@@ -773,7 +776,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       
       arangodb::maintenance::diffPlanLocal (
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
-        actions);
+        errors, actions);
 
       if (actions.size() != 1) {
         std::cout << actions << std::endl;

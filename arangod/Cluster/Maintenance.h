@@ -49,17 +49,14 @@ arangodb::Result diffPlanLocalForDatabases(
  * @param plan     Snapshot of agency's planned state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
+ * @param errors   Copy of last maintenance feature errors
  * @param actions  Resulting actions from difference are packed in here
  *
  * @return         Result
  */
 arangodb::Result diffPlanLocal(
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors,
-  std::vector<ActionDescription>& actions,
-  std::unordered_set<std::string>& databaseErrors,
-  std::unordered_set<std::string>& shardErrors,
-  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors);
+  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run 
@@ -75,11 +72,7 @@ arangodb::Result diffPlanLocal(
  */
 arangodb::Result executePlan (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors, arangodb::MaintenanceFeature& feature,
-  std::unordered_set<std::string>& databaseErrors,
-  std::unordered_set<std::string>& shardErrors,
-  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors,
-  VPackBuilder& report);
+  arangodb::MaintenanceFeature& feature, VPackBuilder& report);
 
 /**
  * @brief          Difference local and current states for phase 2 of Maintenance 
