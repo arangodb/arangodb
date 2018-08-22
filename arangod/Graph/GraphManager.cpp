@@ -998,6 +998,4 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   } catch (...) {
     return {TRI_ERROR_INTERNAL};
   }
-  TRI_ASSERT(false); // Catch all above!
-  return {TRI_ERROR_INTERNAL };
 }

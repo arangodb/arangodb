@@ -454,7 +454,7 @@ global.DEFINE_MODULE('console', (function () {
           logStrings.push(err.stack);
         }
       } else {
-        logStrings.push(`via ${err.stack}`);
+        logStrings.push(`\nvia ${err.stack}`);
       }
       err = err.cause;
     }

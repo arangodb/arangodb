@@ -152,11 +152,22 @@ class ProgramOptions {
   void addSection(std::string const& name, std::string const& description) {
     addSection(Section(name, description, "", false, false));
   }
+  
+  // adds an enterprise-only section to the program options
+  void addEnterpriseSection(std::string const& name, std::string const& description) {
+    addSection(EnterpriseSection(name, description, "", false, false));
+  }
 
   // adds an option to the program options
   void addOption(std::string const& name, std::string const& description,
                  Parameter* parameter) {
     addOption(Option(name, description, parameter, false, false));
+  }
+  
+  // adds an enterprise-only option to the program options
+  void addEnterpriseOption(std::string const& name, std::string const& description,
+                           Parameter* parameter) {
+    addOption(EnterpriseOption(name, description, parameter, false, false));
   }
 
   // adds a hidden option to the program options

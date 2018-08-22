@@ -252,9 +252,9 @@ void OptimizerRulesFeature::addRules() {
 #ifdef USE_IRESEARCH
   // move filters and sort conditions into views
   registerRule(
-    "handle-views",
+    "handle-arangosearch-views",
     arangodb::iresearch::handleViewsRule,
-    OptimizerRule::handleViewsRule_pass6,
+    OptimizerRule::handleArangoSearchViewsRule_pass6,
     DoesNotCreateAdditionalPlans,
     CanNotBeDisabled
   );

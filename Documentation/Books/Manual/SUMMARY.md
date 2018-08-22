@@ -123,7 +123,10 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 * [ArangoSearch Views](Views/ArangoSearch/README.md)
+  * [Getting Started](Views/ArangoSearch/GettingStarted.md)
+  * [Detailed Overview](Views/ArangoSearch/DetailedOverview.md)
   * [Analyzers](Views/ArangoSearch/Analyzers.md)
+  * [Scorers](Views/ArangoSearch/Scorers.md)
 
 ## ADVANCED TOPICS
 
@@ -314,7 +317,9 @@
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
 # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter Recovery Procedure](Administration/Starter/README.md)    
+  * [ArangoDB Starter Administration](Administration/Starter/README.md)
+    * [ArangoDB Starter Removal Procedure](Administration/Starter/Removal.md)
+    * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption at Rest](Security/Encryption/README.md)

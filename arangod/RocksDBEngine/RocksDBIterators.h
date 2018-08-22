@@ -99,9 +99,9 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::ReadOptions& options
-                        ,RocksDBKeyBounds const& bounds
-                        ,bool reverse=false);
+  RocksDBGenericIterator(rocksdb::ReadOptions& options,
+                         RocksDBKeyBounds const& bounds,
+                         bool reverse = false);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() {}

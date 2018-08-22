@@ -273,7 +273,6 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
 
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
-      allowContinue = allowContinue && !ServerState::readOnly();
     }
 
     // permissions might have changed since starting this task

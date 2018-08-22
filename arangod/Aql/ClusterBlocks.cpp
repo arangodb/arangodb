@@ -1126,7 +1126,6 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-
   traceGetSomeBegin(atMost);
 
   if (_lastError.fail()) {
@@ -1177,6 +1176,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  traceGetSomeEnd(nullptr, ExecutionState::WAITING);
   return {ExecutionState::WAITING, nullptr};
 
   // cppcheck-suppress style
@@ -1866,7 +1866,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   bool aqlValueSet = false;
   if(out) {
     if(!outDocument.isNone()){
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), outDocument);
     } else {
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
     }
@@ -1875,7 +1875,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   if(OLD) {
     TRI_ASSERT(opOptions.returnOld);
     if(!oldDocument.isNone()){
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), oldDocument);
     } else {
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
     }
@@ -1884,7 +1884,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   if(NEW) {
     TRI_ASSERT(opOptions.returnNew);
     if(!newDocument.isNone()){
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), newDocument);
     } else {
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
     }

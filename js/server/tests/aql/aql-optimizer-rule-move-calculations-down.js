@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var db = require("@arangodb").db;
+const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -238,11 +239,33 @@ function optimizerRuleTestSuite () {
       var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled);
       var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled);
 
-      assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
-      assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+      assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query);
+      // should actually not kick in in cluster
+      assertEqual(planEnabled.plan.rules.indexOf(ruleName) === -1, isCluster, query);
 
-      assertEqual(resultDisabled.json, expected, query[0]);
-      assertEqual(resultEnabled.json, expected, query[0]);
+      assertEqual(resultDisabled.json, expected, query);
+      assertEqual(resultEnabled.json, expected, query);
+    },
+
+    testCollection3 : function () {
+      var expected = [ "test0-0", "test1-1" ];
+      for (var i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, value: i });
+      }
+
+      var query = "FOR i IN " + cn + " LET result = CONCAT(i._key, '-', i.value) SORT i.value LIMIT 2 RETURN result";
+      var planDisabled   = AQL_EXPLAIN(query, { }, paramDisabled);
+      var planEnabled    = AQL_EXPLAIN(query, { }, paramEnabled);
+
+      var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled);
+      var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled);
+
+      assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query);
+      // should actually not kick in in cluster
+      assertEqual(planEnabled.plan.rules.indexOf(ruleName) === -1, isCluster, query);
+
+      assertEqual(resultDisabled.json, expected, query);
+      assertEqual(resultEnabled.json, expected, query);
     }
 
   };

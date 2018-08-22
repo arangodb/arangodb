@@ -345,6 +345,7 @@ bool IResearchViewCoordinator::emplace(
   std::string error;
 
   if (!view->_meta.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
@@ -374,6 +375,7 @@ bool IResearchViewCoordinator::emplace(
     auto res = view->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
 
     if (!res.ok()) {
+      TRI_set_errno(res.errorNumber());
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failure to generate definitionf created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
 
@@ -387,6 +389,7 @@ bool IResearchViewCoordinator::emplace(
     );
 
     if (TRI_ERROR_NO_ERROR != resNum) {
+      TRI_set_errno(resNum);
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << error;
 
@@ -454,13 +457,13 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-        meta.json(builder);
+      meta.json(builder);
 
-        auto result = toVelocyPack(builder, false, true);
+      auto result = toVelocyPack(builder, false, true);
 
-        if (!result.ok()) {
-          return result;
-        }
+      if (!result.ok()) {
+        return result;
+      }
 
       builder.close();
       result = engine->setViewPropertiesCoordinator(

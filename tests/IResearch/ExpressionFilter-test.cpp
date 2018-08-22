@@ -283,8 +283,10 @@ struct IResearchExpressionFilterSetup {
     functions->add(arangodb::aql::Function{
       "_REFERENCE_",
       ".",
-      false, // fake non-deterministic
-      true,
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -296,6 +298,9 @@ struct IResearchExpressionFilterSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchExpressionFilterSetup() {
@@ -415,7 +420,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c==b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -496,7 +501,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c==b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -577,7 +582,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -674,7 +679,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -771,7 +776,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -868,7 +873,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -949,7 +954,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1030,7 +1035,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1163,7 +1168,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1291,7 +1296,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {

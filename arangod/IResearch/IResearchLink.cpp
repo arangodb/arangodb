@@ -136,8 +136,12 @@ int IResearchLink::drop() {
 
   auto res = _view->drop(_collection.id());
 
-  if (TRI_ERROR_NO_ERROR != res) {
-    return res;
+  if (!res.ok()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to drop collection '" << _collection.name()
+      << "' from IResearch View '" << _view->name() << "': " << res.errorMessage();
+
+    return res.errorNumber();
   }
 
   _dropCollectionInDestructor = false; // will do drop now
@@ -158,14 +162,14 @@ int IResearchLink::drop() {
 void IResearchLink::afterTruncate() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
-  
+
   if (!_view) {
-    return;
-    //return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED); // IResearchView required
   }
-  
-  int res = _view->truncate(_view->id());
-  if (res != TRI_ERROR_NO_ERROR) {
+
+  auto res = _view->drop(_view->id(), false);
+
+  if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
@@ -229,19 +233,17 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
     auto logicalWiew = ci->getView(vocbase.name(), viewId);
     auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
-
     if (wiew) {
-      auto collection = vocbase.lookupCollection(_collection.id());
-
+      // FIXME figure out elegant way of testing for cluster wide LogicalCollection
+      if (_collection.id() == _collection.planId() && _collection.isAStub()) {
       // this is a cluster-wide collection/index/link (per-cid view links have their corresponding collections in vocbase)
-      if (!collection) {
         auto clusterCol = ci->getCollectionCurrent(
           vocbase.name(), std::to_string(_collection.id())
         );
 
         if (clusterCol) {
           for (auto& entry: clusterCol->errorNum()) {
-            collection = vocbase.lookupCollection(entry.first); // find shard collection
+            auto collection = vocbase.lookupCollection(entry.first); // find shard collection
 
             if (collection) {
               // ensure the shard collection is registered with the cluster-wide view

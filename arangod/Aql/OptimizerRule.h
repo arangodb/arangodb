@@ -174,7 +174,7 @@ struct OptimizerRule {
 
 #ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
-    handleViewsRule_pass6,
+    handleArangoSearchViewsRule_pass6,
 #endif
 
     // remove now obsolete path variables

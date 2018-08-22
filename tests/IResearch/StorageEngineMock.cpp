@@ -1388,10 +1388,6 @@ void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
 }
 
-void StorageEngineMock::waitForSyncTimeout(double timeout) {
-  TRI_ASSERT(false);
-}
-
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {
   TRI_ASSERT(false);
   return arangodb::Result();

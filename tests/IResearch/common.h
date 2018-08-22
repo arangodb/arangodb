@@ -49,6 +49,8 @@ class Isolate; // forward declaration
 
 namespace arangodb {
 
+class DatabasePathFeature; // forward declaration
+
 namespace aql {
 class ExpressionContext;
 }
@@ -83,6 +85,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 );
 
 uint64_t getCurrentPlanVersion();
+
+void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
 }
 }
