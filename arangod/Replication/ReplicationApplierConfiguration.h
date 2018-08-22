@@ -52,16 +52,16 @@ class ReplicationApplierConfiguration {
   uint64_t _initialSyncMaxWaitTime;
   uint64_t _autoResyncRetries;
   uint32_t _sslProtocol;
-  bool _skipCreateDrop;
-  bool _autoStart;
+  bool _skipCreateDrop; /// shards/indexes/views are created by schmutz++
+  bool _autoStart; /// start applier after server start
   bool _adaptivePolling;
-  bool _autoResync;
+  bool _autoResync; /// resync completely if we miss updates
   bool _includeSystem;
-  bool _requireFromPresent;
-  bool _incremental;
+  bool _requireFromPresent; /// while tailing WAL: master must have the clients requested tick
+  bool _incremental; /// use incremental sync if we got local data
   bool _verbose;
   std::string _restrictType;
-  std::unordered_map<std::string, bool> _restrictCollections;
+  std::set<std::string> _restrictCollections;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _force32mode = false; // force client to act like 3.2
 #endif

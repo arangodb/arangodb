@@ -26,7 +26,7 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringRef.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/RequestContext.h"
@@ -108,7 +108,7 @@ class GeneralRequest {
 
   /// @brief User exists on this server or on external auth system
   ///  and password was checked. Must not imply any access rights
-  ///  to any specific resource
+  ///  to any specific resource.
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
 
@@ -163,28 +163,35 @@ class GeneralRequest {
   // return 0 for protocols that
   // do not care about message ids
   virtual uint64_t messageId() const { return 1; }
-
   virtual arangodb::Endpoint::TransportType transportType() = 0;
-  virtual int64_t contentLength() const = 0;
+  
   // get value from headers map. The key must be lowercase.
-  virtual std::string const& header(std::string const& key) const = 0;
-  virtual std::string const& header(std::string const& key,
-                                    bool& found) const = 0;
-  // return headers map
-  virtual std::unordered_map<std::string, std::string> const& headers()
-      const = 0;
-
+  std::string const& header(std::string const& key) const;
+  std::string const& header(std::string const& key, bool& found) const;
+  std::unordered_map<std::string, std::string> const& headers() const {
+    return _headers;
+  }
+  
   // the value functions give access to to query string parameters
-  virtual std::string const& value(std::string const& key) const = 0;
-  virtual std::string const& value(std::string const& key,
-                                   bool& found) const = 0;
+  std::string const& value(std::string const& key) const;
+  std::string const& value(std::string const& key, bool& found) const;
+  std::unordered_map<std::string, std::string> const& values() const {
+    return _values;
+  }
+  
+  std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
+    return _arrayValues;
+  }
+  
+  /// @brief returns parsed value, returns valueNotFound if parameter was not found
   template <typename T>
   T parsedValue(std::string const& key, T valueNotFound);
 
-  virtual std::unordered_map<std::string, std::string> const& values() const = 0;
-  virtual std::unordered_map<std::string, std::vector<std::string>>
-  arrayValues() const = 0;
-
+  /// @brief the content length
+  virtual size_t contentLength() const = 0;
+  /// @brief unprocessed request payload
+  virtual arangodb::StringRef rawPayload() const = 0;
+  /// @brief parsed request payload
   virtual VPackSlice payload(arangodb::velocypack::Options const* options =
                              &VPackOptions::Defaults) = 0;
 
@@ -198,7 +205,9 @@ class GeneralRequest {
     return std::make_shared<VPackBuilder>(payload());
   };
 
+  /// @brieg should reflect the Content-Type header
   ContentType contentType() const { return _contentType; }
+  /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
 
   rest::AuthenticationMethod authenticationMethod() const {
@@ -235,6 +244,10 @@ class GeneralRequest {
   std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
+  
+  std::unordered_map<std::string, std::string> _headers;
+  std::unordered_map<std::string, std::string> _values;
+  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
 }
 

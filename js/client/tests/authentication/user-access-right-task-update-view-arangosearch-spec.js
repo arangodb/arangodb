@@ -139,15 +139,6 @@ function hasIResearch (db) {
           describe('administrate on db level', () => {
             before(() => {
               db._useDatabase(dbName);
-              rootCreateCollection(testCol1Name);
-              rootCreateCollection(testCol2Name);
-              rootPrepareCollection(testCol1Name);
-              rootPrepareCollection(testCol2Name);
-            });
-
-            after(() => {
-              rootDropCollection(testCol1Name);
-              rootDropCollection(testCol2Name);
             });
 
             const rootTestCollection = (colName, switchBack = true) => {
@@ -210,8 +201,8 @@ function hasIResearch (db) {
                     users.grantCollection(user, dbName, colName, explicitRight);
                   }
                 }
-              helper.switchUser(user, dbName);
               }
+              helper.switchUser(user, dbName);
             };
 
             const rootDropCollection = (colName) => {
@@ -242,7 +233,9 @@ function hasIResearch (db) {
 
             const rootCreateView = (viewName, properties = null) => {
               if (rootTestView(viewName, false)) {
-                db._dropView(viewName);
+                try {
+                  db._dropView(viewName);
+                } catch (ignored) {}
               }
               let view =  db._createView(viewName, testViewType, {});
               if (properties != null) {
@@ -270,28 +263,27 @@ function hasIResearch (db) {
               helper.switchUser(name, dbName);
             };
 
-            // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
-            const checkRESTCodeOnly = (e) => {
+            const checkError = (e) => {
               expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-              // FIXME: uncomment to see unexpected codes
-              // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+              expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
             };
 
             describe('update a', () => {
               beforeEach(() => {
+                rootCreateCollection(testCol1Name);
+                rootCreateCollection(testCol2Name);
+                rootPrepareCollection(testCol1Name);
+                rootPrepareCollection(testCol2Name);
+
                 rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
               });
 
               afterEach(() => {
-                rootDropView(testViewName);
-              });
-
-              before(() => {
-                  db._useDatabase(dbName);
-              });
-
-              after(() => {
                 rootDropView(testViewRename);
+                rootDropView(testViewName);
+
+                rootDropCollection(testCol1Name);
+                rootDropCollection(testCol2Name);
               });
 
               it('view by name', () => {
@@ -321,10 +313,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -338,7 +334,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ commit : { "cleanupIntervalStep": 1 } }, true);
+                      db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, true);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -348,11 +344,11 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(dbLevel['rw'].has(name) && colLevel['rw'].has(name) || colLevel['ro'].has(name)){
+                  if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                    expect(rootGetViewProps(testViewName)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -361,10 +357,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -378,7 +378,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ commit : { "cleanupIntervalStep": 1 } }, false);
+                      db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, false);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -388,11 +388,11 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(dbLevel['rw'].has(name) && colLevel['rw'].has(name)){
+                  if(colLevel['rw'].has(name)){
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                    expect(rootGetViewProps(testViewName)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -401,10 +401,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -428,7 +432,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(dbLevel['rw'].has(name) && colLevel['rw'].has(name)){
+                  if(colLevel['rw'].has(name)){
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
@@ -441,10 +445,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -468,7 +476,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(dbLevel['rw'].has(name) && colLevel['rw'].has(name))
+                  if(colLevel['rw'].has(name))
                   {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -482,10 +490,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -509,7 +521,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+                  if(colLevel['rw'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
@@ -522,10 +534,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -563,10 +579,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
             });

@@ -54,6 +54,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 
 # use standalone boost asio
 add_definitions("-DARANGODB_STANDALONE_ASIO=1")
+add_definitions("-DFUERTE_STANDALONE_ASIO=1")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -837,6 +838,7 @@ endif()
 # ZLIB_VERSION
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
+
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
@@ -850,10 +852,12 @@ add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
@@ -878,9 +882,6 @@ include_directories(SYSTEM ${ASIO_INCLUDES})
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
-  link_directories("${LINK_DIR}")
-endforeach()
 
 ################################################################################
 ## ICU
@@ -895,16 +896,22 @@ include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
+foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+  link_directories("${LINK_DIR}")
+endforeach()
+
 ################################################################################
 ## ZLIB
 ################################################################################
 
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+link_directories("${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ## cURL
 ################################################################################
+
 add_definitions(-DCURL_STATICLIB=1)
 include_directories(SYSTEM
   ${CURL_SRC_DIR}/include/

@@ -167,6 +167,7 @@ void HeartbeatThread::runBackgroundJob() {
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
     TRI_ASSERT(_backgroundJobScheduledOrRunning);
+
     if (_launchAnotherBackgroundJob) {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
@@ -174,7 +175,8 @@ void HeartbeatThread::runBackgroundJob() {
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+      SchedulerFeature::SCHEDULER->post(
+          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -525,10 +527,6 @@ void HeartbeatThread::runSingleServer() {
         ApplicationServer::server->beginShutdown();
         break;
       }
-      
-      auto readOnlySlice = response.get(std::vector<std::string>(
-                                    {AgencyCommManager::path(), "Readonly"}));
-      updateServerMode(readOnlySlice);
 
       // performing failover checks
       VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
@@ -588,6 +586,11 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
+        
+        // put the leader in optional read-only mode
+        auto readOnlySlice = response.get(std::vector<std::string>(
+                                          {AgencyCommManager::path(), "Readonly"}));
+        updateServerMode(readOnlySlice);
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
@@ -605,6 +608,8 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
 
       ServerState::instance()->setFoxxmaster(leaderStr);
+      ServerState::instance()->setReadOnly(true); // Disable writes with dirty-read header
+      
       std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
@@ -642,7 +647,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
-          config._jwt = af->tokenCache()->jwtToken();
+          config._jwt = af->tokenCache().jwtToken();
         }
         config._endpoint = endpoint;
         config._autoResync = true;
@@ -707,8 +712,6 @@ void HeartbeatThread::runCoordinator() {
   AuthenticationFeature* af = application_features::ApplicationServer::getFeature<
             AuthenticationFeature>("Authentication");
   TRI_ASSERT(af != nullptr);
-
-  uint64_t oldUserVersion = 0;
 
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
@@ -837,11 +840,9 @@ void HeartbeatThread::runCoordinator() {
           } catch (...) {
           }
 
-          if (userVersion > 0 && userVersion != oldUserVersion) {
-            oldUserVersion = userVersion;
+          if (userVersion > 0) {
             if (af->isActive() && af->userManager() != nullptr) {
-              af->userManager()->outdate();
-              af->tokenCache()->invalidateBasicCache();
+              af->userManager()->setGlobalVersion(userVersion);
             }
           }
         }
@@ -1179,8 +1180,8 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
-
+  SchedulerFeature::SCHEDULER->post(
+      HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

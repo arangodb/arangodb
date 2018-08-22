@@ -168,8 +168,8 @@ function hasIResearch (db) {
                   users.grantCollection(user, dbName, colName, explicitRight);
                 }
               }
-            helper.switchUser(user, dbName);
             }
+            helper.switchUser(user, dbName);
           };
 
           const rootPrepareCollection = (colName, numDocs = 1, defKey = true) => {
@@ -223,11 +223,9 @@ function hasIResearch (db) {
             helper.switchUser(name, dbName);
           };
 
-          // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
-          const checkRESTCodeOnly = (e) => {
+          const checkError = (e) => {
             expect(e.code).to.be.oneOf([403, 404], "Expected to get forbidden OR not found REST error code, but got another one");
-            // FIXME: uncomment to see unexpected codes
-            // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+            expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
           };
 
           describe('read a view', () => {
@@ -237,33 +235,39 @@ function hasIResearch (db) {
 
             it('by AQL with link to single collection', () => {
               expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-              let query = `FOR d IN VIEW ${testView1Name} RETURN d`;
+              let query = `FOR d IN  ${testView1Name} RETURN d`;
               if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                let result = db._query(query).toArray();
-                expect(result.length).to.equal(testNumDocs, 'View read failed');
+                db._query(query);
+                //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
+                //let result = db._query(query).toArray();
+                //expect(result.length).to.equal(testNumDocs, 'View read failed');
               } else {
                 try {
                   db._query(query);
-                  expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
               }
             });
 
             it('by AQL with links to multiple collections with same access level', () => {
               expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
-              let query = `FOR d IN VIEW ${testView2Name} RETURN d`;
+              let query = `FOR d IN  ${testView2Name} RETURN d`;
               if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                let result = db._query(query, null, { waitForSync: true }).toArray();
-                expect(result.length).to.equal(testNumDocs*2, 'View read failed');
+                db._query(query, null, { waitForSync: true });
+                //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
+                //let result = db._query(query, null, { waitForSync: true }).toArray();
+                //expect(result.length).to.equal(testNumDocs*2, 'View read failed');
               } else {
                 try {
                   db._query(query);
-                  expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
               }
             });
 
@@ -274,21 +278,23 @@ function hasIResearch (db) {
               });
 
               it('by AQL query (data)', () => {
-                let query = `FOR d IN VIEW ${testView2Name} RETURN d`;
+                let query = `FOR d IN  ${testView2Name} RETURN d`;
                 try {
                   db._query(query);
-                  expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(false).to.equal(true, `${name} managed to perform a query on view with insufficient rights`);
               });
               it('by its properties', () => {
                 try {
                   db._view(testView2Name).properties();
-                  expect(false).to.equal(true, `${name} managed to get a view properties with insufficient rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(false).to.equal(true, `${name} managed to get the view properties with insufficient rights`);
               });
             });
           });

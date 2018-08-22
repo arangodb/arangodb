@@ -48,7 +48,11 @@ class RocksDBSavePoint {
   RocksDBSavePoint(RocksDBMethods* trx, bool handled);
   ~RocksDBSavePoint();
 
-  void commit();
+  /// @brief acknowledges the current savepoint, so there
+  /// will be no rollback when the destructor is called
+  /// if an intermediate commit was performed, pass a value of
+  /// true, false otherwise
+  void finish(bool hasPerformedIntermediateCommit);
 
  private:
   void rollback();
@@ -95,6 +99,7 @@ class RocksDBMethods {
 
   virtual void SetSavePoint() = 0;
   virtual arangodb::Result RollbackToSavePoint() = 0;
+  virtual void PopSavePoint() = 0;
   
   // convenience and compatibility method
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
@@ -129,6 +134,7 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
+  void PopSavePoint() override {}
 
  private:
   rocksdb::TransactionDB* _db;
@@ -160,6 +166,7 @@ class RocksDBTrxMethods : public RocksDBMethods {
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
+  void PopSavePoint() override;
 
   bool _indexingDisabled;
 };
@@ -197,6 +204,7 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
+  void PopSavePoint() override {}
 
  private:
   rocksdb::TransactionDB* _db;

@@ -73,10 +73,21 @@ class UserManager {
   }
 
   /// Tells coordinator to reload its data. Only called in HeartBeat thread
-  void outdate() { _outdated = true; }
+  void setGlobalVersion(uint64_t version) {
+    _globalVersion.store(version, std::memory_order_release);
+  }
+  
+  void increaseGlobalVersion() {
+    _globalVersion.fetch_add(1, std::memory_order_release);
+  }
+  
+  /// @brief used for caching
+  uint64_t globalVersion() {
+    return _globalVersion.load(std::memory_order_acquire);
+  }
 
   /// Trigger eventual reload, user facing API call
-  void reloadAllUsers();
+  void triggerReload();
 
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
@@ -154,8 +165,9 @@ class UserManager {
   /// Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
-  /// @brief need to sync _userCache from database
-  std::atomic<bool> _outdated;
+  /// @brief used to update caches
+  std::atomic<uint64_t> _globalVersion;
+  std::atomic<uint64_t> _internalVersion;
 
   /// Caches permissions and other user info
   UserMap _userCache;

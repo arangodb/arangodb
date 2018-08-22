@@ -206,28 +206,28 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
     requestResult = this._database._connection.GET(this._baseurl('properties'));
   } else if (partialUpdate === undefined || partialUpdate === true) {
     requestResult = this._database._connection.PATCH(
-      this._baseurl('properties'), JSON.stringify(properties)
+      this._baseurl('properties'), properties
     );
   } else {
     requestResult = this._database._connection.PUT(
-      this._baseurl('properties'), JSON.stringify(properties)
+      this._baseurl('properties'), properties
     );
   }
 
   arangosh.checkRequestResult(requestResult);
 
-  const attributes = {
-    'commit': true,
-    'links': true,
-    'locale': true
+  const mask = {
+    'code': true,
+    'id': true,
+    'name': true,
+    'type': true,
   };
-
   var result = {};
-  for (let a in attributes) {
-    if (attributes.hasOwnProperty(a) &&
-      requestResult.hasOwnProperty(a) &&
-      requestResult[a] !== undefined) {
-      result[a] = requestResult[a];
+
+  // remove masked attributes from result
+  for (let attr in requestResult) {
+    if (!mask.hasOwnProperty(attr) && requestResult[attr] !== undefined) {
+      result[attr] = requestResult[attr];
     }
   }
 
@@ -238,16 +238,35 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
 // @brief drops a view
 // /////////////////////////////////////////////////////////////////////////////
 
-ArangoView.prototype.drop = function () {
-  var requestResult = this._database._connection.DELETE(this._baseurl());
+ArangoView.prototype.drop = function (options) {
+  var requestResult;
+  if (typeof options === 'object' && options.isSystem) {
+    requestResult = this._database._connection.DELETE(this._baseurl() + '?isSystem=true');
+  } else {
+    requestResult = this._database._connection.DELETE(this._baseurl());
+  }
 
   if (requestResult !== null
+    && requestResult !== undefined
     && requestResult.error === true
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "view not found"
     arangosh.checkRequestResult(requestResult);
-  } else {
-    this._database._unregisterView(this._name);
+  }
+
+  var database = this._database;
+  var name;
+
+  for (name in database) {
+    if (database.hasOwnProperty(name)) {
+      var view = database[name];
+
+      if (view instanceof ArangoView) {
+        if (view.name() === this.name()) {
+          delete database[name];
+        }
+      }
+    }
   }
 };
 
@@ -257,10 +276,11 @@ ArangoView.prototype.drop = function () {
 
 ArangoView.prototype.rename = function (name) {
   var body = { name: name };
-  var requestResult = this._database._connection.PUT(this._baseurl('rename'), JSON.stringify(body));
+  var requestResult = this._database._connection.PUT(this._baseurl('rename'), body);
 
   arangosh.checkRequestResult(requestResult);
 
-  this._database._renameView(this._name, name);
+  delete this._database[this._name];
+  this._database[name] = this;
   this._name = name;
 };

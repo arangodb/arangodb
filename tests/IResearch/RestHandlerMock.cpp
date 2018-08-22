@@ -25,37 +25,20 @@
 #include "RestServer/VocbaseContext.h"
 #include "VocBase/vocbase.h"
 
-GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
-  : _context(arangodb::VocbaseContext::create(*this, vocbase)) {
+GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase) {
+  _authenticated = false; // must be set before VocbaseContext::create(...)
+  _isRequestContextOwner = false; // must be set before VocbaseContext::create(...)
+  _context.reset(arangodb::VocbaseContext::create(*this, vocbase));
   _context->vocbase().forceUse(); // must be called or ~VocbaseContext() will fail at '_vocbase.release()'
   _requestContext = _context.get(); // do not use setRequestContext(...) since '_requestContext' has not been initialized and contains garbage
-  _isRequestContextOwner = false;
 }
 
-std::unordered_map<std::string, std::vector<std::string>> GeneralRequestMock::arrayValues() const {
-  return _arrayValues;
-}
-
-int64_t GeneralRequestMock::contentLength() const {
+size_t GeneralRequestMock::contentLength() const {
   return _contentLength;
 }
 
-std::string const& GeneralRequestMock::header(std::string const& key) const {
-  bool found;
-  return header(key, found);
-}
-
-std::string const& GeneralRequestMock::header(
-    std::string const& key,
-    bool& found
-) const {
-  auto itr = _headers.find(key);
-  found = itr != _headers.end();
-  return found ? itr->second : arangodb::StaticStrings::Empty;
-}
-
-std::unordered_map<std::string, std::string> const& GeneralRequestMock::headers() const {
-  return _headers;
+arangodb::StringRef GeneralRequestMock::rawPayload() const {
+  return arangodb::StringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 }
 
 arangodb::velocypack::Slice GeneralRequestMock::payload(
@@ -66,24 +49,6 @@ arangodb::velocypack::Slice GeneralRequestMock::payload(
 
 arangodb::Endpoint::TransportType GeneralRequestMock::transportType() {
   return arangodb::Endpoint::TransportType::HTTP; // arbitrary value
-}
-
-std::string const& GeneralRequestMock::value(std::string const& key) const {
-  bool found;
-  return value(key, found);
-}
-
-std::string const& GeneralRequestMock::value(
-    std::string const& key,
-    bool& found
-) const {
-  auto itr = _values.find(key);
-  found = itr != _values.end();
-  return found ? itr->second : arangodb::StaticStrings::Empty;
-}
-
-std::unordered_map<std::string, std::string> const& GeneralRequestMock::values() const {
-  return _values;
 }
 
 GeneralResponseMock::GeneralResponseMock(

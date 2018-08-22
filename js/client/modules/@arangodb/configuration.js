@@ -58,6 +58,6 @@ exports.notifications.setVersions = function (data) {
 
   var uri = '_admin/configuration/notifications/versions';
 
-  var requestResult = db._connection.PUT(uri, JSON.stringify(data));
+  var requestResult = db._connection.PUT(uri, data);
   return arangosh.checkRequestResult(requestResult);
 };

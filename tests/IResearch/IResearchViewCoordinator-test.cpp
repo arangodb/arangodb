@@ -107,7 +107,7 @@ struct IResearchViewCoordinatorSetup {
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchViewCoordinatorSetup(): server(nullptr, nullptr) {
+  IResearchViewCoordinatorSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     // Do not activate callbacks
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
@@ -139,38 +139,38 @@ struct IResearchViewCoordinatorSetup {
       features.emplace(name, std::make_pair(ftr, start));
     };
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
 
     // setup required application features
-    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false);
-    buildFeatureEntry(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
-    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), false);
-    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
-    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
-    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    buildFeatureEntry(new arangodb::AqlFeature(&server), true);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), true);
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    buildFeatureEntry(new arangodb::AqlFeature(server), true);
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
  
     // We need this feature to be added now in order to create the system database
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
 
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
-    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
-    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(server), true);
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
 
     #if USE_ENTERPRISE
-      buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -202,13 +202,10 @@ struct IResearchViewCoordinatorSetup {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    testFilesystemPath = (
-      (irs::utf8_path()/=
-      TRI_GetTempPath())/=
-      (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
-    ).utf8();
+
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature->directory();
 
     long systemError;
     std::string systemErrorStr;
@@ -340,7 +337,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((9U == slice.length()));
+    CHECK((11U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
@@ -363,7 +360,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((6U == slice.length()));
+    CHECK((8U == slice.length()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -641,7 +638,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -667,8 +664,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._commit._cleanupIntervalStep = 42;
-        expected._commit._commitIntervalMsec = 50;
+        expected._cleanupIntervalStep = 42;
+        expected._commitIntervalMsec = 50;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
@@ -692,7 +689,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"commitIntervalMsec\": 42 } }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"commitIntervalMsec\": 42 }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -718,8 +715,8 @@ SECTION("test_update_properties") {
 
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
-        expected._commit._cleanupIntervalStep = 42;
-        expected._commit._commitIntervalMsec = 42;
+        expected._cleanupIntervalStep = 42;
+        expected._commitIntervalMsec = 42;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
@@ -1882,7 +1879,8 @@ SECTION("test_update_links_partial_add") {
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto* origExecContext = ExecContext::CURRENT;
     auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });
@@ -3158,7 +3156,8 @@ SECTION("test_drop_link") {
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
 
     struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(0, "", "", arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
     auto* origExecContext = ExecContext::CURRENT;
     auto resetExecContext = irs::make_finally([origExecContext]()->void{ ExecContext::CURRENT = origExecContext; });

@@ -27,26 +27,26 @@
 #include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
+
 namespace rest {
+
 class RestHandlerFactory;
 class AsyncJobManager;
+
 }
 
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static std::string operationModeString(OperationMode mode);
 
- public:
-  ServerFeature(application_features::ApplicationServer*, int* result);
+  ServerFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
- public:
   OperationMode operationMode() const { return _operationMode; }
 
   std::string operationModeString() const {
@@ -59,11 +59,10 @@ class ServerFeature final : public application_features::ApplicationFeature {
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
   }
- 
+
  private:
   void waitForHeartbeat();
 
- private:
   bool _console = false;
   bool _restServer = true;
   std::vector<std::string> _scripts;
@@ -72,6 +71,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   OperationMode _operationMode;
   bool _isStopping = false;
 };
+
 }
 
 #endif

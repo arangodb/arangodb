@@ -172,11 +172,9 @@ function hasIResearch (db) {
             helper.switchUser(name, dbName);
           };
 
-        // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
-        const checkRESTCodeOnly = (e) => {
-          expect(e.code).to.be.oneOf([403, 500], "Expected to get forbidden or internal REST error code, but got another one");
-          // FIXME: uncomment to see unexpected codes
-          // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+        const checkError = (e) => {
+          expect(e.code).to.be.oneOf([403], "Expected to get forbidden or internal REST error code, but got another one");
+          expect(e.errorNum).to.oneOf([errors.ERROR_FORBIDDEN.code, errors.ERROR_ARANGO_READ_ONLY.code], "Expected to get forbidden error number, but got another one");
         };
 
           describe('drop a', () => {
@@ -199,10 +197,11 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._dropView(testViewName);
-                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
               }
             });
 
@@ -219,7 +218,8 @@ function hasIResearch (db) {
                 try {
                   db._dropView(testViewName);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
                 if(!dbLevel['rw'].has(name)) {
                   expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
@@ -240,10 +240,11 @@ function hasIResearch (db) {
               } else {
                 try {
                   db._dropView(testViewName);
-                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
+                expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
               }
             });
 
@@ -264,19 +265,21 @@ function hasIResearch (db) {
                   rootGrantCollection(testCol2Name, name, 'rw');
                   try {
                     db._dropView(testViewName);
-                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
                   }
+                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 }
               } else {
                 try {
                   db._dropView(testViewName);
-                  if(!dbLevel['rw'].has(name)) {
-                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
-                  }
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
+                }
+                if(!dbLevel['rw'].has(name)) {
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
                 }
               }
             });

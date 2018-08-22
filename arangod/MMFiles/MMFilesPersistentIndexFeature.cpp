@@ -47,14 +47,16 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 static MMFilesPersistentIndexFeature* Instance = nullptr;
 
 MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "MMFilesPersistentIndex"),
       _db(nullptr), _comparator(nullptr), _path()
 {
@@ -307,3 +309,5 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
     return TRI_ERROR_INTERNAL;
   }
 }
+
+} // arangodb

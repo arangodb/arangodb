@@ -75,7 +75,9 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   MMFilesCompactionFeature& operator=(MMFilesCompactionFeature const&) = delete;
 
  public:
-  explicit MMFilesCompactionFeature(application_features::ApplicationServer* server);
+  explicit MMFilesCompactionFeature(
+    application_features::ApplicationServer& server
+  );
   ~MMFilesCompactionFeature() {}
 
   /// @brief wait time between compaction runs when idle

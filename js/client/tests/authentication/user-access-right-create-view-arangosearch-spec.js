@@ -165,11 +165,9 @@ function hasIResearch (db) {
             helper.switchUser(name, dbName);
           };
 
-          // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
-          const checkRESTCodeOnly = (e) => {
+          const checkError = (e) => {
             expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-            // FIXME: uncomment to see unexpected codes
-            // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+            expect(e.errorNum).to.oneOf([errors.ERROR_FORBIDDEN.code, errors.ERROR_ARANGO_READ_ONLY.code], "Expected to get forbidden error number, but got another one");
           };
 
           describe('create a', () => {
@@ -192,7 +190,8 @@ function hasIResearch (db) {
                 try {
                   db._createView(testViewName, testViewType, {});
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
                 expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
               }
@@ -216,7 +215,8 @@ function hasIResearch (db) {
                   view = db._createView(testViewName, testViewType, {});
                   view.properties({ links: { [testColName]: { includeAllFields: true } } }, true);
                 } catch (e) {
-                  checkRESTCodeOnly(e);
+                  checkError(e);
+                  return;
                 }
                 if(!dbLevel['rw'].has(name)) {
                   expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);

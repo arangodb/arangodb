@@ -26,7 +26,6 @@
 // /
 // / @author Max Neunhoeffer
 // / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 // / @author Copyright 2013-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 

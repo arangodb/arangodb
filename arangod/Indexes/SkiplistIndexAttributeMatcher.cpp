@@ -116,7 +116,13 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
       } else {
         (*it).second.emplace_back(op);
       }
+      TRI_IF_FAILURE("PersistentIndex::accessFitsIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       TRI_IF_FAILURE("SkiplistIndex::accessFitsIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      TRI_IF_FAILURE("HashIndex::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       
@@ -325,10 +331,6 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
   size_t values = 0;
   matchAttributes(idx, node, reference, found, values, nonNullAttributes, false);
   
-  // must edit in place, no access to AST; TODO change so we can replace with
-  // copy
-  TEMPORARILY_UNLOCK_NODE(node);
-  
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;
   
@@ -340,21 +342,17 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
       break;
     }
     
-    // check if the current condition contains an equality condition
-    auto& nodes = (*it).second;
-    bool containsEquality = false;
-    for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        containsEquality = true;
-        break;
-      }
-    }
-    
     if (!lastContainsEquality) {
       // unsupported condition. must abort
       break;
     }
+    
+    // check if the current condition contains an equality condition
+    auto& nodes = (*it).second;
+    lastContainsEquality = (std::find_if(nodes.begin(), nodes.end(), [](arangodb::aql::AstNode const* node) {
+      return (node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+              node->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
+    }) != nodes.end());
     
     std::sort(nodes.begin(), nodes.end(),
               [](arangodb::aql::AstNode const* lhs,
@@ -362,23 +360,31 @@ arangodb::aql::AstNode* SkiplistIndexAttributeMatcher::specializeCondition(
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
     
-    lastContainsEquality = containsEquality;
     std::unordered_set<int> operatorsFound;
     for (auto& it : nodes) {
+      if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
+        // ignore all != operators here
+        continue;
+      }
+
       // do not let duplicate or related operators pass
       if (isDuplicateOperator(it, operatorsFound)) {
         continue;
       }
+      
+      TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
       operatorsFound.emplace(static_cast<int>(it->type));
       children.emplace_back(it);
     }
   }
   
-  while (node->numMembers() > 0) {
-    node->removeMemberUnchecked(0);
-  }
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(node);
+  node->removeMembers();
   
   for (auto& it : children) {
+    TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
     node->addMember(it);
   }
   return node;

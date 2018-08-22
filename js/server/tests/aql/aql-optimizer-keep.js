@@ -84,7 +84,7 @@ function optimizerKeepTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntoNoKeep : function () {
-      var query = "LET a = 1 LET b = 2 LET c = CONCAT('foo', 'bar') FOR i IN " + c.name() + " LET calc = PASSTHRU(i.group) COLLECT class = calc INTO group RETURN group";
+      var query = "LET a = 1 LET b = 2 LET c = CONCAT('foo', 'bar') FOR i IN " + c.name() + " LET calc = NOOPT(i.group) COLLECT class = calc INTO group RETURN group";
 
       var results = AQL_EXECUTE(query);
       assertEqual(10, results.json.length);
@@ -130,7 +130,7 @@ function optimizerKeepTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntoKeep1 : function () {
-      var query = "LET a = 1 LET b = 2 LET c = CONCAT('foo', 'bar') FOR i IN " + c.name() + " LET calc1 = PASSTHRU(i.group) LET calc2 = PASSTHRU(i.group) COLLECT class = calc1 INTO group KEEP calc1 RETURN group";
+      var query = "LET a = 1 LET b = 2 LET c = CONCAT('foo', 'bar') FOR i IN " + c.name() + " LET calc1 = NOOPT(i.group) LET calc2 = NOOPT(i.group) COLLECT class = calc1 INTO group KEEP calc1 RETURN group";
 
       var results = AQL_EXECUTE(query);
       assertEqual(10, results.json.length);
@@ -154,7 +154,7 @@ function optimizerKeepTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntoKeep2 : function () {
-      var query = "LET a = 1 LET b = 2 LET c = CONCAT('foo', 'bar') FOR i IN " + c.name() + " LET calc1 = PASSTHRU(i.group) LET calc2 = PASSTHRU(i.group) COLLECT class = calc1 INTO group KEEP calc2, c, a RETURN group";
+      var query = "LET a = 1 LET b = 2 LET c = CONCAT('foo', 'bar') FOR i IN " + c.name() + " LET calc1 = NOOPT(i.group) LET calc2 = NOOPT(i.group) COLLECT class = calc1 INTO group KEEP calc2, c, a RETURN group";
 
       var results = AQL_EXECUTE(query);
       assertEqual(10, results.json.length);
@@ -178,7 +178,7 @@ function optimizerKeepTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIntoKeep3 : function () {
-      var query = "FOR j IN 1..1 FOR i IN " + c.name() + " LET a = PASSTHRU(1) LET b = CONCAT('foo', 'bar') LET c = CONCAT(i.group, 'x') COLLECT class = i.group INTO group KEEP c, b RETURN group";
+      var query = "FOR j IN 1..1 FOR i IN " + c.name() + " LET a = NOOPT(1) LET b = CONCAT('foo', 'bar') LET c = CONCAT(i.group, 'x') COLLECT class = i.group INTO group KEEP c, b RETURN group";
 
       var results = AQL_EXECUTE(query);
       assertEqual(10, results.json.length);

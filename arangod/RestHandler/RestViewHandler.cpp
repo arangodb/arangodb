@@ -76,7 +76,8 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+  if (!canUse(auth::Level::RO, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+  //if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
     generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
 
     return;
@@ -256,7 +257,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       // end of parameter parsing
       // .......................................................................
 
-      if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+      if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+      //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
         generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
 
         return;
@@ -278,7 +280,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     // end of parameter parsing
     // .........................................................................
 
-    if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+    if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+    //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
       generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
 
       return;
@@ -363,22 +366,19 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+  if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+  //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
     generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
     return;
   }
 
-  auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
+  auto res = _vocbase.dropView(view->id(), allowDropSystem);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
-  } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   } else {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "problem dropping view");
+    generateError(res);
   }
 }
 
@@ -431,7 +431,8 @@ void RestViewHandler::getViews() {
 
   for (auto view: views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
+      if (!canUse(auth::Level::RO, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+      //if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
         continue; // skip views that are not authorised to be read
       }
 

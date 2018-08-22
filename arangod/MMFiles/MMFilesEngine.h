@@ -68,7 +68,7 @@ struct MMFilesEngineCollectionFiles {
 class MMFilesEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit MMFilesEngine(application_features::ApplicationServer*);
+  explicit MMFilesEngine(application_features::ApplicationServer& server);
 
   ~MMFilesEngine();
 
@@ -203,8 +203,6 @@ class MMFilesEngine final : public StorageEngine {
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
   void waitForSyncTick(TRI_voc_tick_t tick) override;
-
-  void waitForSyncTimeout(double maxWait) override;
 
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
@@ -558,6 +556,10 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief writes a drop-database marker into the log
   int writeDropMarker(TRI_voc_tick_t id, std::string const& name);
+
+  /// @brief wait until everything written to the WAL got completely
+  /// synced
+  void waitForSyncTimeout(double maxWait);
 
  public:
   static std::string const EngineName;

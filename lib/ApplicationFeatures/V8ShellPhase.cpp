@@ -22,10 +22,10 @@
 
 #include "V8ShellPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer* server)
+V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "V8ShellPhase") {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -35,3 +35,5 @@ V8ShellFeaturePhase::V8ShellFeaturePhase(ApplicationServer* server)
   startsAfter("Console");
 }
 
+} // application_features
+} // arangodb

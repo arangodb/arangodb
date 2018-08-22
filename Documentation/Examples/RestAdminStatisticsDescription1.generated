@@ -1,6 +1,6 @@
-shell> curl --dump - http://localhost:8529/_admin/statistics-description
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_admin/statistics-description</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -167,7 +167,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"group"</span> : <span class="hljs-string">"client"</span>, 
       <span class="hljs-string">"identifier"</span> : <span class="hljs-string">"bytesReceived"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bytes Received"</span>, 
-      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Bytes receiveds for a request."</span>, 
+      <span class="hljs-string">"description"</span> : <span class="hljs-string">"Bytes received for a request."</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"distribution"</span>, 
       <span class="hljs-string">"cuts"</span> : [ 
         <span class="hljs-number">250</span>, 

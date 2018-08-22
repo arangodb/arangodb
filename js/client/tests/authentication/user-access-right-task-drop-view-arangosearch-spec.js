@@ -194,7 +194,7 @@ function hasIResearch (db) {
               };
 
             const rootTestView = (viewName = testViewName, switchBack = true) => {
-              db._unregisterView(viewName); // FIXME: Issue for cached views
+              delete db[viewName];
               helper.switchUser('root', dbName);
               let view = db._view(viewName);
               if (switchBack) {
@@ -222,11 +222,9 @@ function hasIResearch (db) {
               helper.switchUser(name, dbName);
             };
 
-            // FIXME: temporary OFF exact codes validation while expecting "Forbidden" everywhere
-          const checkRESTCodeOnly = (e) => {
+          const checkError = (e) => {
             expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-            // FIXME: uncomment to see unexpected codes
-            // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+            expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
           };
 
             describe('drop a', () => {
@@ -263,15 +261,19 @@ function hasIResearch (db) {
                 if (dbLevel['rw'].has(name)) {
                   tasks.register(task);
                   wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not delete the view with sufficient rights`);
-                  expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards' + " AND IT IS: " + rootTestView(testViewName));
+                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not drop the view with sufficient rights`);
+                  expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -305,10 +307,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -349,10 +355,14 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -396,10 +406,12 @@ function hasIResearch (db) {
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    wait(keySpaceId, name);
                   } catch (e) {
-                    checkRESTCodeOnly(e);
+                    checkError(e);
+                    return;
                   }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
               });
             });

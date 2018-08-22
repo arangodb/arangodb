@@ -1866,8 +1866,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t const argLength = args.Length();
   if (argLength < 3 || !args[0]->IsString()) {
       // TODO extend this for named graphs, use the Graph class
-      TRI_V8_THROW_EXCEPTION_USAGE(
-                                   "_pregelStart(<algorithm>, <vertexCollections>,"
+      TRI_V8_THROW_EXCEPTION_USAGE("_pregelStart(<algorithm>, <vertexCollections>,"
                                    "<edgeCollections>[, {maxGSS:100, ...}]");
   }
   auto parse = [](v8::Local<v8::Value> const& value, std::vector<std::string> &out) {
@@ -2355,6 +2354,7 @@ static void JS_TruncateVocbaseCol(
     ctx, *collection, AccessMode::Type::EXCLUSIVE
   );
   trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+  trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2654,6 +2654,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engine()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_name()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_path()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_parse()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));

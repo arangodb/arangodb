@@ -27,12 +27,15 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 
 namespace arangodb {
+
 class Endpoint;
 
 namespace httpclient {
+
 class GeneralClientConnection;
 class SimpleHttpClient;
 struct SimpleHttpClientParams;
+
 }  // namespace httpclient
 
 class ClientFeature final : public application_features::ApplicationFeature,
@@ -43,18 +46,17 @@ class ClientFeature final : public application_features::ApplicationFeature,
   constexpr static size_t const DEFAULT_RETRIES = 2;
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
- public:
-  ClientFeature(application_features::ApplicationServer* server,
-                bool allowJwtSecret,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+  ClientFeature(
+    application_features::ApplicationServer& server,
+    bool allowJwtSecret,
+    double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+    double requestTimeout = DEFAULT_REQUEST_TIMEOUT
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
- public:
   std::string const& databaseName() const { return _databaseName; }
   bool authentication() const { return _authentication; }
   std::string const& endpoint() const { return _endpoint; }
@@ -69,7 +71,6 @@ class ClientFeature final : public application_features::ApplicationFeature,
   uint64_t maxPacketSize() const { return _maxPacketSize; }
   uint64_t sslProtocol() const { return _sslProtocol; }
 
- public:
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection();
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -103,7 +104,6 @@ class ClientFeature final : public application_features::ApplicationFeature,
   void readPassword();
   void readJwtSecret();
 
- private:
   std::string _databaseName;
   bool _authentication;
   bool _askJwtSecret;
@@ -116,13 +116,13 @@ class ClientFeature final : public application_features::ApplicationFeature,
   uint64_t _maxPacketSize;
   uint64_t _sslProtocol;
 
- private:
   bool _allowJwtSecret;
   size_t _retries;
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
 };
+
 }  // namespace arangodb
 
 #endif
