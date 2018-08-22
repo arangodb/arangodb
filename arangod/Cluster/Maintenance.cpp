@@ -312,7 +312,10 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
   MaintenanceFeature::errors_t const& errors,
-  std::vector<ActionDescription>& actions) {
+  std::vector<ActionDescription>& actions,
+  std::unordered_set<std::string>& databaseErrors,
+  std::unordered_set<std::string>& shardErrors,
+  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors) {
 
   arangodb::Result result;
   std::unordered_set<std::string> colis; // Intersection collections plan&local
@@ -345,10 +348,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   }
 
   // Check errors for databases, which are no longer in plan and remove from errors
-  
   for (auto const& database : errors.databases) {
     if (!plan.hasKey(std::vector<std::string>{"Databases", database.first})) {
-      
+      databaseErrors.emplace(database.first);
     }
   }
   
@@ -398,24 +400,30 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 arangodb::Result arangodb::maintenance::executePlan (
   VPackSlice const& plan, VPackSlice const& local,
   std::string const& serverId, MaintenanceFeature::errors_t const& errors,
-  MaintenanceFeature& feature, VPackBuilder& report) {
+  MaintenanceFeature& feature, std::unordered_set<std::string>& databaseErrors,
+  std::unordered_set<std::string>& shardErrors,
+  std::unordered_map<std::string, std::unordered_set<std::string>>& indexErrors,
+  VPackBuilder& report) {
 
   arangodb::Result result;
-  
+
   // build difference between plan and local
   std::vector<ActionDescription> actions;
-  diffPlanLocal(plan, local, serverId, errors, actions);
-
+  report.add(VPackValue("agency"));
+  { VPackArrayBuilder a(&report);
+    diffPlanLocal(plan, local, serverId, errors, actions, databaseErrors,
+                  shardErrors, indexErrors); }
+  
   TRI_ASSERT(report.isOpenObject());
   report.add(VPackValue("actions"));
-  VPackArrayBuilder a(&report);
-  // enact all
-  for (auto const& action : actions) {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "adding action " << action << " to feature ";
-    action.toVelocyPack(report);
-    feature.addAction(std::make_shared<ActionDescription>(action), true);
-  }
+  { VPackArrayBuilder a(&report);
+    // enact all
+    for (auto const& action : actions) {
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "adding action " << action << " to feature ";
+      action.toVelocyPack(report);
+      feature.addAction(std::make_shared<ActionDescription>(action), true);
+    }}
   
   return result;  
 }
@@ -480,18 +488,33 @@ arangodb::Result arangodb::maintenance::phaseOne (
     return result;
   }
   
+  std::unordered_set<std::string> databaseErrors;
+  std::unordered_set<std::string> shardErrors;
+  std::unordered_map<std::string, std::unordered_set<std::string>> indexErrors;
+
   report.add(VPackValue("phaseOne"));
   { VPackObjectBuilder por(&report);
 
     // Execute database changes
     try {
-      result = executePlan(plan, local, serverId, errors, feature, report);
+      result = executePlan(plan, local, serverId, errors, feature,
+                           databaseErrors, shardErrors, indexErrors, report);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "Error executing plan: " << e.what()
         << ". " << __FILE__ << ":" << __LINE__;
     }}
 
+  for (auto const& i : databaseErrors) {
+    feature.removeDBError(i);
+  }
+  for (auto const& i : shardErrors) {
+    feature.removeShardError(i);
+  }
+  for (auto const& i : indexErrors) {
+    feature.removeIndexErrors(i.first, i.second);
+  }
+ 
   report.add(VPackValue("Plan"));
   { VPackObjectBuilder p(&report);
     report.add("Version", plan.get("Version"));}

@@ -523,11 +523,7 @@ arangodb::Result MaintenanceFeature::shardError (
   
 }
 
-arangodb::Result MaintenanceFeature::removeShardError (
-  std::string const& database, std::string const& collection,
-  std::string const& shard) {
-
-  std::string key = database + SLASH + collection + SLASH + shard;
+arangodb::Result MaintenanceFeature::removeShardError (std::string const& key) {
 
   try {
     MUTEX_LOCKER(guard, _seLock);
@@ -538,10 +534,17 @@ arangodb::Result MaintenanceFeature::removeShardError (
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
-
+  
   return Result();
   
 }
+
+arangodb::Result MaintenanceFeature::removeShardError (
+  std::string const& database, std::string const& collection,
+  std::string const& shard) {
+  return removeShardError(database + SLASH + collection + SLASH + shard);
+}
+
 
 arangodb::Result MaintenanceFeature::storeIndexError (
   std::string const& database, std::string const& collection,
@@ -613,11 +616,9 @@ std::ostream& operator<<(std::ostream& os, std::set<T>const& st) {
   return os;
 }
 
-arangodb::Result MaintenanceFeature::removeIndexErrors (
-  std::string const& database, std::string const& collection,
-  std::string const& shard, std::set<std::string> indexIds) {
 
-  std::string key = database + SLASH + collection + SLASH + shard;
+arangodb::Result MaintenanceFeature::removeIndexErrors (
+  std::string const& key, std::unordered_set<std::string> indexIds) {
 
   MUTEX_LOCKER(guard, _ieLock);
 
@@ -645,6 +646,15 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
   }
 
   return Result();
+
+}
+
+arangodb::Result MaintenanceFeature::removeIndexErrors (
+  std::string const& database, std::string const& collection,
+  std::string const& shard, std::unordered_set<std::string> indexIds) {
+
+  return removeIndexErrors(
+    database + SLASH + collection + SLASH + shard, indexIds);
   
 }
 
