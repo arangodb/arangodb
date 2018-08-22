@@ -311,7 +311,7 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  std::vector<ActionDescription>& actions) {
+  MaintenanceFeature::errors_t const& errors, std::vector<ActionDescription>& actions) {
 
   arangodb::Result result;
   std::unordered_set<std::string> colis; // Intersection collections plan&local
@@ -380,17 +380,23 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan (
   VPackSlice const& plan, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature) {
+  std::string const& serverId, MaintenanceFeature::errors_t const& errors,
+  MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
   
   // build difference between plan and local
   std::vector<ActionDescription> actions;
-  diffPlanLocal(plan, local, serverId, actions);
-  
+  diffPlanLocal(plan, local, serverId, errors, actions);
+
+  TRI_ASSERT(report.isOpenObject());
+  report.add(VPackValue("actions"));
+  VPackArrayBuilder a(&report);
   // enact all
   for (auto const& action : actions) {
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "adding action " << action << " to feature ";
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "adding action " << action << " to feature ";
+    action.toVelocyPack(report);
     feature.addAction(std::make_shared<ActionDescription>(action), true);
   }
   
@@ -445,7 +451,8 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature& feature, VPackBuilder& report) {
+  MaintenanceFeature::errors_t const& errors, MaintenanceFeature& feature,
+  VPackBuilder& report) {
 
   arangodb::Result result;
   
@@ -454,7 +461,7 @@ arangodb::Result arangodb::maintenance::phaseOne (
 
     // Execute database changes
     try {
-      result = executePlan(plan, local, serverId, feature);
+      result = executePlan(plan, local, serverId, errors, feature, report);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "Error executing plan: " << e.what()

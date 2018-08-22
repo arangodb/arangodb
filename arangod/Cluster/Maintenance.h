@@ -55,7 +55,7 @@ arangodb::Result diffPlanLocalForDatabases(
  */
 arangodb::Result diffPlanLocal(
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  std::vector<ActionDescription>& actions);
+  MaintenanceFeature::errors_t const& errors, std::vector<ActionDescription>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run 
@@ -64,13 +64,15 @@ arangodb::Result diffPlanLocal(
  * @param current  Snapshot of agency's current state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
- * @param feature  Maintenance featire
+ * @param feature  Maintenance feature
+ * @param report   Report 
  *
  * @return         Result
  */
 arangodb::Result executePlan (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  arangodb::MaintenanceFeature& feature);
+  MaintenanceFeature::errors_t const& errors, arangodb::MaintenanceFeature& feature,
+  VPackBuilder& report);
 
 /**
  * @brief          Difference local and current states for phase 2 of Maintenance 
@@ -101,7 +103,8 @@ arangodb::Result diffLocalCurrent (
  */
 arangodb::Result phaseOne (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature& feature, VPackBuilder& report);
+  MaintenanceFeature::errors_t const& errors, MaintenanceFeature& feature,
+  VPackBuilder& report);
 
 /**
  * @brief          Phase two: Report in agency

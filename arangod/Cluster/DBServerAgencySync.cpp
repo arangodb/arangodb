@@ -135,6 +135,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto clusterInfo = ClusterInfo::instance();
   auto plan = clusterInfo->getPlan();
   auto serverId = arangodb::ServerState::instance()->getId();
+  MaintenanceFeature::errors_t errors;
+  Result er = mfeature->copyAllErrors(errors);
+  if (!er.ok()) {
+    
+  }
 
   VPackBuilder local;
   Result glc = getLocalCollections(local);
@@ -150,7 +155,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(
-      plan->slice(), local.slice(), serverId, *mfeature, rb);
+      plan->slice(), local.slice(), serverId, errors, *mfeature, rb);
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne done";
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
