@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesExportCursor.h"
+#include "Aql/ExecutionState.h"
 #include "MMFiles/MMFilesCollectionExport.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
@@ -77,7 +78,12 @@ VPackSlice MMFilesExportCursor::next() {
 
 size_t MMFilesExportCursor::count() const { return _size; }
 
-Result MMFilesExportCursor::dump(VPackBuilder& builder) {
+std::pair<aql::ExecutionState, Result> MMFilesExportCursor::dump(VPackBuilder& builder,
+                                                                 std::function<void()> const&) {
+  return {aql::ExecutionState::DONE, dumpSync(builder)};
+}
+
+Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
   auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
 

@@ -6,26 +6,37 @@ The request object specifies the following properties:
 * **arangoUser**: `string | null`
 
   The authenticated ArangoDB username used to make the request.
-  This value is only set if authentication is enabled in ArangoDB and the request set an `authorization` header ArangoDB was able to verify.
-  You are strongly encouraged to implement your own authentication logic for your own services but this property can be useful if you need to integrate with ArangoDB's own authentication mechanisms.
+  This value is only set if authentication is enabled in ArangoDB and the
+  request set an `authorization` header ArangoDB was able to verify.
+  You are strongly encouraged to implement
+  [your own authentication logic](../../Guides/Auth.md) for your own services
+  but this property can be useful if you need to integrate with ArangoDB's
+  own authentication mechanisms.
 
 * **arangoVersion**: `number`
 
-  The numeric value of the `x-arango-version` header or the numeric version of the ArangoDB server (e.g. `30102` for version 3.1.2) if no valid header was provided.
+  The numeric value of the `x-arango-version` header or the numeric version
+  of the ArangoDB server (e.g. `30102` for version 3.1.2) if no valid header
+  was provided.
 
 * **baseUrl**: `string`
 
-  Root-relative base URL of the service, i.e. the prefix `"/_db/"` followed by the value of *database*.
+  Root-relative base URL of the service, i.e. the prefix `"/_db/"` followed
+  by the value of *database*.
 
 * **body**: `any`
 
-  The processed and validated request body for the current route. If no body has been defined for the current route, the value will be identical to *rawBody*.
+  The processed and validated request body for the current route.
+  If no body has been defined for the current route, the value will be
+  identical to *rawBody*.
 
-  For details on how request bodies can be processed and validated by Foxx see the [body method of the endpoint object](Endpoints.md#body).
+  For details on how request bodies can be processed and validated by Foxx
+  see the [body method of the endpoint object](Endpoints.md#body).
 
 * **context**: `Context`
 
-  The [service context](../Context.md) in which the router was mounted (rather than the context in which the route was defined).
+  The [service context](../Context.md) in which the router was mounted
+  (rather than the context in which the route was defined).
 
 * **database**: `string`
 
@@ -35,13 +46,15 @@ The request object specifies the following properties:
 
   The raw headers object.
 
-  For details on how request headers can be validated by Foxx see the [header method of the endpoint object](Endpoints.md#header).
+  For details on how request headers can be validated by Foxx see the
+  [header method of the endpoint object](Endpoints.md#header).
 
 * **hostname**: `string`
 
   The hostname (domain name) indicated in the request headers.
 
-  Defaults to the hostname portion (i.e. excluding the port) of the `Host` header and falls back to the listening address of the server.
+  Defaults to the hostname portion (i.e. excluding the port) of the `Host`
+  header and falls back to the listening address of the server.
 
 * **method**: `string`
 
@@ -49,7 +62,8 @@ The request object specifies the following properties:
 
 * **originalUrl**: `string`
 
-  Root-relative URL of the request, i.e. *path* followed by the raw query parameters, if any.
+  Root-relative URL of the request, i.e. *path* followed by the raw query
+  parameters, if any.
 
 * **path**: `string`
 
@@ -57,33 +71,42 @@ The request object specifies the following properties:
 
 * **pathParams**: `object`
 
-  An object mapping the names of path parameters of the current route to their validated values.
+  An object mapping the names of path parameters of the current route to
+  their validated values.
 
-  For details on how path parameters can be validated by Foxx see the [pathParam method of the endpoint object](Endpoints.md#pathparam).
+  For details on how path parameters can be validated by Foxx see the
+  [pathParam method of the endpoint object](Endpoints.md#pathparam).
 
 * **port**: `number`
 
   The port indicated in the request headers.
 
-  Defaults to the port portion (i.e. excluding the hostname) of the `Host` header and falls back to the listening port or the appropriate default port (`443` for HTTPS or `80` for HTTP, depending on *secure*) if the header only indicates a hostname.
+  Defaults to the port portion (i.e. excluding the hostname) of the `Host`
+  header and falls back to the listening port or the appropriate default
+  port (`443` for HTTPS or `80` for HTTP, depending on *secure*) if the
+  header only indicates a hostname.
 
   If the request was made using a trusted proxy (see *trustProxy*),
-  this is set to the port portion of the `X-Forwarded-Host` header (or approriate default port) if present.
+  this is set to the port portion of the `X-Forwarded-Host` header
+  (or appropriate default port) if present.
 
 * **protocol**: `string`
 
   The protocol used for the request.
 
-  Defaults to `"https"` or `"http"` depending on whether ArangoDB is configured to use SSL or not.
+  Defaults to `"https"` or `"http"` depending on whether ArangoDB is
+  configured to use SSL or not.
 
   If the request was made using a trusted proxy (see *trustProxy*),
   this is set to the value of the `X-Forwarded-Proto` header if present.
 
 * **queryParams**: `object`
 
-  An object mapping the names of query parameters of the current route to their validated values.
+  An object mapping the names of query parameters of the current route to
+  their validated values.
 
-  For details on how query parameters can be validated by Foxx see the [queryParam method of the endpoint object](Endpoints.md#queryparam).
+  For details on how query parameters can be validated by Foxx see the
+  [queryParam method of the endpoint object](Endpoints.md#queryparam).
 
 * **rawBody**: `Buffer`
 
@@ -116,18 +139,25 @@ The request object specifies the following properties:
 
   Whether the request was made over a secure connection (i.e. HTTPS).
 
-  This is set to `false` when *protocol* is `"http"` and `true` when *protocol* is `"https"`.
+  This is set to `false` when *protocol* is `"http"` and `true` when
+  *protocol* is `"https"`.
 
 * **suffix**: `string`
 
-  The trailing path relative to the current route if the current route ends in a wildcard (e.g. `/something/*`).
+  The trailing path relative to the current route if the current route ends
+  in a wildcard (e.g. `/something/*`).
 
-  **Note**: Starting with ArangoDB 3.2 is passed into the service as-is, i.e. percentage escape sequences like `%2F` will no longer be unescaped. Also note that the suffix may contain path segments like `..` which may have special meaning if the suffix is used to build filesystem paths.
+  **Note**: Starting with ArangoDB 3.2 is passed into the service as-is, i.e.
+  percentage escape sequences like `%2F` will no longer be unescaped.
+  Also note that the suffix may contain path segments like `..` which may have
+  special meaning if the suffix is used to build filesystem paths.
 
 * **trustProxy**: `boolean`
 
   Indicates whether the request was made using a trusted proxy.
-  If the origin server's address was specified in the ArangoDB configuration using `--frontend.trusted-proxy` or the service's `trustProxy` setting is enabled, this will be `true`, otherwise it will be `false`.
+  If the origin server's address was specified in the ArangoDB configuration
+  using `--frontend.trusted-proxy` or the service's `trustProxy` setting is
+  enabled, this will be `true`, otherwise it will be `false`.
 
 * **url**: `string`
 
@@ -137,9 +167,12 @@ The request object specifies the following properties:
 
   Whether the request indicates it was made within a browser using AJAX.
 
-  This is set to `true` if the `X-Requested-With` header is present and is a case-insensitive match for the value `"xmlhttprequest"`.
+  This is set to `true` if the `X-Requested-With` header is present and is
+  a case-insensitive match for the value `"xmlhttprequest"`.
 
-  Note that this value does not guarantee whether the request was made from inside a browser or whether AJAX was used and is merely a convention established by JavaScript frameworks like jQuery.
+  Note that this value does not guarantee whether the request was made from
+  inside a browser or whether AJAX was used and is merely a convention
+  established by JavaScript frameworks like jQuery.
 
 accepts
 -------
@@ -160,7 +193,8 @@ accepts
 
 `req.acceptsLanguages(...languages): string | false`
 
-These methods wrap the corresponding content negotiation methods of the [accepts module](https://github.com/jshttp/accepts) for the current request.
+These methods wrap the corresponding content negotiation methods of the
+[accepts module](https://github.com/jshttp/accepts) for the current request.
 
 **Examples**
 
@@ -195,15 +229,19 @@ Gets the value of a cookie by name.
 
     Secret that was used to sign the cookie.
 
-    If a secret is specified, the cookie's signature is expected to be present in a second cookie with the same name and the suffix `.sig`. Otherwise the signature (if present) will be ignored.
+    If a secret is specified, the cookie's signature is expected to be present
+    in a second cookie with the same name and the suffix `.sig`.
+    Otherwise the signature (if present) will be ignored.
 
   * **algorithm**: `string` (Default: `"sha256"`)
 
     Algorithm that was used to sign the cookie.
 
-If a string is passed instead of an options object it will be interpreted as the *secret* option.
+If a string is passed instead of an options object it will be interpreted as
+the *secret* option.
 
-Returns the value of the cookie or `null` if the cookie is not set or its signature is invalid.
+Returns the value of the cookie or `null` if the cookie is not set or its
+signature is invalid.
 
 get / header
 ------------
@@ -212,7 +250,8 @@ get / header
 
 `req.header(name): string`
 
-Gets the value of a header by name. You can validate request headers using the [header method of the endpoint](Endpoints.md#header).
+Gets the value of a header by name. You can validate request headers using the
+[header method of the endpoint](Endpoints.md#header).
 
 **Arguments**
 
@@ -229,7 +268,8 @@ is
 
 `req.is(...types): string`
 
-This method wraps the (request body) content type detection method of the [type-is module](https://github.com/jshttp/type-is) for the current request.
+This method wraps the (request body) content type detection method of the
+[type-is module](https://github.com/jshttp/type-is) for the current request.
 
 **Examples**
 
@@ -251,16 +291,20 @@ json
 
 Attempts to parse the raw request body as JSON and returns the result.
 
-It is generally more useful to define a [request body on the endpoint](Endpoints.md#body) and use the `req.body` property instead.
+It is generally more useful to define a
+[request body on the endpoint](Endpoints.md#body) and use the `req.body`
+property instead.
 
-Returns `undefined` if the request body is empty. May throw a `SyntaxError` if the body could not be parsed.
+Returns `undefined` if the request body is empty. May throw a `SyntaxError`
+if the body could not be parsed.
 
 makeAbsolute
 ------------
 
 `req.makeAbsolute(path, [query]): string`
 
-Resolves the given path relative to the `req.context.service`'s mount path to a full URL.
+Resolves the given path relative to the `req.context.service`'s mount path
+to a full URL.
 
 **Arguments**
 
@@ -283,7 +327,8 @@ params
 
 Looks up a parameter by name, preferring `pathParams` over `queryParams`.
 
-It's probably better style to use the `req.pathParams` or `req.queryParams` objects directly.
+It's probably better style to use the `req.pathParams` or `req.queryParams`
+objects directly.
 
 * **name**: `string`
 
@@ -296,17 +341,23 @@ range
 
 `req.range([size]): Ranges | number`
 
-This method wraps the range header parsing method of the [range-parser module](https://github.com/jshttp/range-parser) for the current request.
+This method wraps the range header parsing method of the
+[range-parser module](https://github.com/jshttp/range-parser) for the current request.
 
 **Arguments**
 
 * **size**: `number` (Default: `Infinity`)
 
-  Length of the satisfiable range (e.g. number of bytes in the full response). If present, ranges exceeding the size will be considered unsatisfiable.
+  Length of the satisfiable range (e.g. number of bytes in the full response).
+  If present, ranges exceeding the size will be considered unsatisfiable.
 
-Returns `undefined` if the `Range` header is absent, `-2` if the header is present but malformed, `-1` if the range is invalid (e.g. start offset is larger than end offset) or unsatisfiable for the given size.
+Returns `undefined` if the `Range` header is absent, `-2` if the header is
+present but malformed, `-1` if the range is invalid (e.g. start offset is
+larger than end offset) or unsatisfiable for the given size.
 
-Otherwise returns an array of objects with the properties *start* and *end* values for each range. The array has an additional property *type* indicating the request range type.
+Otherwise returns an array of objects with the properties *start* and *end*
+values for each range. The array has an additional property *type* indicating
+the request range type.
 
 **Examples**
 

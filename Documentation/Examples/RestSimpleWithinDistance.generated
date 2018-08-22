@@ -1,25 +1,25 @@
-shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/near &amp;lt;&amp;lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/near</span> &lt;&lt;EOF
 { 
-  "collection" : "products", 
-  "latitude" : 0, 
-  "longitude" : 0, 
-  "skip" : 1, 
-  "limit" : 3, 
-  "distance" : "distance", 
-  "radius" : 300 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"skip"</span> : <span class="hljs-number">1</span>, 
+  <span class="hljs-string">"limit"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"distance"</span> : <span class="hljs-string">"distance"</span>, 
+  <span class="hljs-string">"radius"</span> : <span class="hljs-number">300</span> 
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13813"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13813"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfPAO--B"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105265"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105265"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFVW--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -28,9 +28,9 @@ x-content-type-options: nosniff
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13819"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13819"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfPAW--_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105271"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105271"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFVW--D"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -39,9 +39,9 @@ x-content-type-options: nosniff
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.3898532891175</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13822"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13822"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XEUfPAW--B"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105274"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105274"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFVa--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.004</span>, 
         <span class="hljs-number">0</span> 

@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/utf8_path.hpp"
+
 #include "catch.hpp"
 #include "common.h"
 #include "ExpressionContextMock.h"
@@ -29,6 +31,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Basics/files.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "Transaction/StandaloneContext.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -188,7 +192,19 @@ arangodb::aql::QueryResult executeQuery(
     arangodb::aql::PART_MAIN
   );
 
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+
+  arangodb::aql::QueryResult result;
+  while (true) {
+    auto state = query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY, result);
+    if (state == arangodb::aql::ExecutionState::WAITING) {
+      ss->waitForAsyncResponse();
+    } else {
+      break;
+    }
+  }
+
+  return result;
 }
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
@@ -227,6 +243,14 @@ uint64_t getCurrentPlanVersion() {
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();
+}
+
+void setDatabasePath(arangodb::DatabasePathFeature& feature) {
+  irs::utf8_path path;
+
+  path /= TRI_GetTempPath();
+  path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
+  const_cast<std::string&>(feature.directory()) = path.utf8();
 }
 
 } // tests

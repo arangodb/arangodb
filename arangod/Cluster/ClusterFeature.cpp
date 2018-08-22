@@ -23,7 +23,6 @@
 
 #include "ClusterFeature.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -35,18 +34,20 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "V8Server/V8DealerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
       _enableCluster(false),
@@ -56,12 +57,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("Logger");
-  startsAfter("Database");
-  startsAfter("Scheduler");
-  startsAfter("V8Dealer");
+  startsAfter("DatabasePhase");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -104,10 +100,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster",
                              true);
-
-  options->addOption("--cluster.require-persisted-id",
-                     "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
-                     new BooleanParameter(&_requirePersistedId));
 
   options->addOption("--cluster.require-persisted-id",
                      "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
@@ -209,8 +201,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     };
 
     if (std::find(disallowedRoles.begin(), disallowedRoles.end(), _requestedRole) != disallowedRoles.end()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided. Possible values: PRIMARY, "
-                    "SECONDARY, COORDINATOR";
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided for `--cluster.my-role`. Possible values: DBSERVER, PRIMARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
@@ -233,24 +224,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_enableCluster &&
-      _requirePersistedId &&
-      !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
-    FATAL_ERROR_EXIT();
-  }
-
-  auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (v8Dealer->isEnabled()) {
-    v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
-                           _systemReplicationFactor);
-  } else {
-    if (ServerState::isDBServer(_requestedRole)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
   // create callback registery
   _agencyCallbackRegistry.reset(
       new AgencyCallbackRegistry(agencyCallbacksPath()));
@@ -264,16 +237,13 @@ void ClusterFeature::prepare() {
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
 
-  auto agency =
-    application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
-
 #ifdef DEBUG_SYNC_REPLICATION
   bool startClusterComm = true;
 #else
   bool startClusterComm = false;
 #endif
 
-  if (agency->isEnabled() || _enableCluster) {
+  if (ServerState::instance()->isAgent() || _enableCluster) {
     startClusterComm = true;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     // nullptr happens only during shutdown
@@ -451,25 +421,28 @@ void ClusterFeature::start() {
       VPackObjectBuilder b(&builder);
       builder.add("endpoint", VPackValue(_myAddress));
       builder.add("host", VPackValue(ServerState::instance()->getHost()));
+      builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
+      builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();
     }
 
-    result.clear();
     result = comm.setValue("Current/ServersRegistered/" + myId,
                            builder.slice(), 0.0);
 
-    if (!result.successful()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to register server in agency: http code: "
-                 << result.httpCode() << ", body: " << result.body();
-      FATAL_ERROR_EXIT();
-    } else {
+    if (result.successful()) {
       break;
+    } else {
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+        << "failed to register server in agency: http code: "	
+        << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
+
+  comm.increment("Current/Version");
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
@@ -552,6 +525,8 @@ void ClusterFeature::unprepare() {
   unreg.operations.push_back(
       AgencyOperation("Current/ServersRegistered/" + me,
                       AgencySimpleOperationType::DELETE_OP));
+  unreg.operations.push_back(
+      AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
   comm.sendTransactionWithFailover(unreg, 120.0);
 
   while (_heartbeatThread->isRunning()) {
@@ -589,3 +564,5 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
     std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
+
+} // arangodb

@@ -37,7 +37,7 @@ namespace arangodb {
 
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   TRI_voc_cid_t id
-) const noexcept {
+) const {
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(id));
   #else
@@ -50,7 +50,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
 
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   std::string const& nameOrId
-) const noexcept {
+) const {
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(nameOrId));
   #else
@@ -284,7 +284,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(
     }
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
   return "_unknown";
 }
 
@@ -331,7 +331,7 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
     TRI_voc_cid_t id
-) const noexcept {
+) const {
   auto itr = _dataSourceById.find(id);
 
   if (itr != _dataSourceById.end()) {
@@ -352,7 +352,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
     std::string const& nameOrId
-) const noexcept {
+) const {
   auto itr = _dataSourceByName.find(nameOrId);
 
   if (itr != _dataSourceByName.end()) {
@@ -401,7 +401,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 
 std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   TRI_voc_cid_t id
-) const noexcept {
+) const {
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<LogicalView>(getDataSource(id));
   #else
@@ -414,7 +414,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
 
 std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   std::string const& nameOrId
-) const noexcept {
+) const {
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<LogicalView>(getDataSource(nameOrId));
   #else

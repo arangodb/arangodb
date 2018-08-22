@@ -32,6 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
+class ExecutionEngine;
 class Query;
 
 class QueryRegistry {
@@ -88,6 +89,16 @@ public:
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
  private:
+
+  /**
+   * @brief Set the thread-local _noLockHeaders variable
+   *
+   * @param engine The Query engine that contains the no-lock-header
+   *        information.
+   */
+  void setNoLockHeaders(ExecutionEngine* engine) const;
+
+ private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
     QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared);
@@ -104,7 +115,8 @@ public:
   };
 
   /// @brief _queries, the actual map of maps for the registry
-  std::unordered_map<std::string, std::unordered_map<QueryId, QueryInfo*>>
+  /// maps from vocbase name to list queries
+  std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
       _queries;
 
   /// @brief _lock, the read/write lock for access

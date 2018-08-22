@@ -932,7 +932,7 @@ def restreplybody(cargo, r=Regexen()):
     if restReplyBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += '\n#### HTTP ' + currentReturnCode + '\n'
+        operation['description'] += '\n**HTTP ' + currentReturnCode + '**\n'
         operation['description'] += "*A json document with these Properties is returned:*\n"
         operation['responses'][currentReturnCode]['x-description-offset'] = len(operation['description'])
 
@@ -1081,12 +1081,12 @@ def example_arangosh_run(cargo, r=Regexen()):
     except:
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
-    operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
+    operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre>'
     
     for line in examplefile.readlines():
-        operation['x-examples'][currentExample] += line
+        operation['x-examples'][currentExample] += '<code>' + line + '</code>'
     
-    operation['x-examples'][currentExample] += '</code></pre>\n\n\n'
+    operation['x-examples'][currentExample] += '</pre>\n\n\n'
 
     line = ""
 

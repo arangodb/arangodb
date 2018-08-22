@@ -33,24 +33,24 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Upgrade.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 UpgradeFeature::UpgradeFeature(
-    ApplicationServer* server, int* result,
-    std::vector<std::string> const& nonServerFeatures)
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+)
     : ApplicationFeature(server, "Upgrade"),
       _upgrade(false),
       _upgradeCheck(true),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("CheckVersion");
-  startsAfter("Database");
-  startsAfter("Cluster");
-  startsAfter("Aql");
+  startsAfter("AQLPhase");
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -219,3 +219,5 @@ void UpgradeFeature::upgradeDatabase() {
   // and return from the context
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "finished database init/upgrade";
 }
+
+} // arangodb

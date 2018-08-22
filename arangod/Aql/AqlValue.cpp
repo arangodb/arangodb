@@ -23,6 +23,7 @@
 
 #include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/Arithmetic.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -601,28 +602,9 @@ double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
         return s.getBoolean() ? 1.0 : 0.0;
       }
       if (s.isString()) {
-        std::string v(s.copyString());
-        try {
-          size_t behind = 0;
-          double value = std::stod(v, &behind);
-          while (behind < v.size()) {
-            char c = v[behind];
-            if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
-              failed = true;
-              return 0.0;
-            }
-            ++behind;
-          }
-          TRI_ASSERT(!failed);
-          return value;
-        } catch (...) {
-          if (v.empty()) {
-            return 0.0;
-          }
-          // conversion failed
-          break;
-        }
-      } else if (s.isArray()) {
+        return arangodb::aql::stringToNumber(s.copyString(), failed);  
+      } 
+      if (s.isArray()) {
         auto length = s.length();
         if (length == 0) {
           return 0.0;
@@ -949,17 +931,10 @@ AqlValue AqlValue::clone() const {
       return AqlValue(VPackSlice(_data.buffer->data()));
     }
     case DOCVEC: {
-      auto c = std::make_unique<std::vector<AqlItemBlock*>>();
+      auto c = std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
       c->reserve(docvecSize());
-      try {
-        for (auto const& it : *_data.docvec) {
-          c->emplace_back(it->slice(0, it->size()));
-        }
-      } catch (...) {
-        for (auto& it : *c) {
-          delete it;
-        }
-        throw;
+      for (auto const& it : *_data.docvec) {
+        c->emplace_back(it->slice(0, it->size()));
       }
       return AqlValue(c.release());
     }
@@ -990,9 +965,7 @@ void AqlValue::destroy() noexcept {
       break;
     }
     case DOCVEC: {
-      for (auto& it : *_data.docvec) {
-        delete it;
-      }
+      // Will delete all ItemBlocks
       delete _data.docvec;
       break;
     }

@@ -40,7 +40,7 @@ function runSetup () {
 
   db._dropView('UnitTestsRecovery1');
   var v1 = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v1.properties({ "commit": { "commitTimeoutMsec": 15 } });
+  v1.properties({ "commitIntervalMsec": 15 });
 
   c.save({ _key: 'crashme' }, true);
 
@@ -67,7 +67,7 @@ function recoverySuite () {
       var v1 = db._view('UnitTestsRecovery1');
       assertEqual(v1.name(), 'UnitTestsRecovery1');
       assertEqual(v1.type(), 'arangosearch');
-      assertEqual(v1.properties().commit.commitTimeoutMsec, 15);
+      assertEqual(v1.properties().commitIntervalMsec, 15);
     }
 
   };

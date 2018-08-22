@@ -120,6 +120,11 @@ Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: fal
 
 If set, issue an `fsync` call when writing to disk (set to false to issue
 `fdatasync` only. Default: false.
+  
+`--rocksdb.block-align-data-blocks`
+
+If true, data blocks are aligned on the lesser of page size and block size,
+which may waste some memory but may reduce the number of cross-page I/O operations.
 
 ### Background tasks
 
@@ -176,7 +181,7 @@ If true, skip corrupted records in WAL recovery. Default: false.
 
 ## Non-Pass-Through Options
 
-`--rocksdb.wal-file-timeout` (Hidden)
+`--rocksdb.wal-file-timeout`
 
 Timeout after which unused WAL files are deleted (in seconds). Default: 10.0s.
 
@@ -189,6 +194,16 @@ not necessarily have ACID properties in this case.
 
 The following options can be used to control the RAM usage and automatic
 intermediate commits for the RocksDB engine:
+
+`--rocksdb.wal-file-timeout-initial` (Hidden)
+
+Timeout after which deletion of unused WAL files kicks in after server start
+(in seconds). Default: 180.0s
+
+By decreasing this option's value, the server will start the removal of obsolete
+WAL files earlier after server start. This is useful in testing environments that
+are space-restricted and do not require keeping much WAL file data at all.
+
 
 `--rocksdb.max-transaction-size`
 
@@ -215,3 +230,13 @@ is committed automatically and a new transaction is started.
 If enabled, throttles the ingest rate of writes if necessary to reduce chances 
 of compactions getting too far behind and blocking incoming writes. This option
 is `true` by default.
+
+`--rocksdb.sync-interval`
+
+The interval (in milliseconds) that ArangoDB will use to automatically
+synchronize data in RocksDB's write-ahead logs to disk. Automatic syncs will
+only be performed for not-yet synchronized data, and only for operations that
+have been executed without the *waitForSync* attribute.
+
+Note: this option is not supported on Windows platforms. Setting the option to
+a value greater 0 will produce a startup warning.

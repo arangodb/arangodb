@@ -456,12 +456,6 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                        "invalid response type");
       }
 
-      /*std::string ll(TRI_BeginStringBuffer(dump._buffer),
-                       TRI_LengthStringBuffer(dump._buffer));
-      for (std::string const& str : basics::StringUtils::split(ll, '\n')) {
-        if (!str.empty()) LOG_TOPIC(WARN, Logger::FIXME) << str;
-      }*/
-
       // transfer ownership of the buffer contents
       httpResponse->body().set(dump._buffer);
 
@@ -941,8 +935,8 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
 
   // determine flush WAL wait time value
   uint64_t flushWait = _request->parsedValue("flushWait", static_cast<uint64_t>(0));
-  if (flushWait > 60) {
-    flushWait = 60;
+  if (flushWait > 300) {
+    flushWait = 300;
   }
 
   // determine start tick for dump
@@ -983,7 +977,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
       << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 
   if (flush) {
-    MMFilesLogfileManager::instance()->flush(true, true, false);
+    MMFilesLogfileManager::instance()->flush(true, true, false, static_cast<double>(flushWait), true);
 
     // additionally wait for the collector
     if (flushWait > 0) {

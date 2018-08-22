@@ -343,6 +343,8 @@ The following execution node types will appear in the output of `explain`:
 
 For queries in the cluster, the following nodes may appear in execution plans:
 
+* *SingleRemoteOperationNode*: used on a coordinator to directly work with a single
+  document on a DB-Server that was referenced by its `_key`.
 * *ScatterNode*: used on a coordinator to fan-out data to one or multiple shards.
 * *GatherNode*: used on a coordinator to aggregate results from one or many shards
   into a combined stream of results.
@@ -412,10 +414,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed
   as late as possible and not before their results are required.
-* `patch-update-statements`: will appear if an *UpdateNode* was patched to not buffer
-  its input completely, but to process it in smaller batches. The rule will fire for an
-  *UPDATE* query that is fed by a full collection scan, and that does not use any other
-  indexes and subqueries.
+* `patch-update-statements`: will appear if an *UpdateNode* or *ReplaceNode* was patched 
+  to not buffer its input completely, but to process it in smaller batches. The rule will 
+  fire for an *UPDATE* or *REPLACE* query that is fed by a full collection scan or an index
+  scan only, and that does not use any other collections, indexes, subqueries or traversals.
 * `optimize-traversals`: will appear if either the edge or path output variable in an
   AQL traversal was optimized away, or if a *FILTER* condition from the query was moved
   in the *TraversalNode* for early pruning of results.
@@ -442,6 +444,9 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
+* `optimize-cluster-single-document-operations`: it may appear if you directly reference
+  a document by its `_key`; in this case no AQL will be executed on the DB-Servers, instead
+  the coordinator will directly work with the documents on the DB-Servers.
 * `distribute-in-cluster`: will appear when query parts get distributed in a cluster.
   This is not an optimization rule, and it cannot be turned off.
 * `scatter-in-cluster`: will appear when scatter, gather, and remote nodes are inserted

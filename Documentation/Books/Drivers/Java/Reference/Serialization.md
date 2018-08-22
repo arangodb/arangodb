@@ -7,22 +7,27 @@ Since version `4.1.11` you can extend the VelocyPack serialization by registerin
 
 ### Java 8 types
 
+GitHub: https://github.com/arangodb/java-velocypack-module-jdk8
+
 Added support for:
 
-* java.time.Instant
-* java.time.LocalDate
-* java.time.LocalDateTime
-* java.util.Optional;
-* java.util.OptionalDouble;
-* java.util.OptionalInt;
-* java.util.OptionalLong;
+- `java.time.Instant`
+- `java.time.LocalDate`
+- `java.time.LocalDateTime`
+- `java.time.ZonedDateTime`
+- `java.time.OffsetDateTime`
+- `java.time.ZoneId`
+- `java.util.Optional`
+- `java.util.OptionalDouble`
+- `java.util.OptionalInt`
+- `java.util.OptionalLong`
 
 ```XML
 <dependencies>
   <dependency>
     <groupId>com.arangodb</groupId>
     <artifactId>velocypack-module-jdk8</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
   </dependency>
 </dependencies>
 ```
@@ -33,18 +38,22 @@ ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackJdk8Module())
 
 ### Scala types
 
+GitHub: https://github.com/arangodb/java-velocypack-module-scala
+
 Added support for:
 
-* scala.Option
-* scala.collection.immutable.List
-* scala.collection.immutable.Map
+- `scala.Option`
+- `scala.collection.immutable.List`
+- `scala.collection.immutable.Map`
+- `scala.math.BigInt`
+- `scala.math.BigDecimal`
 
 ```XML
 <dependencies>
   <dependency>
     <groupId>com.arangodb</groupId>
     <artifactId>velocypack-module-scala</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
   </dependency>
 </dependencies>
 ```
@@ -55,19 +64,21 @@ val arangoDB: ArangoDB = new ArangoDB.Builder().registerModule(new VPackScalaMod
 
 ### Joda-Time
 
+GitHub: https://github.com/arangodb/java-velocypack-module-joda
+
 Added support for:
 
-* org.joda.time.DateTime;
-* org.joda.time.Instant;
-* org.joda.time.LocalDate;
-* org.joda.time.LocalDateTime;
+- `org.joda.time.DateTime`
+- `org.joda.time.Instant`
+- `org.joda.time.LocalDate`
+- `org.joda.time.LocalDateTime`
 
 ```XML
 <dependencies>
   <dependency>
     <groupId>com.arangodb</groupId>
     <artifactId>velocypack-module-joda</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.1</version>
   </dependency>
 </dependencies>
 ```
@@ -78,8 +89,11 @@ ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackJodaModule())
 
 ## Use of jackson as an alternative serializer
 
-Since version 4.5.2, the driver supports alternative serializer to de-/serialize documents, edges and query results. One implementation is [VelocyJack](https://github.com/arangodb/jackson-dataformat-velocypack#usage-within-arangodb-java-driver) which is based on [Jackson](https://github.com/FasterXML/jackson) working with [jackson-dataformat-velocypack](https://github.com/arangodb/jackson-dataformat-velocypack).
-
+Since version 4.5.2, the driver supports alternative serializer to de-/serialize
+documents, edges and query results. One implementation is
+[VelocyJack](https://github.com/arangodb/jackson-dataformat-velocypack#within-arangodb-java-driver)
+which is based on [Jackson](https://github.com/FasterXML/jackson) working with
+[jackson-dataformat-velocypack](https://github.com/arangodb/jackson-dataformat-velocypack).
 
 **Note**: Any registered custom [serializer/deserializer or module](#custom-serialization) will be ignored.
 

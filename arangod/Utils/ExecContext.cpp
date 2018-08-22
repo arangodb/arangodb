@@ -30,7 +30,8 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::SUPERUSER(true, "", "", auth::Level::RW, auth::Level::RW);
+ExecContext ExecContext::SUPERUSER(ExecContext::Type::Internal, "", "",
+                                   auth::Level::RW, auth::Level::RW);
 
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -51,12 +52,12 @@ ExecContext* ExecContext::create(std::string const& user,
   if (af->isActive()) {
     auth::UserManager* um = af->userManager();
     TRI_ASSERT(um != nullptr);
-    dbLvl = um->databaseAuthLevel(user, dbname);
+    dbLvl = sysLvl = um->databaseAuthLevel(user, dbname);
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
-  return new ExecContext(0, user, dbname, sysLvl, dbLvl);
+  return new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,

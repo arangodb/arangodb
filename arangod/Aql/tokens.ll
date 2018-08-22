@@ -21,7 +21,6 @@
 #include "Basics/Common.h"
 #include "Basics/conversions.h"
 #include "Basics/NumberUtils.h"
-#include "Basics/StringUtils.h"
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
@@ -33,10 +32,11 @@ class Parser;
 }
 }
 
-
 #include "Aql/AstNode.h"
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
+
+#include <algorithm>
 
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
@@ -50,10 +50,7 @@ class Parser;
 #define YY_NO_INPUT 1
 
 #define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
-  size_t length = yyextra->remainingLength();                            \
-  if (length > static_cast<size_t>(maxBytesToRead)) {                    \
-    length = static_cast<size_t>(maxBytesToRead);                        \
-  }                                                                      \
+  size_t length = std::min(yyextra->remainingLength(), static_cast<size_t>(maxBytesToRead));  \
   if (length > 0) {                                                      \
     yyextra->fillBuffer(resultBuffer, length);                           \
     resultState = length;                                                \
@@ -187,10 +184,6 @@ class Parser;
 
 (?i:LIKE) {
   return T_LIKE;
-}
-
-(?i:VIEW) {
-  return T_VIEW;
 }
 
  /* ---------------------------------------------------------------------------

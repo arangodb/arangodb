@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen:5000 */
-/* global assertEqual, assertNotEqual, assertTrue */
+/* global assertEqual, assertNotEqual, assertTrue, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for query language, functions
@@ -55,6 +55,196 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test tobase64
+// //////////////////////////////////////////////////////////////////////////////
+
+    testToBase64Values: function () {
+      [ 
+        [ null, "" ],
+        [ -13, "LTEz" ],
+        [ 10, "MTA="],
+        [ true, "dHJ1ZQ==" ],
+        [ false, "ZmFsc2U=" ],
+        [ "", "" ],
+        [ "foobar", "Zm9vYmFy" ],
+        [ " ", "IA==" ],
+        [ "The quick brown fox jumps over the lazy dog", "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw==" ],
+      ].forEach(function(test) {
+        assertEqual([ test[1] ], getQueryResults('RETURN TO_BASE64(' + JSON.stringify(test[0]) + ')'), test);
+      });
+    },
+    
+    
+    testToBase64InvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo", "bar")');
+    },
+    
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test tohex
+// //////////////////////////////////////////////////////////////////////////////
+
+    testToHexValues: function () {
+      [ 
+        [ null, "" ],
+        [ -13, "2d3133" ],
+        [ 10, "3130"],
+        [ true, "74727565" ],
+        [ false, "66616c7365" ],
+        [ "", "" ],
+        [ "foobar", "666f6f626172" ],
+        [ " ", "20" ],
+        [ "The quick brown fox jumps over the lazy dog", "54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67"],
+      ].forEach(function(test) {
+        assertEqual([ test[1] ], getQueryResults('RETURN TO_HEX(' + JSON.stringify(test[0]) + ')'), test);
+      });
+    },
+    
+    
+    testToHexInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow", "foo", "bar")');
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test encodeURIcomponent
+// //////////////////////////////////////////////////////////////////////////////
+
+    testEncodeURIComponentValues: function () {
+      [ 
+        [ null, "" ],
+        [ -13, "-13" ],
+        [ 10, "10"],
+        [ true, "true" ],
+        [ false, "false" ],
+        [ "", "" ],
+        [ "foobar", "foobar" ],
+        [ " ", "%20" ],
+        [ "?x=шеллы", "%3Fx%3D%D1%88%D0%B5%D0%BB%D0%BB%D1%8B"],
+        [ "?x=test", "%3Fx%3Dtest"],
+        [ "The quick brown fox jumps over the lazy dog", "The%20quick%20brown%20fox%20jumps%20over%20the%20lazy%20dog"],
+        [ "https://w3schools.com/my test.asp?name=ståle&car=saab", "https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab"],
+      ].forEach(function(test) {
+        assertEqual([ test[1] ], getQueryResults('RETURN ENCODE_URI_COMPONENT(' + JSON.stringify(test[0]) + ')'), test);
+      });
+    },
+    
+    
+    testEncodeURIComponentInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow", "foo", "bar")');
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test UUID
+// //////////////////////////////////////////////////////////////////////////////
+
+    testUUIDValues: function () {
+      assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, getQueryResults('RETURN UUID()'));
+    },
+
+    testUUIDInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN UUID("test", "meow", "foo", "bar")');
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test Soundex
+// //////////////////////////////////////////////////////////////////////////////
+    testToSoundexValues: function () {
+      [ 
+        [ null, "" ],
+        [ "a", "A000" ],
+        [ "ab", "A100" ],
+        [ "text", "T230" ],
+        [ "tixt", "T230"],
+        [ "Text", "T230" ],
+        [ "Tixt", "T230"],
+        [ "tExT", "T230" ],
+        [ "tIxT", "T230"],
+        [ true, "T600" ],
+        [ false, "F420" ],
+        [ "", "" ],
+        [ " ", ""],
+        [ "\n", ""],
+        [ "         ", "" ],
+        [ "    foobar", "F160" ],
+        [ "foobar      ", "F160" ],
+        [ "      foobar      ", "F160" ],
+        [ "foobar", "F160" ],
+        [ "SOUNDEX", "S532" ],
+        [ "SOUNTEKS", "S532" ],
+        [ "mötör", "M360" ],
+        [ "2m2ö2t2ö2r2", "M360" ],
+        [ "Öööööö", "" ],
+        [ "The quick brown fox jumps over the lazy dog", "T221"],
+      ].forEach(function(test) {
+        assertEqual([ test[1] ], getQueryResults('RETURN SOUNDEX(' + JSON.stringify(test[0]) + ')'), test);
+      });
+    },
+
+    testSoundexInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SOUNDEX("test", "meow", "foo", "bar")');
+    },
+
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test LevenshteinDistance
+// //////////////////////////////////////////////////////////////////////////////
+    testToLevenshteinDistanceValues: function () {
+      [ 
+        [ null, "", 0 ],
+        [ null, null, 0 ],
+        [ "", "", 0 ],
+        [ "", "foobar", 6 ],
+        [ "foobar", "", 6 ],
+        [ "foobar", "foo", 3 ],
+        [ "foo", "foobar", 3 ],
+        [ "or", "of", 1 ],
+        [ "or", "", 2 ],
+        [ "or", "The quick brown fox jumps over the lazy dog", 41 ],
+        [ true, "foobar", 6 ],
+        [ false, "foobar", 5 ],
+        [ "foobar", true, 6 ],
+        [ "foobar", false, 5 ],
+        [ true, true, 0 ],
+        [ false, false, 0 ],
+        [ true, false, 4 ],
+        [ false, true, 4 ],
+        [ "", "", 0 ],
+        [ " ", "", 1 ],
+        [ "", " ", 1 ],
+        [ "der mötör trötet", "der mötör trötet", 0 ],
+        [ "der mötör trötet", "der trötet", 6 ],
+        [ "der mötör trötet", "dertrötet", 7 ],
+        [ "Öööööö", "öö", 4 ],
+        [ "The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox", 13 ],
+        [ "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham..", "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form.", 74 ],
+      ].forEach(function(test) {
+        assertEqual([ test[2] ], getQueryResults('RETURN LEVENSHTEIN_DISTANCE(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ')'), test);
+      });
+    },
+
+    testLevenshteinDistanceInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test", "meow", "foo")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN LEVENSHTEIN_DISTANCE("test", "meow", "foo", "bar")');
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -398,7 +588,95 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
       });
     },
+    
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexSplit
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexSplitValues: function () {
+      [ 
+        [ "hypertext language, programming", "[\s, ]+", true, 1, ["hypertext"] ],
+        [ "hypertext language, programming", "[\s, ]+", true, 2, ["hypertext", "language"] ],
+        [ "hypertext language, programming", "[\s, ]+", true, 3, ["hypertext", "language", "programming"] ],
+        [ "this|is|a|text", "[|]", true, 1, ["this"] ],
+        [ "this|is|a|text", "[|]", true, 2, ["this", "is"] ],
+        [ "this|is|a|text", "[|]", true, 3, ["this", "is", "a"] ],
+        [ "this|is|a|text", "[|]", true, 4, ["this", "is", "a", "text"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 1, ["c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 2, ["c", "c,"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 3, ["c", "c,", "c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 4, ["c", "c,", "c", "c"] ],
+        [ "ca,bc,a,bca,bca,bc", "a,b", true, 5, ["c", "c,", "c", "c", "c"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 1, ["This is a line"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 2, ["This is a line", "\n"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 3, ["This is a line", "\n", " This is yet another lin"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 4, ["This is a line", "\n", " This is yet another lin", "\r"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 5, ["This is a line", "\n", " This is yet another lin", "\r", ""] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 6, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 7, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 8, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r"] ],
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 9, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r", " Mac line "] ],
+      ].forEach(function(test) {
+        assertEqual([ test[4] ], getQueryResults('RETURN REGEX_SPLIT(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ', ' + JSON.stringify(test[3]) + ')'), test);
+      });
+    },
 
+    testRegexSplitInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_SPLIT("test", "meow", "foo", "bar", "git")');
+    },
+
+
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief test RegexMatches
+// //////////////////////////////////////////////////////////////////////////////
+    testToRegexMatchesValues: function () {
+      [ 
+        ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
+        ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
+        ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
+        ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["th1s1s-wayt00_l0ngt0beausername", "^[a-z0-9_-]{3,16}$", true, null ],
+        ["th1s1s-wayt00_l0ngt0beausername", "^[a-z0-9_-]{3,16}$", false, null ],
+        ["myp4ssw0rd", "^[a-z0-9_-]{6,18}$", true, ["myp4ssw0rd"] ],
+        ["myp4ssw0rd", "^[a-z0-9_-]{6,18}$", false, ["myp4ssw0rd"] ],
+        ["myP4ssw0rD", "^[a-z0-9_-]{6,18}$", true, ["myP4ssw0rD"] ],
+        ["myP4ssw0rD", "^[a-z0-9_-]{6,18}$", false, null ],
+        ["mypa$$w0rd", "^[a-z0-9_-]{6,18}$", true, null ],
+        ["mypa$$w0rd", "^[a-z0-9_-]{6,18}$", false, null ],
+        ["#a3c113", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true, ["#a3c113", "a3c113"] ],
+        ["#a3c113", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", false, ["#a3c113", "a3c113"] ],
+        ["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", true, null ],
+        ["#4d82h4", "^#?([a-f0-9]{6}|[a-f0-9]{3})$", false, null ],
+        ["my-title-here", "^[a-z0-9-]+$", true, ["my-title-here"] ],
+        ["my-title-here", "^[a-z0-9-]+$", false, ["my-title-here"] ],
+        ["my-Title-Here", "^[a-z0-9-]+$", true, ["my-Title-Here"] ],
+        ["my-Title-Here", "^[a-z0-9-]+$", false, null ],
+        ["john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", true, ["john@doe.com", "john", "doe.", "om"] ],
+        ["john@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false, ["john@doe.com", "john", "doe.", "om"] ],
+        ["jOhn@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", true, ["jOhn@doe.com", "jOhn", "doe.", "om"] ],
+        ["jOhn@doe.com", "^([a-z0-9_\.-]+)@([\da-z\.-]+)\.([a-z\.]{2,6})$", false, null ],
+        ["http://www.google.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.google.com", "http://", "www.google.", "om", ""] ],
+        ["http://www.google.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", false, ["http://www.google.com", "http://", "www.google.", "om", ""] ],
+        ["http://www.gOoGle.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.gOoGle.com", "http://", "www.gOoGle.", "om", ""] ],
+        ["http://www.gOoGle.com", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, ["http://www.gOoGle.com", "http://", "www.gOoGle.", "om", ""] ],
+        ["http://google.com/some/file!.html", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", true, null ],
+        ["http://google.com/some/file!.html", "^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$", false, null ],
+        ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, ["73.60.124.136"] ],
+        ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, ["73.60.124.136"] ],
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, null ],
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, null ],
+      ].forEach(function(test) {
+        assertEqual([ test[3] ], getQueryResults('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
+      });
+    },
+
+    testRegexMatchesInvalidNumberOfParameters: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test", "meow", "foo", "bar")');
+    },
+    
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test like function, invalid arguments
 // //////////////////////////////////////////////////////////////////////////////

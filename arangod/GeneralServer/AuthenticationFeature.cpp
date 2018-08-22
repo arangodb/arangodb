@@ -36,13 +36,15 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-using namespace arangodb;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Authentication"),
       _userManager(nullptr),
       _authCache(nullptr),
@@ -53,15 +55,11 @@ AuthenticationFeature::AuthenticationFeature(
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(false);
-  startsAfter("Random");
+  startsAfter("BasicsPhase");
+
 #ifdef USE_ENTERPRISE
   startsAfter("Ldap");
 #endif
-}
-
-AuthenticationFeature::~AuthenticationFeature() {
-  delete _userManager;
-  delete _authCache;
 }
 
 void AuthenticationFeature::collectOptions(
@@ -83,7 +81,7 @@ void AuthenticationFeature::collectOptions(
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
-                     "enable or disable authentication for ALL client requests",
+                     "enable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
   options->addOption(
@@ -93,7 +91,7 @@ void AuthenticationFeature::collectOptions(
 
   options->addOption(
       "--server.local-authentication",
-      "enable or disable authentication using the local user database",
+      "enable authentication using the local user database",
       new BooleanParameter(&_localAuthentication));
 
   options->addOption(
@@ -132,22 +130,21 @@ void AuthenticationFeature::prepare() {
 #if USE_ENTERPRISE
     if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
             ->isEnabled()) {
-      _userManager = new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
+      _userManager.reset(new auth::UserManager(std::make_unique<LdapAuthenticationHandler>()));
     } else {
-      _userManager = new auth::UserManager();
+      _userManager.reset(new auth::UserManager());
     }
 #else
-    _userManager = new auth::UserManager();
+    _userManager.reset(new auth::UserManager());
 #endif
   } else {
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
   }
   
   TRI_ASSERT(_authCache == nullptr);
-  _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
+  _authCache.reset(new auth::TokenCache(_userManager.get(), _authenticationTimeout));
 
   std::string jwtSecret = _jwtSecretProgramOption;
-
   if (jwtSecret.empty()) {
     LOG_TOPIC(INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
@@ -187,3 +184,5 @@ void AuthenticationFeature::start() {
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
+
+} // arangodb

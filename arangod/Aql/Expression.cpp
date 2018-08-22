@@ -91,7 +91,6 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _ast(ast),
       _node(node),
       _type(UNPROCESSED),
-      _canThrow(true),
       _canRunOnDBServer(false),
       _isDeterministic(false),
       _willUseV8(false),
@@ -329,7 +328,6 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 }
 
 void Expression::initConstantExpression() {
-  _canThrow = false;
   _canRunOnDBServer = true;
   _isDeterministic = true;
   _willUseV8 = false;
@@ -339,7 +337,6 @@ void Expression::initConstantExpression() {
 }
 
 void Expression::initSimpleExpression() {
-  _canThrow = _node->canThrow();
   _canRunOnDBServer = _node->canRunOnDBServer();
   _isDeterministic = _node->isDeterministic();
   _willUseV8 = _node->willUseV8();
@@ -487,6 +484,9 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
+    case NODE_TYPE_COLLECTION:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in ArangoDB 3.4");
+
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -625,7 +625,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -658,7 +658,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(VelocyPackHelper::EmptyObjectValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   // unordered map to make object keys unique afterwards
@@ -873,8 +873,8 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
-  auto guard = scopeGuard([&destroyParameters, &parameters, &n]() {
-    for (size_t i = 0; i < n; ++i) {
+  auto guard = scopeGuard([&destroyParameters, &parameters]() {
+    for (size_t i = 0; i < destroyParameters.size(); ++i) {
       if (destroyParameters[i]) {
         parameters[i].destroy();
       }
@@ -968,7 +968,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
   mustDestroy = false;
 
   {
-
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
@@ -1098,11 +1097,17 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
         // can use int64
         return AqlValue(AqlValueHintInt(-v));
       }
+    } else if (s.isUInt()) {
+      uint64_t v = s.getNumber<uint64_t>();
+      if (v <= uint64_t(INT64_MAX)) {
+        // can use int64 too
+        int64_t v = s.getNumber<int64_t>();
+        return AqlValue(AqlValueHintInt(-v));
+      }
     }
-    // fallthrouh intentional
+    // fallthrough intentional
   }
 
-  // TODO: handle integer values separately here
   bool failed = false;
   double value = operand.toDouble(trx, failed);
 
@@ -1431,7 +1436,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
   }
 
   // FILTER
@@ -1445,7 +1450,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
   }
 
@@ -1464,7 +1469,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
 
     VPackBuilder builder;
@@ -1506,7 +1511,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
 
     mustDestroy = localMustDestroy; // maybe we need to destroy...

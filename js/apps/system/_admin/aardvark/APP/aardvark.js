@@ -139,6 +139,35 @@ authRouter.post('disableVersionCheck', function (req, res) {
   Disable the version check in web interface
 `);
 
+authRouter.post('/query/profile', function (req, res) {
+  const bindVars = req.body.bindVars;
+  const query = req.body.query;
+  let msg = null;
+
+  try {
+    msg = explainer.profileQuery({
+      query, 
+      bindVars: bindVars || {},
+      options: {
+        colors: false,
+        profile: 2
+      }
+    }, false);
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+
+  res.json({msg});
+})
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional()
+}).required(), 'Query and bindVars to profile.')
+.summary('Explains a query')
+.description(dd`
+  Profiles a query in a more user-friendly
+`);
+
 authRouter.post('/query/explain', function (req, res) {
   const bindVars = req.body.bindVars;
   const query = req.body.query;

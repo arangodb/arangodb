@@ -295,7 +295,7 @@ class UpdateNode : public ModificationNode {
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     // Please do not change the order here without adjusting the
-    // optimizer rule distributeInCluster as well!
+    // optimizer rule distributeInCluster and SingleRemoteOperationNode as well!
     std::vector<Variable const*> v{_inDocVariable};
 
     if (_inKeyVariable != nullptr) {
@@ -371,7 +371,7 @@ class ReplaceNode : public ModificationNode {
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     // Please do not change the order here without adjusting the
-    // optimizer rule distributeInCluster as well!
+    // optimizer rule distributeInCluster and SingleRemoteOperationNode as well!
     std::vector<Variable const*> v{_inDocVariable};
 
     if (_inKeyVariable != nullptr) {

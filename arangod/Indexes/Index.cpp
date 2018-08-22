@@ -48,49 +48,101 @@
 using namespace arangodb;
 
 namespace {
-  bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
-    for (auto const& it : fields) {
-      if (TRI_AttributeNamesHaveExpansion(it)) {
-        return true;
-      }
+
+bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
+  for (auto const& it : fields) {
+    if (TRI_AttributeNamesHaveExpansion(it)) {
+      return true;
     }
-    return false;
+  }
+  return false;
+}
+
+/// @brief set fields from slice
+std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice const& fields,
+                                                                      bool allowExpansion) {
+  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+  if (!fields.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                    "invalid index description");
   }
   
-  /// @brief set fields from slice
-  std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice const& fields,
-                                                                        bool allowExpansion) {
-    std::vector<std::vector<arangodb::basics::AttributeName>> result;
-    if (!fields.isArray()) {
+  size_t const n = static_cast<size_t>(fields.length());
+  result.reserve(n);
+  
+  for (auto const& name : VPackArrayIterator(fields)) {
+    if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                     "invalid index description");
+                                      "invalid index description");
     }
     
-    size_t const n = static_cast<size_t>(fields.length());
-    result.reserve(n);
-    
-    for (auto const& name : VPackArrayIterator(fields)) {
-      if (!name.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                       "invalid index description");
-      }
-      
-      std::vector<arangodb::basics::AttributeName> parsedAttributes;
-      TRI_ParseAttributeString(name.copyString(), parsedAttributes,
-                               allowExpansion);
-      result.emplace_back(std::move(parsedAttributes));
+    std::vector<arangodb::basics::AttributeName> parsedAttributes;
+    TRI_ParseAttributeString(name.copyString(), parsedAttributes,
+                              allowExpansion);
+    result.emplace_back(std::move(parsedAttributes));
+  }
+  return result;
+}
+
+bool canBeNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* access,
+               std::unordered_set<std::string> const& nonNullAttributes) {
+  TRI_ASSERT(op != nullptr);
+  TRI_ASSERT(access != nullptr);
+
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    if (op->getExcludesNull()) {
+      // already proven that the attribute cannot become "null"
+      return false;
     }
-    return result;
+  }
+
+  try {
+    if (nonNullAttributes.find(access->toString()) != nonNullAttributes.end()) {
+      // found an attribute marked as non-null
+      return false;
+    }
+  } catch (...) {
+    // stringification may throw
+  }
+
+  // for everything else we are unusure
+  return true;
+}
+
+void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode const* access,
+                   std::unordered_set<std::string>& nonNullAttributes) {
+  TRI_ASSERT(op != nullptr);
+  TRI_ASSERT(access != nullptr);
+  
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE ||
+      op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+    // non-null marking currently only supported for these node types
+    const_cast<arangodb::aql::AstNode*>(op)->setExcludesNull(true);
+  }
+  // all other node types will be ignored here
+   
+  try { 
+    nonNullAttributes.emplace(access->toString());
+  } catch (...) {
+    // stringification may throw
   }
 }
+
+} // namespace
 
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
 
 Index::Index(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse)
+    bool unique,
+    bool sparse
+)
     : _iid(iid),
       _collection(collection),
       _fields(fields),
@@ -100,8 +152,11 @@ Index::Index(
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
-Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-             VPackSlice const& slice)
+Index::Index(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    VPackSlice const& slice
+)
     : _iid(iid),
       _collection(collection),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
@@ -131,6 +186,8 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
       return 5;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return 6;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
+      return 7;
     default:
       return 42; /* OPST_CIRCUS */
   }
@@ -145,10 +202,7 @@ void Index::validateFields(VPackSlice const& slice) {
   auto fields = slice.get(arangodb::StaticStrings::IndexFields);
 
   if (!fields.isArray()) {
-// FIXME
     return;
-//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-//                                   "invalid index description");
   }
 
   for (auto const& name : VPackArrayIterator(fields)) {
@@ -407,12 +461,11 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
 /// @brief return a contextual string for logging
 std::string Index::context() const {
-  TRI_ASSERT(_collection);
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection->vocbase().name() << "/"
-         << _collection->name() << ", unique: " << (_unique ? "true" : "false")
+         << ", collection: " << _collection.vocbase().name() << "/"
+         << _collection.name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
 
@@ -565,7 +618,6 @@ double Index::selectivityEstimate(StringRef const* extra) const {
     return 1.0;
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return 0;
 }
 
 /// @brief default implementation for implicitlyUnique
@@ -591,11 +643,6 @@ void Index::batchInsert(
 /// @brief default implementation for drop
 int Index::drop() {
   // do nothing
-  return TRI_ERROR_NO_ERROR;
-}
-
-// called after the collection was truncated
-int Index::afterTruncate() {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -678,72 +725,68 @@ bool Index::canUseConditionPart(
       */
     } else if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
-      if (!other->isConstant()) {
-        return false;
-      }
 
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
-          other->isNullValue()) {
-        // != null. now note that a certain attribute cannot become null
-        try {
-          nonNullAttributes.emplace(access->toString());
-        } catch (...) {
-        }
-      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
-        // > null. now note that a certain attribute cannot become null
-        try {
-          nonNullAttributes.emplace(access->toString());
-        } catch (...) {
-        }
-      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
-                 !other->isNullValue()) {
-        // >= non-null. now note that a certain attribute cannot become null
-        try {
-          nonNullAttributes.emplace(access->toString());
-        } catch (...) {
-        }
-      }
-
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
-          op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+        // > anything also excludes "null". now note that this attribute cannot become null
+        // range definitely exludes the "null" value
+        ::markAsNonNull(op, access, nonNullAttributes);
+      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+                 op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
         // <  and  <= are not supported with sparse indexes as this may include
         // null values
-        try {
-          // check if we've marked this attribute as being non-null already
-          if (nonNullAttributes.find(access->toString()) ==
-              nonNullAttributes.end()) {
-            return false;
-          }
-        } catch (...) {
+        if (::canBeNull(op, access, nonNullAttributes)) {
           return false;
         }
+
+        // range definitely exludes the "null" value
+        ::markAsNonNull(op, access, nonNullAttributes);
       }
 
-      if (other->isNullValue() &&
-          (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-           op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
-        // ==  and  >= null are not supported with sparse indexes for the same
-        // reason
-        try {
-          // check if we've marked this attribute as being non-null already
-          if (nonNullAttributes.find(access->toString()) ==
-              nonNullAttributes.end()) {
+      if (other->isConstant()) {
+        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
+            other->isNullValue()) {
+          // != null. now note that a certain attribute cannot become null
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
+        } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
+                   !other->isNullValue()) {
+          // >= non-null. now note that a certain attribute cannot become null
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
+        }
+
+        if (other->isNullValue() &&
+            (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
+          // ==  and  >= null are not supported with sparse indexes for the same
+          // reason
+          if (::canBeNull(op, access, nonNullAttributes)) {
             return false;
           }
-        } catch (...) {
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
+        }
+
+        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+            other->type == arangodb::aql::NODE_TYPE_ARRAY) {
+          size_t const n = other->numMembers();
+
+          for (size_t i = 0; i < n; ++i) {
+            if (other->getMemberUnchecked(i)->isNullValue()) {
+              return false;
+            }
+          }
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
+        }
+      } else {
+        // !other->isConstant()
+        if (::canBeNull(op, access, nonNullAttributes)) {
           return false;
         }
-      }
-
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-          other->type == arangodb::aql::NODE_TYPE_ARRAY) {
-        size_t const n = other->numMembers();
-
-        for (size_t i = 0; i < n; ++i) {
-          if (other->getMemberUnchecked(i)->isNullValue()) {
-            return false;
-          }
-        }
+        
+        // range definitely exludes the "null" value
+        ::markAsNonNull(op, access, nonNullAttributes);
       }
     }
   }
@@ -752,22 +795,35 @@ bool Index::canUseConditionPart(
     // in execution phase, we do not need to check the variable usage again
     return true;
   }
+      
+  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
+    // none of the indexes can use !=, so we can exit here
+    // note that this function may have been called for operator !=. this is
+    // necessary to track the non-null attributes, e.g. attr != null, so we can
+    // note which attributes cannot be null and still use sparse indexes for
+    // these attributes
+    return false;
+  }
 
-  // test if the reference variable is contained on both side of the expression
+  // test if the reference variable is contained on both sides of the expression
   std::unordered_set<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
-      if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
-          variables.find(reference) != variables.end()) {
-        variables.clear();
-        arangodb::aql::Ast::getReferencedVariables(other, variables);
-      }
+    if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+        variables.find(reference) != variables.end()) {
+      variables.clear();
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   } else {
     // a.b == value  OR  a.b IN values
-    arangodb::aql::Ast::getReferencedVariables(other, variables);
+    if (!other->isConstant()) {
+      // don't look for referenced variables if we only access a 
+      // constant value (there will be no variables then...)
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   }
 
   if (variables.find(reference) != variables.end()) {
@@ -886,6 +942,33 @@ void Index::expandInSearchValues(VPackSlice const base,
       }
     }
   }
+}
+
+bool Index::covers(std::unordered_set<std::string> const& attributes) const {
+  // check if we can use covering indexes
+  if (_fields.size() < attributes.size()) {
+    // we will not be able to satisfy all requested projections with this index
+    return false;
+  }
+
+  std::string result;
+  size_t i = 0;
+  for (size_t j = 0; j < _fields.size(); ++j) {
+    bool found = false;
+    result.clear();
+    TRI_AttributeNamesToString(_fields[j], result, false);
+    for (auto const& it : attributes) {
+      if (result == it) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
 }
 
 void Index::warmup(arangodb::transaction::Methods*,

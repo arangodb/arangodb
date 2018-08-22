@@ -65,11 +65,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
  public:
   static DatabaseFeature* DATABASE;
 
- public:
-  explicit DatabaseFeature(application_features::ApplicationServer* server);
+  explicit DatabaseFeature(application_features::ApplicationServer& server);
   ~DatabaseFeature();
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -94,7 +92,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
- public:
   VersionTracker* versionTracker() { return &_versionTracker; }
 
   /// @brief get the ids of all local databases
@@ -134,8 +131,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
   void throwCollectionNotLoadedError(bool value) { _throwCollectionNotLoadedError.store(value); }
-  bool check30Revisions() const { return _check30Revisions == "true" || _check30Revisions == "fail"; }
-  bool fail30Revisions() const { return _check30Revisions == "fail"; }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
@@ -162,14 +157,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
- private:
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
-  std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
-
 
   TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
@@ -186,7 +178,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;
-  
+
   std::vector<std::function<Result()>> _pendingRecoveryCallbacks;
 
   /// @brief a simple version tracker for all database objects

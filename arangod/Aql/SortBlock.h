@@ -42,9 +42,12 @@ class SortBlock final : public ExecutionBlock {
 
   ~SortBlock();
 
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+  /// @brief initializeCursor, could be called multiple times
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  int getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*&, size_t& skipped) override final;
+  std::pair<ExecutionState, Result> getOrSkipSome(
+      size_t atMost, bool skipping, AqlItemBlock*&,
+      size_t& skipped) override final;
 
   /// @brief dosorting
  private:

@@ -27,14 +27,15 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-NonceFeature::NonceFeature(application_features::ApplicationServer* server)
+namespace arangodb {
+
+NonceFeature::NonceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Nonce"), _size(4 * 1024 * 1024) {
   setOptional(true);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -51,3 +52,5 @@ void NonceFeature::prepare() {
 void NonceFeature::unprepare() {
   Nonce::destroy();
 }
+
+} // arangodb

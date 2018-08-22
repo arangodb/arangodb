@@ -42,6 +42,8 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
     return "ClusterRestReplicationHandler";
   }
 
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+
  private:
 
   /// @brief handle a follow command for the replication log
@@ -74,8 +76,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
 
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
-
- private:
 };
 }
 

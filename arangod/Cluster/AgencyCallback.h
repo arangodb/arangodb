@@ -81,7 +81,7 @@ namespace arangodb {
 /// } 
 ///
 /// In this way, the mutex of the condition variable can at the same time
-/// organise mutual exclusion of the callback function and the checking of
+/// organize mutual exclusion of the callback function and the checking of
 /// the termination condition in the main thread.
 /// The wait for condition variable can conveniently be done with the
 /// method executeByCallbackOrTimeout below.

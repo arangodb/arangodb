@@ -29,7 +29,6 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -188,15 +187,19 @@ int ClusterCommResult::getErrorCode() const {
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
     case CL_COMM_ERROR:
-      return TRI_ERROR_INTERNAL;
-
     case CL_COMM_DROPPED:
+      if (errorCode != TRI_ERROR_NO_ERROR) {
+        return errorCode;
+      }
       return TRI_ERROR_INTERNAL;
 
     case CL_COMM_BACKEND_UNAVAILABLE:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
+  if (errorCode != TRI_ERROR_NO_ERROR) {
+    return errorCode;
+  }
   return TRI_ERROR_INTERNAL;
 }
 
@@ -235,7 +238,7 @@ ClusterComm::ClusterComm()
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
-    std::string token = af->tokenCache()->jwtToken();
+    std::string token = af->tokenCache().jwtToken();
     TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
     _jwtAuthorization = "bearer " + token;
@@ -441,8 +444,8 @@ OperationID ClusterComm::asyncRequest(
             << "' at endpoint '" << result->endpoint << "'";
         }
       }
-      bool ret = ((*callback.get())(result.get()));
-      TRI_ASSERT(ret == true);
+      /*bool ret =*/ ((*callback.get())(result.get()));
+      // TRI_ASSERT(ret == true);
     };
     callbacks._onSuccess = [callback, result, this](std::unique_ptr<GeneralResponse> response) {
       {
@@ -451,8 +454,8 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
-      bool ret = ((*callback.get())(result.get()));
-      TRI_ASSERT(ret == true);
+      /*bool ret =*/ ((*callback.get())(result.get()));
+      //TRI_ASSERT(ret == true);
     };
   } else {
     callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
@@ -651,10 +654,6 @@ ClusterCommResult const ClusterComm::wait(
   // CL_COMM_TIMEOUT.
   ClusterCommResult return_result;
   return_result.status = CL_COMM_DROPPED;
-
-  // tell scheduler that we are waiting:
-  JobGuard guard{SchedulerFeature::SCHEDULER};
-  guard.block();
 
   do {
     CONDITION_LOCKER(locker, somethingReceived);
@@ -1175,18 +1174,6 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   result->status = CL_COMM_SUBMITTED;
 
   std::unordered_map<std::string, std::string> headersCopy(headerFields);
-  if (destination.substr(0, 6) == "shard:") {
-    if (CollectionLockState::_noLockHeaders != nullptr) {
-      // LOCKING-DEBUG
-      // std::cout << "Found Nolock header\n";
-      auto it = CollectionLockState::_noLockHeaders->find(result->shardID);
-      if (it != CollectionLockState::_noLockHeaders->end()) {
-        // LOCKING-DEBUG
-        // std::cout << "Found our shard\n";
-        headersCopy["X-Arango-Nolock"] = result->shardID;
-      }
-    }
-  }
   addAuthorization(&headersCopy);
   TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
   headersCopy[StaticStrings::HLCHeader] =

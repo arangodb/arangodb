@@ -24,28 +24,30 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/MutexLocker.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
-using namespace arangodb;
+
 using namespace arangodb::application_features;
+
+namespace arangodb {
 
 AqlFeature* AqlFeature::_AQL = nullptr;
 Mutex AqlFeature::_aqlFeatureMutex;
 
 AqlFeature::AqlFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
-  startsAfter("CacheManager");
-  startsAfter("Cluster");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("QueryRegistry");
-  startsAfter("Scheduler");
-  startsAfter("V8Platform");
+  startsAfter("TraverserEngineRegistry");
 }
 
 AqlFeature* AqlFeature::lease() {
@@ -61,7 +63,7 @@ AqlFeature* AqlFeature::lease() {
   return aql;
 }
 
-void AqlFeature::unlease() {
+void AqlFeature::unlease() noexcept {
   MUTEX_LOCKER(locker, AqlFeature::_aqlFeatureMutex);
   AqlFeature* aql = AqlFeature::_AQL;
   TRI_ASSERT(aql != nullptr);
@@ -112,3 +114,4 @@ void AqlFeature::stop() {
   AqlFeature::_AQL = nullptr;
 }
 
+} // arangodb

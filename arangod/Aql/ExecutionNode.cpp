@@ -85,6 +85,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ExecutionNode::REMOTESINGLE), "SingleRemoteOperationNode"},
 #ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
 #endif
@@ -92,9 +93,9 @@ std::unordered_map<int, std::string const> const typeNames{
 
 } // namespace
 
-/// @brief returns the type name of the node
-std::string const& ExecutionNode::getTypeString() const {
-  auto it = ::typeNames.find(static_cast<int>(getType()));
+/// @brief resolve nodeType to a string.
+std::string const& ExecutionNode::getTypeString(NodeType type) {
+  auto it = ::typeNames.find(static_cast<int>(type));
 
   if (it != ::typeNames.end()) {
     return (*it).second;
@@ -102,6 +103,12 @@ std::string const& ExecutionNode::getTypeString() const {
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                  "missing type in TypeNames");
+}
+
+
+/// @brief returns the type name of the node
+std::string const& ExecutionNode::getTypeString() const {
+  return getTypeString(getType());
 }
 
 void ExecutionNode::validateType(int type) {
@@ -289,6 +296,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+    case REMOTESINGLE:
+      return new SingleRemoteOperationNode(plan, slice);
 #ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
@@ -442,7 +451,7 @@ ExecutionNode* ExecutionNode::cloneHelper(
     // now assign a new id to the cloned node, otherwise it will fail
     // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
-    
+
     // cloning with properties will only work if we clone a node into
     // a different plan
     TRI_ASSERT(!withProperties);
@@ -1149,10 +1158,29 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
+  case ExecutionNode::REMOTESINGLE: {
+      depth++;
+      auto ep = ExecutionNode::castTo<SingleRemoteOperationNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      auto vars = ep->getVariablesSetHere();
+      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId =
+          static_cast<RegisterId>(vars.size() + nrRegs.back());
+      nrRegs.emplace_back(registerId);
+
+      for (auto& it : vars) {
+        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
+      break;
+  }
 
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep);
 
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
@@ -1523,8 +1551,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan, plan->getAst(), base)),
-      _canRemoveIfThrows(false) {}
+      _expression(new Expression(plan, plan->getAst(), base)) {}
 
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
@@ -1536,7 +1563,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
-  nodes.add("canThrow", VPackValue(_expression->canThrow()));
+  nodes.add("canThrow", VPackValue(false));
 
   if (_conditionVariable != nullptr) {
     nodes.add(VPackValue("conditionVariable"));
@@ -1560,9 +1587,9 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             // built-in function, not seen before
             nodes.openObject();
             nodes.add("name", VPackValue(func->name));
-            nodes.add("isDeterministic", VPackValue(func->isDeterministic));
-            nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
-            nodes.add("usesV8", VPackValue(false));
+            nodes.add("isDeterministic", VPackValue(func->hasFlag(Function::Flags::Deterministic)));
+            nodes.add("canRunOnDBServer", VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServer)));
+            nodes.add("usesV8", VPackValue(func->implementation == nullptr));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1612,7 +1639,6 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
 
   auto c = std::make_unique<CalculationNode>(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
-  c->_canRemoveIfThrows = _canRemoveIfThrows;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1848,33 +1874,12 @@ void SubqueryNode::getVariablesUsedHere(
   }
 }
 
-/// @brief can the node throw? We have to find whether any node in the
-/// subquery plan can throw.
-struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
-  bool _canThrow;
-
-  CanThrowFinder() : _canThrow(false) {}
-  ~CanThrowFinder() = default;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
-  }
-
-  bool before(ExecutionNode* node) override final {
-    if (node->canThrow()) {
-      _canThrow = true;
-      return true;
-    }
-    return false;
-  }
-};
-
 /// @brief is the node determistic?
-struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
+struct DeterministicFinder final : public WalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
 
-  IsDeterministicFinder() : _isDeterministic(true) {}
-  ~IsDeterministicFinder() {}
+  DeterministicFinder() : _isDeterministic(true) {}
+  ~DeterministicFinder() {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
@@ -1889,14 +1894,8 @@ struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-bool SubqueryNode::canThrow() {
-  CanThrowFinder finder;
-  _subquery->walk(finder);
-  return finder._canThrow;
-}
-
 bool SubqueryNode::isDeterministic() {
-  IsDeterministicFinder finder;
+  DeterministicFinder finder;
   _subquery->walk(finder);
   return finder._isDeterministic;
 }

@@ -34,18 +34,18 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class EnumerateListBlock : public ExecutionBlock {
+class EnumerateListBlock final : public ExecutionBlock {
  public:
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
   ~EnumerateListBlock();
 
-  // here we release our docs from this collection
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
-  size_t skipSome(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
   // cppcheck-suppress *
@@ -64,6 +64,9 @@ class EnumerateListBlock : public ExecutionBlock {
   // the register index containing the inVariable of the
   // EnumerateListNode
   RegisterId _inVarRegId;
+
+  // @brief number of requests in flight in the moment we hit WAITING
+  size_t _inflight;
 };
 
 }

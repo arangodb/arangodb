@@ -93,6 +93,9 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType.clear();
   _restrictCollections.clear();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _force32mode = false; 
+#endif
 }
 
 /// @brief get a VelocyPack representation
@@ -137,8 +140,8 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
-  for (auto& it : _restrictCollections) {
-    builder.add(VPackValue(it.first));
+  for (std::string const& it : _restrictCollections) {
+    builder.add(VPackValue(it));
   }
   builder.close();  // restrictCollections
 
@@ -198,12 +201,13 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     if (value.isString()) {
       configuration._jwt = value.copyString();
     } else {
+      // use internal JWT token in any cluster setup
       auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
       if (cluster->isEnabled()) {
         auto af = AuthenticationFeature::instance();
         if (af != nullptr) {
           // nullptr happens only during controlled shutdown
-          configuration._jwt = af->tokenCache()->jwtToken();
+          configuration._jwt = af->tokenCache().jwtToken();
         }
       }
     }
@@ -301,7 +305,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
     for (auto const& it : VPackArrayIterator(value)) {
       if (it.isString()) {
-        configuration._restrictCollections.emplace(it.copyString(), true);
+        configuration._restrictCollections.emplace(it.copyString());
       }
     }
   }

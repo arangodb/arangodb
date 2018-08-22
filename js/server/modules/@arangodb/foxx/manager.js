@@ -47,8 +47,7 @@ const isZipBuffer = require('@arangodb/util').isZipBuffer;
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
-  '/_api/foxx', // Foxx management API.
-  '/_api/gharial' // General_Graph API.
+  '/_api/foxx' // Foxx management API.
 ];
 
 const GLOBAL_SERVICE_MAP = new Map();
@@ -1075,7 +1074,7 @@ exports._mountPoints = getMountPoints;
 exports._isClusterReady = isClusterReadyForBusiness;
 
 // -------------------------------------------------
-// Exports from foxx utils module
+// Exports from Foxx utils module
 // -------------------------------------------------
 
 exports.getServiceDefinition = utils.getServiceDefinition;
@@ -1084,7 +1083,7 @@ exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 // -------------------------------------------------
-// Exports from foxx store module
+// Exports from Foxx store module
 // -------------------------------------------------
 
 exports.available = store.available;

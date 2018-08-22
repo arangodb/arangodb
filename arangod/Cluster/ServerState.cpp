@@ -57,6 +57,7 @@ ServerState::ServerState()
     : _role(RoleEnum::ROLE_UNDEFINED),
       _lock(),
       _id(),
+      _shortId(0),
       _javaScriptStartupPath(),
       _address(),
       _host(),
@@ -162,7 +163,10 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
 ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
   if (value == "SINGLE") {
     return ROLE_SINGLE;
-  } else if (value == "PRIMARY") {
+  } else if (value == "PRIMARY" || value == "DBSERVER") {
+    // note: DBSERVER is an alias for PRIMARY
+    // internally and in all API values returned we will still use PRIMARY
+    // for compatibility reasons
     return ROLE_PRIMARY;
   } else if (value == "COORDINATOR") {
     return ROLE_COORDINATOR;
@@ -299,6 +303,10 @@ bool ServerState::unregister() {
                                        AgencySimpleOperationType::DELETE_OP));
   operations.push_back(AgencyOperation("Current/" + agencyListKey + "/" + id,
                                        AgencySimpleOperationType::DELETE_OP));
+  operations.push_back(AgencyOperation(
+      "Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
+  operations.push_back(AgencyOperation(
+      "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
 
   AgencyWriteTransaction unregisterTransaction(operations);
   AgencyComm comm;
@@ -478,12 +486,14 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
   std::string currentUrl = "Current/" + agencyListKey + "/" + id;
 
   AgencyWriteTransaction preg(
-    AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+    {AgencyOperation(planUrl, AgencyValueOperationType::SET, builder.slice()),
+     AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
     AgencyPrecondition(planUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(preg, 0.0);
   AgencyWriteTransaction creg(
-    AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+    {AgencyOperation(currentUrl, AgencyValueOperationType::SET, builder.slice()),
+     AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP)},
     AgencyPrecondition(currentUrl, AgencyPrecondition::Type::EMPTY, true));
   // ok to fail..if it failed we are already registered
   comm.sendTransactionWithFailover(creg, 0.0);

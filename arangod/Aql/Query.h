@@ -25,11 +25,9 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
@@ -38,14 +36,19 @@
 #include "Aql/QueryString.h"
 #include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace transaction {
 class Context;
@@ -54,6 +57,10 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+}
+
+namespace graph {
+class Graph;
 }
 
 namespace aql {
@@ -66,11 +73,15 @@ class Query;
 struct QueryProfile;
 class QueryRegistry;
 
-/// @brief equery part
+/// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
 class Query {
+
+ private:
+  enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+
  private:
   Query(Query const&) = delete;
   Query& operator=(Query const&) = delete;
@@ -103,6 +114,14 @@ class Query {
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
+  
+/// @brief whether or not the query is killed
+  bool killed() const;
+
+  /// @brief set the query to killed
+  void kill();
+
+  void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
 
@@ -137,12 +156,6 @@ class Query {
 
   /// @brief return the current runtime of the query
   double runTime() const { return runTime(TRI_microtime()); }
-
-  /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
-
-  /// @brief set the query to killed
-  inline void killed(bool) { _killed = true; }
 
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
@@ -197,16 +210,20 @@ class Query {
   void prepare(QueryRegistry*, uint64_t queryHash);
 
   /// @brief execute an AQL query
-  QueryResult execute(QueryRegistry*);
+  aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
+
+  /// @brief execute an AQL query and block this thread in case we
+  ///        need to wait.
+  QueryResult executeSync(QueryRegistry*);
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
+  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
-  void finalize(QueryResult&);
+  ExecutionState finalize(QueryResult&);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -222,8 +239,6 @@ class Query {
 
   /// @brief inject the engine
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
-
-  void releaseEngine();
 
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
@@ -270,7 +285,7 @@ class Query {
   std::string getStateString() const;
 
   /// @brief look up a graph in the _graphs collection
-  Graph const* lookupGraphByName(std::string const& name);
+  graph::Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
@@ -279,6 +294,14 @@ class Query {
 
   QueryExecutionState::ValueType state() const { return _state; }
 
+  /// @brief return the query's shared state
+  std::shared_ptr<SharedQueryState> sharedState() const { 
+    return _sharedState;
+  }
+  
+  /// @brief pass-thru a resolver object from the transaction context
+  CollectionNameResolver const& resolver();
+  
  private:
   /// @brief initializes the query
   void init();
@@ -288,8 +311,6 @@ class Query {
   /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
   ExecutionPlan* preparePlan();
-
-  void setExecutionTime();
 
   /// @brief log a query
   void log();
@@ -306,14 +327,18 @@ class Query {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query
-  void cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  /// @brief cleanup plan and engine for current query. synchronous variant,
+  /// will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
+
+  /// @brief cleanup plan and engine for current query can issue WAITING
+  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
-
+  
   /// @brief returns the next query id
-  static TRI_voc_tick_t NextId();
+  static TRI_voc_tick_t nextId();
 
  public:
   constexpr static uint64_t DontCache = 0;
@@ -338,7 +363,7 @@ class Query {
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, Graph*> _graphs;
+  std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief the actual query string
   QueryString _queryString;
@@ -405,6 +430,20 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
+
+  /// Create the result in this builder. It is also used to determine
+  /// if we are continuing the query or of we called
+  std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
+
+  /// Options for _resultBuilder. Optimally, its lifetime should be linked to
+  /// it, but this is hard to do.
+  std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
+
+  /// Track in which phase of execution we are, in order to implement repeatability.
+  ExecutionPhase _executionPhase;
+
+  /// @brief shared state 
+  std::shared_ptr<SharedQueryState> _sharedState;
 };
 
 }

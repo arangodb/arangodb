@@ -91,7 +91,7 @@ uint8_t const* Builder::findAttrName(uint8_t const* base, uint64_t& len) {
 
 void Builder::sortObjectIndexShort(uint8_t* objBase,
                                    std::vector<ValueLength>& offsets) const {
-  auto cmp = [&](ValueLength a, ValueLength b) -> bool {
+  std::sort(offsets.begin(), offsets.end(), [&objBase](ValueLength a, ValueLength b) -> bool {
     uint8_t const* aa = objBase + a;
     uint8_t const* bb = objBase + b;
     if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
@@ -108,8 +108,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
       int c = memcmp(aa, bb, checkOverflow(m));
       return (c < 0 || (c == 0 && lena < lenb));
     }
-  };
-  std::sort(offsets.begin(), offsets.end(), cmp);
+  });
 }
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
@@ -810,6 +809,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
     uint64_t v = pair.getSize();
     reserve(9 + v);
     appendUInt(v, 0xbf);
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
     advance(v);
     return _start + oldPos;
@@ -825,6 +825,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
       reserve(1 + size);
       appendByteUnchecked(static_cast<uint8_t>(0x40 + size));
     }
+    VELOCYPACK_ASSERT(pair.getStart() != nullptr);
     memcpy(_start + _pos, pair.getStart(), checkOverflow(size));
     advance(size);
     return _start + oldPos;

@@ -50,7 +50,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
   
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
-    for (std::pair<size_t, ExecutionStats::Node> const& pair : nodes) {
+    for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
       builder.openObject();
       builder.add("id", VPackValue(pair.first));
       builder.add("calls", VPackValue(pair.second.calls));

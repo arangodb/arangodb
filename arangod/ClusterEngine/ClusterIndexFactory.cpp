@@ -44,7 +44,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   emplaceFactory(
     "edge",
     [](
-        LogicalCollection* collection,
+        LogicalCollection& collection,
         velocypack::Slice const& definition,
         TRI_idx_iid_t id,
         bool isClusterConstructor
@@ -68,7 +68,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   emplaceFactory(
     "primary",
     [](
-        LogicalCollection* collection,
+        LogicalCollection& collection,
         velocypack::Slice const& definition,
         TRI_idx_iid_t id,
         bool isClusterConstructor
@@ -106,7 +106,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
     emplaceFactory(
       typeStr,
       [type](
-          LogicalCollection* collection,
+          LogicalCollection& collection,
           velocypack::Slice const& definition,
           TRI_idx_iid_t id,
           bool isClusterConstructor
@@ -120,55 +120,29 @@ ClusterIndexFactory::ClusterIndexFactory() {
       }
     );
   }
-
-  // both engines support all types right now
-  static const std::vector<std::string> supported_norm = {
-    "edge",
-    "fulltext",
-    "geo",
-    "geo1",
-    "geo2",
-    "hash",
-    "persistent",
-    "primary",
-    "skiplist"
-  };
-
-  // delegate normalization to the 'actualEngine'
-  // FIXME TODO is it actually correct to tie the definition in the Agency to the DBServer engine?
-  for (auto& typeStr: supported_norm) {
-    emplaceNormalizer(
-      typeStr,
-      [](
-         velocypack::Builder& normalized,
-         velocypack::Slice definition,
-         bool isCreation
-      ) -> Result {
-        auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-
-        if (!ce) {
-          return TRI_ERROR_INTERNAL;
-        }
-
-        auto* ae = ce->actualEngine();
-
-        if (!ae) {
-          return TRI_ERROR_INTERNAL;
-        }
-
-        normalized.clear(); // enhanceIndexDefinition(...) expects an empty open object
-
-        return ae->indexFactory().enhanceIndexDefinition(
-          definition, normalized, isCreation, true
-        );
-      }
-    );
+}
+  
+Result ClusterIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
+                                                   VPackBuilder& normalized,
+                                                   bool isCreation,
+                                                   bool isCoordinator) const {
+  auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  
+  if (!ce) {
+    return TRI_ERROR_INTERNAL;
   }
+  auto* ae = ce->actualEngine();
+  if (!ae) {
+    return TRI_ERROR_INTERNAL;
+  }
+  return ae->indexFactory().enhanceIndexDefinition(definition, normalized,
+                                                   isCreation, isCoordinator);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
+) const {
   // create primary index
   VPackBuilder input;
   input.openObject();
@@ -188,8 +162,9 @@ void ClusterIndexFactory::fillSystemIndexes(
 
   systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
       0, col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
+
   // create edges indexes
-  if (col->type() == TRI_COL_TYPE_EDGE) {
+  if (col.type() == TRI_COL_TYPE_EDGE) {
     // first edge index
     input.clear();
     input.openObject();
@@ -198,9 +173,11 @@ void ClusterIndexFactory::fillSystemIndexes(
     input.add(StaticStrings::IndexId, VPackValue("1"));
     input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
+
     if (ct == ClusterEngineType::MMFilesEngine) {
       input.add(VPackValue(StaticStrings::ToString));
     }
+
     input.close();
     input.add(StaticStrings::IndexUnique, VPackValue(false));
     input.add(StaticStrings::IndexSparse, VPackValue(false));
@@ -228,8 +205,10 @@ void ClusterIndexFactory::fillSystemIndexes(
 }
 
 void ClusterIndexFactory::prepareIndexes(
-    LogicalCollection* col, VPackSlice const& indexesSlice,
-    std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
   TRI_ASSERT(indexesSlice.isArray());
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {

@@ -48,10 +48,9 @@ namespace arangodb {
 namespace iresearch {
 
 class AsyncMeta;
-class IResearchViewSyncWorker; // forward declaration
 class PrimaryKeyIndexReader;
 
-class IResearchViewDBServer final: public arangodb::LogicalView {
+class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
  public:
   virtual ~IResearchViewDBServer();
 
@@ -113,9 +112,8 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ) const override;
 
  protected:
-  virtual arangodb::Result appendVelocyPack(
+  virtual arangodb::Result appendVelocyPackDetailed(
     arangodb::velocypack::Builder& builder,
-    bool detailed,
     bool forPersistence
   ) const override;
 
@@ -123,7 +121,6 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
   std::shared_ptr<AsyncMeta> _meta; // the shared view configuration (never null!!!)
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
-  std::shared_ptr<IResearchViewSyncWorker> _syncWorker; // object used for sync/consolidate/cleanup of data-stores (never null!!!)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,

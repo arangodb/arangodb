@@ -425,7 +425,8 @@ NS_BEGIN(iresearch)
 Field::Field(Field&& rhs)
   : _features(rhs._features),
     _analyzer(std::move(rhs._analyzer)),
-    _name(std::move(rhs._name)) {
+    _name(std::move(rhs._name)),
+    _storeValues(std::move(rhs._storeValues)) {
   rhs._features = nullptr;
 }
 
@@ -434,6 +435,7 @@ Field& Field::operator=(Field&& rhs) {
     _features = rhs._features;
     _analyzer = std::move(rhs._analyzer);
     _name = std::move(rhs._name);
+    _storeValues = std::move(rhs._storeValues);
     rhs._features = nullptr;
   }
 
@@ -523,6 +525,8 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
 
 bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
+
+  _value._storeValues = context._storeValues;
 
   switch (value.type()) {
     case VPackValueType::None:

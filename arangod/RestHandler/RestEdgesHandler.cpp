@@ -26,6 +26,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/Variable.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
@@ -90,7 +91,6 @@ void RestEdgesHandler::readCursor(
 
   cursor->all(cb);
 }
-
 
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
@@ -203,6 +203,10 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
+  // find and load collection given by name or identifier
+  auto trx = createTransaction(collectionName, AccessMode::Type::READ);
+
+
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
     rest::ResponseCode responseCode;
@@ -212,6 +216,7 @@ bool RestEdgesHandler::readEdges() {
     int res = getFilteredEdgesOnCoordinator(
       _vocbase.name(),
       collectionName,
+      *(trx.get()),
       vertexString,
       direction,
       responseCode,
@@ -232,15 +237,11 @@ bool RestEdgesHandler::readEdges() {
     return true;
   }
 
-  // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
-
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
-  Result res = trx.begin();
+  Result res = trx->begin();
 
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
@@ -258,14 +259,13 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  auto collection = trx.documentCollection();
-  ManagedDocumentResult mmdr;
+  auto collection = trx->documentCollection();
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&] (LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(&trx, token, mmdr)) {
-        resultBuilder.add(VPackSlice(mmdr.vpack()));
-      }
+      collection->readDocumentWithCallback(trx.get(), token, [&resultBuilder](LocalDocumentId const&, VPackSlice doc) {
+        resultBuilder.add(doc);
+      });
       scannedIndex++;
       // Mark edges we find
       foundTokens.emplace(token);
@@ -273,10 +273,10 @@ bool RestEdgesHandler::readEdges() {
   };
 
   // NOTE: collectionName is the shard-name in DBServer case
-  bool ok = getEdgesForVertex(startVertex, collectionName, direction, trx, cb);
+  bool ok = getEdgesForVertex(startVertex, collectionName, direction, *(trx.get()), cb);
   resultBuilder.close();
 
-  res = trx.finish(res);
+  res = trx->finish(res);
   if (!ok) {
     // Error has been built internally
     return false;
@@ -286,7 +286,7 @@ bool RestEdgesHandler::readEdges() {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
-      collectionName = trx.resolver()->getCollectionName(trx.cid());
+      collectionName = trx->resolver()->getCollectionName(trx->cid());
     }
     generateTransactionError(collectionName, res, "");
     return false;
@@ -302,7 +302,7 @@ bool RestEdgesHandler::readEdges() {
 
   // and generate a response
   generateResult(rest::ResponseCode::OK, std::move(buffer),
-                 trx.transactionContext());
+                 trx->transactionContext());
 
   return true;
 }
@@ -350,6 +350,9 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
+  // find and load collection given by name or identifier
+  auto trx = createTransaction(collectionName, AccessMode::Type::READ);
+
   if (ServerState::instance()->isCoordinator()) {
     rest::ResponseCode responseCode;
     VPackBuffer<uint8_t> buffer;
@@ -363,6 +366,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         int res = getFilteredEdgesOnCoordinator(
           _vocbase.name(),
           collectionName,
+          *(trx.get()),
           vertexString,
           direction,
           responseCode,
@@ -384,15 +388,11 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return true;
   }
 
-  // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
-
   // .............................................................................
   // inside read transaction
   // .............................................................................
 
-  Result res = trx.begin();
+  Result res = trx->begin();
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
     return false;
@@ -409,14 +409,13 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.add(VPackValue("edges"));  // only key
   resultBuilder.openArray();
 
-  auto collection = trx.documentCollection();
-  ManagedDocumentResult mmdr;
+  auto collection = trx->documentCollection();
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&] (LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(&trx, token, mmdr)) {
-        resultBuilder.add(VPackSlice(mmdr.vpack()));
-      }
+      collection->readDocumentWithCallback(trx.get(), token, [&resultBuilder](LocalDocumentId const&, VPackSlice doc) {
+        resultBuilder.add(doc);
+      });
       scannedIndex++;
       // Mark edges we find
       foundTokens.emplace(token);
@@ -428,17 +427,17 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
       std::string startVertex = it.copyString();
 
       // We ignore if this fails
-      getEdgesForVertex(startVertex, collectionName, direction, trx, cb);
+      getEdgesForVertex(startVertex, collectionName, direction, *(trx.get()), cb);
     }
   }
   resultBuilder.close();
 
-  res = trx.finish(res);
+  res = trx->finish(res);
   if (!res.ok()) {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
-      collectionName = trx.resolver()->getCollectionName(trx.cid());
+      collectionName = trx->resolver()->getCollectionName(trx->cid());
     }
     generateTransactionError(collectionName, res, "");
     return false;
@@ -454,7 +453,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   // and generate a response
   generateResult(rest::ResponseCode::OK, std::move(buffer),
-                 trx.transactionContext());
+                 trx->transactionContext());
 
   return true;
 }

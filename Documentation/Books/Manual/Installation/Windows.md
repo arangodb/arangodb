@@ -100,7 +100,7 @@ Select if you want the installer to create Desktop Icons that let you:
 If you are upgrading ArangoDB from an earlier version you need to copy your old
 database directory [to the new default paths](#custom-install-paths). Upgrading
 will keep your old data, password and choice of storage engine as it is.
-Switching to the RocksDB storage engine requires a
+Switching to the RocksDB storage engine requires an
 [export](../Programs/Arangoexport/README.md) and
 [reimport](../Programs/Arangoimport/README.md) of your data.
 

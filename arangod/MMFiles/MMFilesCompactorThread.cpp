@@ -325,7 +325,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
       auto physical = static_cast<MMFilesCollection*>(context._collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
       bool const useDeadlockDetector = false;
-      int res = physical->lockRead(useDeadlockDetector, trx->tid(), 86400.0);
+      int res = physical->lockRead(useDeadlockDetector, trx->state(), 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -336,7 +336,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        physical->unlockRead(useDeadlockDetector, trx->tid());
+        physical->unlockRead(useDeadlockDetector, trx->state());
       }
     }
 
@@ -437,7 +437,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-    collection,
+    *collection,
     AccessMode::Type::WRITE
   );
 
@@ -688,7 +688,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   size_t start = physical->getNextCompactionStartIndex();
 
   // get number of documents from collection
-  uint64_t const numDocuments = getNumberOfDocuments(collection);
+  uint64_t const numDocuments = getNumberOfDocuments(*collection);
 
   // get maximum size of result file
   uint64_t maxSize = MMFilesCompactionFeature::COMPACTOR->maxSizeFactor() * static_cast<MMFilesCollection*>(collection->getPhysical())->journalSize();
@@ -874,7 +874,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 }
 
 MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t& vocbase)
-    : Thread("Compactor"), _vocbase(vocbase) {}
+    : Thread("MMFilesCompactor"), _vocbase(vocbase) {}
 
 MMFilesCompactorThread::~MMFilesCompactorThread() { shutdown(); }
 
@@ -1022,7 +1022,9 @@ void MMFilesCompactorThread::run() {
 }
 
 /// @brief determine the number of documents in the collection
-uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
+uint64_t MMFilesCompactorThread::getNumberOfDocuments(
+    LogicalCollection const& collection
+) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),
     collection,
@@ -1042,8 +1044,8 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collect
   if (!res.ok()) {
     return 16384; // assume some positive value 
   }
-   
-  return collection->numberDocuments(&trx);
+
+  return collection.numberDocuments(&trx);
 }
 
 /// @brief write a copy of the marker into the datafile
@@ -1057,4 +1059,3 @@ int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker
 
   return compactor->writeElement(*result, marker);
 }
-

@@ -74,11 +74,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   auto engine = query->engine();
 
-  {
-    auto cpyLockedShards =
-        std::make_unique<std::unordered_set<std::string>>(lockedShards);
-    engine->setLockedShards(cpyLockedShards.release());
-  }
+  query->trx()->setLockedShards(lockedShards);
 
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
@@ -156,12 +152,12 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   TRI_ASSERT(_engineStack.top() == 0);
 
   std::vector<uint64_t> coordinatorQueryIds{};
-  auto cleanup = [&]() {
+  // destroy all query snippets in case of error
+  auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
     for (auto const& it : coordinatorQueryIds) {
       registry->destroy(dbname, it, TRI_ERROR_INTERNAL);
     }
-  };
-  TRI_DEFER(cleanup());
+  });
 
   Query* localQuery = query;
   try {
@@ -171,8 +167,10 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);
         if (localQuery == nullptr) {
+          // clone() cannot return nullptr, but some mocks seem to do it
           return ExecutionEngineResult(TRI_ERROR_INTERNAL, "cannot clone query");
         }
+        TRI_ASSERT(localQuery != nullptr);
       }
       try {
         auto res = info.buildEngine(localQuery, registry, dbname,
@@ -209,6 +207,6 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
 
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
-  coordinatorQueryIds.clear();
+  guard.cancel();
   return ExecutionEngineResult(query->engine());
 }

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestExportHandler.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -61,8 +62,7 @@ RestStatus RocksDBRestExportHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    createCursor();
-    return RestStatus::DONE;
+    return createCursor();
   }
 
   if (type == rest::RequestType::PUT) {
@@ -198,13 +198,13 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
 /// @brief was docuBlock JSF_post_api_export
 ////////////////////////////////////////////////////////////////////////////////
 
-void RocksDBRestExportHandler::createCursor() {
+RestStatus RocksDBRestExportHandler::createCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/export");
-    return;
+    return RestStatus::DONE;
   }
 
   // extract the cid
@@ -216,16 +216,17 @@ void RocksDBRestExportHandler::createCursor() {
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting "
                   "/_api/export?collection=<identifier>");
-    return;
+    return RestStatus::DONE;
   }
 
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
-    return;
+    return RestStatus::DONE;
   }
 
   VPackBuilder queryBody = buildQueryOptions(name, body);
-  RestCursorHandler::processQuery(queryBody.slice());
+  TRI_ASSERT(_query == nullptr);
+  return registerQueryOrCursor(queryBody.slice());
 }

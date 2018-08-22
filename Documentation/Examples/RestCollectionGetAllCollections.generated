@@ -1,6 +1,6 @@
-shell> curl --dump - http://localhost:8529/_api/collection
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/collection</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -15,6 +15,14 @@ x-content-type-options: nosniff
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_aqlfunctions"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"15"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_routing"</span> 
     }, 
     { 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"32"</span>, 
@@ -33,10 +41,26 @@ x-content-type-options: nosniff
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_users"</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"42"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_apps"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"110"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h6F41A1166091/110"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"3"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_iresearch_analyzers"</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_iresearch_analyzers"</span> 
     }, 
@@ -65,20 +89,12 @@ x-content-type-options: nosniff
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_jobs"</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"85"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics15"</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_graphs"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"43"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_apps"</span> 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_statistics15"</span> 
     }, 
     { 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"48"</span>, 
@@ -89,7 +105,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_appbundles"</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"78"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"75"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statisticsRaw"</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
@@ -97,7 +113,15 @@ x-content-type-options: nosniff
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_statisticsRaw"</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"84"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_graphs"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"80"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics"</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
@@ -105,36 +129,12 @@ x-content-type-options: nosniff
       <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_statistics"</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"15"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_routing"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"89"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics15"</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_statistics15"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"103"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"101"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD71802E03B2/103"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"109"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD71802E03B2/109"</span> 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h6F41A1166091/101"</span> 
     } 
   ] 
 }

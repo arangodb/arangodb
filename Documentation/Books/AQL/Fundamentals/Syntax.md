@@ -54,7 +54,8 @@ Keywords
 On the top level, AQL offers the following operations:
 - `FOR`: array iteration
 - `RETURN`: results projection
-- `FILTER`: results filtering
+- `FILTER`: non-view results filtering
+- `SEARCH`: view results filtering
 - `SORT`: result sorting
 - `LIMIT`: result slicing
 - `LET`: variable assignment

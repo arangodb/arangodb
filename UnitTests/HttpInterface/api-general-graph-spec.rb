@@ -159,7 +159,6 @@ describe ArangoDB do
         return doc
       end
 
-
       def create_edge (waitForSync, graph_name, collection, from, to, body, options = {})
         cmd = edge_endpoint(graph_name, collection)
         cmd = cmd + "?waitForSync=#{waitForSync}"
@@ -282,6 +281,7 @@ describe ArangoDB do
             second_def = { "collection" => bought_collection, "from" => [user_collection], "to" => [product_collection] }
             doc = additional_edge_definition(sync, graph_name, second_def )
             edge_definition.push(second_def)
+            edge_definition = edge_definition.sort_by { |d| [ -d["collection"] ] }
 
             doc.code.should eq(202)
             doc.parsed_response['error'].should eq(false)
@@ -848,7 +848,10 @@ describe ArangoDB do
           it "can not replace a non existing edge" do
             key = "unknownKey"
 
-            doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced"})
+            # Added _from and _to, because otherwise a 400 might conceal the
+            # 404. Another test checking that missing _from or _to trigger
+            # errors was added to api-gharial-spec.js.
+            doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced", "_from" => "1", "_to" => "2"})
             doc.code.should eq(404)
             doc.parsed_response['error'].should eq(true)
             doc.parsed_response['errorMessage'].should include("document not found")
@@ -1169,11 +1172,18 @@ describe ArangoDB do
               doc.parsed_response['code'].should eq(404)
             end
 
+            def check400 (doc)
+              doc.code.should eq(400)
+              doc.parsed_response['error'].should eq(true)
+              doc.parsed_response['code'].should eq(400)
+              puts doc.parsed_response['errorMessage']
+              doc.parsed_response['errorMessage'].should include("edge attribute missing or invalid")
+            end
+
             def check404Edge (doc)
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1930)
               doc.parsed_response['errorMessage'].should eq("edge collection not used in graph")
-
             end
 
             def check404Vertex (doc)
@@ -1181,10 +1191,23 @@ describe ArangoDB do
               doc.parsed_response['errorNum'].should eq(1926)
             end
 
+            def check400VertexUnused (doc)
+              doc.parsed_response['errorNum'].should eq(1928)
+              doc.parsed_response['error'].should eq(true)
+              doc.parsed_response['code'].should eq(400)
+              puts doc.parsed_response['errorMessage']
+              doc.parsed_response['errorMessage'].should include("not in orphan collection")
+            end
+
             def check404CRUD (doc)
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1203)
-              doc.parsed_response['errorMessage'].should eq("collection or view not found")
+              doc.parsed_response['errorMessage'].should start_with("collection or view not found: ")
+            end
+
+            def check400CRUD (doc)
+              check400(doc)
+              doc.parsed_response['errorNum'].should eq(1233)
             end
 
             it "change edge definition" do
@@ -1197,7 +1220,8 @@ describe ArangoDB do
             end
 
             it "delete vertex collection" do
-              check404Vertex(delete_vertex_collection( sync, graph_name, unknown_name))
+              # this checks if a not used vertex collection can be removed of a graph
+              check400VertexUnused(delete_vertex_collection( sync, graph_name, unknown_name))
             end
 
             it "create vertex" do
@@ -1208,6 +1232,8 @@ describe ArangoDB do
               check404CRUD(get_vertex(graph_name, unknown_name, unknown_name))
             end
 
+# TODO add tests where the edge/vertex collection is not part of the graph, but
+# the given key exists!
             it "update vertex" do
               check404CRUD(update_vertex( sync, graph_name, unknown_name, unknown_name, {}))
             end
@@ -1221,7 +1247,7 @@ describe ArangoDB do
             end
 
             it "create edge" do
-              check404CRUD(create_edge( sync, graph_name, unknown_name, unknown_name, unknown_name, {}))
+              check400CRUD(create_edge( sync, graph_name, unknown_name, unknown_name, unknown_name, {}))
             end
 
             it "get edge" do
@@ -1277,7 +1303,10 @@ describe ArangoDB do
             end
 
             it "replace edge" do
-              check404(replace_edge( sync, graph_name, friend_collection, unknown_name, {}))
+              # Added _from and _to, because otherwise a 400 might conceal the
+              # 404. Another test checking that missing _from or _to trigger
+              # errors was added to api-gharial-spec.js.
+              check404(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "1", "_to" => "2"}))
             end
 
             it "delete edge" do

@@ -44,12 +44,15 @@ struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
+
+
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
 class MMFilesWalMarker;
 class Result;
+class TransactionState;
 
 class MMFilesCollection final : public PhysicalCollection {
   friend class MMFilesCompactorThread;
@@ -122,9 +125,14 @@ class MMFilesCollection final : public PhysicalCollection {
     bool _isJournal;
   };
 
- public:
-  explicit MMFilesCollection(LogicalCollection*, VPackSlice const& info);
-  MMFilesCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
+  explicit MMFilesCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
+  MMFilesCollection(
+    LogicalCollection& collection,
+    PhysicalCollection const* physical
+  );  // use in cluster only!!!!!
 
   ~MMFilesCollection();
 
@@ -140,14 +148,12 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) const override;
+  virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;
 
   void setRevision(TRI_voc_rid_t revision, bool force);
-
-  void setRevisionError() { _revisionError = true; }
 
   size_t journalSize() const;
   bool isVolatile() const;
@@ -311,19 +317,27 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Locking --
   ///////////////////////////////////
 
-  int lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
+  int lockRead(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
 
-  int lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TransactionState const* state, double timeout = 0.0);
 
-  int unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid);
+  int unlockRead(bool useDeadlockDetector, TransactionState const* state);
 
-  int unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid);
+  int unlockWrite(bool useDeadlockDetector, TransactionState const* state);
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
+
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
                             velocypack::Slice const& key) const override;
@@ -377,13 +391,6 @@ class MMFilesCollection final : public PhysicalCollection {
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
-
-  /// @brief Defer a callback to be executed when the collection
-  ///        can be dropped. The callback is supposed to drop
-  ///        the collection and it is guaranteed that no one is using
-  ///        it at that moment.
-  void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) override;
 
   Result rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
                            LocalDocumentId const& oldDocumentId,
@@ -546,8 +553,6 @@ class MMFilesCollection final : public PhysicalCollection {
   arangodb::basics::ReadWriteLock _compactionLock;
 
   int64_t _initialCount;
-
-  bool _revisionError;
 
   MMFilesDatafileStatistics _datafileStatistics;
 

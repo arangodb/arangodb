@@ -98,7 +98,9 @@ static constexpr uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 }
 
 // create the logfile manager
-MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
+MMFilesLogfileManager::MMFilesLogfileManager(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "MMFilesLogfileManager"),
       _allowWrites(false),  // start in read-only mode
       _inRecovery(true),
@@ -121,16 +123,11 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
-  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("MMFilesEngine");
-
-  startsBefore("Aql");
-  startsBefore("Bootstrap");
-  startsBefore("GeneralServer");
-  startsBefore("QueryRegistry");
-  startsBefore("TraverserEngineRegistry");
 
   onlyEnabledWith("MMFilesEngine");
 }
@@ -833,7 +830,8 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 // this is useful to ensure that any open writes up to this point have made
 // it into a logfile
 int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
-                                 bool writeShutdownFile, double maxWaitTime) {
+                                 bool writeShutdownFile, double maxWaitTime,
+                                 bool abortWaitOnShutdown) {
   TRI_IF_FAILURE("LogfileManagerFlush") {
     return TRI_ERROR_NO_ERROR;
   }
@@ -878,7 +876,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
-      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
+      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime, abortWaitOnShutdown);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
         LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
@@ -890,7 +888,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
       // datafile
 
       if (lastSealedLogfileId > 0) {
-        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime);
+        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime, abortWaitOnShutdown);
 
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
           LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
@@ -1310,8 +1308,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getLogfile(MMFilesWalLogfile::IdType i
 
 // get a logfile for writing. this may return nullptr
 int MMFilesLogfileManager::getWriteableLogfile(uint32_t size,
-                                        MMFilesWalLogfile::StatusType& status,
-                                        MMFilesWalLogfile*& result) {
+                                               MMFilesWalLogfile::StatusType& status,
+                                               MMFilesWalLogfile*& result) {
   // always initialize the result
   result = nullptr;
 
@@ -1726,7 +1724,7 @@ bool MMFilesLogfileManager::executeWhileNothingQueued(std::function<void()> cons
 
 // wait until a specific logfile has been collected
 int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
-                                            double maxWaitTime) {
+                                            double maxWaitTime, bool abortWaitOnShutdown) {
   if (maxWaitTime <= 0.0) {
     maxWaitTime = 24.0 * 3600.0; // wait "forever"
   }
@@ -1739,6 +1737,10 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   while (true) {
     if (_lastCollectedId >= logfileId) {
       return TRI_ERROR_NO_ERROR;
+    }
+  
+    if (application_features::ApplicationServer::isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
 
     READ_LOCKER(locker, _collectorThreadLock);

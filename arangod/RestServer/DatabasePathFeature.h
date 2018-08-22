@@ -31,15 +31,14 @@ class DatabasePathFeature final
     : public application_features::ApplicationFeature {
  public:
   explicit DatabasePathFeature(
-      application_features::ApplicationServer* server);
+    application_features::ApplicationServer& server
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
 
- public:
   std::string const& directory() const { return _directory; }
   std::string subdirectoryName(std::string const& subDirectory) const;
   void setDirectory(std::string const& path) {
@@ -53,6 +52,7 @@ class DatabasePathFeature final
   std::string _directory;
   std::string _requiredDirectoryState;
 };
+
 }
 
 #endif

@@ -116,21 +116,24 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
     // send back original value of "Origin" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
-                                  _origin);
+                                 _origin);
 
     // send back "Access-Control-Allow-Credentials" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                  (_denyCredentials ? "false" : "true"));
+                                 (_denyCredentials ? "false" : "true"));
 
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
-                                  StaticStrings::ExposedCorsHeaders);
+                                 StaticStrings::ExposedCorsHeaders);
   }
 
-  // use "IfNotSet"
-  response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
-                                StaticStrings::NoSniff);
+  if (!ServerState::instance()->isDBServer()) {
+    // DB server is not user-facing, and does not need to set this header
+    // use "IfNotSet" to not overwrite an existing response header
+    response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
+                                 StaticStrings::NoSniff);
+  }
 
   // set "connection" header, keep-alive is the default
   response.setConnectionType(_closeRequested
@@ -146,7 +149,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   }
 
   // reserve a buffer with some spare capacity
-  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 128), stat);
+  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 220), stat);
 
   // write header
   response.writeHeader(buffer._buffer);
@@ -258,10 +261,6 @@ bool HttpCommTask::processRead(double startTime) {
     size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "maximal header size is " << MaximalHeaderSize
-          << ", request header size is " << headerLength;
-
       // header is too large
       addSimpleResponse(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
                         rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
@@ -313,8 +312,6 @@ bool HttpCommTask::processRead(double startTime) {
       // request context for that request
       _incompleteRequest.reset(
           new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-      //GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
-      //    _incompleteRequest.get());
       _incompleteRequest->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -324,7 +321,6 @@ bool HttpCommTask::processRead(double startTime) {
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
         addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, rest::ContentType::UNSET,
                           1, VPackBuffer<uint8_t>());
-        LOG_TOPIC(WARN, Logger::FIXME) << "HTTP version not supported";
         _closeRequested = true;
         return false;
       }
@@ -335,7 +331,6 @@ bool HttpCommTask::processRead(double startTime) {
       if (_fullUrl.size() > 16384) {
         addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG, rest::ContentType::UNSET,
                           1, VPackBuffer<uint8_t>());
-        LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
       }
@@ -423,15 +418,6 @@ bool HttpCommTask::processRead(double startTime) {
         }
 
         default: {
-          size_t l = _readPosition - _startPosition;
-
-          if (6 < l) {
-            l = 6;
-          }
-
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "got corrupted HTTP request '" << std::string(sptr, l)
-                    << "'";
-
           // bad request, method not allowed
           addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED, rest::ContentType::UNSET,
                             1, VPackBuffer<uint8_t>());
@@ -607,7 +593,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
     std::string const& body = request->body();
 
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE)) {
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)) {
       LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
@@ -640,16 +626,12 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (!expectContentLength && bodyLength > 0) {
     // content-length header was sent but the request method does not support
-    // that
-    // we'll warn but read the body anyway
+    // that we'll warn but read the body anyway
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "received HTTP GET/HEAD request with content-length, this "
                  "should not happen";
   }
 
   if ((size_t)bodyLength > MaximalBodySize) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "maximal body size is " << MaximalBodySize
-              << ", request body size is " << bodyLength;
-
     // request entity too large
     addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, rest::ContentType::UNSET,
                       1, VPackBuffer<uint8_t>());
@@ -760,12 +742,15 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
+ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) const {
   bool found;
-  std::string const& authStr = request->header(StaticStrings::Authorization, found);
+  std::string const& authStr = req->header(StaticStrings::Authorization, found);
   if (!found) {
-    events::CredentialsMissing(request);
-    return rest::ResponseCode::UNAUTHORIZED;
+    if (_auth->isActive()) {
+      events::CredentialsMissing(req);
+      return rest::ResponseCode::UNAUTHORIZED;
+    }
+    return rest::ResponseCode::OK;
   }
 
   size_t methodPos = authStr.find_first_of(' ');
@@ -776,8 +761,8 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       ++auth;
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\"" << (void*)this << "\",\""
-        << authStr << "\"";
+    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "\"authorization-header\",\""
+      << (void*)this << "\",\"" << authStr << "\"";
     try {
       // note that these methods may throw in case of an error
       AuthenticationMethod authMethod = AuthenticationMethod::NONE;
@@ -787,21 +772,18 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         authMethod = AuthenticationMethod::JWT;
       }
 
+      req->setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
-        request->setAuthenticationMethod(authMethod);
-        if (_auth->isActive()) {
-          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
-          request->setAuthenticated(entry.authenticated());
-          request->setUser(std::move(entry._username));
-        } else {
-          request->setAuthenticated(true);
-        }
-
-        if (request->authenticated()) {
-          events::Authenticated(request, authMethod);
-          return rest::ResponseCode::OK;
-        }
-        events::CredentialsBad(request, authMethod);
+        auto entry = _auth->tokenCache().checkAuthentication(authMethod, auth);
+        req->setAuthenticated(entry.authenticated());
+        req->setUser(std::move(entry._username));
+      }
+      
+      if (req->authenticated() || !_auth->isActive()) {
+        events::Authenticated(req, authMethod);
+        return rest::ResponseCode::OK;
+      } else if (_auth->isActive()) {
+        events::CredentialsBad(req, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }
 
@@ -817,6 +799,6 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
     }
   }
 
-  events::UnknownAuthenticationMethod(request);
+  events::UnknownAuthenticationMethod(req);
   return rest::ResponseCode::UNAUTHORIZED;
 }

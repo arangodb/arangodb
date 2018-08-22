@@ -71,12 +71,12 @@ RestStatus RestUsersHandler::execute() {
 }
 
 bool RestUsersHandler::isAdminUser() const {
-  if (ExecContext::CURRENT != nullptr) {
+  if (!ExecContext::isAuthEnabled()) {
+    return true;
+  } else if (ExecContext::CURRENT != nullptr) {
     return ExecContext::CURRENT->isAdminUser();
   }
-  AuthenticationFeature* auth = AuthenticationFeature::instance();
-  // if authentication is deactivated authorize anyway
-  return auth != nullptr && !auth->isActive();
+  return false;
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {
@@ -194,11 +194,11 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 
           methods::Collections::enumerate(
             &vocbase,
-            [&](LogicalCollection* c)->void {
+            [&](LogicalCollection& c)->void {
               lvl =
-                user.configuredCollectionAuthLevel(vocbase.name(), c->name());
+                user.configuredCollectionAuthLevel(vocbase.name(), c.name());
                 data.add(
-                  c->name(),
+                  c.name(),
                   velocypack::Value(convertFromAuthLevel(lvl))
                 );
             }

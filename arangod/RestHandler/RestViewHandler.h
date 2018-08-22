@@ -39,19 +39,18 @@ class RestViewHandler : public RestVocbaseBaseHandler {
   RestViewHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  virtual RestStatus execute() override;
   char const* name() const override final { return "RestViewHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  virtual RestStatus execute() override;
 
  protected:
   void createView();
   void modifyView(bool partialUpdate);
   void deleteView();
+  void getView(std::string const& nameOrId, bool detailed);
   void getViews();
-
-  void getSingleView(std::string const&);
-  void getViewProperties(std::string const&);
-  void getListOfViews();
 };
+
 }
 
 #endif

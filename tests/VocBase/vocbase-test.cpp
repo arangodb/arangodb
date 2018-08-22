@@ -27,6 +27,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -43,20 +44,23 @@ std::shared_ptr<arangodb::LogicalView> makeTestView(
     uint64_t planVersion,
     arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {
-  struct Impl: public arangodb::DBServerLogicalView{
+  struct Impl: public arangodb::LogicalViewStorageEngine {
     Impl(
         TRI_vocbase_t& vocbase,
         arangodb::velocypack::Slice const& info,
         uint64_t planVersion
-    ): DBServerLogicalView(vocbase, info, planVersion) {
+    ): LogicalViewStorageEngine(vocbase, info, planVersion) {
     }
-    arangodb::Result create() { return DBServerLogicalView::create(*this); }
-    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
-    virtual void getPropertiesVPack(
+    virtual arangodb::Result appendVelocyPackDetailed(
       arangodb::velocypack::Builder&,
       bool
     ) const override {
+      return arangodb::Result();
     }
+    arangodb::Result create() {
+      return LogicalViewStorageEngine::create(*this);
+    }
+    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
     virtual void open() override {}
     virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const&,
@@ -90,13 +94,14 @@ struct VocbaseSetup {
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  VocbaseSetup(): server(nullptr, nullptr) {
+  VocbaseSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::dropCollection(...)
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
+    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
