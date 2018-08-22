@@ -490,8 +490,6 @@ for_statement:
         options = $6->getMemberUnchecked(1);
         if (options->type == NODE_TYPE_NOP) {
           options = nullptr;
-        } else if (!options->isConstObject()) {
-            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting constant object for 'OPTIONS'", yylloc.first_line, yylloc.first_column);
         }
       }
 
@@ -1388,10 +1386,6 @@ options:
 
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
-      }
-        
-      if (!$2->isConstObject()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting constant object for 'OPTIONS'", yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $2;

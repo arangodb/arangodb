@@ -984,6 +984,8 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   auto* options = node->getMemberUnchecked(3);
   if (options->type == NODE_TYPE_NOP) {
     options = nullptr;
+  } else if (!options->isConstObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
   }
   
   en = registerNode(new iresearch::IResearchViewNode(
