@@ -62,11 +62,6 @@ static std::atomic<MessageID> vstMessageId(1);
 template<SocketType ST>
 MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                          RequestCallback cb) {
-  Connection::State state = _state.load(std::memory_order_acquire);
-  if (state == Connection::State::Failed) {
-    cb(errorToInt(ErrorCondition::Canceled), std::move(req), nullptr);
-    return 0;
-  }
   
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
@@ -85,8 +80,11 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   }
   item.release();
   // WRITE_LOOP_ACTIVE, READ_LOOP_ACTIVE are synchronized via cmpxchg
-  uint32_t loop =  _loopState.fetch_add(WRITE_LOOP_QUEUE_INC, std::memory_order_seq_cst);
-  
+  uint32_t loop = _loopState.fetch_add(WRITE_LOOP_QUEUE_INC, std::memory_order_seq_cst);
+  FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
+
+  // _state.load() after queuing request, to prevent race with connect
+  Connection::State state = _state.load(std::memory_order_acquire);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): start sending & reading\n";
     if (!(loop & WRITE_LOOP_ACTIVE)) {
@@ -95,30 +93,10 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): not connected\n";
     startConnection();
+  } else if (state == Connection::State::Failed) {
+    FUERTE_LOG_ERROR << "queued request on failed connection\n";
   }
   return mid;
-}
-  
-// Activate this connection.
-template <SocketType ST>
-void VstConnection<ST>::startConnection() {
-  // start connecting only if state is disconnected
-  Connection::State exp = Connection::State::Disconnected;
-  if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
-    FUERTE_LOG_ERROR << "already resolving endpoint\n";
-    return;
-  }
-  auto self = shared_from_this();
-  _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
-    if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-      shutdownConnection(ErrorCondition::CouldNotConnect);
-      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-               "connecting failed: " + ec.message());
-    } else {
-      finishInitialization();
-    }
-  });
 }
   
 /// @brief cancel the connection, unusable afterwards
@@ -130,6 +108,38 @@ void VstConnection<ST>::cancel() {
     if (s) {
       shutdownConnection(ErrorCondition::Canceled);
       _state.store(State::Failed);
+    }
+  });
+}
+  
+// Activate this connection.
+template <SocketType ST>
+void VstConnection<ST>::startConnection() {
+  // start connecting only if state is disconnected
+  Connection::State exp = Connection::State::Disconnected;
+  if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
+    tryConnect(_config._maxConnectRetries);
+  }
+}
+  
+// Connect with a given number of retries
+template <SocketType ST>
+void VstConnection<ST>::tryConnect(unsigned retries) {
+  assert(_state.load(std::memory_order_acquire) == Connection::State::Connecting);
+  
+  auto self = shared_from_this();
+  _protocol.connect(_config, [self, this, retries](asio_ns::error_code const& ec) {
+    if (!ec) {
+      finishInitialization();
+      return;
+    }
+    FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+    if (retries > 0) {
+      tryConnect(retries - 1);
+    } else {
+      shutdownConnection(ErrorCondition::CouldNotConnect);
+      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+                "connecting failed: " + ec.message());
     }
   });
 }

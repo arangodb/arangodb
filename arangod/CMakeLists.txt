@@ -551,6 +551,10 @@ SET(ARANGOD_SOURCES
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
 
+if (USE_MAINTAINER_MODE)
+  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} RestHandler/RestTestHandler.cpp)
+endif()
+
 if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()

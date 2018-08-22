@@ -18,7 +18,7 @@ When using the `kafka` type message queue, you also need:
 - TLS certificates for Kafka brokers (can be self-signed).
 
 Note: In several places you will need a (x509) certificate.
-<br/>The [Certificates](../../Security/DC2DC/README.md#certificates) section provides more guidance for creating
+<br/>The [Certificates](../../../Security/DC2DC/README.md#certificates) section provides more guidance for creating
 and renewing these certificates.
 
 Besides the above list, you probably want to use the following:

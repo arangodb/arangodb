@@ -130,7 +130,7 @@ depending on how much data has to be synced. When doing a join involving the sat
 you can specify how long the DBServer is allowed to wait for sync until the query
 is being aborted.
 
-Check [Accessing Cursors](../../HTTP/AqlQueryCursor/AccessingCursors.html)
+Check [Accessing Cursors](../HTTP/AqlQueryCursor/AccessingCursors.html)
 for details.
 
 During network failure there is also a minimal chance that a query was properly

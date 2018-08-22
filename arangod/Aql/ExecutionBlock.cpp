@@ -351,9 +351,6 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
-  if (_upstreamState == ExecutionState::DONE) {
-  }
-
   throwIfKilled();  // check if we were aborted
 
   auto res = _dependencies[0]->getSome(atMost);
