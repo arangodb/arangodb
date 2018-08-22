@@ -56,6 +56,7 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Context.h"
+#include "Transaction/CountType.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -570,12 +571,12 @@ void registerError(arangodb::aql::Query* query, char const* fName, int code) {
 }
 
 /// @brief convert a number value into an AqlValue
-inline AqlValue numberValue(transaction::Methods* trx, int value) {
+inline AqlValue numberValue(int value) {
   return AqlValue(AqlValueHintInt(value));
 }
 
 /// @brief convert a number value into an AqlValue
-AqlValue numberValue(transaction::Methods* trx, double value, bool nullify) {
+AqlValue numberValue(double value, bool nullify) {
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL ||
       value == -HUGE_VAL) {
     if (nullify) {
@@ -2090,7 +2091,7 @@ AqlValue Functions::Contains(arangodb::aql::Query*,
 
   if (willReturnIndex) {
     // return numeric value
-    return ::numberValue(trx, result);
+    return ::numberValue(result);
   }
 
   // return boolean
@@ -4245,7 +4246,7 @@ AqlValue Functions::Sum(arangodb::aql::Query* query, transaction::Methods* trx,
     }
   }
 
-  return ::numberValue(trx, sum, false);
+  return ::numberValue(sum, false);
 }
 
 /// @brief function AVERAGE
@@ -4285,7 +4286,7 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
   }
 
   if (count > 0 && !std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
-    return ::numberValue(trx, sum / static_cast<size_t>(count), false);
+    return ::numberValue(sum / static_cast<size_t>(count), false);
   }
 
   return AqlValue(AqlValueHintNull());
@@ -4928,7 +4929,7 @@ AqlValue Functions::Distance(arangodb::aql::Query* query,
   double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
   double const EARTHRADIAN = 6371000.0;  // metres
 
-  return ::numberValue(trx, EARTHRADIAN * c, true);
+  return ::numberValue(EARTHRADIAN * c, true);
 }
 
 
@@ -4964,7 +4965,7 @@ AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  return ::numberValue(trx, shape1.distanceFrom(shape2.centroid()), true);
+  return ::numberValue(shape1.distanceFrom(shape2.centroid()), true);
 }
 
 static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
@@ -5966,7 +5967,7 @@ AqlValue Functions::Round(arangodb::aql::Query*,
   double input = value.toDouble(trx);
 
   // Rounds down for < x.4999 and up for > x.50000
-  return ::numberValue(trx, std::floor(input + 0.5), true);
+  return ::numberValue(std::floor(input + 0.5), true);
 }
 
 /// @brief function ABS
@@ -5975,7 +5976,7 @@ AqlValue Functions::Abs(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::abs(input), true);
+  return ::numberValue(std::abs(input), true);
 }
 
 /// @brief function CEIL
@@ -5984,7 +5985,7 @@ AqlValue Functions::Ceil(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::ceil(input), true);
+  return ::numberValue(std::ceil(input), true);
 }
 
 /// @brief function FLOOR
@@ -5994,7 +5995,7 @@ AqlValue Functions::Floor(arangodb::aql::Query*,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::floor(input), true);
+  return ::numberValue(std::floor(input), true);
 }
 
 /// @brief function SQRT
@@ -6003,7 +6004,7 @@ AqlValue Functions::Sqrt(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::sqrt(input), true);
+  return ::numberValue(std::sqrt(input), true);
 }
 
 /// @brief function POW
@@ -6015,7 +6016,7 @@ AqlValue Functions::Pow(arangodb::aql::Query*, transaction::Methods* trx,
   double base = baseValue.toDouble(trx);
   double exp = expValue.toDouble(trx);
 
-  return ::numberValue(trx, std::pow(base, exp), true);
+  return ::numberValue(std::pow(base, exp), true);
 }
 
 /// @brief function LOG
@@ -6024,7 +6025,7 @@ AqlValue Functions::Log(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::log(input), true);
+  return ::numberValue(std::log(input), true);
 }
 
 /// @brief function LOG2
@@ -6033,7 +6034,7 @@ AqlValue Functions::Log2(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::log2(input), true);
+  return ::numberValue(std::log2(input), true);
 }
 
 /// @brief function LOG10
@@ -6043,7 +6044,7 @@ AqlValue Functions::Log10(arangodb::aql::Query*,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::log10(input), true);
+  return ::numberValue(std::log10(input), true);
 }
 
 /// @brief function EXP
@@ -6052,7 +6053,7 @@ AqlValue Functions::Exp(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::exp(input), true);
+  return ::numberValue(std::exp(input), true);
 }
 
 /// @brief function EXP2
@@ -6061,7 +6062,7 @@ AqlValue Functions::Exp2(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::exp2(input), true);
+  return ::numberValue(std::exp2(input), true);
 }
 
 /// @brief function SIN
@@ -6070,7 +6071,7 @@ AqlValue Functions::Sin(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::sin(input), true);
+  return ::numberValue(std::sin(input), true);
 }
 
 /// @brief function COS
@@ -6079,7 +6080,7 @@ AqlValue Functions::Cos(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::cos(input), true);
+  return ::numberValue(std::cos(input), true);
 }
 
 /// @brief function TAN
@@ -6088,7 +6089,7 @@ AqlValue Functions::Tan(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::tan(input), true);
+  return ::numberValue(std::tan(input), true);
 }
 
 /// @brief function ASIN
@@ -6097,7 +6098,7 @@ AqlValue Functions::Asin(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::asin(input), true);
+  return ::numberValue(std::asin(input), true);
 }
 
 /// @brief function ACOS
@@ -6106,7 +6107,7 @@ AqlValue Functions::Acos(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::acos(input), true);
+  return ::numberValue(std::acos(input), true);
 }
 
 /// @brief function ATAN
@@ -6115,7 +6116,7 @@ AqlValue Functions::Atan(arangodb::aql::Query*, transaction::Methods* trx,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   double input = value.toDouble(trx);
-  return ::numberValue(trx, std::atan(input), true);
+  return ::numberValue(std::atan(input), true);
 }
 
 /// @brief function ATAN2
@@ -6127,7 +6128,7 @@ AqlValue Functions::Atan2(arangodb::aql::Query*,
 
   double input1 = value1.toDouble(trx);
   double input2 = value2.toDouble(trx);
-  return ::numberValue(trx, std::atan2(input1, input2), true);
+  return ::numberValue(std::atan2(input1, input2), true);
 }
 
 /// @brief function RADIANS
@@ -6138,7 +6139,7 @@ AqlValue Functions::Radians(arangodb::aql::Query*,
 
   double degrees = value.toDouble(trx);
   // acos(-1) == PI
-  return ::numberValue(trx, degrees * (std::acos(-1.0) / 180.0), true);
+  return ::numberValue(degrees * (std::acos(-1.0) / 180.0), true);
 }
 
 /// @brief function DEGREES
@@ -6149,21 +6150,21 @@ AqlValue Functions::Degrees(arangodb::aql::Query*,
 
   double radians = value.toDouble(trx);
   // acos(-1) == PI
-  return ::numberValue(trx, radians * (180.0 / std::acos(-1.0)), true);
+  return ::numberValue(radians * (180.0 / std::acos(-1.0)), true);
 }
 
 /// @brief function PI
 AqlValue Functions::Pi(arangodb::aql::Query*, transaction::Methods* trx,
                        VPackFunctionParameters const& parameters) {
   // acos(-1) == PI
-  return ::numberValue(trx, std::acos(-1.0), true);
+  return ::numberValue(std::acos(-1.0), true);
 }
 
 /// @brief function RAND
 AqlValue Functions::Rand(arangodb::aql::Query*, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   // This random functionality is not too good yet...
-  return ::numberValue(trx, static_cast<double>(std::rand()) / RAND_MAX, true);
+  return ::numberValue(static_cast<double>(std::rand()) / RAND_MAX, true);
 }
 
 /// @brief function FIRST_DOCUMENT
@@ -6625,7 +6626,7 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query*,
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
-  OperationResult res = trx->count(collectionName, false);
+  OperationResult res = trx->count(collectionName, transaction::CountType::Normal);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -6658,7 +6659,7 @@ AqlValue Functions::VarianceSample(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  return ::numberValue(trx, value / (count - 1), true);
+  return ::numberValue(value / (count - 1), true);
 }
 
 /// @brief function VARIANCE_POPULATION
@@ -6686,7 +6687,7 @@ AqlValue Functions::VariancePopulation(
     return AqlValue(AqlValueHintNull());
   }
 
-  return ::numberValue(trx, value / count, true);
+  return ::numberValue(value / count, true);
 }
 
 /// @brief function STDDEV_SAMPLE
@@ -6714,7 +6715,7 @@ AqlValue Functions::StdDevSample(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  return ::numberValue(trx, std::sqrt(value / (count - 1)), true);
+  return ::numberValue(std::sqrt(value / (count - 1)), true);
 }
 
 /// @brief function STDDEV_POPULATION
@@ -6742,7 +6743,7 @@ AqlValue Functions::StdDevPopulation(
     return AqlValue(AqlValueHintNull());
   }
 
-  return ::numberValue(trx, std::sqrt(value / count), true);
+  return ::numberValue(std::sqrt(value / count), true);
 }
 
 /// @brief function MEDIAN
@@ -6771,10 +6772,10 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
   size_t midpoint = l / 2;
 
   if (l % 2 == 0) {
-    return ::numberValue(trx, (values[midpoint - 1] + values[midpoint]) / 2,
+    return ::numberValue((values[midpoint - 1] + values[midpoint]) / 2,
                        true);
   }
-  return ::numberValue(trx, values[midpoint], true);
+  return ::numberValue(values[midpoint], true);
 }
 
 /// @brief function PERCENTILE
@@ -6835,7 +6836,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
 
   size_t l = values.size();
   if (l == 1) {
-    return ::numberValue(trx, values[0], true);
+    return ::numberValue(values[0], true);
   }
 
   TRI_ASSERT(l > 1);
@@ -6845,14 +6846,14 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
     double const pos = floor(idx);
 
     if (pos >= l) {
-      return ::numberValue(trx, values[l - 1], true);
+      return ::numberValue(values[l - 1], true);
     }
     if (pos <= 0) {
       return AqlValue(AqlValueHintNull());
     }
 
     double const delta = idx - pos;
-    return ::numberValue(trx, delta * (values[static_cast<size_t>(pos)] -
+    return ::numberValue(delta * (values[static_cast<size_t>(pos)] -
                                      values[static_cast<size_t>(pos) - 1]) +
                                 values[static_cast<size_t>(pos) - 1],
                        true);
@@ -6861,13 +6862,13 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
   double const idx = p * l / 100.0;
   double const pos = ceil(idx);
   if (pos >= l) {
-    return ::numberValue(trx, values[l - 1], true);
+    return ::numberValue(values[l - 1], true);
   }
   if (pos <= 0) {
     return AqlValue(AqlValueHintNull());
   }
 
-  return ::numberValue(trx, values[static_cast<size_t>(pos) - 1], true);
+  return ::numberValue(values[static_cast<size_t>(pos) - 1], true);
 }
 
 /// @brief function RANGE

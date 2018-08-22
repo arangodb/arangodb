@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/CountType.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -51,6 +52,7 @@ class PhysicalCollection;
 class Result;
 class ShardingInfo;
 class StringRef;
+
 namespace transaction {
 class Methods;
 }
@@ -146,7 +148,7 @@ class LogicalCollection: public LogicalDataSource {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments(transaction::Methods*) const;
+  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type) const;
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;

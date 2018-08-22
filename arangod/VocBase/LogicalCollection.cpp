@@ -364,7 +364,7 @@ void LogicalCollection::invokeOnAllElements(
 }
 
 // @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
+uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx, transaction::CountType type) const {
   return getPhysical()->numberDocuments(trx);
 }
 

@@ -69,7 +69,7 @@ TRI_voc_cid_t Collection::id() const {
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   if (_numberDocuments == UNINITIALIZED) {
-    OperationResult res = trx->count(_name, false);
+    OperationResult res = trx->count(_name, transaction::CountType::TryCache);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res.result);
     }

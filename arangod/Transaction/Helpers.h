@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+#include "Transaction/CountType.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/voc-types.h"
 
@@ -90,7 +91,8 @@ namespace helpers {
   VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 
-  OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool details);
+  OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
+                                   transaction::CountType type);
   
   /// @brief creates an id string from a custom _id value and the _key string
   std::string makeIdFromCustom(CollectionNameResolver const* resolver,

@@ -35,6 +35,7 @@
 #include "Replication/utilities.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Transaction/CountType.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -175,7 +176,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    markers.reserve(trx.documentCollection()->numberDocuments(&trx));
+    markers.reserve(trx.documentCollection()->numberDocuments(&trx, transaction::CountType::Normal));
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;

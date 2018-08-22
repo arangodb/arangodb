@@ -33,6 +33,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
+#include "Transaction/CountType.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -101,7 +102,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   // Allocating some memory
   uint64_t vCount = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, false);
+    OperationResult opResult = countTrx->count(shard, transaction::CountType::Normal);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -112,7 +113,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   
   uint64_t eCount = 0;
   for (auto const& shard : _config->localEdgeShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, false);
+    OperationResult opResult = countTrx->count(shard, transaction::CountType::Normal);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -371,7 +372,7 @@ void GraphStore<V, E>::_loadVertices(size_t i,
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* collection = cursor->collection();
-  uint64_t number = collection->numberDocuments(trx.get());
+  uint64_t number = collection->numberDocuments(trx.get(), transaction::CountType::Normal);
   _graphFormat->willLoadVertices(number);
 
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {

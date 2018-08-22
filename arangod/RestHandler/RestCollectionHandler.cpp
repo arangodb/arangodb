@@ -31,6 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountType.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -578,7 +579,7 @@ void RestCollectionHandler::collectionRepresentation(
   if (showCount) {
     auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
     TRI_ASSERT(trx != nullptr);
-    OperationResult opRes = trx->count(coll->name(), detailedCount);
+    OperationResult opRes = trx->count(coll->name(), detailedCount ? transaction::CountType::Detailed : transaction::CountType::Normal);
 
     if (opRes.fail()) {
       trx->finish(opRes.result);

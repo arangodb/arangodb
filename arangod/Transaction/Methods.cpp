@@ -2788,20 +2788,20 @@ OperationResult transaction::Methods::rotateActiveJournalLocal(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::count(std::string const& collectionName,
-                                            bool details) {
+                                            transaction::CountType type) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, details);
+    return countCoordinator(collectionName, type);
   }
 
-  return countLocal(collectionName);
+  return countLocal(collectionName, type);
 }
 
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool details) {
+    std::string const& collectionName, transaction::CountType type) {
   std::vector<std::pair<std::string, uint64_t>> count;
   auto res = arangodb::countOnCoordinator(
     vocbase().name(), collectionName, *this, count 
@@ -2810,13 +2810,13 @@ OperationResult transaction::Methods::countCoordinator(
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
-  return buildCountResult(count, details);
+  return buildCountResult(count, type);
 }
 #endif
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName) {
+    std::string const& collectionName, transaction::CountType type) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -2828,7 +2828,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this);
+  uint64_t num = collection->numberDocuments(this, type);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
