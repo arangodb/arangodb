@@ -566,10 +566,35 @@ static VPackBuilder assembleLocalCollectionInfo(
       ret.add(VPackValue(INDEXES));
       { VPackArrayBuilder ixs(&ret);
         if (info.get(INDEXES).isArray()) {
-          // FIXME: Add index errors here
+          auto it1 = allErrors.indexes.find(shard);
+          std::unordered_set<std::string> indexesDone;
+          // First the indexes as they are in Local, potentially replaced
+          // by an error:
           for (auto const& index : VPackArrayIterator(info.get(INDEXES))) {
+            std::string id = index.get(ID).copyString();
+            indexesDone.insert(id);
+            if (it1 != allErrors.indexes.end()) {
+              auto it2 = it1->second.find(id);
+              if (it2 != it1->second.end()) {
+                // Add the error instead:
+                ret.add(VPackSlice(
+                    static_cast<uint8_t const*>(it2->second->data())));
+                continue;
+              }
+            }
             ret.add(removeSelectivityEstimate(index).slice());
-          }}}
+          }
+          // Now all the errors for this shard, for which there is no index:
+          if (it1 != allErrors.indexes.end()) {
+            for (auto const& p : it1->second) {
+              if (indexesDone.find(p.first) == indexesDone.end()) {
+                ret.add(VPackSlice(
+                      static_cast<uint8_t const*>(p.second->data())));
+              }
+            }
+          }
+        }
+      }
       ret.add(VPackValue(SERVERS));
       { VPackArrayBuilder a(&ret);
         ret.add(VPackValue(ourselves));
