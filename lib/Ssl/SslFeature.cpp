@@ -42,7 +42,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-const asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
+const asio_ns::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 
 SslFeature::SslFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Ssl") {

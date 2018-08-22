@@ -522,8 +522,7 @@ ExecutionPlan* Query::preparePlan() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan.release(), _queryOptions.optimizerRules,
-                    _queryOptions.inspectSimplePlans, false);
+    opt.createPlans(plan.release(), _queryOptions, false);
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
@@ -851,7 +850,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
         while (state != ExecutionState::DONE) {
           auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
-          // TODO MAX: We need to let the thread sleep here instead of while loop
           while (state == ExecutionState::WAITING) {
             ss->waitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
@@ -896,7 +894,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
         while (state != ExecutionState::DONE) {
           auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
-          // TODO MAX: We need to let the thread sleep here instead of while loop
           while (state == ExecutionState::WAITING) {
             ss->waitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
@@ -1090,7 +1087,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans, true);
+    opt.createPlans(plan, _queryOptions, true);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
