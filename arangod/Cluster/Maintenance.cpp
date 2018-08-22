@@ -454,6 +454,14 @@ arangodb::Result arangodb::maintenance::phaseOne (
   MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
+
+  MaintenanceFeature::errors_t errors;
+  result = feature.copyAllErrors(errors);
+  if (!result.ok()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) <<
+      "phaseOne: failed to acquire copy of errors from maintenance feature.";
+    return result;
+  }
   
   report.add(VPackValue("phaseOne"));
   { VPackObjectBuilder por(&report);
