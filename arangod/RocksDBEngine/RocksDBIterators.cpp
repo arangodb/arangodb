@@ -332,7 +332,7 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
 
-    if (!cb(_iterator->key(),_iterator->value())) {
+    if (!cb(_iterator->key(), _iterator->value())) {
       // stop iteration
       return false;
     }
