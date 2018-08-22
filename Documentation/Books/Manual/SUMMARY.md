@@ -207,7 +207,7 @@
     * [Applicability](Scalability/DC2DC/Applicability.md)
     * [Requirements](Scalability/DC2DC/Requirements.md)
     * [Limitations](Scalability/DC2DC/Limitations.md)
-* [Satellite Collections](Administration/Satellites.md)
+* [Satellite Collections](Satellites.md)
 
 ## OPERATIONS
 
@@ -305,7 +305,7 @@
     * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
     * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
-    * [Durability](Administration/Durability.md)
+    * [Durability](Administration/Configuration/Durability.md)
   * [Master/Slave](Administration/MasterSlave/README.md)
     * [Setting up](Administration/MasterSlave/SettingUp.md)
       * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
@@ -322,10 +322,10 @@
     * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
-  * [Encryption](Administration/Encryption/README.md)
-  * [Auditing](Administration/Auditing/README.md)
-    * [Configuration](Administration/Auditing/AuditConfiguration.md)
-    * [Events](Administration/Auditing/AuditEvents.md)
+  * [Encryption at Rest](Security/Encryption/README.md)
+  * [Auditing](Security/Auditing/README.md)
+    * [Configuration](Security/Auditing/AuditConfiguration.md)
+    * [Events](Security/Auditing/AuditEvents.md)
 # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [Securing Starter Deployments](Security/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
