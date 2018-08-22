@@ -136,6 +136,7 @@ arangodb::Result phaseTwo (
  */
 arangodb::Result reportInCurrent(
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
+  MaintenanceFeature::errors_t const& allErrors,
   std::string const& serverId, VPackBuilder& report); 
 
 
