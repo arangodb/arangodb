@@ -548,10 +548,20 @@ arangodb::Result MaintenanceFeature::storeIndexError (
     std::string const& shard, std::string const& indexId,
     std::shared_ptr<VPackBuffer<uint8_t>> error) {
 
+  using buffer_t = std::shared_ptr<VPackBuffer<uint8_t>>;
   std::string key = database + SLASH + collection + SLASH + shard;
   
   MUTEX_LOCKER(guard, _ieLock);
-  auto errors = _indexErrors[key]; 
+  
+  auto errorsIt = _indexErrors.find(key);
+  if (errorsIt == _indexErrors.end()) {
+    try {
+      _indexErrors.emplace(key,std::map<std::string,buffer_t>());
+    } catch (std::exception const& e) {
+      return Result(TRI_ERROR_FAILED, e.what());
+    }
+  }
+  auto errors = _indexErrors.find(key)->second;
   auto const it = errors.find(indexId);
 
   if (it != errors.end()) {
