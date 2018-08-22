@@ -26,6 +26,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -390,6 +391,18 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual("half", result[1].name);
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
+    },
+
+    testViewCreateDuplicate: function() {
+      db._dropView("TestView");
+      var view = db._createView("TestView", "arangosearch", {});
+
+      try {
+        db._createView("TestView", "arangosearch", {});
+        fail();
+      } catch(e) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, e.errorNum);
+      }
     },
 
     testViewModify: function() {
