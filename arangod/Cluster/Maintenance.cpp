@@ -311,7 +311,8 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t const& errors, std::vector<ActionDescription>& actions) {
+  MaintenanceFeature::errors_t const& errors,
+  std::vector<ActionDescription>& actions) {
 
   arangodb::Result result;
   std::unordered_set<std::string> colis; // Intersection collections plan&local
@@ -323,17 +324,18 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
-      if (error.databases.find(dbname) == errors.databases.end()) {
+      if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
           ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "Previous failure exists for creating database " << database
+          << "Previous failure exists for creating database " << dbname
           << "skipping";
       }
     }
   }
 
+  // Drop databases, which are no longer in plan
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {"Databases", dbname})) {
@@ -341,6 +343,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
     }
   }
+
+  // Check errors for databases, which are no longer in plan and remove from errors
+  
+  for (auto const& database : errors.databases) {
+    if (!plan.hasKey(std::vector<std::string>{"Databases", database.first})) {
+      
+    }
+  }
+  
 
   // Create or modify if local collections are affected
   pdbs = plan.get(COLLECTIONS);
@@ -861,31 +872,39 @@ arangodb::Result arangodb::maintenance::phaseTwo (
   report.add(VPackValue("phaseTwo"));
   { VPackObjectBuilder p2(&report);
 
+    // agency transactions
+    report.add(VPackValue("agency"));
+    { VPackObjectBuilder agency(&report);
     // Update Current
-    try {
-      result = reportInCurrent(plan, cur, local, allErrors, serverId, report);
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "Error reporting in current: " << e.what() << ". "
-        << __FILE__ << ":" << __LINE__;
-    }
+      try {
+        result = reportInCurrent(plan, cur, local, allErrors, serverId, report);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+          << "Error reporting in current: " << e.what() << ". "
+          << __FILE__ << ":" << __LINE__;
+      }}
+  
+    // maintenace actions
+    report.add(VPackValue("actions"));
+    { VPackObjectBuilder agency(&report);
+      try {
+        std::vector<ActionDescription> actions;
+        result = syncReplicatedShardsWithLeaders(
+          plan, cur, local, serverId, actions);
 
-    try {
-      std::vector<ActionDescription> actions;
-      result = syncReplicatedShardsWithLeaders(plan, cur, local, serverId, actions);
-
-      for (auto const& action : actions) {
-        feature.addAction(std::make_shared<ActionDescription>(action), true);
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
-        << "Error scheduling shards: " << e.what() << ". "
-        << __FILE__ << ":" << __LINE__;
-    }}
-
-  report.add(VPackValue("Current"));
-  { VPackObjectBuilder p(&report);
-    report.add("Version", cur.get("Version"));}
+        for (auto const& action : actions) {
+          feature.addAction(std::make_shared<ActionDescription>(action), true);
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+          << "Error scheduling shards: " << e.what() << ". "
+          << __FILE__ << ":" << __LINE__;
+      }}
+    
+    report.add(VPackValue("Current"));
+    { VPackObjectBuilder p(&report);
+      report.add("Version", cur.get("Version")); }
+  }
   
   return result;
   
