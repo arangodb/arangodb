@@ -78,7 +78,7 @@ function IResearchLinkSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithLinks : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
-      var view = db._createView("badView", "arangosearch", meta);
+      var view = db._createView("testView", "arangosearch", meta);
       var links = view.properties().links;
       assertNotEqual(links["testCollection"], undefined);
       view.drop();
@@ -87,7 +87,7 @@ function IResearchLinkSuite () {
     testHandlingCreateWithMultipleLinks : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true },
         'testCollection2' : { includeAllFields: true } } };
-      var view = db._createView("badView", "arangosearch", meta);
+      var view = db._createView("testView", "arangosearch", meta);
       var links = view.properties().links;
       assertNotEqual(links["testCollection"], undefined);
       assertNotEqual(links["testCollection2"], undefined);
@@ -99,15 +99,12 @@ function IResearchLinkSuite () {
 
       try {
         var view = db._createView("badView", "arangosearch", meta);
+        fail();
       } catch(err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
 
-      try {
-        var view = db._view('badView');
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view('badView'));
     },
 
     testHandlingCreateWithSomeBadLinks : function () {
@@ -118,15 +115,12 @@ function IResearchLinkSuite () {
 
       try {
         var view = db._createView("badView", "arangosearch", meta);
+        fail();
       } catch(err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
 
-      try {
-        var view = db._view("badView");
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view('badView'));
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -147,11 +141,7 @@ function IResearchLinkSuite () {
       assertEqual(links['testCollection'], undefined);
 
       view.drop();
-      try {
-        view = db._view('testView');
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view('testView'));
     }
 
   };
