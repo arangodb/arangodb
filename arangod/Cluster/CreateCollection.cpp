@@ -133,7 +133,7 @@ bool CreateCollection::first() {
        props.get(ENF_REPL_FACT).isBool()) ?
       props.get(ENF_REPL_FACT).getBool() : true;
     
-    TRI_col_type_e type(props.get(TYPE).getNumber<uint32_t>());
+    TRI_col_type_e type = static_cast<TRI_col_type_e>(props.get(TYPE).getNumber<uint32_t>());
     
     VPackBuilder docket;
     { VPackObjectBuilder d(&docket);
