@@ -459,7 +459,7 @@ void HeartbeatThread::runDBServer() {
         }
 
         if (!wasNotified) {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Heart beating...";
           planAgencyCallback->refetchAndUpdate(true, false);
           currentAgencyCallback->refetchAndUpdate(true, false);
         } else {

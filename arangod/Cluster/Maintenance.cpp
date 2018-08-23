@@ -1115,10 +1115,11 @@ arangodb::Result arangodb::maintenance::phaseTwo (
           << __FILE__ << ":" << __LINE__;
       }}
 
-    report.add(VPackValue("Current"));
-    { VPackObjectBuilder p(&report);
-      report.add("Version", cur.get("Version")); }
   }
+
+  report.add(VPackValue("Current"));
+  { VPackObjectBuilder p(&report);
+    report.add("Version", cur.get("Version")); }
 
   return result;
 
