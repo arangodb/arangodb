@@ -224,6 +224,9 @@ class Graph {
   void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition,
                       EdgeDefinition const& newEdgeDefinition);
 
+  /// @brief ARemoves an orphan vertex collection from the graphs definition
+  Result removeOrphanCollection(std::string&&);
+
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
 

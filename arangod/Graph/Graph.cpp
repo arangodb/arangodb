@@ -212,6 +212,17 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition,
     _orphanColls = orphans;
 }
 
+Result Graph::removeOrphanCollection(std::string&& name) {
+  if (_orphanColls.find(name) != _orphanColls.end()) {
+    if (_vertexColls.find(name) != _vertexColls.end()) {
+      _orphanColls.erase(name);
+      _vertexColls.erase(name);
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  return TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION;
+}
+
 Result Graph::addOrphanCollection(std::string&& name) {
   if (_vertexColls.find(name) != _vertexColls.end()) {
     return TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF;

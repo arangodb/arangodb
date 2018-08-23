@@ -426,23 +426,21 @@ OperationResult GraphOperations::eraseOrphanCollection(
     return OperationResult{TRI_ERROR_FORBIDDEN};
   }
 
+  Result res = _graph.removeOrphanCollection(std::move(collectionName));
+  if (res.fail()) {
+    return OperationResult(res);
+  }
+
   VPackBuilder builder;
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orph : _graph.orphanCollections()) {
-    if (orph != collectionName) {
-      builder.add(VPackValue(orph));
-    }
-  }
-  builder.close();  // array
-  builder.close();  // object
+  _graph.toPersistence(builder);
+  builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
     return OperationResult(res);
