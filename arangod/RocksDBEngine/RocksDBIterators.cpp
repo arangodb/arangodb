@@ -28,6 +28,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
@@ -157,7 +158,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
   TRI_ASSERT(_iterator);
 
-  _total = col->numberDocuments(trx);
+  _total = col->numberDocuments(trx, transaction::CountType::Normal);
   _forward = RandomGenerator::interval(uint16_t(1)) ? true : false;
 
   //initial seek

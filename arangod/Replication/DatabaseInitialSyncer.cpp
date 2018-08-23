@@ -43,6 +43,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
@@ -1031,7 +1032,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection const& col) {
     return -1;
   }
 
-  auto result = trx.count(col.name(), false);
+  auto result = trx.count(col.name(), transaction::CountType::Normal);
 
   if (result.result.fail()) {
     return -1;
