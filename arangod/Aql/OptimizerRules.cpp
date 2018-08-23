@@ -1267,7 +1267,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
 
-    if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
+    if (canUseHashAggregation && !opt->hasEnoughPlans(1)) {
       if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
         // user has explicitly asked for hash method
         // specialize existing the CollectNode so it will become a HashedCollectBlock
@@ -2580,12 +2580,14 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   std::vector<ExecutionNode*> nodesToPermute;
   std::vector<size_t> permTuple;
   std::vector<size_t> starts;
+  std::vector<ExecutionNode*> nn;
 
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
   for (auto const& n : nodes) {
     if (nodesSet.find(n) != nodesSet.end()) {
-      std::vector<ExecutionNode*> nn{n};
+      nn.clear();
+      nn.emplace_back(n);
       nodesSet.erase(n);
 
       // Now follow the dependencies as long as we see further such nodes:
@@ -2646,6 +2648,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
       // Find the nodes in the new plan corresponding to the ones in the
       // old plan that we want to permute:
       std::vector<ExecutionNode*> newNodes;
+      newNodes.reserve(nodesToPermute.size());
       for (size_t j = 0; j < nodesToPermute.size(); j++) {
         newNodes.emplace_back(newPlan->getNodeById(nodesToPermute[j]->id()));
       }
@@ -5586,7 +5589,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();
-          plan->invalidateCost();
           plan->findVarUsage();
 
           // abort optimization

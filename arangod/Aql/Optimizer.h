@@ -163,7 +163,7 @@ class Optimizer {
   /// stealPlans.
   int createPlans(ExecutionPlan* p, QueryOptions const& queryOptions, bool estimateAllPlans);
 
-  size_t hasEnoughPlans(size_t extraPlans) const;
+  bool hasEnoughPlans(size_t extraPlans) const;
 
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);

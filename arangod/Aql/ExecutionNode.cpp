@@ -551,13 +551,6 @@ void ExecutionNode::invalidateCost() {
 
   for (auto& dep : _dependencies) {
     dep->invalidateCost();
-
-    // no need to virtualize this function too, as getType(), estimateCost()
-    // etc. are already virtual
-    if (dep->getType() == SUBQUERY) {
-      // invalid cost of subqueries, too
-      ExecutionNode::castTo<SubqueryNode*>(dep)->getSubquery()->invalidateCost();
-    }
   }
 }
 
@@ -1670,6 +1663,13 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const
 
   // And add it:
   nodes.close();
+}
+
+/// @brief invalidate the cost estimation for the node and its dependencies
+void SubqueryNode::invalidateCost() {
+  ExecutionNode::invalidateCost();
+  // pass invalidation call to subquery too
+  getSubquery()->invalidateCost();
 }
 
 bool SubqueryNode::isConst() {

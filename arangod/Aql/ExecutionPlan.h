@@ -120,7 +120,7 @@ class ExecutionPlan {
   /// @brief invalidate all cost estimations in the plan
   inline void invalidateCost() {
     TRI_ASSERT(_root != nullptr);
-    return _root->invalidateCost();
+    _root->invalidateCost();
   }
 
   /// @brief get the estimated cost . . .

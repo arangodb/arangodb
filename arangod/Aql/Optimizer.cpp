@@ -36,7 +36,7 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
                                              : defaultMaxNumberOfPlans),
       _runOnlyRequiredRules(false) {}
   
-size_t Optimizer::hasEnoughPlans(size_t extraPlans) const {
+bool Optimizer::hasEnoughPlans(size_t extraPlans) const {
   return (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
 }
   
@@ -55,7 +55,6 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
     // else use user-specified new level
   }
 
-
   if (wasModified) {
     if (!rule->isHidden) {
       // register which rules modified / created the plan
@@ -64,13 +63,17 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
     }
 
     plan->clearVarUsageComputed();
-    plan->invalidateCost();
     plan->findVarUsage();
   }
   
   // hand over ownership
   _newPlans.push_back(plan.get(), newLevel);
   plan.release();
+
+  // stop adding new plans in case we already have enough
+  if (_newPlans.size() >= _maxNumberOfPlans) {
+    _runOnlyRequiredRules = true;
+  }
 }
 
 // @brief the actual optimization
@@ -100,6 +103,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
       // if profiling is turned on, we must do the cost estimation here
       // because the cost estimation must be done while the transaction
       // is still running
+      plan->invalidateCost();
       plan->getCost();
     }
     return TRI_ERROR_NO_ERROR;
@@ -221,6 +225,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     // because the cost estimation must be done while the transaction
     // is still running
     for (auto& p : _plans.list) {
+      p->invalidateCost();
       p->getCost();
       // this value is cached in the plan, so formally this step is
       // unnecessary, but for the sake of cleanliness...

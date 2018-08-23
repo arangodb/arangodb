@@ -330,7 +330,7 @@ class ExecutionNode {
   virtual void appendAsString(std::string& st, int indent = 0);
 
   /// @brief invalidate the cost estimation for the node and its dependencies
-  void invalidateCost();
+  virtual void invalidateCost();
 
   /// @brief this actually estimates the costs as well as the number of items
   /// coming out of the node
@@ -984,9 +984,12 @@ class SubqueryNode : public ExecutionNode {
     TRI_ASSERT(_subquery != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
   }
-
+  
   /// @brief return the type of the node
   NodeType getType() const override final { return SUBQUERY; }
+  
+  /// @brief invalidate the cost estimation for the node and its dependencies
+  void invalidateCost() override;
 
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
