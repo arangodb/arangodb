@@ -555,7 +555,7 @@ arangodb::Result arangodb::maintenance::executePlan (
       { VPackObjectBuilder b(&report);
         action.toVelocyPack(report);
       }
-      feature.addAction(std::make_shared<ActionDescription>(action), true);
+      feature.addAction(std::make_shared<ActionDescription>(action), false);
     }
   }
 
@@ -1107,7 +1107,7 @@ arangodb::Result arangodb::maintenance::phaseTwo (
           plan, cur, local, serverId, actions);
 
         for (auto const& action : actions) {
-          feature.addAction(std::make_shared<ActionDescription>(action), true);
+          feature.addAction(std::make_shared<ActionDescription>(action), false);
         }
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::MAINTENANCE)

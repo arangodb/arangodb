@@ -175,6 +175,8 @@ void HeartbeatThread::runBackgroundJob() {
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Setting _lastSyncTime to "
+        << _lastSyncTime;
       SchedulerFeature::SCHEDULER->post(
           HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
     } else {
@@ -1196,6 +1198,8 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
   if (now > _lastSyncTime + 7.4 || asyncPush) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "pondering shouldUpdate, now="
+      << now;
     shouldUpdate = true;
   }
     
@@ -1224,6 +1228,8 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
     
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Setting _lastSyncTime to "
+    << _lastSyncTime;
   SchedulerFeature::SCHEDULER->post(
     HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
   
