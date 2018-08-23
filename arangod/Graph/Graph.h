@@ -70,7 +70,7 @@ class EdgeDefinition {
 
   bool operator==(EdgeDefinition const& other) const;
   bool operator!=(EdgeDefinition const& other) const;
-  bool isVertexCollectionUsed(std::string const& collectionName);
+  bool isVertexCollectionUsed(std::string const& collectionName) const;
 
  private:
   std::string _edgeCollection;

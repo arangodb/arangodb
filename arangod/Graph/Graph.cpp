@@ -351,7 +351,7 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
          this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
 }
 
-bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) {
+bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) const {
   for (auto const& from : this->getFrom()) {
     if (from == collectionName) {
       return true;
