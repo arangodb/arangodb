@@ -531,6 +531,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       if (it != theLists->_databases.end()) {
         // name already in use
         events::CreateDatabase(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+        LOG_DEVEL << "db already exists: " << name;
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
     }
@@ -862,6 +863,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
     }
   }
 
+  LOG_DEVEL << "did not find db: " << name;
   return nullptr;
 }
 
