@@ -54,6 +54,7 @@ static std::vector<std::string> const cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
 static std::string const CURRENT_COLLECTIONS("Current/Collections/");
 static std::string const CURRENT_DATABASES("Current/Databases/");
+static std::string const DATABASES("Databases");
 static std::string const ERROR_MESSAGE("errorMessage");
 static std::string const ERROR_NUM("errorNum");
 static std::string const ERROR("error");
@@ -873,26 +874,39 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     }
   }
-
-  auto cdbs = cur.get(COLLECTIONS);
-
+  
   // UpdateCurrentForDatabases
+  auto cdbs = cur.get(DATABASES);
   for (auto const& database : VPackObjectIterator(cdbs)) {
     auto const dbName = database.key.copyString();
-
-     // Database no longer in Plan and local
-    if (!local.hasKey(dbName) && !pdbs.hasKey(dbName)) {
-      // This covers the case that the database is neither in Local nor in Plan.
-      // It remains to make sure an error is reported to Current if there is
-      // a database in the Plan but not in Local
-      report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
-      { VPackObjectBuilder o(&report);
-        report.add(OP, VP_DELETE); }
-      report.add(VPackValue(CURRENT_COLLECTIONS + dbName));
-      { VPackObjectBuilder o(&report);
-        report.add(OP, VP_DELETE); }
+    if (!database.value.isObject()) {
       continue;
     }
+    VPackSlice myEntry = database.value.get(serverId);
+    if (!myEntry.isNone()) {
+
+      // Database no longer in Plan and local
+      if (!local.hasKey(dbName) && !pdbs.hasKey(dbName)) {
+        // This covers the case that the database is neither in Local nor in Plan.
+        // It remains to make sure an error is reported to Current if there is
+        // a database in the Plan but not in Local
+        report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
+        { VPackObjectBuilder o(&report);
+          report.add(OP, VP_DELETE); }
+        // We delete all under /Current/Collections/<dbName>, it does not
+        // hurt if every DBserver does this, since it is an idempotent
+        // operation.
+        report.add(VPackValue(CURRENT_COLLECTIONS + dbName));
+        { VPackObjectBuilder o(&report);
+          report.add(OP, VP_DELETE); }
+      }
+    }
+  }
+
+  // UpdateCurrentForCollections
+  auto curcolls = cur.get(COLLECTIONS);
+  for (auto const& database : VPackObjectIterator(curcolls)) { 
+    auto const dbName = database.key.copyString();
 
     // UpdateCurrentForCollections (Current/Collections/Collection)
     for (auto const& collection : VPackObjectIterator(database.value)) {
@@ -965,7 +979,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
     VPackSlice inPlan = pdbs.get(std::vector<std::string>({d, c, "shards", s}));
     VPackSlice inLoc = local.get(std::vector<std::string>({d, s}));
     if (inPlan.isObject() && inLoc.isNone()) {
-      VPackSlice inCur = cdbs.get(std::vector<std::string>({d, c, s}));
+      VPackSlice inCur = curcolls.get(std::vector<std::string>({d, c, s}));
       VPackSlice theErr(static_cast<uint8_t const*>(p.second->data()));
       if (inCur.isNone() || !equivalent(theErr, inCur)) {
         report.add(
