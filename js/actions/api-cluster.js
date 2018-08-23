@@ -36,8 +36,6 @@ var wait = require("internal").wait;
 // var internal = require('internal');
 var _ = require('lodash');
 
-var fetchKey = cluster.fetchKey;
-
 actions.defineHttp({
   url: '_admin/cluster/removeServer',
   allowUseDatabase: true,
