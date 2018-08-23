@@ -746,7 +746,9 @@ void Supervision::run() {
               upgradeAgency();
             }
 
-            if (_agent->leaderFor() > 120 || earlyBird()) {
+            if (_agent->leaderFor() > 55 || earlyBird()) {
+              // 55 seconds is less than a minute, which fits to the
+              // 60 seconds timeout in /_admin/cluster/health
               try {
                 doChecks();
               } catch (std::exception const& e) {
