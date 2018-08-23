@@ -169,7 +169,7 @@ class GraphOperations {
   /// collection, this does nothing and returns success.
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult changeEdgeDefinitionForGraph(
-      Graph& graph, const EdgeDefinition& edgeDefinition,
+      Graph& graph, EdgeDefinition const& edgeDefinition,
       bool waitForSync, transaction::Methods& trx);
 
   void checkForUsedEdgeCollections(
