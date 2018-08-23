@@ -750,8 +750,6 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     for (auto const& node : localNodes) {
       std::vector<ActionDescription> actions;
 
-      auto const& serverId = node.first;
-
       std::string shname;
 
       for (auto const& shard : shards) {
