@@ -148,9 +148,7 @@ Query::Query(
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   
-  AqlFeature* aql = AqlFeature::lease();
-
-  if (aql == nullptr) {
+  if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 }
@@ -206,9 +204,7 @@ Query::Query(
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   
-  AqlFeature* aql = AqlFeature::lease();
-
-  if (aql == nullptr) {
+  if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 }
