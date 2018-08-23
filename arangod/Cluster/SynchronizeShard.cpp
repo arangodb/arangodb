@@ -182,7 +182,8 @@ arangodb::Result count(
     return res;
   }
 
-  OperationResult opResult = trx.count(collectionName, false);
+  OperationResult opResult = trx.count(collectionName,
+      arangodb::transaction::CountType::Normal);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
