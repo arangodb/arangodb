@@ -92,6 +92,7 @@ bool DropIndex::first() {
       return false;
     }
 
+    // FIXMEMAINTENANCE: Why doing the actual work in a callback?
     Result found = methods::Collections::lookup(
       vocbase, collection, [&](LogicalCollection& coll) {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)

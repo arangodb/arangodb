@@ -185,6 +185,7 @@ bool CreateCollection::first() {
       _feature.storeShardError(database, collection, shard, eb.steal());
       
       _result.reset(TRI_ERROR_FAILED, error.str());
+      // FIXMEMAINTENANCE: notify here?
       return false;
     }
     
@@ -193,6 +194,7 @@ bool CreateCollection::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+    // FIXMEMAINTENANCE: notify here?
     return false;
   }
 

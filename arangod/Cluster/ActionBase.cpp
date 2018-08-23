@@ -33,6 +33,8 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 
+// FIXMAINTENANCE: These strings appear again in ActionDescription.h,
+// we should remove this duplication.
 const char ActionBase::KEY[]="key";
 const char ActionBase::FIELDS[]="fields";
 const char ActionBase::TYPE[]="type";
@@ -145,6 +147,10 @@ std::shared_ptr<Action> ActionBase::getPostAction() {
   return (_postAction != nullptr) ? _feature.findAction(_postAction) : nullptr;
 }
 
+
+// FIXMEMAINTENANCE: Code path could corrupt registry object because
+// this does not hold lock. Also, current implementation is a race condition
+// where another thread could pick this up.
 
 /// @brief Create a new action that will start after this action successfully completes
 void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {

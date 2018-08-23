@@ -725,7 +725,7 @@ static VPackBuilder assembleLocalCollectionInfo(
     errorMsg += database;
     errorMsg += " exception: ";
     errorMsg += e.what();
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }

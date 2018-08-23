@@ -175,8 +175,6 @@ void HeartbeatThread::runBackgroundJob() {
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Setting _lastSyncTime to "
-        << _lastSyncTime;
       SchedulerFeature::SCHEDULER->post(
           HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
     } else {
@@ -1035,28 +1033,15 @@ void HeartbeatThread::beginShutdown() {
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
-  bool doSleep = false;
-  {
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    if (result.success) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Sync request successful. Now have Plan " << result.planVersion
-          << ", Current " << result.currentVersion;
-      _currentVersions = AgencyVersions(result);
-    } else {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed!";
-      // mop: we will retry immediately so wait at least a LITTLE bit
-      doSleep = true;
-    }
+  MUTEX_LOCKER(mutexLocker, *_statusLock);
+  if (result.success) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+        << "Sync request successful. Now have Plan " << result.planVersion
+        << ", Current " << result.currentVersion;
+    _currentVersions = AgencyVersions(result);
+  } else {
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed!";
   }
-  if (doSleep) {
-    // Sleep a little longer, since this might be due to some synchronization
-    // of shards going on in the background
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  //CONDITION_LOCKER(guard, _condition);
-  //_wasNotified = true;
-  //_condition.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1198,8 +1183,6 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
   if (now > _lastSyncTime + 7.4 || asyncPush) {
-    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "pondering shouldUpdate, now="
-      << now;
     shouldUpdate = true;
   }
     
@@ -1228,8 +1211,6 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
     
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Setting _lastSyncTime to "
-    << _lastSyncTime;
   SchedulerFeature::SCHEDULER->post(
     HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
   

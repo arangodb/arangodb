@@ -84,6 +84,7 @@ bool CreateDatabase::first() {
         eb.add("errorMessage", VPackValue(_result.errorMessage())); }
 
       _feature.storeDBError(database, eb.steal());
+      // FIXMEMAINTENANCE: notify here?
       return false;
     }
     
@@ -95,6 +96,7 @@ bool CreateDatabase::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+    // FIXMEMAINTENANCE: notify here?
     return false;
   }
 
