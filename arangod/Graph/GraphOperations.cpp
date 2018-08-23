@@ -548,7 +548,7 @@ OperationResult GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, bool waitForSync) {
   ResultT<EdgeDefinition const*> defRes = _graph.addEdgeDefinition(edgeDefinitionSlice);
   if (defRes.fail()) {
-    return OperationResult(defRes)u
+    return OperationResult(defRes);
   }
   // Guaranteed to be non nullptr
   TRI_ASSERT(defRes.get() != nullptr);
