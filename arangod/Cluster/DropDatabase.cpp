@@ -33,13 +33,14 @@
 using namespace arangodb::application_features;
 using namespace arangodb::methods;
 using namespace arangodb::maintenance;
+using namespace arangodb;
 
 DropDatabase::DropDatabase(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
 
   std::stringstream error;
-  
+
   if (!desc.has(DATABASE)) {
     error << "database must be specified";
   }
@@ -63,7 +64,7 @@ bool DropDatabase::first() {
   try {
     DatabaseGuard guard("_system");
     auto vocbase = &guard.database();
-    
+
     _result = Databases::drop(vocbase, database);
     if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::AGENCY)
@@ -77,7 +78,7 @@ bool DropDatabase::first() {
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
-  
+
   notify();
   return false;
 
