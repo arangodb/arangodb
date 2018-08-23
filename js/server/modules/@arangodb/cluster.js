@@ -2160,7 +2160,7 @@ function getLocalInfo () {
   var ret = { result: {}};
   db._collections().forEach(
     function(col) {          
-      if (col.name().charAt(0)!='_') {
+      if (col.name().charAt(0) !== '_') {
         ret.result[col.name()] = col.properties();
         ret.result[col.name()].indexes = [];
         col.getIndexes().forEach(function(i) {
