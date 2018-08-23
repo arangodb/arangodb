@@ -132,7 +132,6 @@ void RestAdminServerHandler::handleAvailability() {
     case ServerState::Mode::MAINTENANCE: 
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN: 
-    //case ServerState::Mode::READ_ONLY:
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;

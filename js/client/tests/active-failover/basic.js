@@ -146,7 +146,7 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      print("All followers are in sync");
+      print("All followers are in sync with: ", leader);
       return true;
     }
     wait(1.0);
