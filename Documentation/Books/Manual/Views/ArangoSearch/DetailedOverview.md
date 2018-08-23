@@ -8,7 +8,7 @@ filtering on multiple document attributes.
 ## View datasource
 
 The IResearch functionality is exposed to ArangoDB via the view API for views
-of type *arangosearch*, because the ArangoSearch view is merely an identity
+of type *arangosearch*. The ArangoSearch view is merely an identity
 transformation applied onto documents stored in linked collections of the same ArangoDB database.
 In plain terms an ArangoSearch view only allows filtering and sorting of documents
 located in collections of the same database. The matching documents themselves
@@ -36,6 +36,14 @@ To configure an ArangoSearch view for consideration of documents from a given
 ArangoDB collection a link definition must be added to the properties of the
 said ArangoSearch view defining the link parameters as per the section
 [View definition/modification](#view-definitionmodification).
+
+## Index
+
+Inverted Index is the heart of ArangoSearch. The index consists of several 
+independent segments and the index segment itself is meant to be treated as 
+a standalone index.
+
+
 
 ## Analyzers
 
@@ -66,10 +74,19 @@ During view modification the following directives apply:
 * any of the directives from the section [View properties](#view-properties)
 
 ## View properties
+The following terminology from ArangoSearch architecture is used to understand
+view properties assignment of its type:<br/>
+The index consists of several independent segments and the index **segment** itself
+is meant to be treated as a standalone index. **Commit** is meant to be treated
+as the procedure of accumulating processed data
+creating new index segments. **Consolidation** is meant to be treated as the procedure
+of joining multiple index segments into a bigger one and removing garbage documents
+(e.g. deleted from a collection). **Cleanup** is meant to be treated as the
+procedure of removing unused segments after release of internal resources.
 
 * **cleanupIntervalStep** (_optional_; default: `10`; to disable use: `0`)<br/>
-  wait at least this many commits between removing unused files in the
-  ArangoSearch data directory
+  ArangoSearch waits at least this many commits between removing unused files in
+  its data directory
   for the case where the consolidation policies merge segments often (i.e. a
   lot of commit+consolidate). A lower value will cause a lot of disk space to
   be wasted
@@ -77,17 +94,15 @@ During view modification the following directives apply:
   few inserts/deletes). A higher value will impact performance without any
   added benefits.
   >With every "commit" or "consolidate" operation a new state of the view
-   internal data-structures is created on disk
-   old states/snapshots are released once there are no longer any users
-   remaining
-   however, the files for the released states/snapshots are left on disk, and
-   only removed by "cleanup" operation.
+  internal data-structures is created on disk old states/snapshots are released once there are no longer any users
+  remaining however, the files for the released states/snapshots are left on disk, and
+  only removed by "cleanup" operation.
 
-* **commitIntervalMsec** (_optional_; default: `60000`; to disable use: `0`)<br/>
-  wait at least this many milliseconds between committing view data store
+* **consoloidationIntervalMsec** (_optional_; default: `60000`; to disable use: `0`)<br/>
+  ArangoSearch waits at least this many milliseconds between committing view data store
   changes and making documents visible to queries
   for the case where there are a lot of inserts/updates. A lower value will
-  cause the view not to account for them, (unlit commit), and memory usage
+  cause the view not to account for them, (until commit), and memory usage
   would continue to grow
   for the case where there are a few inserts/updates. A higher value will
   impact performance and waste disk space for each commit call without any
@@ -103,7 +118,7 @@ During view modification the following directives apply:
    subsequent ArangoDB transactions, in-progress ArangoDB transactions will
    still continue to return a repeatable-read state.
 
-* **consolidate** (_optional_; default: `{}`; to disable use: `null`)<br/>
+* **consolidationPolicy** (_optional_; default: `{}`; to disable use: `null`)<br/>
   the consolidation policy to apply for selecting data store segment merge
   candidates.
   >With each ArangoDB transaction that inserts documents one or more
