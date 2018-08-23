@@ -459,14 +459,12 @@ actions.defineHttp({
       return;
     }
 
-    /* remove? timeout not used
     var timeout = 60.0;
     try {
       if (req.parameters.hasOwnProperty('timeout')) {
         timeout = Number(req.parameters.timeout);
       }
     } catch (e) {}
-    */
 
     var clusterId;
     try {
@@ -479,13 +477,26 @@ actions.defineHttp({
 
     let agency = ArangoAgency.agency();
 
-    var Health;
-    try {
-      Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
-    } catch (e1) {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
-        'Failed to retrieve supervision node from agency!');
-      return;
+    var Health = {};
+    var startTime = new Date();
+    while (true) {
+      try {
+        Health = ArangoAgency.get('Supervision/Health', false, true).arango.Supervision.Health;
+      } catch (e1) {
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+          'Failed to retrieve supervision node from agency!');
+        return;
+      }
+      if (Object.keys(Health).length !== 0) {
+        break;
+      }
+      if (new Date() - startTime > timeout * 1000) {   // milliseconds
+        actions.resultError(req, res, actions.HTTP_NOT_FOUND, 0,
+          'Failed to get health status from agency in ' + timeout + ' seconds.');
+        return;
+      }
+      console.warn("/_api/cluster/health not ready yet, retrying...");
+      require("internal").wait(0.5);
     }
 
     Health = Object.entries(Health).reduce((Health, [serverId, struct]) => {
