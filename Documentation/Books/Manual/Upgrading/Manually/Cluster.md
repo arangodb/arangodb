@@ -1,7 +1,7 @@
 Manually Upgrading a _Cluster_ Deployment
 =========================================
 
-This page will guide you through the process of a manual upgrade of a [_cluster_](../../Scalability/Cluster/README.md)
+This page will guide you through the process of a manual upgrade of a [_cluster_](../../Architecture/DeploymentModes/Cluster/README.md)
 setup. The different nodes in a _cluster_ can be upgraded one at a time without
 incurring downtime of the _cluster_ and very short downtimes of the single nodes.
 

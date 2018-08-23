@@ -133,7 +133,7 @@ be stored ArangoDB performs a hash across the values. By default this
 hash is being created from the document __key_.
 
 For further information, please refer to the
-[_Cluster Administration_ ](../../Administration/Cluster/README.md#sharding) section.
+[_Cluster Administration_ ](../../../Administration/Cluster/README.md#sharding) section.
 
 Synchronous replication
 -----------------------
@@ -273,7 +273,7 @@ Microservices and zero administation
 
 The design and capabilities of ArangoDB are geared towards usage in
 modern microservice architectures of applications. With the
-[Foxx services](../../Foxx/README.md) it is very easy to deploy a data
+[Foxx services](../../../Foxx/README.md) it is very easy to deploy a data
 centric microservice within an ArangoDB Cluster.
 
 In addition, one can deploy multiple instances of ArangoDB within the
@@ -314,7 +314,7 @@ same DC/OS cluster. The built-in service discovery makes it extremely
 simple to connect the various microservices and Mesos automatically
 takes care of the distribution and deployment of the various tasks.
 
-See the [Deployment](../../Deployment/README.md) chapter and its subsections
+See the [Deployment](../../../Deployment/README.md) chapter and its subsections
 for instructions.
 
 It is possible to deploy an ArangoDB cluster by simply launching a bunch of

@@ -52,11 +52,11 @@ Version 3.2
   new coordinators are fully initialized even when all existing coordinators
   are unavailable.
 
-- **Enterprise**: Working with some of our largest customers, we’ve added
+- **Enterprise**: Working with some of our largest customers, we have added
   further security and scalability features to ArangoDB Enterprise like
   [LDAP integration](Administration/Configuration/Ldap.md),
-  [Encryption at Rest](Administration/Encryption/README.md), and the brand new
-  [Satellite Collections](Administration/Satellites.md).
+  [Encryption at Rest](Security/Encryption/README.md), and the brand new
+  [Satellite Collections](Satellites.md).
 
 Also see [What's New in 3.2](ReleaseNotes/NewFeatures32.md).
 
@@ -70,7 +70,7 @@ Version 3.1
 
 - **Encryption Control**: Choose your level of [SSL encryption](Administration/Configuration/SSL.md)
 
-- [**Auditing**](Administration/Auditing/README.md): Keep a detailed log
+- [**Auditing**](Security/Auditing/README.md): Keep a detailed log
   of all the important things that happened in ArangoDB.
 
 Also see [What's New in 3.1](ReleaseNotes/NewFeatures31.md).
@@ -78,7 +78,7 @@ Also see [What's New in 3.1](ReleaseNotes/NewFeatures31.md).
 Version 3.0
 -----------
 
-- [**self-organizing cluster**](Scalability/Cluster/Architecture.md) with
+- [**self-organizing cluster**](Architecture/DeploymentModes/Cluster/Architecture.md) with
   synchronous replication, master/master setup, shared nothing
   architecture, cluster management agency.
 
