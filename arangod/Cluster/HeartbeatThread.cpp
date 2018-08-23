@@ -596,7 +596,7 @@ void HeartbeatThread::runSingleServer() {
         ServerState::instance()->setFoxxmaster(_myId);
         auto prv = ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Successful leadership takeover\n"
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Successful leadership takeover: "
                                              << "All your base are belong to us";
         }
         continue; // nothing more to do
