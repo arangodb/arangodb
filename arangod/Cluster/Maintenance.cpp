@@ -869,10 +869,13 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
      // Database no longer in Plan and local
     if (!local.hasKey(dbName) && !pdbs.hasKey(dbName)) {
-      // This covers the case that the database is neither in Local nor in Plan
+      // This covers the case that the database is neither in Local nor in Plan.
       // It remains to make sure an error is reported to Current if there is
       // a database in the Plan but not in Local
       report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
+      { VPackObjectBuilder o(&report);
+        report.add(OP, VP_DELETE); }
+      report.add(VPackValue(CURRENT_COLLECTIONS + dbName));
       { VPackObjectBuilder o(&report);
         report.add(OP, VP_DELETE); }
       continue;
