@@ -41,8 +41,8 @@ void Optimizer::disableRule(int rule) {
 }
    
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
-  return _runOnlyRequiredRules ||
-         (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
+  return (_runOnlyRequiredRules ||
+          (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
 }
 
 // @brief add a plan to the optimizer
@@ -70,9 +70,9 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
   // hand over ownership
   _newPlans.push_back(plan.get(), newLevel);
   plan.release();
-    
+  
   // stop adding new plans in case we already have enough
-  if (_newPlans.size() >= _maxNumberOfPlans) {
+  if (_newPlans.size() + _plans.size() >= _maxNumberOfPlans) {
     _runOnlyRequiredRules = true;
   }
 }
@@ -172,13 +172,19 @@ int Optimizer::createPlans(ExecutionPlan* plan,
 
         // all optimizer rule functions must obey the following guidelines:
         // - the original plan passed to the rule function must be deleted if
-        // and only
-        //   if it has not been added (back) to the optimizer (using addPlan).
-        // - if the rule throws, then the original plan will be deleted by the
-        // optimizer.
+        //   and only if it has not been added (back) to the optimizer (using addPlan).
+        // - if the rule throws, then the original plan will be deleted by the optimizer.
         //   thus the rule must not have deleted the plan itself or add it
-        //   back to the
-        //   optimizer
+        //   back to the optimizer
+
+#if 0
+        double t0 = TRI_microtime();
+        rule.func(this, std::move(p), &rule);
+        t0 = TRI_microtime() - t0;
+        if (t0 >= 0.2) {
+          LOG_TOPIC(ERR, Logger::FIXME) << "RULE " << rule.name << " TOOK " << t0 << " s";
+        }
+#endif 
         rule.func(this, std::move(p), &rule);
 
         if (!rule.isHidden) {

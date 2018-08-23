@@ -231,7 +231,7 @@ class Optimizer {
   bool _runOnlyRequiredRules;
 
   /// @brief default value for maximal number of plans to produce
-  static constexpr size_t defaultMaxNumberOfPlans = 192;
+  static constexpr size_t defaultMaxNumberOfPlans = 128;
 };
 
 }  // namespace aql

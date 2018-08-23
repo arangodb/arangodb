@@ -1248,7 +1248,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
-
+   
   bool modified = false;
 
   for (auto const& n : nodes) {
