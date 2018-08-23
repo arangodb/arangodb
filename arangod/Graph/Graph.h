@@ -220,7 +220,11 @@ class Graph {
   bool replaceEdgeDefinition(EdgeDefinition const& edgeDefinition);
 
   /// @brief Rebuild orphan collections. Needs to be called after every
-  /// removal or change of existing an edgeDefinitions.
+  /// removal of an existing an edgeDefinitions.
+  void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition);
+
+  /// @brief Rebuild orphan collections. Needs to be called after every
+  /// replacement or change of existing an edgeDefinitions.
   void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition,
                       EdgeDefinition const& newEdgeDefinition);
 

@@ -189,6 +189,25 @@ void Graph::addVertexCollection(std::string const& name) {
   _vertexColls.emplace(name);
 }
 
+void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
+  // previous orphans may still be orphans...
+  std::set<std::string> orphans{orphanCollections()};
+
+  // previous vertex collections from the overwritten may be orphaned...
+  setUnion(orphans, oldEdgeDefinition.getFrom());
+  setUnion(orphans, oldEdgeDefinition.getTo());
+
+  // ...except they occur in any other edge definition, including the new one.
+  for (auto const& it : edgeDefinitions()) {
+    std::string const& edgeCollection = it.first;
+    EdgeDefinition const& edgeDef = it.second;
+
+    setMinus(orphans, edgeDef.getFrom());
+    setMinus(orphans, edgeDef.getTo());
+  }
+  _orphanColls = orphans;
+}
+
 void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition,
                            EdgeDefinition const& newEdgeDefinition) {
     // previous orphans may still be orphans...
@@ -445,9 +464,17 @@ Result Graph::validateOrphanCollection(VPackSlice const& orphanCollection) {
 }
 
 bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
+  auto maybeOldEdgeDef = getEdgeDefinition(edgeDefinitionName);
+  if (!maybeOldEdgeDef) {
+    // Graph doesn't contain this edge definition, no need to do anything.
+    return false;
+  }
+  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.get();
+
   if (hasEdgeCollection(edgeDefinitionName)) {
     _edgeColls.erase(edgeDefinitionName);
     _edgeDefs.erase(edgeDefinitionName);
+    rebuildOrphans(oldEdgeDef);
     return true;
   } else {
     return false;
