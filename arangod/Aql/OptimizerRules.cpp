@@ -5155,11 +5155,7 @@ void arangodb::aql::patchUpdateStatementsRule(
       }
 
       if (type == EN::ENUMERATE_COLLECTION || type == EN::INDEX) {
-        if (::getCollection(dep) != collection) {
-          // different collection, not suitable
-          modified = false;
-          break;
-        } else {
+        if (::getCollection(dep) == collection) {
           if (modified) {
             // already saw the collection... that means we have seen the same
             // collection two times in two FOR loops
