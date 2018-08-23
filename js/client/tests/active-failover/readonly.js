@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global console.log, assertTrue, assertEqual, fail */
+/*global print, assertTrue, assertEqual, fail */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ function getApplierState(endpoint) {
 
 // check the servers are in sync with the leader
 function checkInSync(leader, servers, ignore) {
-  console.log("Checking in-sync state with lead: ", leader);
+  print("Checking in-sync state with lead: ", leader);
   let check = (endpoint) => {
     if (endpoint === leader || endpoint === ignore) {
       return true;
@@ -147,17 +147,17 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      console.log("All followers are in sync with lead: ", leader);
+      print("All followers are in sync with lead: ", leader);
       return true;
     }
     wait(1.0);
   }
-  console.log("Timeout waiting for followers of: ", leader);
+  print("Timeout waiting for followers of: ", leader);
   return false;
 }
 
 function checkData(server) {
-  console.log("Checking data of ", server);
+  print("Checking data of ", server);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
@@ -174,7 +174,7 @@ function checkData(server) {
 function readAgencyValue(path) {
   let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
   assertTrue(agents.length > 0, "No agents present");
-  console.log("Querying agency... (", path, ")");
+  print("Querying agency... (", path, ")");
   var res = request.post({
     url: agents[0].url + "/_api/agency/read",
     auth: {
@@ -186,7 +186,7 @@ function readAgencyValue(path) {
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
-  //console.log("Agency response ", res.json);
+  //print("Agency response ", res.json);
   return arangosh.checkRequestResult(res.json);
 }
 
@@ -206,7 +206,7 @@ function leaderInAgency() {
 }
 
 function checkForFailover(leader) {
-  console.log("Waiting for failover of ", leader);
+  print("Waiting for failover of ", leader);
 
   let oldLeaderUUID = "";
   let i = 5; // 5 * 5s == 25s
@@ -216,7 +216,7 @@ function checkForFailover(leader) {
     Object.keys(srvHealth).forEach(key => {
       let srv = srvHealth[key];
       if (srv['Endpoint'] === leader && srv.Status === 'FAILED') {
-        console.log("Server ", key, "( ", leader, " ) is marked FAILED");
+        print("Server ", key, "( ", leader, " ) is marked FAILED");
         oldLeaderUUID = key;
       }
     });
@@ -237,12 +237,12 @@ function checkForFailover(leader) {
     }
     internal.wait(5.0);
   } while (i-- > 0);
-  console.log("Timing out, current leader value: ", nextLeaderUUID);
+  print("Timing out, current leader value: ", nextLeaderUUID);
   throw "No failover occured";
 }
 
 function setReadOnly(endpoint, ro) {
-  console.log("Setting read-only ", ro);
+  print("Setting read-only ", ro);
 
   let str = (ro === true ? "readonly" : "default");
   var res = request.put({
@@ -253,7 +253,7 @@ function setReadOnly(endpoint, ro) {
     body: {"mode" : str},
     json: true
   });
-  console.log(JSON.stringify(res));
+  print(JSON.stringify(res));
 
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
@@ -287,12 +287,12 @@ function ActiveFailoverSuite() {
       //serverTeardown();
 
       suspended.forEach(arangod => {
-        console.log("Resuming: ", arangod.endpoint);
+        print("Resuming: ", arangod.endpoint);
         assertTrue(continueExternal(arangod.pid));
       });
 
       currentLead = leaderInAgency();
-      console.log("connecting shell to leader ", currentLead);
+      print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       setReadOnly(currentLead, false);
@@ -330,7 +330,7 @@ function ActiveFailoverSuite() {
         col.save({abc:1337});
         fail();
       } catch(err) {
-        console.log(err);
+        print(err);
         assertEqual(ERRORS.ERROR_ARANGO_READ_ONLY.code, err.errorNum);
       }
 
@@ -356,7 +356,7 @@ function ActiveFailoverSuite() {
 
       suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
       suspended.forEach(arangod => {
-        console.log("Suspending Leader: ", arangod.endpoint);
+        print("Suspending Leader: ", arangod.endpoint);
         assertTrue(suspendExternal(arangod.pid));
       });
 
@@ -364,16 +364,16 @@ function ActiveFailoverSuite() {
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
       assertTrue(currentLead !== oldLead);
-      console.log("Failover to new leader : ", currentLead);
+      print("Failover to new leader : ", currentLead);
 
       internal.wait(2.5); // settle down, heartbeat interval is 1s
       assertEqual(checkData(currentLead), 10000);
-      console.log("New leader has correct data");
+      print("New leader has correct data");
 
       // check the remaining followers get in sync
       assertTrue(checkInSync(currentLead, servers, oldLead));
 
-      console.log("connecting shell to leader ", currentLead);
+      print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       let col = db._collection(cname);
@@ -404,11 +404,11 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
 
-      console.log("Suspending followers, except original leader");
+      print("Suspending followers, except original leader");
       suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
         arangod.endpoint !== firstLeader);
       suspended.forEach(arangod => {
-        console.log("Suspending: ", arangod.endpoint);
+        print("Suspending: ", arangod.endpoint);
         assertTrue(suspendExternal(arangod.pid));
       });
 
@@ -417,7 +417,7 @@ function ActiveFailoverSuite() {
       assertTrue(currentLead === firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
-        console.log("Resuming: ", arangod.endpoint);
+        print("Resuming: ", arangod.endpoint);
         assertTrue(continueExternal(arangod.pid));
       });
       suspended = [];
@@ -425,7 +425,7 @@ function ActiveFailoverSuite() {
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
 
-      console.log("connecting shell to leader ", currentLead);
+      print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
       let col = db._collection(cname);
