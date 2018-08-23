@@ -32,6 +32,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Databases.h"
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
