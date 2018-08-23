@@ -817,7 +817,7 @@ IResearchView::IResearchView(
           }
         }
 
-        if (!state._commitIntervalMsec) {
+        if (!state._consolidationIntervalMsec) {
           timeoutMsec = 0; // task not enabled
 
           return true; // reschedule
@@ -827,14 +827,14 @@ IResearchView::IResearchView(
           std::chrono::system_clock::now() - state._last
         ).count();
 
-        if (usedMsec < state._commitIntervalMsec) {
-          timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
+        if (usedMsec < state._consolidationIntervalMsec) {
+          timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
 
           return true; // reschedule (with possibly updated '_commitIntervalMsec')
         }
 
         state._last = std::chrono::system_clock::now(); // remember last task start time
-        timeoutMsec = state._commitIntervalMsec;
+        timeoutMsec = state._consolidationIntervalMsec;
 
         auto const runCleanupAfterCommit =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
