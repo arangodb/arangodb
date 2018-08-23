@@ -55,10 +55,6 @@ struct OptimizerRule {
     // ========================================================
     replaceNearWithinFulltext,
 
-    // determine the "right" type of CollectNode and
-    // add a sort node for each COLLECT (may be removed later)
-    specializeCollectRule_pass1,
-
     // remove legacy geo functions
     removeLegacyGeoFunctions_pass1,
 
@@ -88,13 +84,16 @@ struct OptimizerRule {
 
     // remove calculations that are never necessary
     removeUnnecessaryCalculationsRule_pass2,
+    
+    // determine the "right" type of CollectNode and
+    // add a sort node for each COLLECT (may be removed later)
+    specializeCollectRule_pass1,
 
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,
 
     // push limits into subqueries and simplify them
     optimizeSubqueriesRule_pass2,
-
 
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher

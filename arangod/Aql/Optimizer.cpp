@@ -36,12 +36,13 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
                                              : defaultMaxNumberOfPlans),
       _runOnlyRequiredRules(false) {}
   
-bool Optimizer::hasEnoughPlans(size_t extraPlans) const {
-  return (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
-}
-  
 void Optimizer::disableRule(int rule) {
   _disabledIds.emplace(rule);
+}
+   
+bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
+  return _runOnlyRequiredRules ||
+         (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
 }
 
 // @brief add a plan to the optimizer
@@ -69,7 +70,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
   // hand over ownership
   _newPlans.push_back(plan.get(), newLevel);
   plan.release();
-
+    
   // stop adding new plans in case we already have enough
   if (_newPlans.size() >= _maxNumberOfPlans) {
     _runOnlyRequiredRules = true;
@@ -129,7 +130,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     // int count = 0;
 
     // For all current plans:
-    while (_plans.size() > 0) {
+    while (!_plans.empty()) {
       int level;
       std::unique_ptr<ExecutionPlan> p(_plans.pop_front(level));
 
@@ -150,7 +151,6 @@ int Optimizer::createPlans(ExecutionPlan* plan,
             _disabledIds.find(level) != _disabledIds.end()) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
-
           _newPlans.push_back(p.get(), level);  // nothing to do, just keep it
           p.release();
 
@@ -200,11 +200,11 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     }
 
     // Stop if the result gets out of hand:
-    if (!_runOnlyRequiredRules && _plans.size() >= _maxNumberOfPlans) {
+    if (_plans.size() >= _maxNumberOfPlans) {
       // must still iterate over all REQUIRED remaining transformation rules
       // because there are some rules which are required to make the query
       // work in cluster mode etc
-      _runOnlyRequiredRules = true;
+    //  _runOnlyRequiredRules = true;
     }
   }
 

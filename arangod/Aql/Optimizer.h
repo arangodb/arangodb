@@ -163,8 +163,6 @@ class Optimizer {
   /// stealPlans.
   int createPlans(ExecutionPlan* p, QueryOptions const& queryOptions, bool estimateAllPlans);
 
-  bool hasEnoughPlans(size_t extraPlans) const;
-
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
 
@@ -197,7 +195,7 @@ class Optimizer {
     return res;
   }
 
-  bool runOnlyRequiredRules() const { return _runOnlyRequiredRules; }
+  bool runOnlyRequiredRules(size_t extraPlans) const;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
