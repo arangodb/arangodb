@@ -57,7 +57,7 @@ static std::string const CURRENT_DATABASES("Current/Databases/");
 static std::string const DATABASES("Databases");
 static std::string const ERROR_MESSAGE("errorMessage");
 static std::string const ERROR_NUM("errorNum");
-static std::string const ERROR("error");
+static std::string const ERROR_STR("error");
 static std::string const PLAN_ID("planId");
 static std::string const PRIMARY("primary");
 static std::string const SERVERS("servers");
@@ -666,12 +666,12 @@ static VPackBuilder assembleLocalCollectionInfo(
     { VPackObjectBuilder r(&ret);
       auto it = allErrors.shards.find(errorKey);
       if (it == allErrors.shards.end()) {
-        ret.add(ERROR, VPackValue(false));
+        ret.add(ERROR_STR, VPackValue(false));
         ret.add(ERROR_MESSAGE, VPackValue(std::string()));
         ret.add(ERROR_NUM, VPackValue(0));
       } else {
         VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
-        ret.add(ERROR, errs.get(ERROR));
+        ret.add(ERROR_STR, errs.get(ERROR_STR));
         ret.add(ERROR_NUM, errs.get(ERROR_NUM));
         ret.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
       }
@@ -754,12 +754,12 @@ static VPackBuilder assembleLocalDatabaseInfo (std::string const& database,
     { VPackObjectBuilder o(&ret);
       auto it = allErrors.databases.find(database);
       if (it == allErrors.databases.end()) {
-        ret.add(ERROR, VPackValue(false));
+        ret.add(ERROR_STR, VPackValue(false));
         ret.add(ERROR_NUM, VPackValue(0));
         ret.add(ERROR_MESSAGE, VPackValue(""));
       } else {
         VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
-        ret.add(ERROR, errs.get(ERROR));
+        ret.add(ERROR_STR, errs.get(ERROR_STR));
         ret.add(ERROR_NUM, errs.get(ERROR_NUM));
         ret.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
       }
@@ -874,7 +874,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
     }
   }
-  
+
   // UpdateCurrentForDatabases
   auto cdbs = cur.get(DATABASES);
   for (auto const& database : VPackObjectIterator(cdbs)) {
@@ -905,7 +905,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
   // UpdateCurrentForCollections
   auto curcolls = cur.get(COLLECTIONS);
-  for (auto const& database : VPackObjectIterator(curcolls)) { 
+  for (auto const& database : VPackObjectIterator(curcolls)) {
     auto const dbName = database.key.copyString();
 
     // UpdateCurrentForCollections (Current/Collections/Collection)
@@ -952,7 +952,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           report.add(VPackSlice("payload"));
           { VPackObjectBuilder pp(&report);
             VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
-            report.add(ERROR, errs.get(ERROR));
+            report.add(ERROR_STR, errs.get(ERROR_STR));
             report.add(ERROR_NUM, errs.get(ERROR_NUM));
             report.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
           }
