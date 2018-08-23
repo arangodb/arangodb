@@ -583,7 +583,7 @@ bool Supervision::earlyBird() const {
       << "No Sync/ServerStates key in transient store";
     return false;
   }
-  VPackBuilder serverStatesB = _snapshot(tpath).toBuilder();
+  VPackBuilder serverStatesB = _transient(tpath).toBuilder();
   VPackSlice serverStates = serverStatesB.slice();
 
   // every db server in plan accounted for in transient store?
