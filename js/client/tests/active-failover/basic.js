@@ -151,7 +151,7 @@ function checkInSync(leader, servers, ignore) {
     }
     wait(1.0);
   }
-  print("Timeout waiting for followers");
+  print("Timeout waiting for followers of: ", leader);
   return false;
 }
 
