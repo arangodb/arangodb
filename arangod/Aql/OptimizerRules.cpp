@@ -2741,16 +2741,16 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
 
   if (!nodes.empty() && !hasIncompatibleNodes) {
     // turn off all other cluster optimization rules now as they are superfluous
-    opt->disableRule(OptimizerRule::optimizeClusterJoinsRule_pass10);
-    opt->disableRule(OptimizerRule::distributeInClusterRule_pass10);
-    opt->disableRule(OptimizerRule::scatterInClusterRule_pass10);
-    opt->disableRule(OptimizerRule::distributeFilternCalcToClusterRule_pass10);
-    opt->disableRule(OptimizerRule::distributeSortToClusterRule_pass10);
-    opt->disableRule(OptimizerRule::removeUnnecessaryRemoteScatterRule_pass10);
+    opt->disableRule(OptimizerRule::optimizeClusterJoinsRule);
+    opt->disableRule(OptimizerRule::distributeInClusterRule);
+    opt->disableRule(OptimizerRule::scatterInClusterRule);
+    opt->disableRule(OptimizerRule::distributeFilternCalcToClusterRule);
+    opt->disableRule(OptimizerRule::distributeSortToClusterRule);
+    opt->disableRule(OptimizerRule::removeUnnecessaryRemoteScatterRule);
 #ifdef USE_ENTERPRISE
-    opt->disableRule(OptimizerRule::removeSatelliteJoinsRule_pass10);
+    opt->disableRule(OptimizerRule::removeSatelliteJoinsRule);
 #endif
-    opt->disableRule(OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10);
+    opt->disableRule(OptimizerRule::undistributeRemoveAfterEnumCollRule);
 
     // get first collection from query
     Collection const* c = ::getCollection(nodes[0]);
