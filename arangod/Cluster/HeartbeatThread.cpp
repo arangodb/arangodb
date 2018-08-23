@@ -611,6 +611,9 @@ void HeartbeatThread::runSingleServer() {
         // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
+        TRI_ASSERT(!applier->isActive());
+        applier->forget(); // make sure applier is doing a resync
+        
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
