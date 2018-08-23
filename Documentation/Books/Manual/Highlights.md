@@ -78,7 +78,7 @@ Also see [What's New in 3.1](ReleaseNotes/NewFeatures31.md).
 Version 3.0
 -----------
 
-- [**self-organizing cluster**](Scalability/Cluster/Architecture.md) with
+- [**self-organizing cluster**](Architecture/DeploymentModes/Cluster/Architecture.md) with
   synchronous replication, master/master setup, shared nothing
   architecture, cluster management agency.
 

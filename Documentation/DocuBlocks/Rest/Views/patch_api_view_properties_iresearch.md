@@ -29,7 +29,7 @@ Background:
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing view data store
 changes and making documents visible to queries (default: 60000, to disable
 use: 0).
@@ -52,9 +52,9 @@ Background:
   still continue to return a repeatable-read state.
 
 
-@RESTSTRUCT{consolidate,post_api_view_props,object,optional,post_api_view_props_consolidation}
+@RESTSTRUCT{consolidationPolicy,post_api_view_props,object,optional,post_api_view_props_consolidation}
 The consolidation policy to apply for selecting which segments should be merged
-(default: {}, to disable use: null)
+(default: {})
 Background:
   With each ArangoDB transaction that inserts documents one or more
   ArangoSearch internal segments gets created.
@@ -68,7 +68,7 @@ Background:
   released once old segments are no longer used.
 
 
-@RESTSTRUCT{type,optional,post_api_view_props_consolidations,string,optional,string}
+@RESTSTRUCT{type,post_api_view_props_consolidations,string,optional,string}
 The segment candidates for the "consolidation" operation are selected based
 upon several possible configurable formulas as defined by their types.
 The currently supported types are (default: "bytes_accum"):
@@ -94,7 +94,7 @@ The currently supported types are (default: "bytes_accum"):
 Apply the "consolidation" operation if and only if (default: 300):
 {segmentThreshold} < number_of_segments
 
-@RESTSTRUCT{threshold,post_api_view_props_consolidation,float,optional,float}
+@RESTSTRUCT{threshold,post_api_view_props_consolidation,number,optional,float}
 Select a given segment for "consolidation" if and only if the formula based
 on *type* (as defined above) evaluates to true, valid value range [0.0, 1.0]
 (default: 0.85)

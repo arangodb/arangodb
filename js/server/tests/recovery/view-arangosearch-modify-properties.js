@@ -37,7 +37,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryView');
-  var view = db._createView('UnitTestsRecoveryView', 'arangosearch', { "locale": "de_DE.UTF-16" });
+  var view = db._createView('UnitTestsRecoveryView', 'arangosearch', { "cleanupIntervalStep": 42 });
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
 
@@ -48,9 +48,8 @@ function runSetup () {
   view.properties(meta);
 
   meta = {
-    commitIntervalMsec: 10000,
-    consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
-    locale: "en_US.UTF-8"
+    consolidationIntervalMsec: 10000,
+    consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
   };
   view.properties(meta, true); // partial update
 
@@ -88,13 +87,12 @@ function recoverySuite () {
       // validate state
       var properties = v.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(10000, properties.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes", properties.consolidate.type);
-      assertEqual(20, properties.consolidate.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     }
 
   };

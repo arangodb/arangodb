@@ -4,8 +4,10 @@ Active Failover Architecture
 An _Active Failover_ is defined as:
 
 - One ArangoDB Single-Server instance which is read / writable by clients called **Leader**
-- One or more ArangoDB Single-Server instances, which are passive and not read or writable called **Followers**, which asynchronously replicate data from the master
-- At least one _Agency_ acting as a "witness" to determine which server becomes the _leader_ in a _failure_ situation
+- One or more ArangoDB Single-Server instances, which are passive and not readable or writable 
+  called **Followers**, which asynchronously replicate data from the master
+- At least one _Agency_ acting as a "witness" to determine which server becomes the _leader_
+  in a _failure_ situation
 
 **Note:** even though it is technically possible to start more than one _followers_ only one
 _follower_ is currently officially supported. This limitation may be removed in
@@ -23,8 +25,8 @@ ArangoDB drivers can automatically determine the correct _leader_ server and
 redirect requests appropriately. Furthermore Foxx Services do also automatically
 perform a failover: should the _leader_ instance fail (which is also the _Foxxmaster_)
 the newly elected _leader_ will reinstall all Foxx services and resume executing
-queued [Foxx tasks](../../Foxx/Guides/Scripts.md).
-[Database users](../../Administration/ManagingUsers/README.md)
+queued [Foxx tasks](../../../Foxx/Guides/Scripts.md).
+[Database users](../../../Administration/ManagingUsers/README.md)
 which were created on the _leader_ will also be valid on the newly elected _leader_
 (always depending on the condition that they were synced already).
 
@@ -63,7 +65,7 @@ are by calling the `/_api/cluster/endpoints` REST API. This API is accessible
 on _Leader_ and _Followers_ alike.
 
 The tool _ArangoDB Starter_ supports starting two servers with asynchronous
-replication and failover [out of the box](../../Deployment/ActiveFailover/UsingTheStarter.md).
+replication and failover [out of the box](../../../Deployment/ActiveFailover/UsingTheStarter.md).
 
 The _arangojs_ driver for JavaScript, the Go driver, the Java driver, ArangoJS and
 the PHP driver support active failover in case the currently accessed server endpoint
