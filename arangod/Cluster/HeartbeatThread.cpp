@@ -607,7 +607,7 @@ void HeartbeatThread::runSingleServer() {
       TRI_ASSERT(!leaderStr.empty());
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
 
-      ServerState::instance()->setFoxxmaster(leaderStr);
+      ServerState::instance()->setFoxxmaster(leaderStr); // leader is foxxmater
       ServerState::instance()->setReadOnly(true); // Disable writes with dirty-read header
       
       std::string endpoint = ci->getServerEndpoint(leaderStr);
@@ -616,7 +616,7 @@ void HeartbeatThread::runSingleServer() {
         continue; // try again next time
       }
 
-      // enable redirections to leader
+      // enable redirection to leader
       auto prv = ServerState::instance()->setServerMode(ServerState::Mode::REDIRECT);
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
@@ -624,6 +624,9 @@ void HeartbeatThread::runSingleServer() {
         // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
+        TRI_ASSERT(!applier->isActive());
+        applier->forget(); // make sure applier is doing a resync
+
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
