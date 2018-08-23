@@ -47,8 +47,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     std::map<std::string,
              std::map<std::string,
                       std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;
+
+    // dbname/collection/shardid -> error
     std::unordered_map<std::string,
                        std::shared_ptr<VPackBuffer<uint8_t>>> shards;
+
+    // dbname -> error
     std::unordered_map<std::string,
                        std::shared_ptr<VPackBuffer<uint8_t>>> databases;
   };
@@ -99,21 +103,21 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// somebody not knowing the code can use it.
   std::shared_ptr<maintenance::Action> preAction(
     std::shared_ptr<maintenance::ActionDescription> const & description);
-  
+
   /// @brief Internal API that allows existing actions to create post actions
   /// FIXDOC: Please explain how this works in a lot more detail, such that
   /// somebody not knowing the code can use it.
   std::shared_ptr<maintenance::Action> postAction(
     std::shared_ptr<maintenance::ActionDescription> const & description);
-  
+
 protected:
   std::shared_ptr<maintenance::Action> createAction(
     std::shared_ptr<maintenance::ActionDescription> const & description,
     bool executeNow);
-  
+
   void createAction(
     std::shared_ptr<maintenance::Action> action, bool executeNow);
-  
+
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
@@ -153,7 +157,7 @@ public:
    * @param  shard        shard
    * @param  indexId      index' id
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result storeIndexError (
     std::string const& database, std::string const& collection,
@@ -168,7 +172,7 @@ public:
    * @param  shard        shard
    * @param  errors       errrors map returned to caller
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result indexErrors(
     std::string const& database, std::string const& collection,
@@ -184,14 +188,14 @@ public:
    * @param  shard        shard
    * @param  indexId      index' id
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result removeIndexErrors (
     std::string const& database, std::string const& collection,
     std::string const& shard, std::unordered_set<std::string> indexIds);
   arangodb::Result removeIndexErrors (
     std::string const& path, std::unordered_set<std::string> indexIds);
-  
+
   /**
    * @brief add shard error to bucket
    *        Errors are added by CreateCollection, UpdateCollection
@@ -200,7 +204,7 @@ public:
    * @param  collection   collection
    * @param  shard        shard
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result storeShardError (
     std::string const& database, std::string const& collection,
@@ -213,7 +217,7 @@ public:
    * @param  collection   collection
    * @param  shard        shard
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result shardError(
     std::string const& database, std::string const& collection,
@@ -227,20 +231,20 @@ public:
    * @param  collection   collection
    * @param  shard        shard
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result removeShardError (
     std::string const& database, std::string const& collection,
     std::string const& shard);
   arangodb::Result removeShardError (std::string const& key);
-  
+
   /**
    * @brief add shard error to bucket
    *        Errors are added by CreateCollection, UpdateCollection
    *
    * @param  database     database
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result storeDBError (
     std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error);
@@ -250,7 +254,7 @@ public:
    *
    * @param  database     database
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result dbError(
     std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>>& error) const;
@@ -261,7 +265,7 @@ public:
    *
    * @param  database     database
    *
-   * @return success 
+   * @return success
    */
   arangodb::Result removeDBError (std::string const& database);
 
@@ -272,7 +276,7 @@ public:
    * @return         success
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
-  
+
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -336,7 +340,7 @@ protected:
   /// Errors are managed through raiseIndexError / removeIndexError and
   /// raiseShardError / renoveShardError. According locks must be held in said
   /// methods.
-  
+
   /// @brief lock for index error bucket
   mutable arangodb::Mutex _ieLock;
   /// @brief pending errors raised by EnsureIndex
@@ -356,7 +360,7 @@ protected:
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
 
-           
+
 
 };
 
