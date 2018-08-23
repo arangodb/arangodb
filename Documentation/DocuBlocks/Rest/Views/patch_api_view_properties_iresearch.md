@@ -29,7 +29,7 @@ Background:
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing view data store
 changes and making documents visible to queries (default: 60000, to disable
 use: 0).
@@ -52,9 +52,9 @@ Background:
   still continue to return a repeatable-read state.
 
 
-@RESTSTRUCT{consolidate,post_api_view_props,object,optional,post_api_view_props_consolidation}
+@RESTSTRUCT{consolidationPolicy,post_api_view_props,object,optional,post_api_view_props_consolidation}
 The consolidation policy to apply for selecting which segments should be merged
-(default: {}, to disable use: null)
+(default: {})
 Background:
   With each ArangoDB transaction that inserts documents one or more
   ArangoSearch internal segments gets created.
