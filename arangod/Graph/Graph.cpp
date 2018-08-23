@@ -352,24 +352,6 @@ Result EdgeDefinition::validateEdgeDefinition(
   return Result();
 }
 
-// TODO: maybe create a class instance here + func as class func
-// sort an edgeDefinition:
-// edgeDefinition : { collection : string, from : [string], to : [string] }
-std::shared_ptr<velocypack::Buffer<uint8_t>> EdgeDefinition::sortEdgeDefinition(
-    VPackSlice const& edgeDefinition) {
-  arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
-  VPackBuilder from = VPackCollection::sort(edgeDefinition.get(StaticStrings::GraphFrom), sorter);
-  VPackBuilder to = VPackCollection::sort(edgeDefinition.get(StaticStrings::GraphTo), sorter);
-  VPackBuilder sortedBuilder;
-  sortedBuilder.openObject();
-  sortedBuilder.add("collection", edgeDefinition.get("collection"));
-  sortedBuilder.add(StaticStrings::GraphFrom, from.slice());
-  sortedBuilder.add(StaticStrings::GraphTo, to.slice());
-  sortedBuilder.close();
-
-  return sortedBuilder.steal();
-}
-
 void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 

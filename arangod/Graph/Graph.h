@@ -64,8 +64,6 @@ class EdgeDefinition {
   /// that it contains the correct attributes, and that they contain the correct
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
-  static std::shared_ptr<velocypack::Buffer<uint8_t>> sortEdgeDefinition(
-      const velocypack::Slice& edgeDefinition);
 
   static ResultT<EdgeDefinition> createFromVelocypack(
       velocypack::Slice edgeDefinition);
