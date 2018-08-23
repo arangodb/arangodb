@@ -31,23 +31,22 @@ CountCache::CountCache()
      timestamp(0.0) {}
 
 int64_t CountCache::get() const {
-  return count.load(std::memory_order_acquire);
+  return count.load(std::memory_order_relaxed);
 }
 
 int64_t CountCache::get(double ttl) const {
-  int64_t count = get();
-  if (count != CountCache::NotPopulated) {
-    double ts = timestamp.load(std::memory_order_relaxed);
-    if (ts + Ttl > TRI_microtime()) {
-      // not yet expired
-      return count;
-    }
+  // (1) - this acquire-load synchronizes with the release-store (2)
+  double ts = timestamp.load(std::memory_order_acquire);
+  if (ts + Ttl > TRI_microtime()) {
+    // not yet expired
+    return get();
   }
   return CountCache::NotPopulated;
 }
 
 void CountCache::store(int64_t value) {
   TRI_ASSERT(value >= 0);
-  timestamp.store(TRI_microtime(), std::memory_order_relaxed);
-  count.store(value, std::memory_order_release);
+  count.store(value, std::memory_order_relaxed);
+  // (2) - this release-store synchronizes with the acquire-load (1)
+  timestamp.store(TRI_microtime(), std::memory_order_release);
 }
