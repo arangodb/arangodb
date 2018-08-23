@@ -130,50 +130,29 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
-GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
-    GeneralRequest& req) {
-  if (!::resolveRequestContext(req)) { // false if db not found
-    if (_auth->isActive()) {
-      // prevent guessing database names (issue #5030)
-      auth::Level lvl = auth::Level::NONE;
-      if (req.authenticated()) {
-        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
-      }
-      if (lvl == auth::Level::NONE) {
-        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
-                         req.messageId(), TRI_ERROR_FORBIDDEN);
-        return RequestFlow::Abort;
-      }
-    }
-    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return RequestFlow::Abort;
-  }
-  TRI_ASSERT(req.requestContext() != nullptr);
-
-  // check source
-  bool found;
-  std::string const& source =
-      req.header(StaticStrings::ClusterCommSource, found);
-  if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
-                                       << "\",\"" << source << "\"";
-  }
-
-  std::string const& path = req.requestPath();
-
-  // In the shutdown phase we simply return 503:
+GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
+  
+  // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
-    std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+    auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
     addResponse(*res, nullptr);
     return RequestFlow::Abort;
   }
-
-  // In the bootstrap phase, we would like that coordinators answer the
-  // following endpoints, but not yet others:
+  
+  bool found;
+  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+  if (found) { // log request source in cluster for debugging
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
+    << "\",\"" << source << "\"";
+  }
+  
+  // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
+  std::string const& path = req.requestPath();
   ServerState::Mode mode = ServerState::mode();
   switch (mode) {
     case ServerState::Mode::MAINTENANCE: {
+      // In the bootstrap phase, we would like that coordinators answer the
+      // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
            path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
           (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
@@ -220,8 +199,28 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
       // no special handling required
       break;
   }
+  
+  // Step 3: Try to resolve vocbase and use
+  if (!::resolveRequestContext(req)) { // false if db not found
+    if (_auth->isActive()) {
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+      }
+      if (lvl == auth::Level::NONE) {
+        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        return RequestFlow::Abort;
+      }
+    }
+    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return RequestFlow::Abort;
+  }
+  TRI_ASSERT(req.requestContext() != nullptr);
 
-  // now check the authentication will determine if the user can access
+  // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
   const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
@@ -233,6 +232,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     return RequestFlow::Abort;
   }
 
+  // Step 5: Update global HLC timestamp from authorized requests
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
