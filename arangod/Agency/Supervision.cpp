@@ -759,7 +759,9 @@ void Supervision::run() {
                   "Supervision::doChecks() generated an uncaught exception.";
               }
             } else {
-              
+              LOG_TOPIC(INFO, Logger::SUPERVISION)
+                << "Postponing supervision for now, waiting for incoming "
+                   "heartbeats: " << _agent->leaderFor();
             }
 
             handleJobs();
