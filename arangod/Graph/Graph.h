@@ -58,8 +58,6 @@ class EdgeDefinition {
   bool hasFrom(std::string const& vertexCollection) const;
   bool hasTo(std::string const& vertexCollection) const;
 
-  bool hasVertexCollection(std::string const& vertexCollection) const;
-
   /// @brief validate the structure of edgeDefinition, i.e.
   /// that it contains the correct attributes, and that they contain the correct
   /// types of values.

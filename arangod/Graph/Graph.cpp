@@ -152,6 +152,7 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
   TRI_ASSERT(arr.isArray());
   for (auto const& c : VPackArrayIterator(arr)) {
     TRI_ASSERT(c.isString());
+    validateOrphanCollection(c);
     addOrphanCollection(c.copyString());
   }
 }
@@ -199,7 +200,6 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
 
   // ...except they occur in any other edge definition, including the new one.
   for (auto const& it : edgeDefinitions()) {
-    std::string const& edgeCollection = it.first;
     EdgeDefinition const& edgeDef = it.second;
 
     setMinus(orphans, edgeDef.getFrom());
@@ -429,10 +429,6 @@ bool EdgeDefinition::hasFrom(std::string const &vertexCollection) const {
 
 bool EdgeDefinition::hasTo(std::string const &vertexCollection) const {
   return getTo().find(vertexCollection) != getTo().end();
-}
-
-bool EdgeDefinition::hasVertexCollection(const std::string &vertexCollection) const {
-  return hasFrom(vertexCollection) || hasTo(vertexCollection);
 }
 
 // validates the type:
