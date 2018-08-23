@@ -241,7 +241,7 @@ void handlePlanShard(
           actions.emplace_back(
             ActionDescription({{NAME, "EnsureIndex"}, {DATABASE, dbname},
                 {COLLECTION, colname}, {TYPE, index.get(TYPE).copyString()},
-                {FIELDS, index.get(FIELDS).toJson()}, {SHARD, shname}},
+                {FIELDS, index.get(FIELDS).toJson()}, {SHARD, shname}, {ID, index.get(ID).copyString()}},
               std::make_shared<VPackBuilder>(index)));
         }
       }
