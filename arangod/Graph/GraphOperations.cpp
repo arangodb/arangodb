@@ -373,19 +373,13 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       return OperationResult{std::move(res)};
     }
   }
+  // add orphan collection to graph
+  _graph.addOrphanCollection(std::move(collectionName));
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orph : _graph.orphanCollections()) {
-    if (orph != collectionName) {
-      builder.add(VPackValue(orph));
-    }
-  }
-  builder.add(VPackValue(collectionName));
-  builder.close();  // array
-  builder.close();  // object
+  _graph.toPersistence(builder);
+  builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
