@@ -167,10 +167,9 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
     case ServerState::Mode::REDIRECT: {
       bool found = false;
       std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
-      if (StringUtils::boolean(val)) {
+      if (found && StringUtils::boolean(val)) {
         break; // continue with auth check
       }
-      // intentional fallthrough
       [[gnu::fallthrough]];
     }
     case ServerState::Mode::TRYAGAIN: {
@@ -184,7 +183,8 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
           path.find("/_api/agency/agency-callbacks") == std::string::npos &&
           path.find("/_api/cluster/") == std::string::npos &&
           path.find("/_api/replication") == std::string::npos &&
-          path.find("/_api/version") == std::string::npos &&
+          (mode == ServerState::Mode::TRYAGAIN ||
+           path.find("/_api/version") == std::string::npos) &&
           path.find("/_api/wal") == std::string::npos) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -496,8 +496,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 /// @brief checks the access rights for a specified path
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode GeneralCommTask::canAccessPath(
-    GeneralRequest& request) const {
+rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
@@ -505,17 +504,17 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 
-  std::string const& path = request.requestPath();
-  std::string const& username = request.user();
-  rest::ResponseCode result = request.authenticated()
-                                  ? rest::ResponseCode::OK
-                                  : rest::ResponseCode::UNAUTHORIZED;
+  std::string const& path = req.requestPath();
+  std::string const& username = req.user();
+  rest::ResponseCode result = req.authenticated()
+                                ? rest::ResponseCode::OK
+                                : rest::ResponseCode::UNAUTHORIZED;
 
-  VocbaseContext* vc = static_cast<VocbaseContext*>(request.requestContext());
+  VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE &&
       !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(&request);
+    events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -525,11 +524,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!request.authenticated()) {
+  if (!req.authenticated()) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
-    ConnectionInfo const& ci = request.connectionInfo();
+    ConnectionInfo const& ci = req.connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_auth->authenticationUnixSockets()) {
@@ -562,7 +561,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
-      } else if (request.requestType() == RequestType::POST &&
+      } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
