@@ -330,24 +330,9 @@ class ExecutionNode {
   /// @brief invalidate the cost estimate for the node and its dependencies
   virtual void invalidateCost();
   
-  /// @brief this actually estimates the costs as well as the number of items
-  /// coming out of the node
-  virtual CostEstimate estimateCost(CostEstimate const& parent) const = 0;
-
   /// @brief estimate the cost of the node . . .
   /// does not recalculate the estimate if already calculated
-  CostEstimate getCost(CostEstimate const& parent) const {
-    if (!_costEstimate.isValid()) {
-      _costEstimate = estimateCost(parent);
-    }
-    TRI_ASSERT(_costEstimate.estimatedCost >= 0.0);
-    TRI_ASSERT(_costEstimate.isValid());
-    return _costEstimate;
-  }
-  
-  CostEstimate getCost() const {
-    return getCost(CostEstimate::empty());
-  }
+  CostEstimate getCost() const;
   
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>& worker);
@@ -558,6 +543,10 @@ class ExecutionNode {
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
   void setId(size_t id) { _id = id; }
+  
+  /// @brief this actually estimates the costs as well as the number of items
+  /// coming out of the node
+  virtual CostEstimate estimateCost() const = 0;
 
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
@@ -657,7 +646,7 @@ class SingletonNode : public ExecutionNode {
   }
 
   /// @brief the cost of a singleton is 1
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -699,7 +688,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
@@ -754,7 +743,7 @@ class EnumerateListNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief the cost of an enumerate list node
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -830,7 +819,7 @@ class LimitNode : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief tell the node to fully count what it will limit
   void setFullCount() { _fullCount = true; }
@@ -909,7 +898,7 @@ class CalculationNode : public ExecutionNode {
   Expression* expression() const { return _expression; }
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -1015,7 +1004,7 @@ class SubqueryNode : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final;
@@ -1078,7 +1067,7 @@ class FilterNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -1185,7 +1174,7 @@ class ReturnNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -1245,7 +1234,7 @@ class NoResultsNode : public ExecutionNode {
   }
 
   /// @brief the cost of a NoResults is 0
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 };
 
 }  // namespace arangodb::aql

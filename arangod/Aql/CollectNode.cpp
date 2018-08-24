@@ -290,8 +290,8 @@ void CollectNode::setAggregateVariables(
 }
 
 /// @brief estimateCost
-CostEstimate CollectNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+CostEstimate CollectNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
 
   // As in the FilterNode case, we are pessimistic here by not reducing the
   // nrItems much, since the worst case for COLLECT is to return as many items

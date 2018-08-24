@@ -229,8 +229,8 @@ IndexNode::~IndexNode() {}
 
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
-CostEstimate IndexNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+CostEstimate IndexNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
 
   transaction::Methods* trx = _plan->getAst()->query()->trx();

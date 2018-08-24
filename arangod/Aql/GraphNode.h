@@ -68,7 +68,7 @@ class GraphNode : public ExecutionNode {
                           unsigned flags) const override;
   
   /// @brief the cost of a graph node
-  CostEstimate estimateCost(CostEstimate const& parent) const override;
+  CostEstimate estimateCost() const override;
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const { return _isSmart; }

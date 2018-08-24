@@ -464,12 +464,12 @@ bool IResearchViewNode::empty() const noexcept {
 }
 
 /// @brief the cost of an enumerate view node
-aql::CostEstimate IResearchViewNode::estimateCost(aql::CostEstimate const& parent) const {
+aql::CostEstimate IResearchViewNode::estimateCost() const {
   if (_dependencies.empty()) {
     return aql::CostEstimate::empty();
   }
   // TODO: get a better guess from view
-  aql::CostEstimate estimate = aql::CostEstimate::empty() + _dependencies[0]->getCost(parent);
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate; 
 }

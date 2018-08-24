@@ -195,8 +195,8 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
 }
 
 /// @brief estimateCost
-CostEstimate SortNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+CostEstimate SortNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   if (estimate.estimatedNrItems <= 3) {
     estimate.estimatedCost += estimate.estimatedNrItems;
   } else {

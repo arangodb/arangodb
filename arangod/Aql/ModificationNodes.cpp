@@ -74,8 +74,8 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.
-CostEstimate ModificationNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+CostEstimate ModificationNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   if (_outVariableOld == nullptr && _outVariableNew == nullptr) {
     // node produces no output

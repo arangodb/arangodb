@@ -67,7 +67,7 @@ class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
 
   /// @brief this actually estimates the costs as well as the number of items
   /// coming out of the node
-  virtual arangodb::aql::CostEstimate estimateCost(arangodb::aql::CostEstimate const&) const override {
+  virtual arangodb::aql::CostEstimate estimateCost() const override {
     arangodb::aql::CostEstimate estimate = arangodb::aql::CostEstimate::empty();
     estimate.estimatedCost = 1.;
     return estimate;

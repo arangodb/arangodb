@@ -115,9 +115,9 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 }
 
 /// @brief estimateCost
-CostEstimate RemoteNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate RemoteNode::estimateCost() const {
   if (_dependencies.size() == 1) {
-    CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+    CostEstimate estimate = _dependencies[0]->getCost();
     estimate.estimatedCost += estimate.estimatedNrItems;
     return estimate;
   }
@@ -192,8 +192,8 @@ void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief estimateCost
-CostEstimate ScatterNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+CostEstimate ScatterNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
@@ -274,8 +274,8 @@ void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& v
 }
 
 /// @brief estimateCost
-CostEstimate DistributeNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+CostEstimate DistributeNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -377,8 +377,8 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 }
 
 /// @brief estimateCost
-CostEstimate GatherNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+CostEstimate GatherNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -489,7 +489,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 }
 
 /// @brief estimateCost
-CostEstimate SingleRemoteOperationNode::estimateCost(CostEstimate const& parent) const {
-  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+CostEstimate SingleRemoteOperationNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
 }

@@ -550,6 +550,17 @@ void ExecutionNode::invalidateCost() {
     dep->invalidateCost();
   }
 }
+  
+/// @brief estimate the cost of the node . . .
+/// does not recalculate the estimate if already calculated
+CostEstimate ExecutionNode::getCost() const {
+  if (!_costEstimate.isValid()) {
+    _costEstimate = estimateCost();
+  }
+  TRI_ASSERT(_costEstimate.estimatedCost >= 0.0);
+  TRI_ASSERT(_costEstimate.isValid());
+  return _costEstimate;
+}
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
@@ -1326,7 +1337,7 @@ void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
 }
 
 /// @brief the cost of a singleton is 1, it produces one item only
-CostEstimate SingletonNode::estimateCost(CostEstimate const&) const {
+CostEstimate SingletonNode::estimateCost() const {
   CostEstimate estimate = CostEstimate::empty();
   estimate.estimatedNrItems = 1;
   estimate.estimatedCost = 1.0;
@@ -1385,14 +1396,14 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
 /// its unique dependency
-CostEstimate EnumerateCollectionNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate EnumerateCollectionNode::estimateCost() const {
   transaction::Methods* trx = _plan->getAst()->query()->trx();
   if (trx->status() != transaction::Status::RUNNING) {
     return CostEstimate::empty();
   }
   
   TRI_ASSERT(!_dependencies.empty());
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems *= _collection->count(trx);
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
@@ -1448,7 +1459,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 }
 
 /// @brief the cost of an enumerate list node
-CostEstimate EnumerateListNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate EnumerateListNode::estimateCost() const {
   // Well, what can we say? The length of the list can in general
   // only be determined at runtime... If we were to know that this
   // list is constant, then we could maybe multiply by the length
@@ -1487,13 +1498,13 @@ CostEstimate EnumerateListNode::estimateCost(CostEstimate const& parent) const {
       }
     } else if (setter->getType() == ExecutionNode::SUBQUERY) {
       // length will be set by the subquery's cost estimator
-      CostEstimate subEstimate = ExecutionNode::castTo<SubqueryNode const*>(setter)->getSubquery()->estimateCost(CostEstimate::empty());
+      CostEstimate subEstimate = ExecutionNode::castTo<SubqueryNode const*>(setter)->getSubquery()->getCost();
       length = subEstimate.estimatedNrItems;
     }
   }
 
   TRI_ASSERT(!_dependencies.empty());
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems *= length;
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
@@ -1526,9 +1537,9 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 }
 
 /// @brief estimateCost
-CostEstimate LimitNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate LimitNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems = (std::min)(_limit,
                                          (std::max)(static_cast<size_t>(0), estimate.estimatedNrItems - _offset));
   estimate.estimatedCost += estimate.estimatedNrItems;
@@ -1634,9 +1645,9 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
 }
 
 /// @brief estimateCost
-CostEstimate CalculationNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate CalculationNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -1790,11 +1801,11 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
 }
 
 /// @brief estimateCost
-CostEstimate SubqueryNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate SubqueryNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
-  CostEstimate subEstimate = _subquery->getCost(CostEstimate::empty());
+  CostEstimate subEstimate = _subquery->getCost();
 
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems * subEstimate.estimatedCost;
   return estimate;
 }
@@ -1935,7 +1946,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief estimateCost
-CostEstimate FilterNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate FilterNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
   
   // We are pessimistic here by not reducing the nrItems. However, in the
@@ -1947,7 +1958,7 @@ CostEstimate FilterNode::estimateCost(CostEstimate const& parent) const {
   // is important that a FilterNode produces additional costs, otherwise
   // the rule throwing away a FilterNode that is already covered by an
   // IndexNode cannot reduce the costs.
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -1997,9 +2008,9 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief estimateCost
-CostEstimate ReturnNode::estimateCost(CostEstimate const& parent) const {
+CostEstimate ReturnNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
-  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
@@ -2022,7 +2033,7 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
-CostEstimate NoResultsNode::estimateCost(CostEstimate const&) const {
+CostEstimate NoResultsNode::estimateCost() const {
   CostEstimate estimate = CostEstimate::empty();
   estimate.estimatedCost = 0.5; // just to make it non-zero
   return estimate;

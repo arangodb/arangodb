@@ -105,7 +105,7 @@ class RemoteNode final : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const { return _vocbase; }
@@ -189,7 +189,7 @@ class ScatterNode : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override;
+  CostEstimate estimateCost() const override;
 
   std::vector<std::string> const& clients() const noexcept { return _clients; }
   std::vector<std::string>& clients() noexcept { return _clients; }
@@ -266,7 +266,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
       std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   void variable(Variable const* variable) { _variable = variable; }
 
@@ -366,7 +366,7 @@ class GatherNode final : public ExecutionNode {
   ) const override;
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -497,7 +497,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief estimateCost
-  CostEstimate estimateCost(CostEstimate const& parent) const override final;
+  CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
 

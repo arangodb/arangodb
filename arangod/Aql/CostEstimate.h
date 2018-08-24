@@ -39,15 +39,6 @@ struct CostEstimate {
   /// @brief initialize a still-invalid cost estimate
   CostEstimate() : CostEstimate(-1.0, 0) {}
 
-  CostEstimate& operator+(CostEstimate const& other) {
-    if (!isValid()) {
-      initialize();
-    }
-    estimatedCost += other.estimatedCost;
-    estimatedNrItems += other.estimatedNrItems;
-    return *this;
-  }
-  
   bool operator==(CostEstimate const& other) const {
     return estimatedCost == other.estimatedCost && estimatedNrItems == other.estimatedNrItems;
   }
