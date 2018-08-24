@@ -1504,9 +1504,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   bool before(ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
-    for (auto const& v : en->getVariablesUsedHere()) {
-      _usedLater.emplace(v);
-    }
+    en->getVariablesUsedHere(_usedLater);
     return false;
   }
 

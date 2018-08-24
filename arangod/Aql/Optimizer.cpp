@@ -31,12 +31,12 @@ using namespace arangodb::aql;
 
 // @brief constructor, this will initialize the rules database
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans
-                                             : defaultMaxNumberOfPlans),
+    : _maxNumberOfPlans(maxNumberOfPlans),
       _runOnlyRequiredRules(false) {}
   
-size_t Optimizer::hasEnoughPlans(size_t extraPlans) const {
-  return (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
+bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
+  return (_runOnlyRequiredRules ||
+          (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
 }
   
 void Optimizer::disableRule(int rule) {
@@ -54,7 +54,6 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
     // else use user-specified new level
   }
 
-
   if (wasModified) {
     if (!rule->isHidden) {
       // register which rules modified / created the plan
@@ -70,6 +69,11 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
   // hand over ownership
   _newPlans.push_back(plan.get(), newLevel);
   plan.release();
+  
+  // stop adding new plans in case we already have enough
+  if (_newPlans.size() + _plans.size() >= _maxNumberOfPlans) {
+    _runOnlyRequiredRules = true;
+  }
 }
 
 // @brief the actual optimization
@@ -184,14 +188,6 @@ int Optimizer::createPlans(ExecutionPlan* plan,
       if (l < leastDoneLevel) {
         leastDoneLevel = l;
       }
-    }
-
-    // Stop if the result gets out of hand:
-    if (!_runOnlyRequiredRules && _plans.size() >= _maxNumberOfPlans) {
-      // must still iterate over all REQUIRED remaining transformation rules
-      // because there are some rules which are required to make the query
-      // work in cluster mode etc
-      _runOnlyRequiredRules = true;
     }
   }
 

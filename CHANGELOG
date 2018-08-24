@@ -1,6 +1,28 @@
 v3.3.15 (XXXX-XX-XX)
 --------------------
 
+* added startup option `--query.optimizer-max-plans value`
+
+  This option allows limiting the number of query execution plans created by the 
+  AQL optimizer for any incoming queries. The default value is `128`.
+
+  By adjusting this value it can be controlled how many different query execution 
+  plans the AQL query optimizer will generate at most for any given AQL query. 
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  but there are some cases in which it creates multiple competing plans. More plans
+  can lead to better optimized queries, however, plan creation has its costs. The
+  more plans are created and shipped through the optimization pipeline, the more time 
+  will be spent in the optimizer.
+
+  Lowering this option's value will make the optimizer stop creating additional plans 
+  when it has already created enough plans.
+
+  Note that this setting controls the default maximum number of plans to create. The
+  value can still be adjusted on a per-query basis by setting the *maxNumberOfPlans*
+  attribute when running a query.
+
+  This change also lowers the default maximum number of query plans from 192 to 128.
+
 * bug fix: facilitate faster shutdown of coordinators and db servers
 
 * upgraded arangodb starter version to 0.13.2

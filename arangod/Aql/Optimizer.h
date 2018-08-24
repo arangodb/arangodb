@@ -152,7 +152,7 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t);
+  explicit Optimizer(size_t maxNumberOfPlans);
 
   ~Optimizer() {}
 
@@ -166,8 +166,6 @@ class Optimizer {
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
   int createPlans(ExecutionPlan* p, std::vector<std::string> const&, bool);
-
-  size_t hasEnoughPlans(size_t extraPlans) const;
 
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
@@ -200,8 +198,8 @@ class Optimizer {
 
     return res;
   }
-
-  bool runOnlyRequiredRules() const { return _runOnlyRequiredRules; }
+  
+  bool runOnlyRequiredRules(size_t extraPlans) const;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
@@ -242,9 +240,6 @@ class Optimizer {
   
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
-
-  /// @brief default value for maximal number of plans to produce
-  static constexpr size_t defaultMaxNumberOfPlans = 192;
 };
 
 }  // namespace aql
