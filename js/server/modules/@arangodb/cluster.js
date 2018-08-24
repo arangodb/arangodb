@@ -497,16 +497,34 @@ function queryAgencyJob(id) {
 }
 
 function getLocalInfo () {
+  var ret = {};
   var db = require('internal').db;
-  var ret = { result: {}};
+  var database = '_system';
+  ret.result = {};
   db._collections().forEach(
-    function(col) {          
-      if (col.name().charAt(0) !== '_') {
-        ret.result[col.name()] = col.properties();
-        ret.result[col.name()].indexes = [];
-        col.getIndexes().forEach(function(i) {
-          ret.result[col.name()].indexes.push(i);
+    function(col) {
+
+      var name = col.name();
+      if (name.charAt(0)!=='_') {
+        var data = {
+          id: col._id, name, type: col.type(), status: col.status(),
+          planId: col.planId(), theLeader: col.getLeader()
+        };
+        
+        // merge properties
+        var properties = col.properties(), p;
+        for (p in properties) {
+          if (properties.hasOwnProperty(p)) {
+            data[p] = properties[p];
+          }
+        }
+
+        data.indexes = [];
+        
+        col.getIndexes().forEach( function(index) {
+          data.indexes.push(index);
         });
+        ret.result[name] = data;
       }
     });
   return ret;
