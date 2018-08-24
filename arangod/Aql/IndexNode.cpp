@@ -233,6 +233,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double const dependencyCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
+  // estimate for the number of documents in the collection. may be outdated...
   size_t const itemsInCollection = _collection->count(trx);
   size_t totalItems = 0;
   double totalCost = 0.0;

@@ -57,7 +57,7 @@ It can be used to determine whether new operations were logged, and is also used
 by the _replication applier_ for incremental fetching of data.
 
 **Note**: The replication logger state can also be queried via the
-[HTTP API](../../../HTTP/Replications/index.html).
+[HTTP API](../../../../HTTP/Replications/index.html).
 
 To query which data ranges are still available for replication clients to fetch,
 the logger provides the *firstTick* and *tickRanges* functions:
@@ -178,6 +178,6 @@ due to (repeated) connection problems:
 ```
 
 **Note**: the state of a database's replication applier is queryable via the HTTP
-API, too. Please refer to [HTTP Interface for Replication](../../../HTTP/Replications/index.html)
+API, too. Please refer to [HTTP Interface for Replication](../../../../HTTP/Replications/index.html)
 for more details.
 

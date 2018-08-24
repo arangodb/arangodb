@@ -174,7 +174,7 @@ AQL query editor in the web interface.
 Audit Log
 ---------
 
-Audit logging has been added, see [Auditing](../Administration/Auditing/README.md).
+Audit logging has been added, see [Auditing](../Security/Auditing/README.md).
 
 Client tools
 ------------

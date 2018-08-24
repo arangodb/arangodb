@@ -152,11 +152,11 @@ function ViewSuite () {
     /// @brief modify with unacceptable properties
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingModifyUnacceptable : function () {
-      var abc = db._createView("abc", "arangosearch", { "commitIntervalMsec": 17 });
+      var abc = db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 17 });
       assertEqual(abc.name(), "abc");
-      assertEqual(abc.properties().commitIntervalMsec, 17);
-      abc.properties({ "bogus": "junk", "commitIntervalMsec": 7 });
-      assertEqual(abc.properties().commitIntervalMsec, 7);
+      assertEqual(abc.properties().consolidationIntervalMsec, 17);
+      abc.properties({ "bogus": "junk", "consolidationIntervalMsec": 7 });
+      assertEqual(abc.properties().consolidationIntervalMsec, 7);
       abc.drop();
     },
 
@@ -166,18 +166,18 @@ function ViewSuite () {
     testAddDrop : function () {
       db._dropView("abc");
       db._dropView("def");
-      db._createView("abc", "arangosearch", { "commitIntervalMsec": 10 });
-      db._createView("def", "arangosearch", { "commitIntervalMsec": 3 });
+      db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 10 });
+      db._createView("def", "arangosearch", { "consolidationIntervalMsec": 3 });
       var abc = db._view("abc");
       var def = db._view("def");
       var propA = abc.properties();
       var propD = def.properties();
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(propA.commitIntervalMsec, 10);
+      assertEqual(propA.consolidationIntervalMsec, 10);
       assertEqual(def.name(), "def");
       assertEqual(def.type(), "arangosearch");
-      assertEqual(propD.commitIntervalMsec, 3);
+      assertEqual(propD.consolidationIntervalMsec, 3);
       abc.drop();
       def.drop();
       try {
@@ -222,20 +222,20 @@ function ViewSuite () {
     /// @brief modify properties
     ////////////////////////////////////////////////////////////////////////////
     testModifyProperties : function () {
-      var abc = db._createView("abc", "arangosearch", { "commitIntervalMsec": 10 });
+      var abc = db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 10 });
       var props = abc.properties();
 
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.commitIntervalMsec, 10);
+      assertEqual(props.consolidationIntervalMsec, 10);
 
-      abc.properties({ "commitIntervalMsec": 7 });
+      abc.properties({ "consolidationIntervalMsec": 7 });
       abc = db._view("abc");
       props = abc.properties();
 
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.commitIntervalMsec, 7);
+      assertEqual(props.consolidationIntervalMsec, 7);
 
       abc.drop();
     },
