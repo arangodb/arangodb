@@ -39,7 +39,7 @@ namespace velocypack {
 template <typename T>
 class Buffer {
  public:
-  Buffer() : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
+  Buffer() noexcept : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
     poison(_buffer, _capacity);
     initWithNone();
   }
@@ -120,17 +120,21 @@ class Buffer {
     return *this;
   }
 
-  ~Buffer() { clear(); }
+  ~Buffer() { 
+    if (_buffer != _local) {
+      delete[] _buffer;
+    }
+  }
 
-  inline T* data() { return _buffer; }
-  inline T const* data() const { return _buffer; }
+  inline T* data() noexcept { return _buffer; }
+  inline T const* data() const noexcept { return _buffer; }
 
-  inline bool empty() const { return _size == 0; }
-  inline ValueLength size() const { return _size; }
-  inline ValueLength length() const { return _size; }
-  inline ValueLength byteSize() const { return _size; }
+  inline bool empty() const noexcept { return _size == 0; }
+  inline ValueLength size() const noexcept { return _size; }
+  inline ValueLength length() const noexcept { return _size; }
+  inline ValueLength byteSize() const noexcept { return _size; }
   
-  inline ValueLength capacity() const { return _capacity; }
+  inline ValueLength capacity() const noexcept { return _capacity; }
 
   std::string toString() const {
     return std::string(reinterpret_cast<char const*>(_buffer), _size);
@@ -167,15 +171,15 @@ class Buffer {
     _size -= value;
   }
 
-  void clear() {
-    reset();
+  void clear() noexcept {
+    _size = 0;
     if (_buffer != _local) {
       delete[] _buffer;
       _buffer = _local;
       _capacity = sizeof(_local);
       poison(_buffer, _capacity);
-      initWithNone();
     }
+    initWithNone();
   }
 
   inline T& operator[](size_t position) noexcept {
@@ -258,7 +262,7 @@ class Buffer {
     }
     VELOCYPACK_ASSERT(newLen > _size);
 
-    // try not to initialize memory here
+    // intentionally do not initialize memory here
     T* p = new T[checkOverflow(newLen)];
     poison(p, newLen);
     // copy old data

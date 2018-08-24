@@ -43,22 +43,25 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief an asynchronously accessible cookie/flag denoting value with a
-///        read-write mutex to lock value from modification for the duration of
-///        the held lock
+/// @brief a read-mutex for a resource
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
-class AsyncValue {
-  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+class ResourceMutex {
  public:
-  T get() const { return _value.load(); }
-  ReadMutex mutex() const { return ReadMutex(_mutex); } // prevent modification
+  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+  explicit ResourceMutex(void* resource)
+    : _readMutex(_mutex), _resource(resource) {}
+  ~ResourceMutex() { reset(); }
+  operator bool() { return get() != nullptr; }
+  ReadMutex& mutex() const { return _readMutex; } // prevent '_resource' reset()
+  void reset(); // will block until a write lock can be aquired on the _mutex
 
  protected:
-  mutable irs::async_utils::read_write_mutex _mutex; // read-lock to prevent value modification
-  std::atomic<T> _value;
+  void* get() const { return _resource.load(); }
 
-  explicit AsyncValue(T value): _value(value) {}
+ private:
+  irs::async_utils::read_write_mutex _mutex; // read-lock to prevent '_resource' reset()
+  mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
+  std::atomic<void*> _resource; // atomic because of 'operator bool()'
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -22,19 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSimpleHandler.h"
-#include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
+#include "Aql/BindParameters.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
+#include "Transaction/Context.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -49,26 +47,19 @@ using namespace arangodb::rest;
 RestSimpleHandler::RestSimpleHandler(
     GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
-    : RestVocbaseBaseHandler(request, response),
-      _queryRegistry(queryRegistry),
-      _queryLock(),
-      _query(nullptr),
-      _queryKilled(false) {}
+    : RestCursorHandler(request, response, queryRegistry), _silent(true) {}
 
 RestStatus RestSimpleHandler::execute() {
   // extract the request type
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::PUT) {
-    bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parsingSuccess);
-
+    
+    bool parsingSuccess = false;
+    VPackSlice const body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
       return RestStatus::DONE;
     }
-
-    VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -79,9 +70,9 @@ RestStatus RestSimpleHandler::execute() {
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      removeByKeys(body);
+      return removeByKeys(body);
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      lookupByKeys(body);
+      return lookupByKeys(body);
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
@@ -95,287 +86,226 @@ RestStatus RestSimpleHandler::execute() {
   return RestStatus::DONE;
 }
 
-bool RestSimpleHandler::cancel() {
-  RestVocbaseBaseHandler::cancel();
-  return cancelQuery();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the currently running query
-////////////////////////////////////////////////////////////////////////////////
-
-void RestSimpleHandler::registerQuery(arangodb::aql::Query* query) {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
-
-  TRI_ASSERT(_query == nullptr);
-  _query = query;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister the currently running query
-////////////////////////////////////////////////////////////////////////////////
-
-void RestSimpleHandler::unregisterQuery() {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
-
-  _query = nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cancel the currently running query
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestSimpleHandler::cancelQuery() {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
-
-  if (_query != nullptr) {
-    _query->killed(true);
-    _queryKilled = true;
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the query was canceled
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestSimpleHandler::wasCanceled() {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
-  return _queryKilled;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock RestRemoveByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
+RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
-  try {
-    std::string collectionName;
-    {
-      VPackSlice const value = slice.get("collection");
+  std::string collectionName;
+  {
+    VPackSlice const value = slice.get("collection");
 
-      if (!value.isString()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                      "expecting string for <collection>");
-        return;
-      }
-
-      collectionName = value.copyString();
-
-      if (!collectionName.empty() && collectionName[0] >= '0' &&
-          collectionName[0] <= '9') {
-        // If we have a numeric name we probably have to translate it.
-        CollectionNameResolver resolver(_vocbase);
-        collectionName = resolver.getCollectionName(collectionName);
-      }
-    }
-
-    VPackSlice const keys = slice.get("keys");
-
-    if (!keys.isArray()) {
+    if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                    "expecting array for <keys>");
-      return;
+                    "expecting string for <collection>");
+      return RestStatus::DONE;
     }
 
-    bool waitForSync = false;
-    bool silent = true;
-    bool returnOld = false;
-    {
-      VPackSlice const value = slice.get("options");
-      if (value.isObject()) {
-        VPackSlice wfs = value.get("waitForSync");
-        if (wfs.isBool()) {
-          waitForSync = wfs.getBool();
-        }
-        wfs = value.get("silent");
-        if (wfs.isBool()) {
-          silent = wfs.getBool();
-        }
-        wfs = value.get("returnOld");
-        if (wfs.isBool()) {
-          returnOld = wfs.getBool();
-        }
-      }
+    collectionName = value.copyString();
+
+    if (!collectionName.empty() && collectionName[0] >= '0' &&
+        collectionName[0] <= '9') {
+      // If we have a numeric name we probably have to translate it.
+      CollectionNameResolver resolver(_vocbase);
+
+      collectionName = resolver.getCollectionName(collectionName);
     }
-
-    auto bindVars = std::make_shared<VPackBuilder>();
-    bindVars->openObject();
-    bindVars->add("@collection", VPackValue(collectionName));
-    bindVars->add("keys", keys);
-    bindVars->close();
-
-    std::string aql(
-        "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
-        "true, waitForSync: ");
-    aql.append(waitForSync ? "true" : "false");
-    aql.append(" }");
-    if (!silent) {
-      if (returnOld) {
-        aql.append(" RETURN OLD");
-      } else {
-        aql.append(" RETURN {_id: OLD._id, _key: OLD._key, _rev: OLD._rev}");
-      }
-    }
-
-    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
-
-    registerQuery(&query);
-    auto queryResult = query.execute(_queryRegistry);
-    unregisterQuery();
-
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
-        return;
-      }
-
-      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
-      return;
-    }
-
-    {
-      size_t ignored = 0;
-      size_t removed = 0;
-      if (queryResult.stats != nullptr) {
-        VPackSlice stats = queryResult.stats->slice();
-
-        if (!stats.isNone()) {
-          TRI_ASSERT(stats.isObject());
-          VPackSlice found = stats.get("writesIgnored");
-          if (found.isNumber()) {
-            ignored = found.getNumericValue<size_t>();
-          }
-
-          found = stats.get("writesExecuted");
-          if (found.isNumber()) {
-            removed = found.getNumericValue<size_t>();
-          }
-        }
-      }
-
-      VPackBuilder result;
-      result.add(VPackValue(VPackValueType::Object));
-      result.add("removed", VPackValue(removed));
-      result.add("ignored", VPackValue(ignored));
-      result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
-      if (!silent) {
-        result.add("old", queryResult.result->slice());
-      }
-      result.close();
-
-      generateResult(rest::ResponseCode::OK, result.slice(),
-                     queryResult.context);
-    }
-  } catch (...) {
-    unregisterQuery();
-    throw;
   }
+
+  VPackSlice const keys = slice.get("keys");
+
+  if (!keys.isArray()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "expecting array for <keys>");
+    return RestStatus::DONE;
+  }
+
+  bool waitForSync = false;
+  bool returnOld = false;
+  _silent = true;
+  {
+    VPackSlice const value = slice.get("options");
+    if (value.isObject()) {
+      VPackSlice wfs = value.get("waitForSync");
+      if (wfs.isBool()) {
+        waitForSync = wfs.getBool();
+      }
+      wfs = value.get("silent");
+      if (wfs.isBool()) {
+        _silent = wfs.getBool();
+      }
+      wfs = value.get("returnOld");
+      if (wfs.isBool()) {
+        returnOld = wfs.getBool();
+      }
+    }
+  }
+
+  std::string aql(
+      "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: "
+      "true, waitForSync: ");
+  aql.append(waitForSync ? "true" : "false");
+  aql.append(" }");
+  if (!_silent) {
+    if (returnOld) {
+      aql.append(" RETURN OLD");
+    } else {
+      aql.append(" RETURN {_id: OLD._id, _key: OLD._key, _rev: OLD._rev}");
+    }
+  }
+
+  VPackBuilder data;
+  data.openObject();
+  data.add("query", VPackValue(aql));
+  data.add(VPackValue("bindVars"));
+  data.openObject();  // bindVars
+  data.add("@collection", VPackValue(collectionName));
+  data.add("keys", keys);
+  data.close();  // bindVars
+  data.close();
+
+  return registerQueryOrCursor(data.slice());
+}
+    
+RestStatus RestSimpleHandler::handleQueryResult() {
+  if (_queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (_queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (_queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
+      generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
+    } else {
+      generateError(GeneralResponse::responseCode(_queryResult.code), _queryResult.code, _queryResult.details);
+    }
+    return RestStatus::DONE;
+  }
+
+  // extract the request type
+  auto const type = _request->requestType();
+  std::string const& prefix = _request->requestPath();
+
+  if (type == rest::RequestType::PUT) {
+    if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
+      handleQueryResultRemoveByKeys();
+      return RestStatus::DONE;
+    } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
+      handleQueryResultLookupByKeys();
+      return RestStatus::DONE;
+    }
+  }
+
+  // If we get here some checks before have already failed, we are
+  // in an invalid state now.
+  TRI_ASSERT(false);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return RestStatus::DONE;
+}
+
+void RestSimpleHandler::handleQueryResultRemoveByKeys() {
+  size_t ignored = 0;
+  size_t removed = 0;
+  if (_queryResult.extra) {
+    VPackSlice stats = _queryResult.extra->slice().get("stats");
+    if (!stats.isNone()) {
+      TRI_ASSERT(stats.isObject());
+      VPackSlice found = stats.get("writesIgnored");
+      if (found.isNumber()) {
+        ignored = found.getNumericValue<size_t>();
+      }
+      if ((found = stats.get("writesExecuted")).isNumber()) {
+        removed = found.getNumericValue<size_t>();
+      }
+    }
+  }
+
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("removed", VPackValue(removed));
+  result.add("ignored", VPackValue(ignored));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  if (!_silent) {
+    result.add("old", _queryResult.result->slice());
+  }
+  result.close();
+
+  generateResult(rest::ResponseCode::OK, result.slice(),
+                 _queryResult.context);
+}
+
+void RestSimpleHandler::handleQueryResultLookupByKeys() {
+  VPackBuffer<uint8_t> resultBuffer;
+  VPackBuilder result(resultBuffer);
+  {
+    VPackObjectBuilder guard(&result);
+    resetResponse(rest::ResponseCode::OK);
+
+    response()->setContentType(rest::ContentType::JSON);
+    result.add(VPackValue("documents"));
+
+    result.addExternal(_queryResult.result->slice().begin());
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code,
+               VPackValue(static_cast<int>(_response->responseCode())));
+  }
+
+  generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
+                 _queryResult.context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock RestLookupByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
-  auto response = _response.get();
-
-  if (response == nullptr) {
+RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
+  if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
 
-  try {
-    std::string collectionName;
-    {
-      VPackSlice const value = slice.get("collection");
-      if (!value.isString()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                      "expecting string for <collection>");
-        return;
-      }
-      collectionName = value.copyString();
+  std::string collectionName;
+  {
+    VPackSlice const value = slice.get("collection");
 
-      if (!collectionName.empty()) {
-        auto const* col = _vocbase->lookupCollection(collectionName);
-
-        if (col != nullptr && collectionName != col->name()) {
-          // user has probably passed in a numeric collection id.
-          // translate it into a "real" collection name
-          collectionName = col->name();
-        }
-      }
-    }
-
-    VPackSlice const keys = slice.get("keys");
-
-    if (!keys.isArray()) {
+    if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
-                    "expecting array for <keys>");
-      return;
+                    "expecting string for <collection>");
+      return RestStatus::DONE;
     }
 
-    auto bindVars = std::make_shared<VPackBuilder>();
-    bindVars->openObject();
-    bindVars->add("@collection", VPackValue(collectionName));
-    bindVars->add(VPackValue("keys"));
-    arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName, *bindVars.get());
-    bindVars->close();
+    collectionName = value.copyString();
 
-    std::string const aql(
-        "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
+    if (!collectionName.empty()) {
+      auto col = _vocbase.lookupCollection(collectionName);
 
-    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
-
-    registerQuery(&query);
-    auto queryResult = query.execute(_queryRegistry);
-    unregisterQuery();
-
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCanceled())) {
-        generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED), TRI_ERROR_REQUEST_CANCELED);
-        return;
+      if (col != nullptr && collectionName != col->name()) {
+        // user has probably passed in a numeric collection id.
+        // translate it into a "real" collection name
+        collectionName = col->name();
       }
-
-      generateError(GeneralResponse::responseCode(queryResult.code), queryResult.code, queryResult.details);
-      return;
     }
-
-    VPackBuffer<uint8_t> resultBuffer;
-    VPackBuilder result(resultBuffer);
-    {
-      VPackObjectBuilder guard(&result);
-      resetResponse(rest::ResponseCode::OK);
-
-      response->setContentType(rest::ContentType::JSON);
-      result.add(VPackValue("documents"));
-
-      VPackSlice qResult = queryResult.result->slice();
-      if (qResult.isArray()) {
-        // This is for internal use of AQL Traverser only.
-        // Should not be documented
-        VPackSlice const postFilter = slice.get("filter");
-        TRI_ASSERT(postFilter.isNone());
-      }
-      result.addExternal(queryResult.result->slice().begin());
-      result.add("error", VPackValue(false));
-      result.add("code",
-                 VPackValue(static_cast<int>(_response->responseCode())));
-    }
-
-    generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
-                   queryResult.context);
-
-    queryResult.result = nullptr;
-  } catch (...) {
-    unregisterQuery();
-    throw;
   }
+
+  VPackSlice const keys = slice.get("keys");
+
+  if (!keys.isArray()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "expecting array for <keys>");
+    return RestStatus::DONE;
+  }
+
+  std::string const aql(
+      "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
+
+  VPackBuilder data;
+  data.openObject();
+  data.add("query", VPackValue(aql));
+  data.add(VPackValue("bindVars"));
+  data.openObject();  // bindVars
+  data.add("@collection", VPackValue(collectionName));
+  data.add(VPackValue("keys"));
+  arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName, data);
+  data.close();  // bindVars
+  data.close();
+
+  return registerQueryOrCursor(data.slice());
 }

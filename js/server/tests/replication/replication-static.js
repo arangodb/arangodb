@@ -28,17 +28,18 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var errors = arangodb.errors;
-var db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const errors = arangodb.errors;
+const db = arangodb.db;
 
-var replication = require("@arangodb/replication");
-var console = require("console");
-var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
-var mmfilesEngine = (db._engine().name === "mmfiles");
+const replication = require("@arangodb/replication");
+const compareTicks = require("@arangodb/replication-common").compareTicks;
+const console = require("console");
+const internal = require("internal");
+const masterEndpoint = arango.getEndpoint();
+const slaveEndpoint = ARGUMENTS[0];
+const mmfilesEngine = (db._engine().name === "mmfiles");
 
 const cn = "UnitTestsReplication";
 const cn2 = "UnitTestsReplication2";
@@ -63,28 +64,6 @@ const collectionChecksum = function(name) {
 
 const collectionCount = function(name) {
   return db._collection(name).count();
-};
-
-const compareTicks = function(l, r) {
-  var i;
-  if (l === null) {
-    l = "0";
-  }
-  if (r === null) {
-    r = "0";
-  }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
 };
 
 const compare = function(masterFunc, slaveFunc, applierConfiguration) {
@@ -1449,6 +1428,50 @@ function BaseTestConfig() {
         }
       );
     },
+    
+    testCreateCollectionKeygenUuid: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn, {
+            keyOptions: {
+              type: "uuid",
+              allowUserKeys: false
+            }
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function(state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("uuid", properties.keyOptions.type);
+        }
+      );
+    },
+    
+    testCreateCollectionKeygenPadded: function() {
+      compare(
+        function(state) {
+          var c = db._create(cn, {
+            keyOptions: {
+              type: "padded",
+              allowUserKeys: false
+            }
+          });
+
+          state.cid = c._id;
+          state.properties = c.properties();
+        },
+        function(state) {
+          var properties = db._collection(cn).properties();
+          assertEqual(cn, db._collection(cn).name());
+          assertFalse(properties.keyOptions.allowUserKeys);
+          assertEqual("padded", properties.keyOptions.type);
+        }
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test create collection
@@ -1996,6 +2019,38 @@ function BaseTestConfig() {
         }, {
           restrictType: "exclude",
           restrictCollections: [cn2]
+        }
+      );
+    },
+
+    testViewBasic: function() {
+      compare(
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
         }
       );
     }

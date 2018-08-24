@@ -21,15 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationServerHelper.h"
-
-#include "Logger/Logger.h"
+#include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
 #include "SystemDatabaseFeature.h"
-#include "IResearchFeature.h"
 
 namespace {
   static std::string const FEATURE_NAME("SystemDatabase");
@@ -45,11 +42,11 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
 }
 
 SystemDatabaseFeature::SystemDatabaseFeature(
-    application_features::ApplicationServer* server,
+    arangodb::application_features::ApplicationServer& server,
     TRI_vocbase_t* vocbase /*= nullptr*/
 ): ApplicationFeature(server, SystemDatabaseFeature::name()),
    _vocbase(vocbase) {
-  startsAfter("Database"); // used for getting the system database
+  startsAfter("V8Phase");
 }
 
 /*static*/ std::string const& SystemDatabaseFeature::name() noexcept {
@@ -57,7 +54,9 @@ SystemDatabaseFeature::SystemDatabaseFeature(
 }
 
 void SystemDatabaseFeature::start() {
-  auto* databases = getFeature<arangodb::DatabaseFeature>("Database");
+  auto* databases = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
 
   if (databases) {
     _vocbase.store(databases->systemDatabase());
@@ -65,7 +64,8 @@ void SystemDatabaseFeature::start() {
     return;
   }
 
-  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'Database' while starting SystemDatabaseFeature";
+  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    << "failure to find feature 'Database' while starting SystemDatabaseFeature";
   FATAL_ERROR_EXIT();
 }
 

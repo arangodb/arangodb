@@ -36,7 +36,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestIndexHandler"; }
-  bool isDirect() const override { return true; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
  private:

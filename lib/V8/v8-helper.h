@@ -136,12 +136,28 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v
 
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(exception);
 
+  int errorNum = -1;
+
+  if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum"))) {
+    errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
+  }
+
   try {
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum")) &&
-        object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))
-       ) {
-      int errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
-      std::string errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
+    if ((errorNum != -1) &&
+        (object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage")) ||
+         object->Has(TRI_V8_ASCII_STRING(isolate, "message")))) {
+      std::string errorMessage;
+      if (object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))) {
+        v8::String::Utf8Value msg(object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
+        if (*msg != nullptr) {
+          errorMessage = std::string(*msg, msg.length());
+        }
+      } else {
+        v8::String::Utf8Value msg(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+        if (*msg != nullptr) {
+          errorMessage = std::string(*msg, msg.length());
+        }
+      }
       std::get<1>(rv) = true;
       std::get<2>(rv).reset(errorNum, errorMessage);
       tryCatch.Reset();
@@ -165,7 +181,10 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate, v
       if (name == "TypeError") {
         std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
       } else {
-        std::get<2>(rv).reset(TRI_ERROR_INTERNAL, name + ": " + message);
+        if (errorNum == -1) {
+          errorNum = errorCode;
+        }
+        std::get<2>(rv).reset(errorNum, name + ": " + message);
       }
       std::get<1>(rv) = true;
       tryCatch.Reset();

@@ -57,7 +57,7 @@ TEST( compression_tests, compress_decompress) {
   tests::detail::compress_decompress_core( generate<bytes>( alphabet, 1024U));
   tests::detail::compress_decompress_core( generate<bytes>( alphabet, 512U));
   tests::detail::compress_decompress_core( generate<bytes>( alphabet, 128U));
-  tests::detail::compress_decompress_core( bytes_ref::nil);
+  tests::detail::compress_decompress_core( bytes_ref::NIL);
 }
 
 #endif

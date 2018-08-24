@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertMatch, fail, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -33,7 +33,13 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-
+let cluster;
+// quick hack to check if we are arangod or arangosh
+if (typeof ArangoClusterComm === "object") {
+  cluster = require("@arangodb/cluster");
+} else {
+  cluster = {};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen
@@ -51,6 +57,52 @@ function TraditionalSuite () {
 
     tearDown : function () {
       db._drop(cn);
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with key
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateInvalidKeyNonDefaultSharding1 : function () {
+      var c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: "traditional", allowUserKeys: false } });
+
+      try {
+        c.save({ _key: "1234" }); // no user keys allowed
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
+                   err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+      }
+    },
+    
+    testCreateInvalidKeyNonDefaultSharding2 : function () {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+        return;
+      }
+
+      var c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: "traditional", allowUserKeys: true } });
+
+      try {
+        c.save({ _key: "1234" }); // no user keys allowed
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
+                   err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+      }
+    },
+    
+    testCreateKeyNonDefaultSharding : function () {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+        return;
+      }
+
+      var c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: "traditional", allowUserKeys: true } });
+
+      let key = c.save({ value: "1" }); // no user keys allowed
+      let doc = c.document(key);
+      assertEqual("1", doc.value);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,17 +206,100 @@ function TraditionalSuite () {
       assertTrue(d2 < d3);
       assertTrue(d3 < d4);
       assertTrue(d4 < d5);
+    },
+    
+    testInvalidKeyGenerator : function () {
+      try {
+        db._create(cn, { keyOptions: { type: "der-fuchs" } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code, err.errorNum);
+      }
+    },
+
+    testAutoincrementGeneratorInCluster : function () {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+        return;
+      }
+
+      try {
+        db._create(cn, { keyOptions: { type: "autoincrement" } });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err.errorNum);
+      }
+    },
+
+    testUuid : function () {
+      let c = db._create(cn, { keyOptions: { type: "uuid" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("uuid", options.type);
+      assertTrue(options.allowUserKeys);
+
+      for (let i = 0; i < 100; ++i) {
+        let doc = c.insert({});
+        assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, doc._key);
+      }
+    },
+
+    testPadded : function () {
+      let c = db._create(cn, { keyOptions: { type: "padded" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("padded", options.type);
+      assertTrue(options.allowUserKeys);
+
+      for (let i = 0; i < 100; ++i) {
+        let doc = c.insert({});
+        assertEqual(16, doc._key.length);
+        assertMatch(/^[0-9a-f]{16}$/, doc._key);
+      }
+    },
+    
+    testTraditionalTracking : function () {
+      let c = db._create(cn, { keyOptions: { type: "traditional" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("traditional", options.type);
+      assertTrue(options.allowUserKeys);
+
+      let lastKey = null;
+      for (let i = 0; i < 100; ++i) {
+        let key = c.insert({})._key;
+        if (lastKey !== null) {
+          assertTrue(Number(key) > Number(lastKey));
+        }
+        lastKey = key;
+      }
+
+      assertEqual(lastKey, c.properties().keyOptions.lastValue);
+    },
+
+    testPaddedTracking : function () {
+      let c = db._create(cn, { keyOptions: { type: "padded" } });
+
+      let options = c.properties().keyOptions;
+      assertEqual("padded", options.type);
+      assertTrue(options.allowUserKeys);
+
+      let lastKey = null;
+      for (let i = 0; i < 100; ++i) {
+        let key = c.insert({})._key;
+        assertEqual(16, key.length);
+        if (lastKey !== null) {
+          assertTrue(key > lastKey);
+        }
+        lastKey = key;
+      }
+
+      let hex = c.properties().keyOptions.lastValue.toString(16);
+      assertEqual(lastKey, Array(16 + 1 - hex.length).join("0") + hex);
     }
 
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(TraditionalSuite);
 
 return jsunity.done();
-

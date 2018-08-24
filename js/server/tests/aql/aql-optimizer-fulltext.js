@@ -81,7 +81,7 @@ function optimizerRuleTestSuite() {
       internal.db._drop(colName);
       fulltext = internal.db._create(colName);
       fulltext.ensureIndex({type:"fulltext", fields:["t1"]});
-      fulltext.ensureIndex({type:"fulltext", fields:["t2"], minLength: 4});        
+      fulltext.ensureIndex({type:"fulltext", fields:["t2"], minLength: 4});
       fulltext.ensureIndex({type:"fulltext", fields:["t3.e.x"]});
       var texts = [
         "Flötenkröten tröten böse wörter nörgelnd",
@@ -106,15 +106,15 @@ function optimizerRuleTestSuite() {
       internal.db._drop(colName);
       fulltext = null;
     },
-    
+
     testRuleNotApplicable : function () {
-      let query = "FOR search IN ['prefix:möchten,müller', 'möchten,prefix:müller', 'möchten,müller', 'Flötenkröten,|goutieren', 'prefix:quergestreift,|koedern,|prefix:römer,-melken,-quasi'] RETURN (FOR d IN FULLTEXT(@@coll, @attr, search) SORT d.id RETURN d.id)";
-        
+      let query = "FOR searchValue IN ['prefix:möchten,müller', 'möchten,prefix:müller', 'möchten,müller', 'Flötenkröten,|goutieren', 'prefix:quergestreift,|koedern,|prefix:römer,-melken,-quasi'] RETURN (FOR d IN FULLTEXT(@@coll, @attr, searchValue) SORT d.id RETURN d.id)";
+
       ["t1", "t2", "t3.e.x"].forEach(field => {
         let bindVars = {'@coll': colName, attr: field};
         let plan = AQL_EXPLAIN(query, bindVars);
-        hasNoIndexNode(plan, query);
-              
+        hasIndexNode(plan, query);
+
         let expected = [ [ 3, 6 ], [ 3, 6 ], [ 3, 6 ], [ 1, 4 ], [ 2, 7 ] ];
         let r = AQL_EXECUTE(query, bindVars);
         assertEqual(r.json, expected, "Invalid fulltext result");
@@ -127,30 +127,30 @@ function optimizerRuleTestSuite() {
       let checkQuery = function(q, r) {
         ["t1", "t2", "t3.e.x"].forEach(field => {
           let bindVars = {'@coll': colName, attr: field};
-          
+
             let plan1 = AQL_EXPLAIN(q, bindVars);
             hasIndexNode(plan1,q);
             hasNoFilterNode(plan1,q);
-            
+
             let plan2 = AQL_EXPLAIN(q, bindVars, {optimizer: {rules:[ "-all" ]}});
-            hasNoIndexNode(plan2,q);
+            hasIndexNode(plan2,q);
             hasNoFilterNode(plan2,q);
-            
+
             let r1 = AQL_EXECUTE(q, bindVars, { optimizer: { rules: [ "-all" ] } });
             let r2 = AQL_EXECUTE(q, bindVars);
             assertEqual(r1.json, r, "Invalid fulltext result");
             assertEqual(r2.json, r, "Invalid fulltext result");
         });
       };
-      
+
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:möchten,müller') SORT d.id RETURN d.id", [ 3, 6 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'möchten,prefix:müller') SORT d.id RETURN d.id", [ 3, 6 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'möchten,müller') SORT d.id RETURN d.id", [ 3, 6 ]);
-      checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'Flötenkröten,|goutieren') SORT d.id RETURN d.id", [ 1, 4 ]);      
+      checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'Flötenkröten,|goutieren') SORT d.id RETURN d.id", [ 1, 4 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken,-quasi') SORT d.id RETURN d.id", [ 2, 7 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken') SORT d.id RETURN d.id", [ 2, 4, 7 ]);
       checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) SORT d.id RETURN d.id", [ 2, 4 ]);
-      checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) LIMIT 1 SORT d.id RETURN d.id", [ 2]);            
+      checkQuery("FOR d IN FULLTEXT(@@coll, @attr, 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) LIMIT 1 SORT d.id RETURN d.id", [ 2]);
     }, // testRuleBasics
 
     testRuleStringCollection : function() {

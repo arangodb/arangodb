@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Utils/OperationOptions.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
@@ -33,16 +34,19 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-  
+
 struct OperationResult {
-  OperationResult() {} 
-  
+  OperationResult() {}
+
   // create from integer status code
   explicit OperationResult(int code) : result(code) {}
-  
+  explicit OperationResult(int code, OperationOptions const& options) : result(code), _options(options) {}
+
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
+  explicit OperationResult(Result const& other, OperationOptions const& options) : result(other), _options(options){}
   explicit OperationResult(Result&& other) : result(std::move(other)) {}
+  explicit OperationResult(Result&& other, OperationOptions const& options) : result(std::move(other)), _options(options) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
@@ -55,24 +59,29 @@ struct OperationResult {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
       customTypeHandler = std::move(other.customTypeHandler);
-      wasSynchronous = other.wasSynchronous;
+      _options = other._options;
       countErrorCodes = std::move(other.countErrorCodes);
     }
     return *this;
   }
- 
-  // create result with details 
+
+  // create result with details
   OperationResult(Result&& result,
                   std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
                   std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  bool wasSynchronous,
+                  OperationOptions const& options = {},
                   std::unordered_map<int, size_t> const& countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(buffer),
         customTypeHandler(handler),
-        wasSynchronous(wasSynchronous),
-        countErrorCodes(countErrorCodes) {}
-  
+        _options(options),
+        countErrorCodes(countErrorCodes) {
+          if(result.ok()){
+            TRI_ASSERT(buffer != nullptr);
+            TRI_ASSERT(buffer->data() != nullptr);
+          }
+        }
+
   ~OperationResult() = default;
 
   // Result-like interface
@@ -84,7 +93,7 @@ struct OperationResult {
   std::string errorMessage() const { return result.errorMessage(); }
 
   inline VPackSlice slice() const {
-    TRI_ASSERT(buffer != nullptr); 
+    TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());
   }
 
@@ -92,7 +101,7 @@ struct OperationResult {
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
-  bool wasSynchronous = false;
+  OperationOptions _options;
 
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of

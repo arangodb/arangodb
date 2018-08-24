@@ -29,12 +29,13 @@
 #endif
 #endif
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
 static char const* NoColor = "";
 }
+
+namespace arangodb {
 
 char const* ShellColorsFeature::SHELL_COLOR_RED = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BOLD_RED = NoColor;
@@ -57,13 +58,25 @@ char const* ShellColorsFeature::SHELL_COLOR_BRIGHT = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_RESET = NoColor;
 
 ShellColorsFeature::ShellColorsFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "ShellColors") {
+    application_features::ApplicationServer& server
+)
+    : ApplicationFeature(server, "ShellColors"), _initialized(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
+
+  // it's admittedly a hack that we already call prepare here...
+  // however, setting the colors is one of the first steps we need to do,
+  // and we do not want to wait for the application server to have successfully
+  // parsed options etc. before we initialize the shell colors
+  prepare();
 }
 
 void ShellColorsFeature::prepare() {
+  // prevent duplicate invocation of prepare
+  if (_initialized) {
+    return;
+  }
+  _initialized = true;
+
   if (useColors()) {
     SHELL_COLOR_RED = "\x1b[31m";
     SHELL_COLOR_BOLD_RED = "\x1b[1;31m";
@@ -118,3 +131,5 @@ bool ShellColorsFeature::prepareConsole() {
   return true;
 #endif
 }
+
+} // arangodb

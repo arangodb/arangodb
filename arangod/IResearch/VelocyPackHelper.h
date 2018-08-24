@@ -75,7 +75,7 @@ arangodb::velocypack::Slice const& emptyObjectSlice();
 //////////////////////////////////////////////////////////////////////////////
 inline irs::string_ref getStringRef(VPackSlice const& slice) {
   if (slice.isNull()) {
-    return irs::string_ref::nil;
+    return irs::string_ref::NIL;
   }
 
   TRI_ASSERT(slice.isString());
@@ -211,6 +211,26 @@ inline bool getString(
 bool mergeSlice(
   arangodb::velocypack::Builder& builder,
   arangodb::velocypack::Slice const& slice
+);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief append the contents of the slice to the builder skipping keys
+/// @return success
+//////////////////////////////////////////////////////////////////////////////
+bool mergeSliceSkipKeys(
+  arangodb::velocypack::Builder& builder,
+  arangodb::velocypack::Slice const& slice,
+  std::function<bool(irs::string_ref const& key)> const& acceptor
+);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief append the contents of the slice to the builder skipping offsets
+/// @return success
+//////////////////////////////////////////////////////////////////////////////
+bool mergeSliceSkipOffsets(
+  arangodb::velocypack::Builder& builder,
+  arangodb::velocypack::Slice const& slice,
+  std::function<bool(size_t offset)> const& acceptor
 );
 
 //////////////////////////////////////////////////////////////////////////////

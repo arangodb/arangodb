@@ -9,8 +9,8 @@
 #>
 
 # set variables
-$ErrorActionPreference = "Stop"
-$PSDefaultParameterValues['*:ErrorAction']='Stop'
+$ErrorActionPreference = "Continue"
+$PSDefaultParameterValues['*:ErrorAction']='Continue'
 
 $arango_source = split-path -parent $script_path
 

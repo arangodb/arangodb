@@ -129,16 +129,23 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   message(STATUS "using generator NINJA on Windows! Still WIP be patient!")
   set(GYP_MAIN ${V8_DIR}/gypfiles/gyp_v8)
 
-  # try to find 2013 in 'Visual Studio 12 2013 Win64'
-  #if (${CMAKE_GENERATOR} MATCHES "2013") 
-  #  list(APPEND V8_GYP_ARGS "-G msvs_version=2013")
-  #endif()
-
-  # try to find 2015 in 'Visual Studio 14 2015 Win64'
-  #if (${CMAKE_GENERATOR} MATCHES "2015") 
-    #    list(APPEND V8_GYP_ARGS "-G msvs_version=2015")
+  if (${CMAKE_GENERATOR} MATCHES "2013")
+    # try to find 2013 in 'Visual Studio 12 2013 Win64'
+    set(GYP_MSVS_VERSION "2013")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2013")
+  elseif (${CMAKE_GENERATOR} MATCHES "2015")
+    # try to find 2015 in 'Visual Studio 14 2015 Win64'
+    set(GYP_MSVS_VERSION "2015")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2015")
+  elseif (${CMAKE_GENERATOR} MATCHES "2017")
+    # try to find 2017 in 'Visual Studio 15 2017 Win64'
+    set(GYP_MSVS_VERSION "2017")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017")
+  else ()
+    set(GYP_MSVS_VERSION "2017")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017 by default")
+  endif()
   list(APPEND V8_GYP_ARGS --format ninja)
-  #endif()
 
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
@@ -149,9 +156,12 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
 
-  if ("${V8_TARGET_ARCHS}" STREQUAL "")
-    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
-  endif()
+  set(GYP_GENERATORS "msvs")
+  set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
+  set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
+
+  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
+
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
@@ -172,7 +182,7 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
     SOURCE_DIR
       "${V8_DIR}"
     CONFIGURE_COMMAND
-      ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
+      env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
     BINARY_DIR
       ${NINJA_BUILD_DIR}
     BUILD_COMMAND
@@ -290,20 +300,26 @@ elseif (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
   set(GYP_MAIN gypfiles/gyp_v8)
 
-  # try to find 2013 in 'Visual Studio 12 2013 Win64'
-  if (${CMAKE_GENERATOR} MATCHES "2013") 
-    list(APPEND V8_GYP_ARGS "-Gmsvs_version=2013")
+  if (${CMAKE_GENERATOR} MATCHES "2013")
+    # try to find 2013 in 'Visual Studio 12 2013 Win64'
+    set(GYP_MSVS_VERSION "2013")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2013")
+  elseif (${CMAKE_GENERATOR} MATCHES "2015")
+    # try to find 2015 in 'Visual Studio 14 2015 Win64'
+    set(GYP_MSVS_VERSION "2015")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2015")
+  elseif (${CMAKE_GENERATOR} MATCHES "2017")
+    # try to find 2017 in 'Visual Studio 15 2017 Win64'
+    set(GYP_MSVS_VERSION "2017")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017")
+  else ()
+    set(GYP_MSVS_VERSION "2017")
+    MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017 by default")
   endif()
 
-  # try to find 2015 in 'Visual Studio 14 2015 Win64'
-  if (${CMAKE_GENERATOR} MATCHES "2015") 
-    list(APPEND V8_GYP_ARGS "-Gmsvs_version=2015")
-  endif()
-  
-  list(APPEND V8_GYP_ARGS "-GGYP_GENERATORS=msvs")
   list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=false")
-  
+
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
   else ()
@@ -313,12 +329,11 @@ elseif (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
 
-  if ("${V8_TARGET_ARCHS}" STREQUAL "")
-    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
-  endif()
-  set(ENV{GYP_GENERATORS} msvs)
-  set(ENV{GYP_MSVS_VERSION} 2015)
-  set(ENV{DEPOT_TOOLS_WIN_TOOLCHAIN} 0)
+  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
+  set(GYP_GENERATORS "msvs")
+  set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
+  set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
+
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
@@ -346,7 +361,7 @@ elseif (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env GYP_GENERATORS=msvs GYP_MSVS_VERSION=2015 DEPOT_TOOLS_WIN_TOOLCHAIN=0 ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
+        env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
         ""
       INSTALL_COMMAND
@@ -425,8 +440,8 @@ elseif (WIN32)
     )
   endforeach ()
 
-  set(ICU_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}}/../build/Debug")
-  set(ICU_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}}/../build/Release")
+  set(ICU_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/../build/Debug")
+  set(ICU_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/../build/Release")
 
   set(ICU_LIBS
     debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib"
@@ -588,6 +603,7 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
+set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_DT "${ICU_BASEDIR}/common/icudtl.dat")
 set(ICU_DT ${ICU_DT} PARENT_SCOPE)
 set(ICU_DT_DEST "icudtl.dat" )

@@ -1,7 +1,9 @@
 Database Methods
 ================
 
-### Collection
+Collection
+----------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -45,7 +47,9 @@ Unknown collection:
     @endDocuBlock collectionDatabaseNameUnknown
 
 
-### Create
+Create
+------
+
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -90,9 +94,20 @@ to the [naming conventions](../NamingConventions/README.md).
   specified, then *keyOptions* should be a JSON object containing the
   following attributes (**note**: some of them are optional):
   - *type*: specifies the type of the key generator. The currently
-    available generators are *traditional* and *autoincrement*.
-    (**note**: *autoincrement* is currently only supported for non-sharded
-    collections)
+    available generators are *traditional*, *autoincrement*, *uuid* and
+    *padded*.
+    The `traditional` key generator generates numerical keys in ascending order.
+    The `autoincrement` key generator generates numerical keys in ascending order, 
+    the inital offset and the spacing can be configured (**note**: *autoincrement* is currently only 
+    supported for non-sharded collections). 
+    The `padded` key generator generates keys of a fixed length (16 bytes) in
+    ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
+    engine, which will slightly benefit keys that are inserted in lexicographically
+    ascending order. The key generator can be used in a single-server or cluster.
+    The `uuid` key generator generates universally unique 128 bit keys, which 
+    are stored in hexadecimal human-readable format. This key generator can be used
+    in a single-server or cluster to generate "seemingly random" keys. The keys 
+    produced by this key generator are not lexicographically sorted.
   - *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator will solely be responsible for
@@ -143,15 +158,46 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
-- *distributeShardsLike* distribute the shards of this collection
-  cloning the shard distribution of another.
-
-  When using the *Enterprise* version of ArangoDB the replicationFactor
+  When using the *Enterprise Edition* of ArangoDB the replicationFactor
   may be set to "satellite" making the collection locally joinable
   on every database server. This reduces the number of network hops
   dramatically when using joins in AQL at the costs of reduced write
   performance on these collections.
 
+- *distributeShardsLike* distribute the shards of this collection
+  cloning the shard distribution of another. If this value is set,
+  it will copy the attributes *replicationFactor*, *numberOfShards* and 
+  *shardingStrategy* from the other collection. 
+
+- *shardingStrategy* (optional): specifies the name of the sharding
+  strategy to use for the collection. Since ArangoDB 3.4 there are
+  different sharding strategies to select from when creating a new 
+  collection. The selected *shardingStrategy* value will remain
+  fixed for the collection and cannot be changed afterwards. This is
+  important to make the collection keep its sharding settings and
+  always find documents already distributed to shards using the same
+  initial sharding algorithm.
+
+  The available sharding strategies are:
+  - `community-compat`: default sharding used by ArangoDB community
+    versions before ArangoDB 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB enterprise
+    versions before ArangoDB 3.4
+  - `enterprise-smart-edge-compat`: default sharding used by smart edge
+    collections in ArangoDB enterprise versions before ArangoDB 3.4
+  - `hash`: default sharding used by ArangoDB 3.4 for new collections
+    (excluding smart edge collections)
+  - `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
+    for new smart edge collections
+
+  If no sharding strategy is specified, the default will be `hash` for
+  all collections, and `enterprise-hash-smart-edge` for all smart edge
+  collections (requires the *Enterprise Edition* of ArangoDB). 
+  Manually overriding the sharding strategy does not yet provide a 
+  benefit, but it may later in case other sharding strategies are added.
+  
+  In single-server mode, the *shardingStrategy* attribute is meaningless 
+  and will be ignored.
 
 `db._create(collection-name, properties, type)`
 
@@ -259,7 +305,9 @@ Creates a new document collection named *collection-name*. If the
 document name already exists and error is thrown.
 
 
-### All Collections
+All Collections
+---------------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -282,7 +330,9 @@ Returns all collections of the given database.
 
 
 
-### Collection Name
+Collection Name
+---------------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -307,7 +357,9 @@ default properties.
 
 
 
-### Drop
+Drop
+----
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -371,7 +423,9 @@ Drops a system collection
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionDatabaseDropSystem
 
-### Truncate
+Truncate
+--------
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 

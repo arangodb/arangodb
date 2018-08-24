@@ -26,27 +26,30 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 class UpgradeFeature final : public application_features::ApplicationFeature {
  public:
-  UpgradeFeature(application_features::ApplicationServer* server, int* result,
-                 std::vector<std::string> const& nonServerFeatures);
+  UpgradeFeature(
+    application_features::ApplicationServer& server,
+    int* result,
+    std::vector<std::string> const& nonServerFeatures
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
 
  private:
   bool _upgrade;
   bool _upgradeCheck;
 
- private:
   void upgradeDatabase();
 
- private:
   int* _result;
   std::vector<std::string> _nonServerFeatures;
 };
+
 }
 
 #endif

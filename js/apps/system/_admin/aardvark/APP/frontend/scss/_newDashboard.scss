@@ -390,7 +390,6 @@
     }
 
     span {
-      font-weight: 100 !important;
       padding-left: 10px;
     }
   }
@@ -463,6 +462,7 @@
   margin-bottom: 0;
   margin-left: 2px;
   margin-right: 0;
+  width: 100%;
 
   .valueWrapper {
     .value {
@@ -510,12 +510,6 @@
 
 .nvtooltip {
   display: none;
-}
-
-#requests,
-#system,
-#replication {
-  margin-bottom: 10px;
 }
 
 #dataTransferDistributionContainer,

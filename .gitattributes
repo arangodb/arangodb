@@ -12,3 +12,4 @@ STARTER_REV merge=ours
 lib/V8/v8-json.cpp merge=ours
 arangod/Aql/tokens.cpp merge=ours
 arangod/Aql/grammar.cpp merge=ours
+js/apps/system/_admin/aardvark/APP/api-docs.json merge=ours

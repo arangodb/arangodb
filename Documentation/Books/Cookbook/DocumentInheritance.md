@@ -8,7 +8,7 @@ How do you model document inheritance given that collections do not support that
 
 Lets assume you have three document collections: "subclass", "class" and "superclass". You also have two edge collections: "sub_extends_class" and "class_extends_super".
 
-You can create them via arangosh or foxx:
+You can create them via arangosh or Foxx:
 
 ```js
 var graph_module = require("com/arangodb/general-graph");
@@ -24,7 +24,7 @@ This makes sure when using the graph interface that the inheritance looks like:
 * super → sub
 
 To make sure everything works as expected you should use the built-in traversal in combination with Foxx. This allows you to add the inheritance security layer easily.
-To use traversals in foxx simply add the following line before defining routes:
+To use traversals in Foxx simply add the following line before defining routes:
 
 ```js
 var traversal = require("org/arangodb/graph/traversal");

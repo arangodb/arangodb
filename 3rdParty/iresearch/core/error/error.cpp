@@ -79,7 +79,7 @@ const char* eof_error::what() const NOEXCEPT {
 // ----------------------------------------------------------------------------
 
 detailed_io_error::detailed_io_error(
-  const irs::string_ref& error /*= irs::string_ref::nil*/
+  const irs::string_ref& error /*= irs::string_ref::NIL*/
 ) {
   if (!error.empty()) {
     error_.append(error.c_str(), error.size());
@@ -125,7 +125,7 @@ const char* detailed_io_error::what() const NOEXCEPT {
 // ----------------------------------------------------------------------------
 
 lock_obtain_failed::lock_obtain_failed(
-    const irs::string_ref& filename /*= irs::string_ref::nil*/
+    const irs::string_ref& filename /*= irs::string_ref::NIL*/
 ) : error_("Lock obtain timed out") {
   if (filename.null()) {
     error_ += ".";
@@ -148,7 +148,7 @@ const char* lock_obtain_failed::what() const NOEXCEPT {
 // ----------------------------------------------------------------------------
 
 file_not_found::file_not_found(
-    const irs::string_ref& filename /*= irs::string_ref::nil*/
+    const irs::string_ref& filename /*= irs::string_ref::NIL*/
 ): error_("File not found") {
   if (filename.null()) {
     error_ += ".";

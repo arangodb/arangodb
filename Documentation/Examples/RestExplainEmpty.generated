@@ -1,8 +1,8 @@
-shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/explain</span> &lt;&lt;EOF
 { "query" : "FOR i IN [ 1, 2, 3 ] FILTER 1 == 2 RETURN i" }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -26,18 +26,28 @@ x-content-type-options: nosniff
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"expression"</span> : { 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"array"</span>, 
+          <span class="hljs-string">"typeID"</span> : <span class="hljs-number">41</span>, 
           <span class="hljs-string">"subNodes"</span> : [ 
             { 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
-              <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span> 
+              <span class="hljs-string">"typeID"</span> : <span class="hljs-number">40</span>, 
+              <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span>, 
+              <span class="hljs-string">"vType"</span> : <span class="hljs-string">"int"</span>, 
+              <span class="hljs-string">"vTypeID"</span> : <span class="hljs-number">2</span> 
             }, 
             { 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
-              <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
+              <span class="hljs-string">"typeID"</span> : <span class="hljs-number">40</span>, 
+              <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span>, 
+              <span class="hljs-string">"vType"</span> : <span class="hljs-string">"int"</span>, 
+              <span class="hljs-string">"vTypeID"</span> : <span class="hljs-number">2</span> 
             }, 
             { 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"value"</span>, 
-              <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
+              <span class="hljs-string">"typeID"</span> : <span class="hljs-number">40</span>, 
+              <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span>, 
+              <span class="hljs-string">"vType"</span> : <span class="hljs-string">"int"</span>, 
+              <span class="hljs-string">"vTypeID"</span> : <span class="hljs-number">2</span> 
             } 
           ] 
         }, 
@@ -85,7 +95,8 @@ x-content-type-options: nosniff
         <span class="hljs-string">"inVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
-        } 
+        }, 
+        <span class="hljs-string">"count"</span> : <span class="hljs-literal">true</span> 
       } 
     ], 
     <span class="hljs-string">"rules"</span> : [ 
@@ -111,12 +122,13 @@ x-content-type-options: nosniff
     ], 
     <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">0.5</span>, 
     <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span> 
+    <span class="hljs-string">"initialize"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"isModificationQuery"</span> : <span class="hljs-literal">false</span> 
   }, 
   <span class="hljs-string">"cacheable"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">31</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">32</span>, 
     <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   }, 

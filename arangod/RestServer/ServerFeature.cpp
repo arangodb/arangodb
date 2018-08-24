@@ -33,35 +33,32 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ServerFeature::ServerFeature(application_features::ApplicationServer* server,
-                             int* res)
+namespace arangodb {
+
+ServerFeature::ServerFeature(
+    application_features::ApplicationServer& server,
+    int* res
+)
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Authentication");
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("FeatureCache");
-  startsAfter("Scheduler");
+
+  startsAfter("AQLPhase");
+
   startsAfter("Statistics");
   startsAfter("Upgrade");
-  startsAfter("V8Dealer");
-  startsAfter("WorkMonitor");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -73,14 +70,11 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--server.rest-server", "start a rest-server",
                            new BooleanParameter(&_restServer));
 
-  options->addOption("--server.session-timeout",
-                     "timeout of web interface server sessions (in seconds)",
-                     new DoubleParameter(&VocbaseContext::ServerSessionTtl));
+  options->addObsoleteOption("--server.session-timeout",
+                             "timeout of web interface server sessions (in seconds)",
+                             true);
 
   options->addSection("javascript", "Configure the Javascript engine");
-
-  options->addHiddenOption("--javascript.unit-tests", "run unit-tests and exit",
-                           new VectorParameter<StringParameter>(&_unitTests));
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
@@ -100,11 +94,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     ++count;
   }
 
-  if (!_unitTests.empty()) {
-    _operationMode = OperationMode::MODE_UNITTESTS;
-    ++count;
-  }
-
   if (!_scripts.empty()) {
     _operationMode = OperationMode::MODE_SCRIPT;
     ++count;
@@ -121,10 +110,25 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
+  
+  V8DealerFeature* v8dealer =
+    ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  
+  if (v8dealer->isEnabled()) {
+    if (_operationMode == OperationMode::MODE_SCRIPT) {
+      v8dealer->setMinimumContexts(2);
+    } else {
+      v8dealer->setMinimumContexts(1);
+    }
+  } else if (_operationMode != OperationMode::MODE_SERVER) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Options '--console', '--javascript.unit-tests'"
+       << " or '--javascript.script' are not supported without V8";
+    FATAL_ERROR_EXIT();
+  }
 
   if (!_restServer) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "SslServer", "Supervisor"});
+                                        "SslServer", "Statistics", "Supervisor"});
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
@@ -134,20 +138,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
           ApplicationServer::getFeature<ReplicationFeature>("Replication");
       replicationFeature->disableReplicationApplier();
     }
-
-    StatisticsFeature* statisticsFeature =
-        ApplicationServer::getFeature<StatisticsFeature>("Statistics");
-    statisticsFeature->disableStatistics();
-  }
-
-  V8DealerFeature* v8dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  if (_operationMode == OperationMode::MODE_SCRIPT ||
-      _operationMode == OperationMode::MODE_UNITTESTS) {
-    v8dealer->setMinimumContexts(2);
-  } else {
-    v8dealer->setMinimumContexts(1);
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
@@ -167,7 +157,6 @@ void ServerFeature::start() {
   *_result = EXIT_SUCCESS;
 
   switch (_operationMode) {
-    case OperationMode::MODE_UNITTESTS:
     case OperationMode::MODE_SCRIPT:
     case OperationMode::MODE_CONSOLE:
       break;
@@ -216,8 +205,6 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
   switch (mode) {
     case OperationMode::MODE_CONSOLE:
       return "console";
-    case OperationMode::MODE_UNITTESTS:
-      return "unittests";
     case OperationMode::MODE_SCRIPT:
       return "script";
     case OperationMode::MODE_SERVER:
@@ -226,3 +213,5 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
       return "unknown";
   }
 }
+
+} // arangodb

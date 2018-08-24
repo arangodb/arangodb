@@ -36,7 +36,7 @@ NS_BEGIN(fst)
 // from having to check for and discard the unwanted implicit matches
 // themselves.
 template <class MatcherImpl>
-class explicit_matcher final : public MatcherImpl {
+class explicit_matcher final : public MatcherBase<typename MatcherImpl::FST::Arc> {
  public:
   typedef typename MatcherImpl::FST FST;
   typedef typename FST::Arc Arc;
@@ -46,77 +46,78 @@ class explicit_matcher final : public MatcherImpl {
 
   template<typename... Args>
   explicit explicit_matcher(Args&&... args)
-    : MatcherImpl(std::forward<Args>(args)...),
+    : matcher_(std::forward<Args>(args)...),
 #ifdef IRESEARCH_DEBUG
-      match_type_(MatcherImpl::Type(true)) // test fst properties
+      match_type_(matcher_.Type(true)) // test fst properties
 #else
-      match_type_(MatcherImpl::Type(false)) // read type without checks
+      match_type_(matcher_.Type(false)) // read type without checks
 #endif
   { }
 
   explicit_matcher(const explicit_matcher& rhs, bool safe = false)
-    : MatcherImpl(rhs, safe),
+    : matcher_(rhs.matcher_, safe),
       match_type_(rhs.match_type_) {
   }
 
-  explicit_matcher* Copy(bool safe = false) const {
+  explicit_matcher* Copy(bool safe = false) const override {
     return new explicit_matcher(*this, safe);
   }
 
-  MatchType Type(bool test) const {
-    return MatcherImpl::Type(test);
+  MatchType Type(bool test) const override {
+    return matcher_.Type(test);
   }
 
-  void SetState(StateId s) {
-    MatcherImpl::SetState(s);
+  void SetState(StateId s) override {
+    matcher_.SetState(s);
   }
 
-  bool Find(Label match_label) {
-    MatcherImpl::Find(match_label);
+  bool Find(Label match_label) override {
+    matcher_.Find(match_label);
     CheckArc();
     return !Done();
   }
 
-  bool Done() const { return MatcherImpl::Done(); }
+  bool Done() const override { return matcher_.Done(); }
 
-  const Arc& Value() const { return MatcherImpl::Value(); }
+  const Arc& Value() const override { return matcher_.Value(); }
 
-  void Next() {
-    MatcherImpl::Next();
+  void Next() override {
+    matcher_.Next();
     CheckArc();
   }
 
-  Weight Final(StateId s) const {
-    return MatcherImpl::Final(s);
+  Weight Final(StateId s) const override {
+    return matcher_.Final(s);
   }
 
-  ssize_t Priority(StateId s) {
-    return  MatcherImpl::Priority(s);
+  ssize_t Priority(StateId s) override {
+    return  matcher_.Priority(s);
   }
 
-  const FST& GetFst() const {
-    return MatcherImpl::GetFst();
+  const FST& GetFst() const override {
+    return matcher_.GetFst();
   }
 
-  uint64 Properties(uint64 inprops) const {
-    return MatcherImpl::Properties(inprops);
+  uint64 Properties(uint64 inprops) const override {
+    return matcher_.Properties(inprops);
   }
 
-  uint32 Flags() const {
-    return MatcherImpl::Flags();
+  uint32 Flags() const override {
+    return matcher_.Flags();
   }
 
  private:
   // Checks current arc if available and explicit. If not available, stops. If
   // not explicit, checks next ones.
   void CheckArc() {
-    for (; !MatcherImpl::Done(); MatcherImpl::Next()) {
-      const auto label = match_type_ == MATCH_INPUT ? MatcherImpl::Value().ilabel
-                                                    : MatcherImpl::Value().olabel;
+    for (; !matcher_.Done(); matcher_.Next()) {
+      const auto label = match_type_ == MATCH_INPUT ? matcher_.Value().ilabel
+                                                    : matcher_.Value().olabel;
       if (label != kNoLabel) return;
     }
   }
 
+  MatcherImpl matcher_;
   MatchType match_type_;  // Type of match requested.
 }; // explicit_matcher
 

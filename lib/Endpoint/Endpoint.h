@@ -33,7 +33,6 @@
 
 #include <ostream>
 
-#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 
 namespace arangodb {

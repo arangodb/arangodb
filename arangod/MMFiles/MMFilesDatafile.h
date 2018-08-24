@@ -71,7 +71,6 @@ enum MMFilesMarkerType : uint8_t {
   TRI_DF_MARKER_VPACK_CREATE_VIEW = 80,
   TRI_DF_MARKER_VPACK_DROP_VIEW = 81,
   TRI_DF_MARKER_VPACK_CHANGE_VIEW = 82,
-  TRI_DF_MARKER_VPACK_RENAME_VIEW = 83,
 
   TRI_DF_MARKER_MAX  // again, this is not a real
                      // marker, but we use it for
@@ -187,6 +186,9 @@ typedef uint32_t MMFilesDatafileVersionType;
 
 /// @brief datafile
 struct MMFilesDatafile {
+  MMFilesDatafile(MMFilesDatafile const&) = delete;
+  MMFilesDatafile& operator=(MMFilesDatafile const&) = delete;
+
   MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, uint32_t maximalSize,
                  uint32_t currentsize, TRI_voc_fid_t fid, char* data);
   ~MMFilesDatafile();
@@ -217,6 +219,7 @@ struct MMFilesDatafile {
 
   /// @brief sync the data of a datafile
   int sync(char const* begin, char const* end);
+  int sync();
 
   /// @brief seals a datafile, writes a footer, sets it to read-only
   int seal();
@@ -228,14 +231,14 @@ struct MMFilesDatafile {
   static bool tryRepair(std::string const& path);
 
   /// @brief opens a datafile
-  static MMFilesDatafile* open(std::string const& filename, bool ignoreErrors);
+  static MMFilesDatafile* open(std::string const& filename, bool ignoreErrors, bool autoSeal);
 
   /// @brief writes a marker to the datafile
   /// this function will write the marker as-is, without any CRC or tick updates
-  int writeElement(void* position, MMFilesMarker const* marker, bool sync);
+  int writeElement(void* position, MMFilesMarker const* marker);
 
   /// @brief checksums and writes a marker to the datafile
-  int writeCrcElement(void* position, MMFilesMarker* marker, bool sync);
+  int writeCrcElement(void* position, MMFilesMarker* marker);
 
   /// @brief reserves room for an element, advances the pointer
   int reserveElement(uint32_t size, MMFilesMarker** position,
@@ -270,6 +273,7 @@ struct MMFilesDatafile {
     char* old = _next;
 
     _next += size;
+    _written = _next;
     _currentSize += static_cast<uint32_t>(size);
 
     return old;
@@ -284,7 +288,7 @@ struct MMFilesDatafile {
   int truncateAndSeal(uint32_t position);
 
   /// @brief checks a datafile
-  bool check(bool ignoreFailures);
+  bool check(bool ignoreFailures, bool autoSeal);
 
   /// @brief fixes a corrupted datafile
   bool fix(uint32_t currentSize);
@@ -298,8 +302,8 @@ struct MMFilesDatafile {
   /// @brief tries to repair a datafile
   bool tryRepair();
 
-  void printMarker(MMFilesMarker const* marker, uint32_t size, char const* begin, char const* end) const;
-
+  static void printMarker(MMFilesMarker const* marker, uint32_t size, char const* begin, char const* end);
+ 
  private:
   std::string _filename;  // underlying filename
   TRI_voc_fid_t const _fid;  // datafile identifier
@@ -308,7 +312,7 @@ struct MMFilesDatafile {
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
-  uint32_t const _initSize; // initial size of the datafile (constant)
+  uint32_t mutable _initSize; // initial size of the datafile (constant)
   uint32_t _maximalSize;    // maximal size of the datafile (may be adjusted/reduced at runtime)
   uint32_t _currentSize;    // current size of the datafile
   uint32_t _footerSize;     // size of the final footer

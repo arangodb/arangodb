@@ -30,42 +30,40 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/Query.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
-#include "IResearch/ExpressionFilter.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
+
 #include "utils/utf8_path.hpp"
 #include "velocypack/Iterator.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "ExpressionContextMock.h"
 
 #include "IResearch/ExpressionFilter.h"
@@ -215,7 +213,7 @@ struct custom_sort: public irs::sort {
 
   DECLARE_FACTORY_DEFAULT();
   custom_sort(): sort(custom_sort::type()) {}
-  virtual prepared::ptr prepare() const {
+  virtual prepared::ptr prepare() const override {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
 };
@@ -227,13 +225,13 @@ DEFINE_FACTORY_DEFAULT(custom_sort);
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct TestSetup {
+struct IResearchExpressionFilterSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  TestSetup(): server(nullptr, nullptr) {
+  IResearchExpressionFilterSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
@@ -242,26 +240,29 @@ struct TestSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -282,29 +283,30 @@ struct TestSetup {
     functions->add(arangodb::aql::Function{
       "_REFERENCE_",
       ".",
-      false, // fake non-deterministic
-      false, // fake can throw
-      true,
-      false,
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
-  ~TestSetup() {
+  ~IResearchExpressionFilterSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -319,7 +321,6 @@ struct TestSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // TestSetup
@@ -331,7 +332,7 @@ NS_END
 // -----------------------------------------------------------------------------
 
 TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-filter]") {
-  TestSetup setup;
+  IResearchExpressionFilterSetup setup;
   UNUSED(setup);
 
   arangodb::velocypack::Builder testData;
@@ -390,9 +391,9 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }");
 
     // add view
-    auto logicalView = vocbase.createView(createJson->slice(), 0);
-    REQUIRE((false == !logicalView));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+      vocbase.createView(createJson->slice())
+    );
     REQUIRE((false == !view));
   }
 
@@ -419,7 +420,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c==b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -434,8 +435,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -466,9 +470,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -495,7 +501,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c==b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -510,8 +516,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -542,9 +551,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -571,7 +582,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -586,8 +597,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -618,9 +632,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -663,7 +679,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -678,8 +694,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -710,9 +729,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -755,7 +776,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -770,8 +791,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -802,9 +826,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -847,7 +873,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -862,8 +888,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -894,9 +923,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -923,7 +954,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER c<b RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -938,8 +969,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -970,9 +1004,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -999,7 +1035,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1009,8 +1045,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1041,9 +1080,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -1127,7 +1168,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1137,8 +1178,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1169,9 +1213,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -1250,7 +1296,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
   {
     std::shared_ptr<arangodb::velocypack::Builder> bindVars;
     auto options = std::make_shared<arangodb::velocypack::Builder>();
-    std::string const queryString = "LET c=1 LET b=2 FOR d IN VIEW testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    std::string const queryString = "LET c=1 LET b=2 FOR d IN testView FILTER _REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     ExpressionContextMock ctx;
     {
@@ -1260,8 +1306,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1292,9 +1341,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
     // setup filter
     std::vector<std::string> EMPTY;
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));

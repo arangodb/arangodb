@@ -107,14 +107,14 @@ by_prefix::by_prefix() NOEXCEPT
   : by_term(by_prefix::type()) {
 }
 
-size_t by_prefix::hash() const {
+size_t by_prefix::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, by_term::hash());
   ::boost::hash_combine(seed, scored_terms_limit_);
   return seed;
 }
 
-bool by_prefix::equals(const filter& rhs) const {
+bool by_prefix::equals(const filter& rhs) const NOEXCEPT {
   const auto& trhs = static_cast<const by_prefix&>(rhs);
   return by_term::equals(rhs) && scored_terms_limit_ == trhs.scored_terms_limit_;
 }

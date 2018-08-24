@@ -50,7 +50,7 @@ function indexSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +66,23 @@ function indexSuite() {
       catch (err) {
       }
       collection = null;
-      internal.wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexes : function () {
+      var res = collection.indexes();
+
+      assertEqual(1, res.length);
+
+      collection.ensureGeoIndex("a");
+      collection.ensureGeoIndex("a", "b");
+
+      res = collection.indexes();
+
+      assertEqual(3, res.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +223,7 @@ function indexSuite() {
         fail();
       }
       catch (e1) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e1.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e1.errorNum);
       }
 
       try {
@@ -215,7 +231,7 @@ function indexSuite() {
         fail();
       }
       catch (e2) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e2.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e2.errorNum);
       }
     }
 
@@ -249,7 +265,6 @@ function getIndexesSuite() {
     tearDown : function () {
       collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -721,7 +736,6 @@ function getIndexesEdgesSuite() {
     tearDown : function () {
       collection.drop();
       collection = null;
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -770,9 +784,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -791,9 +804,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -812,10 +824,9 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -828,16 +839,15 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetGeoIndex1 : function () {
-      collection.ensureGeoIndex("lat", true, false);
+      collection.ensureGeoIndex("lat", true, true);
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -856,9 +866,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -1084,7 +1093,7 @@ function multiIndexRollbackSuite() {
     testIndexRollback: function () {
       collection.ensureIndex({ type: "hash", fields: ["_from", "_to", "link"], unique: true });
       collection.ensureIndex({ type: "hash", fields: ["_to", "ext"], unique: true, sparse: true });
-      
+
       var res = collection.getIndexes();
 
       assertEqual(4, res.length);
@@ -1095,7 +1104,7 @@ function multiIndexRollbackSuite() {
 
       var docs = [
         {"_from": "fromC/a", "_to": "toC/1", "link": "one"},
-        {"_from": "fromC/b", "_to": "toC/1", "link": "two"}, 
+        {"_from": "fromC/b", "_to": "toC/1", "link": "two"},
         {"_from": "fromC/c", "_to": "toC/1", "link": "one"}
       ];
 
@@ -1116,14 +1125,96 @@ function multiIndexRollbackSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+function parallelIndexSuite() {
+  'use strict';
+  let cn = "UnitTestsCollectionIdx";
+  let tasks = require("@arangodb/tasks");
+
+  return {
+
+    setUp : function () {
+      internal.db._drop(cn);
+      internal.db._create(cn);
+    },
+
+    tearDown : function () {
+      tasks.get().forEach(function(task) {
+        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
+          try {
+            tasks.unregister(task);
+          }
+          catch (err) {
+          }
+        }
+      });
+      internal.db._drop(cn);
+    },
+
+    testCreateInParallel: function () {
+      let n = 80;
+      for (let i = 0; i < n; ++i) {
+        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + i + '"] });';
+        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
+      }
+
+      let time = require("internal").time;
+      let start = time();
+      while (true) {
+        let indexes = require("internal").db._collection(cn).getIndexes();
+        if (indexes.length === n + 1) {
+          // primary index + user-defined indexes
+          break;
+        }
+        if (time() - start > 180) {
+          // wait for 3 minutes maximum
+          fail();
+        }
+        require("internal").wait(0.5, false);
+      }
+        
+      let indexes = require("internal").db._collection(cn).getIndexes();
+      assertEqual(n + 1, indexes.length);
+    },
+
+    testCreateInParallelDuplicate: function () {
+      let n = 100;
+      for (let i = 0; i < n; ++i) {
+        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + (i % 4) + '"] });';
+        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
+      }
+
+      let time = require("internal").time;
+      let start = time();
+      while (true) {
+        let indexes = require("internal").db._collection(cn).getIndexes();
+        if (indexes.length === 4 + 1) {
+          // primary index + user-defined indexes
+          break;
+        }
+        if (time() - start > 180) {
+          // wait for 3 minutes maximum
+          fail();
+        }
+        require("internal").wait(0.5, false);
+      }
+      
+      // wait some extra time because we just have 4 distinct indexes
+      // these will be created relatively quickly. by waiting here a bit
+      // we give the other pending tasks a chance to execute too (but they
+      // will not do anything because the target indexes already exist)
+      require("internal").wait(5, false);
+        
+      let indexes = require("internal").db._collection(cn).getIndexes();
+      assertEqual(4 + 1, indexes.length);
+    }
+
+  };
+}
 
 jsunity.run(indexSuite);
 jsunity.run(getIndexesSuite);
 jsunity.run(getIndexesEdgesSuite);
 jsunity.run(multiIndexRollbackSuite);
+jsunity.run(parallelIndexSuite);
 
 return jsunity.done();
-

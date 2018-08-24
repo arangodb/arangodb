@@ -45,10 +45,6 @@ RestQueryHandler::RestQueryHandler(GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != rest::RequestType::POST;
-}
-
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -77,12 +73,12 @@ RestStatus RestQueryHandler::execute() {
 }
 
 bool RestQueryHandler::readQueryProperties() {
-  auto queryList = _vocbase->queryList();
-
+  auto queryList = _vocbase.queryList();
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Object));
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.add("enabled", VPackValue(queryList->enabled()));
   result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
   result.add("trackBindVars", VPackValue(queryList->trackBindVars()));
@@ -99,10 +95,10 @@ bool RestQueryHandler::readQueryProperties() {
 }
 
 bool RestQueryHandler::readQuery(bool slow) {
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
-
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Array));
 
   for (auto const& q : queries) {
@@ -114,7 +110,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     if (q.bindParameters != nullptr) {
       result.add("bindVars", q.bindParameters->slice());
     } else {
-      result.add("bindVars", arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+      result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
     }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
@@ -157,13 +153,14 @@ bool RestQueryHandler::readQuery() {
 }
 
 bool RestQueryHandler::deleteQuerySlow() {
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   queryList->clearSlow();
 
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Object));
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -173,7 +170,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -181,8 +178,8 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
   if (res == TRI_ERROR_NO_ERROR) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)rest::ResponseCode::OK));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
     result.close();
 
     generateResult(rest::ResponseCode::OK, result.slice());
@@ -223,23 +220,21 @@ bool RestQueryHandler::replaceProperties() {
     return true;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
   }
 
-  VPackSlice body = parsedBody.get()->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
-  auto queryList = _vocbase->queryList();
-
+  auto queryList = _vocbase.queryList();
   bool enabled = queryList->enabled();
   bool trackSlowQueries = queryList->trackSlowQueries();
   bool trackBindVars = queryList->trackBindVars();
@@ -297,15 +292,12 @@ bool RestQueryHandler::parseQuery() {
     return true;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return true;
   }
-
-  VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,
@@ -316,13 +308,18 @@ bool RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(false, _vocbase, QueryString(queryString),
-              nullptr, nullptr, PART_MAIN);
-
+  Query query(
+    false,
+    _vocbase,
+    QueryString(queryString),
+    nullptr,
+    nullptr,
+    PART_MAIN
+  );
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::BAD, parseResult.code,
+    generateError(GeneralResponse::responseCode(parseResult.code), parseResult.code,
                   parseResult.details);
     return true;
   }
@@ -330,8 +327,8 @@ bool RestQueryHandler::parseQuery() {
   VPackBuilder result;
   {
     VPackObjectBuilder b(&result);
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)rest::ResponseCode::OK));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
     result.add("parsed", VPackValue(true));
 
     result.add("collections", VPackValue(VPackValueType::Array));
@@ -348,8 +345,8 @@ bool RestQueryHandler::parseQuery() {
 
     result.add("ast", parseResult.result->slice());
 
-    if (parseResult.warnings != nullptr) {
-      result.add("warnings", parseResult.warnings->slice());
+    if (parseResult.extra && parseResult.extra->slice().hasKey("warnings")) {
+      result.add("warnings", parseResult.extra->slice().get("warnings"));
     }
   }
 

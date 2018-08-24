@@ -93,9 +93,6 @@ class Parser {
   /// @brief set data for write queries
   bool configureWriteQuery(AstNode const*, AstNode* optionNode);
 
-  /// @brief whether or not the query is a data-modification query
-  bool isModificationQuery() const { return _isModificationQuery; }
-
   /// @brief parse the query
   QueryResult parse(bool);
 
@@ -159,9 +156,6 @@ class Parser {
 
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
-
-  /// @brief whether or not the query is a modification query
-  bool _isModificationQuery;
 };
 }
 }

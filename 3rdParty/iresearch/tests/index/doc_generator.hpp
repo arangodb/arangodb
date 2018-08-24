@@ -35,17 +35,15 @@
 #include <atomic>
 #include <functional>
 
-NS_BEGIN(iresearch)
+NS_ROOT
 
 struct data_output;
 class flags;
 class token_stream;
 
-NS_END
+NS_END // NS_ROOT
 
-namespace tests {
-
-namespace ir = iresearch;
+NS_BEGIN(tests)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class ifield
@@ -53,12 +51,12 @@ namespace ir = iresearch;
 //////////////////////////////////////////////////////////////////////////////
 struct ifield {
   DECLARE_SPTR(ifield);
-  virtual ~ifield() {};
+  virtual ~ifield() {}
 
-  virtual ir::string_ref name() const = 0;
-  virtual bool write(ir::data_output& out) const = 0;
-  virtual ir::token_stream& get_tokens() const = 0;
-  virtual const ir::flags& features() const = 0;
+  virtual const irs::flags& features() const = 0;
+  virtual irs::token_stream& get_tokens() const = 0;
+  virtual irs::string_ref name() const = 0;
+  virtual bool write(irs::data_output& out) const = 0;
 }; // ifield
 
 //////////////////////////////////////////////////////////////////////////////
@@ -76,12 +74,12 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  ir::string_ref name() const { return name_; }
+  irs::flags& features() { return features_; }
+  const irs::flags& features() const { return features_; }
+
+  irs::string_ref name() const { return name_; }
   void name(std::string&& name) { name_ = std::move(name); }
   void name(const std::string& name) { name_ = name; }
-
-  const ir::flags& features() const { return features_; };
-  ir::flags& features() { return features_; }
 
  private:
   iresearch::flags features_;
@@ -98,13 +96,13 @@ class long_field: public field_base {
 
   long_field() = default;
 
+  irs::token_stream& get_tokens() const override;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
-  mutable ir::numeric_token_stream stream_;
+  mutable irs::numeric_token_stream stream_;
   int64_t value_{};
 }; // long_field 
 
@@ -123,14 +121,13 @@ class int_field: public field_base {
       value_(std::move(other.value_)) {
   }
 
+  irs::token_stream& get_tokens() const override;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-
-  bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
-  mutable ir::numeric_token_stream stream_;
+  mutable irs::numeric_token_stream stream_;
   int32_t value_{};
 }; // int_field 
 
@@ -144,14 +141,13 @@ class double_field: public field_base {
 
   double_field() = default;
 
+  irs::token_stream& get_tokens() const override;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-
-  bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
-  mutable ir::numeric_token_stream stream_;
+  mutable irs::numeric_token_stream stream_;
   double_t value_{};
 }; // double_field
 
@@ -165,14 +161,13 @@ class float_field: public field_base {
 
   float_field() = default;
 
+  irs::token_stream& get_tokens() const override;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-
-  bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
-  mutable ir::numeric_token_stream stream_;
+  mutable irs::numeric_token_stream stream_;
   float_t value_{};
 }; // float_field 
 
@@ -184,32 +179,32 @@ class binary_field: public field_base {
  public:
   binary_field() = default;
 
-  const ir::bstring& value() const { return value_; }
-  void value(const ir::bytes_ref& value) { value_ = value; }
-  void value(ir::bstring&& value) { value_ = std::move(value); }
+  irs::token_stream& get_tokens() const override;
+  const irs::bstring& value() const { return value_; }
+  void value(const irs::bytes_ref& value) { value_ = value; }
+  void value(irs::bstring&& value) { value_ = std::move(value); }
 
   template<typename Iterator>
   void value(Iterator first, Iterator last) {
     value_ = bytes(first, last);
   }
-  
-  bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const override;
+
+  bool write(irs::data_output& out) const override;
 
  private:
-  mutable ir::string_token_stream stream_;
-  ir::bstring value_;
+  mutable irs::string_token_stream stream_;
+  irs::bstring value_;
 }; // binary_field
 
 /* -------------------------------------------------------------------
 * document 
 * ------------------------------------------------------------------*/
 
-class particle : ir::util::noncopyable {
+class particle: irs::util::noncopyable {
  public:
   typedef std::vector<ifield::ptr> fields_t;
-  typedef ir::ptr_iterator<fields_t::const_iterator> const_iterator;
-  typedef ir::ptr_iterator<fields_t::iterator> iterator;
+  typedef irs::ptr_iterator<fields_t::const_iterator> const_iterator;
+  typedef irs::ptr_iterator<fields_t::iterator> iterator;
 
   particle() = default;
   particle(particle&& rhs) NOEXCEPT;
@@ -219,41 +214,42 @@ class particle : ir::util::noncopyable {
   size_t size() const { return fields_.size(); }
   void clear() { fields_.clear(); }
   void reserve(size_t size) { fields_.reserve(size); }
-
   void push_back(const ifield::ptr& fld) { fields_.emplace_back(fld); }
-  bool contains(const ir::string_ref& name) const;
-  ifield* get(const ir::string_ref& name) const;
-  std::vector<const ifield*> find(const ir::string_ref& name) const;
-  void remove(const ir::string_ref& name);
 
   ifield& back() const { return *fields_.back(); }
+  bool contains(const irs::string_ref& name) const;
+  std::vector<const ifield*> find(const irs::string_ref& name) const;
 
   template<typename T>
   T& back() const {
     typedef typename std::enable_if<
       std::is_base_of<tests::ifield, T>::value, T
      >::type type;
-      
+
     return static_cast<type&>(*fields_.back());
   }
-  
+
+  ifield* get(const irs::string_ref& name) const;
+
   template<typename T>
   T& get(size_t i) const {
     typedef typename std::enable_if<
       std::is_base_of<tests::ifield, T>::value, T
      >::type type;
-      
+
     return static_cast<type&>(*fields_[i]);
   }
 
   template<typename T>
-  T* get(const ir::string_ref& name) const {
+  T* get(const irs::string_ref& name) const {
     typedef typename std::enable_if<
       std::is_base_of<tests::ifield, T>::value, T
      >::type type;
 
     return static_cast<type*>(get(name));
   }
+
+  void remove(const irs::string_ref& name);
 
   iterator begin() { return iterator(fields_.begin()); }
   iterator end() { return iterator(fields_.end()); }
@@ -265,7 +261,7 @@ class particle : ir::util::noncopyable {
   fields_t fields_;
 }; // particle 
 
-struct document : ir::util::noncopyable {
+struct document: irs::util::noncopyable {
   document() = default;
   document(document&& rhs) NOEXCEPT;
 
@@ -572,6 +568,6 @@ bool update(
   return writer.update(filter, inserter);
 }
 
-} // tests
+NS_END // tests
 
 #endif

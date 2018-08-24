@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,8 @@ config_t::config_t()
     _supervisionTouched(false),
     _waitForSync(true),
     _supervisionFrequency(5.0),
-    _compactionStepSize(2000),
-    _compactionKeepSize(500),
+    _compactionStepSize(1000),
+    _compactionKeepSize(50000),
     _supervisionGracePeriod(15.0),
     _cmdLineTimings(false),
     _version(0),
@@ -65,7 +65,7 @@ config_t::config_t(
     _waitForSync(w),
     _supervisionFrequency(f),
     _compactionStepSize(c),
-    _compactionKeepSize(k),      
+    _compactionKeepSize(k),
     _supervisionGracePeriod(p),
     _cmdLineTimings(t),
     _version(0),
@@ -73,9 +73,9 @@ config_t::config_t(
     _maxAppendSize(a),
     _lock() {}
 
-config_t::config_t(config_t const& other) { 
+config_t::config_t(config_t const& other) {
   // will call operator=, which will ensure proper locking
-  *this = other; 
+  *this = other;
 }
 
 config_t& config_t::operator=(config_t const& other) {
@@ -176,7 +176,7 @@ void config_t::setTimeoutMult(int64_t m) {
   WRITE_LOCKER(writeLocker, _lock);
   if (_timeoutMult != m) {
     _timeoutMult = m;
-    ++_version;
+    // this is called during election, do NOT update ++_version
   }
 }
 
@@ -265,16 +265,25 @@ void config_t::eraseFromGossipPeers(std::string const& endpoint) {
   }
 }
 
-bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
+bool config_t::upsertPool(
+  VPackSlice const& otherPool, std::string const& otherId) {
   WRITE_LOCKER(readLocker, _lock);
-  if (_pool.find(i.first) == _pool.end()) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Adding " << i.first << "(" << i.second << ") to agent pool";
-    _pool[i.first] = i.second;
-    ++_version;
-  } else {
-    if (_pool.at(i.first) != i.second) {  /// discrepancy!
-      return false;
+  for (auto const& entry : VPackObjectIterator(otherPool)) {
+    auto const id = entry.key.copyString();
+    auto const endpoint = entry.value.copyString();
+    if (_pool.find(id) == _pool.end()) {
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Adding " << id << "(" << endpoint << ") to agent pool";
+      _pool[id] = endpoint;
+      ++_version;
+    } else {
+      if (_pool.at(id) != endpoint) {   
+        if (id != otherId) {          /// discrepancy!
+          return false;
+        } else {                      /// we trust the other guy on his own endpoint
+          _pool.at(id) = endpoint;
+        }
+      }
     }
   }
   return true;
@@ -611,7 +620,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
       ss << _compactionStepSize << " (persisted)";
     } else {
-      _compactionStepSize = 2000;
+      _compactionStepSize = 1000;
       ss << _compactionStepSize << " (default)";
     }
   } else {
@@ -627,7 +636,7 @@ bool config_t::merge(VPackSlice const& conf) {
       _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
       ss << _compactionKeepSize << " (persisted)";
     } else {
-      _compactionStepSize =  500;
+      _compactionKeepSize = 50000;
       ss << _compactionKeepSize << " (default)";
     }
   } else {
@@ -637,5 +646,3 @@ bool config_t::merge(VPackSlice const& conf) {
   ++_version;
   return true;
 }
-
-

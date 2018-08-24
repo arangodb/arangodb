@@ -87,9 +87,9 @@ function simpleInboundOutboundSuite () {
 
       c = db._create(gn + 'v2', { numberOfShards: 7 });
       c.insert({ _key: "test" });
-     
+
       c = db._createEdgeCollection(gn + 'e', { numberOfShards: 5 });
-      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" }); 
+      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" });
     },
 
     tearDown: function () {
@@ -156,7 +156,7 @@ function limitSuite () {
     },
 
     testLimits: function () {
-      var queries = [
+      const queries = [
         [ 'FOR v IN ' + gn + 'v FOR e IN 1..1 OUTBOUND v._id ' + gn + 'e LIMIT 0, 10000 RETURN e', 10000 ],
         [ 'FOR v IN ' + gn + 'v FOR e IN 1..1 OUTBOUND v._id ' + gn + 'e LIMIT 0, 1000 RETURN e', 1000 ],
         [ 'FOR v IN ' + gn + 'v FOR e IN 1..1 OUTBOUND v._id ' + gn + 'e LIMIT 0, 100 RETURN e', 100 ],
@@ -187,7 +187,7 @@ function limitSuite () {
       ];
 
       queries.forEach(function (query) {
-        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length);
+        assertEqual(query[1], AQL_EXECUTE(query[0]).json.length, query);
       });
     },
 
@@ -697,9 +697,9 @@ function multiCollectionGraphSuite () {
       });
     },
 
-    testNoBindParameterV8Function: function () {
+    testNoBindParameterRandFunction: function () {
       var query = 'FOR s IN ' + vn + ' FOR x, e, p IN OUTBOUND s ' +
-          en + ' FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x._key RETURN x';
+          en + ' FILTER p.vertices[1]._key == NOOPT(RAND()) SORT x._key RETURN x';
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
@@ -1798,6 +1798,7 @@ function optimizeInSuite () {
     tearDownAll: cleanup,
 
     testSingleOptimize: function () {
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       var vertexQuery = `WITH ${vn}
       FOR v, e, p IN 2 OUTBOUND @startId @@eCol
       FILTER p.vertices[1]._key IN @keys
@@ -1848,6 +1849,7 @@ function optimizeInSuite () {
     },
 
     testCombinedAndOptimize: function () {
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       var vertexQuery = `WITH ${vn}
       FOR v, e, p IN 2 OUTBOUND @startId @@eCol
       FILTER p.vertices[1]._key IN @keys
@@ -3662,6 +3664,7 @@ function optimizeNonVertexCentricIndexesSuite () {
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
 
       let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
       assertEqual(1, exp.length);
@@ -3683,6 +3686,7 @@ function optimizeNonVertexCentricIndexesSuite () {
       let q = `FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
       RETURN v._id`;
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
 
       let exp = explain(q, {}).plan.nodes.filter(node => { return node.type === 'TraversalNode'; });
       assertEqual(1, exp.length);

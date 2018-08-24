@@ -32,10 +32,8 @@ namespace arangodb {
 class VPackFeature final
     : public application_features::ApplicationFeature {
  public:
-  VPackFeature(application_features::ApplicationServer* server,
-               int* result);
+  VPackFeature(application_features::ApplicationServer& server, int* result);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;
 
@@ -44,9 +42,11 @@ class VPackFeature final
   std::string _inputFile;
   std::string _outputFile;
   bool _prettyPrint;
+  bool _jsonInput;
   bool _hexInput;
   bool _printNonJson;
 };
+
 }
 
 #endif

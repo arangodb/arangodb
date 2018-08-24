@@ -202,7 +202,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   // total number of terms
   virtual size_t size() const = 0;
 
-  // total number of documents
+  // total number of documents with at least 1 term in a field
   virtual uint64_t docs_count() const = 0;
 
   // less significant term
@@ -284,7 +284,8 @@ struct IRESEARCH_API column_meta_reader {
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
-    /*out*/ field_id& count
+    size_t& count, // out parameter
+    field_id& max_id // out parameter
   ) = 0;
   // returns false if there is no more data to read
   virtual bool read(column_meta& column) = 0;
@@ -293,15 +294,6 @@ struct IRESEARCH_API column_meta_reader {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    columns_reader
 // -----------------------------------------------------------------------------
-
-struct IRESEARCH_API columnstore_iterator : irs::iterator<const std::pair<doc_id_t, bytes_ref>&> {
-  DECLARE_PTR(columnstore_iterator);
-  DECLARE_FACTORY(columnstore_iterator);
-
-  typedef std::pair<doc_id_t, bytes_ref> value_type;
-
-  virtual const value_type& seek(doc_id_t doc) = 0;
-}; // column_iterator
 
 struct IRESEARCH_API columnstore_reader {
   DECLARE_PTR(columnstore_reader);
@@ -315,15 +307,16 @@ struct IRESEARCH_API columnstore_reader {
     // returns corresponding column reader
     virtual columnstore_reader::values_reader_f values() const = 0;
 
-    // returns corresponding column iterator
-    virtual columnstore_iterator::ptr iterator() const = 0;
+    // returns the corresponding column iterator
+    // if the column implementation supports document payloads then the latter
+    // may be accessed via the 'payload_iterator' attribute
+    virtual doc_iterator::ptr iterator() const = 0;
 
     virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
 
     virtual size_t size() const = 0;
   };
 
-  static columnstore_iterator::ptr empty_iterator();
   static const values_reader_f& empty_reader();
 
   virtual ~columnstore_reader();
@@ -413,7 +406,7 @@ struct IRESEARCH_API segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::nil // null == use meta
+    const string_ref& filename = string_ref::NIL // null == use meta
   ) = 0;
 };
 
@@ -451,7 +444,7 @@ struct IRESEARCH_API index_meta_reader {
   virtual void read(
     const directory& dir, 
     index_meta& meta,
-    const string_ref& filename = string_ref::nil // null == use meta
+    const string_ref& filename = string_ref::NIL // null == use meta
   ) = 0;
 
  protected:

@@ -31,6 +31,7 @@ var errors = arangodb.errors;
 var db = arangodb.db;
 
 var replication = require("@arangodb/replication");
+let compareTicks = replication.compareTicks;
 var console = require("console");
 var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
@@ -56,28 +57,6 @@ const collectionChecksum = function(name) {
 
 const collectionCount = function(name) {
   return db._collection(name).count();
-};
-
-const compareTicks = function(l, r) {
-  var i;
-  if (l === null) {
-    l = "0";
-  }
-  if (r === null) {
-    r = "0";
-  }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
 };
 
 const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
@@ -353,6 +332,73 @@ function BaseTestConfig() {
 
         function(state) {
           assertTrue(db._collection(cn).properties().waitForSync);
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test insert
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsert: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._create(cn);
+        },
+
+        function(state) {
+          for (let i = 0; i < 1000; ++i) {
+            db[cn].insert({ _key: "test" + i, value: i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1000, state.count);
+        },
+
+        function(state) {
+        },
+
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test remove
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRemove: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._create(cn);
+        },
+
+        function(state) {
+          for (let i = 0; i < 1000; ++i) {
+            db[cn].insert({ _key: "test" + i, value: i });
+          }
+          for (let i = 0; i < 100; ++i) {
+            db[cn].remove("test" + i);
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(900, state.count);
+        },
+
+        function(state) {
+        },
+
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },

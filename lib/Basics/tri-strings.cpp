@@ -24,50 +24,8 @@
 #include "tri-strings.h"
 #include "Basics/conversions.h"
 #include "Basics/Utf8Helper.h"
+
 #include <openssl/sha.h>
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hex values for all characters
-////////////////////////////////////////////////////////////////////////////////
-
-static char const HexValues[513] = {
-    "000102030405060708090a0b0c0d0e0f"
-    "101112131415161718191a1b1c1d1e1f"
-    "202122232425262728292a2b2c2d2e2f"
-    "303132333435363738393a3b3c3d3e3f"
-    "404142434445464748494a4b4c4d4e4f"
-    "505152535455565758595a5b5c5d5e5f"
-    "606162636465666768696a6b6c6d6e6f"
-    "707172737475767778797a7b7c7d7e7f"
-    "808182838485868788898a8b8c8d8e8f"
-    "909192939495969798999a9b9c9d9e9f"
-    "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
-    "b0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
-    "c0c1c2c3c4c5c6c7c8c9cacbcccdcecf"
-    "d0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
-    "e0e1e2e3e4e5e6e7e8e9eaebecedeeef"
-    "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief integer values for all hex characters
-////////////////////////////////////////////////////////////////////////////////
-
-static uint8_t const HexDecodeLookup[256] = {
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  1,  2, 3, 4, 5, 6, 7, 8, 9,  // 0123456789
-    0,  0,  0,  0,  0,  0,  0,                       // :;<=>?@
-    10, 11, 12, 13, 14, 15,                          // ABCDEF
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0,     // GHIJKLMNOPQRS
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0,     // TUVWXYZ[/]^_`
-    10, 11, 12, 13, 14, 15,                          // abcdef
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0,  0,  0,  0,  0,  0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes UTF-8 range U+0000 to U+007F
@@ -461,14 +419,6 @@ bool TRI_IsPrefixString(char const* full, char const* prefix) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if second string is contained in the first
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsContainedString(char const* full, char const* part) {
-  return strstr(full, part) != nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if second string is contained in the first, byte-safe
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -566,74 +516,6 @@ char* TRI_Concatenate3String(char const* a,
 
 void TRI_FreeString(char* value) {
   TRI_Free(value);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts into hex representation
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EncodeHexString(char const* source, size_t sourceLen,
-                          size_t* dstLen) {
-  char* result;
-  uint16_t* hex;
-  uint16_t* dst;
-  uint8_t* src;
-  size_t j;
-
-  *dstLen = (sourceLen * 2);
-  dst = static_cast<uint16_t*>(
-      TRI_Allocate((*dstLen) + 1));
-  if (dst == nullptr) {
-    return nullptr;
-  }
-  result = (char*)dst;
-
-  hex = (uint16_t*)HexValues;
-  src = (uint8_t*)source;
-
-  for (j = 0; j < sourceLen; j++) {
-    *dst = hex[*src];
-    dst++;
-    src++;
-  }
-
-  *((char*)dst) = 0;  // terminate the string
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts from hex representation
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_DecodeHexString(char const* source, size_t sourceLen,
-                          size_t* dstLen) {
-  char* result;
-  uint8_t* dst;
-  uint8_t* src;
-  size_t j;
-
-  *dstLen = (sourceLen / 2);
-  dst = static_cast<uint8_t*>(
-      TRI_Allocate((*dstLen) + 1));
-  if (dst == nullptr) {
-    return nullptr;
-  }
-  result = (char*)dst;
-
-  src = (uint8_t*)source;
-
-  for (j = 0; j < sourceLen; j += 2) {
-    uint8_t d;
-    d = HexDecodeLookup[*src++] << 4;
-    d |= HexDecodeLookup[*src++];
-
-    *dst++ = d;
-  }
-
-  *dst = 0;  // terminate the string
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1001,38 +883,6 @@ char* TRI_UnescapeUtf8String(char const* in,
   }
 
   return buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the number of characters in a UTF-8 string
-/// the UTF-8 string must be well-formed and end with a NUL terminator
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_CharLengthUtf8String(char const* in) {
-  unsigned char const* p = reinterpret_cast<unsigned char const*>(in);
-  size_t chars = 0;
-
-  while (*p) {
-    unsigned char c = *p;
-
-    if (c < 128) {
-      // single byte
-      p++;
-    } else if (c < 224) {
-      p += 2;
-    } else if (c < 240) {
-      p += 3;
-    } else if (c < 248) {
-      p += 4;
-    } else {
-      // invalid UTF-8 sequence
-      break;
-    }
-
-    ++chars;
-  }
-
-  return chars;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

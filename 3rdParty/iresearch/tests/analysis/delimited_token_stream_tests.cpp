@@ -46,10 +46,10 @@ NS_END // NS_LOCAL
 #ifndef IRESEARCH_DLL
 
 TEST_F(delimited_token_stream_tests, test_delimiter) {
-  // test delimiter string_ref::nil
+  // test delimiter string_ref::NIL
   {
     irs::string_ref data("abc,def\"\",\"\"ghi");
-    irs::analysis::delimited_token_stream stream(irs::string_ref::nil);
+    irs::analysis::delimited_token_stream stream(irs::string_ref::NIL);
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -420,7 +420,7 @@ TEST_F(delimited_token_stream_tests, test_load) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, irs::string_ref::nil));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, irs::string_ref::NIL));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "1"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("delimited", irs::text_format::json, "{}"));

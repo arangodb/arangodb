@@ -23,44 +23,73 @@
 
 #include "ExecutionStats.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("filtered", VPackValue(filtered));
-  builder.add("httpRequests", VPackValue(httpRequests));
-
-  if (fullCount > -1) {
-    // fullCount is exceptional. it has a default value of -1 and is
-    // not reported with this value
-    builder.add("fullCount", VPackValue(fullCount));
+  builder.add("httpRequests", VPackValue(requests));
+  if (reportFullCount) {
+    // fullCount is optional
+    builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
   }
-      
+  //builder.add("count", VPackValue(count));
   builder.add("executionTime", VPackValue(executionTime));
+  
+  if (!nodes.empty()) {
+    builder.add("nodes", VPackValue(VPackValueType::Array));
+    for (std::pair<size_t const, ExecutionStats::Node> const& pair : nodes) {
+      builder.openObject();
+      builder.add("id", VPackValue(pair.first));
+      builder.add("calls", VPackValue(pair.second.calls));
+      builder.add("items", VPackValue(pair.second.items));
+      builder.add("runtime", VPackValue(pair.second.runtime));
+      builder.close();
+    }
+    builder.close();
+  }
   builder.close();
 }
 
 void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
-  builder.openObject();
-  builder.add("writesExecuted", VPackValue(0));
-  builder.add("writesIgnored", VPackValue(0));
-  builder.add("scannedFull", VPackValue(0));
-  builder.add("scannedIndex", VPackValue(0));
-  builder.add("filtered", VPackValue(0));
-  builder.add("httpRequests", VPackValue(0));
-  builder.add("fullCount", VPackValue(-1));
-  builder.add("executionTime", VPackValue(0.0));
-  builder.close();
+  ExecutionStats s;
+  s.toVelocyPack(builder, true);
+}
+
+/// @brief sumarize two sets of ExecutionStats
+void ExecutionStats::add(ExecutionStats const& summand) {
+  writesExecuted += summand.writesExecuted;
+  writesIgnored += summand.writesIgnored;
+  scannedFull += summand.scannedFull;
+  scannedIndex += summand.scannedIndex;
+  filtered += summand.filtered;
+  requests += summand.requests;
+  if (summand.fullCount > 0) {
+    fullCount += summand.fullCount;
+  }
+  count += summand.count;
+  // intentionally no modification of executionTime
+  
+  for(auto const& pair : summand.nodes) {
+    auto it = nodes.find(pair.first);
+    if (it != nodes.end()) {
+      it->second += pair.second;
+    } else {
+      nodes.emplace(pair);
+    }
+  }
 }
 
 ExecutionStats::ExecutionStats()
@@ -69,8 +98,9 @@ ExecutionStats::ExecutionStats()
       scannedFull(0),
       scannedIndex(0),
       filtered(0),
-      httpRequests(0),
-      fullCount(-1),
+      requests(0),
+      fullCount(0),
+      count(0),
       executionTime(0.0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice const& slice) 
@@ -87,11 +117,25 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   filtered = slice.get("filtered").getNumber<int64_t>();
   
   if (slice.hasKey("httpRequests")) {
-    httpRequests = slice.get("httpRequests").getNumber<int64_t>();
+    requests = slice.get("httpRequests").getNumber<int64_t>();
   }
-
+  
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();
+  } else {
+    fullCount = count;
+  } 
+
+  // note: node stats are optional
+  if (slice.hasKey("nodes")) {
+    ExecutionStats::Node node;
+    for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
+      size_t nid = val.get("id").getNumber<size_t>();
+      node.calls = val.get("calls").getNumber<size_t>();
+      node.items = val.get("items").getNumber<size_t>();
+      node.runtime = val.get("runtime").getNumber<double>();
+      nodes.emplace(nid, node);
+    }
   }
 }

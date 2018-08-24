@@ -24,6 +24,7 @@
 
 #include "GeneralRequest.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -229,13 +230,50 @@ void GeneralRequest::addSuffix(std::string&& part) {
   _suffixes.emplace_back(std::move(part));
 }
 
+std::string const& GeneralRequest::header(std::string const& key,
+                                       bool& found) const {
+  auto it = _headers.find(key);
+  if (it == _headers.end()) {
+    found = false;
+    return StaticStrings::Empty;
+  }
+  
+  found = true;
+  return it->second;
+}
+
+std::string const& GeneralRequest::header(std::string const& key) const {
+  bool unused = true;
+  return header(key, unused);
+}
+
+std::string const& GeneralRequest::value(std::string const& key,
+                                      bool& found) const {
+  if (!_values.empty()) {
+    auto it = _values.find(key);
+    
+    if (it != _values.end()) {
+      found = true;
+      return it->second;
+    }
+  }
+  
+  found = false;
+  return StaticStrings::Empty;
+}
+
+std::string const& GeneralRequest::value(std::string const& key) const {
+  bool unused = true;
+  return value(key, unused);
+}
+
 // needs to be here because of a gcc bug with templates and namespaces
 // https://stackoverflow.com/a/25594741/1473569
 namespace arangodb {
   template <>
   bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
     bool found = false;
-    std::string const& val = value(key, found);
+    std::string const& val = this->value(key, found);
     if (found) {
       return StringUtils::boolean(val);
     }
@@ -245,7 +283,7 @@ namespace arangodb {
   template <>
   uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
     bool found = false;
-    std::string const& val = value(key, found);
+    std::string const& val = this->value(key, found);
     if (found) {
       return StringUtils::uint64(val);
     }
@@ -255,7 +293,7 @@ namespace arangodb {
   template <>
   double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
     bool found = false;
-    std::string const& val = value(key, found);
+    std::string const& val = this->value(key, found);
     if (found) {
       return StringUtils::doubleDecimal(val);
     }

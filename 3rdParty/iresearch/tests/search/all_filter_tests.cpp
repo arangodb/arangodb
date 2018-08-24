@@ -29,9 +29,7 @@
 #include "formats/formats.hpp"
 #include "search/score.hpp"
 
-namespace ir = iresearch;
-
-namespace tests {
+NS_BEGIN(tests)
 
 class all_filter_test_case : public filter_test_case_base {
 protected:
@@ -49,7 +47,7 @@ protected:
     docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
     std::vector<irs::cost::cost_t> cost{ docs.size() };
 
-    check_query(ir::all(), docs, cost, rdr);
+    check_query(irs::all(), docs, cost, rdr);
   }
 
   void all_order() {
@@ -131,7 +129,7 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil));
+      order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
       check_query(irs::all(), order, docs, rdr);
     }
 
@@ -140,13 +138,13 @@ protected:
       docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 };
       irs::order order;
 
-      order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil));
+      order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
       check_query(irs::all(), order, docs, rdr);
     }
   }
 }; // all_filter_test_case
 
-} // tests 
+NS_END // tests
 
 // ----------------------------------------------------------------------------
 // --SECTION--                           memory_directory + iresearch_format_10
@@ -154,12 +152,12 @@ protected:
 
 class memory_all_filter_test_case : public tests::all_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    return new ir::memory_directory();
+  virtual irs::directory* get_directory() override {
+    return new irs::memory_directory();
   }
 
-  virtual ir::format::ptr get_codec() override {
-    return ir::formats::get("1_0");
+  virtual irs::format::ptr get_codec() override {
+    return irs::formats::get("1_0");
   }
 }; // memory_all_filter_test_case
 
@@ -174,13 +172,16 @@ TEST_F( memory_all_filter_test_case, all ) {
 
 class fs_all_filter_test_case : public tests::all_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
-    return new iresearch::fs_directory(dir.string());
+  virtual irs::directory* get_directory() override {
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::fs_directory(dir.utf8());
   }
 
-  virtual ir::format::ptr get_codec() override {
-    return ir::formats::get("1_0");
+  virtual irs::format::ptr get_codec() override {
+    return irs::formats::get("1_0");
   }
 }; // fs_all_filter_test_case
 

@@ -75,7 +75,7 @@ class mmap_index_input : public irs::bytes_ref_input {
     try {
       handle = std::make_shared<mmap_handle>();
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
       return nullptr;
     }
 
@@ -90,7 +90,7 @@ class mmap_index_input : public irs::bytes_ref_input {
       IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
     }
 
-    handle->dontneed(bool(advice & irs::IOAdvice::READONCE));
+    handle->dontneed(irs::IOAdvice(0) != (advice & irs::IOAdvice::READONCE));
 
     return mmap_index_input::make<mmap_index_input>(std::move(handle));
   }
@@ -144,7 +144,7 @@ index_input::ptr mmap_directory::open(
   try {
     (path/=directory())/=name;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
     return nullptr;
   }
 

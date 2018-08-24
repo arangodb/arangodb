@@ -75,9 +75,11 @@ TEST_F(memory_empty_filter_test_case, empty) {
 class fs_empty_filter_test_case: public empty_filter_test_case {
  protected:
   virtual irs::directory* get_directory() override {
-    auto dir = fs::path(test_dir()).append("index");
+    auto dir = test_dir();
 
-    return new irs::fs_directory(dir.string());
+    dir /= "index";
+
+    return new irs::fs_directory(dir.utf8());
   }
 
   virtual irs::format::ptr get_codec() override {
@@ -88,3 +90,7 @@ class fs_empty_filter_test_case: public empty_filter_test_case {
 TEST_F(fs_empty_filter_test_case, empty) {
   empty_sequential();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

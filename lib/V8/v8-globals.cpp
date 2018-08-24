@@ -38,6 +38,11 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       VocbaseTempl(),
       EnvTempl(),
       UsersTempl(),
+      GeneralGraphModuleTempl(),
+      GeneralGraphTempl(),
+#ifdef USE_ENTERPRISE
+      SmartGraphTempl(),
+#endif
 
       BufferTempl(),
 
@@ -79,6 +84,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       MergeObjectsKey(),
       NameKey(),
       OperationIDKey(),
+      OverwriteKey(),
       ParametersKey(),
       PathKey(),
       PrefixKey(),
@@ -206,7 +212,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_from"));
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
-      
+
 TRI_v8_global_t::~TRI_v8_global_t() {}
 
 /// @brief creates a global context
@@ -248,7 +254,7 @@ void TRI_AddMethodVocbase(
 
 /// @brief adds a global function to the given context
 void TRI_AddGlobalFunctionVocbase(
-    v8::Isolate* isolate, 
+    v8::Isolate* isolate,
     v8::Handle<v8::String> name,
     void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
   // all global functions are read-only

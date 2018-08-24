@@ -30,31 +30,45 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
 class MMFilesCollectionExport;
 
 class MMFilesExportCursor final : public Cursor {
  public:
-  MMFilesExportCursor(TRI_vocbase_t*, CursorId, arangodb::MMFilesCollectionExport*, size_t,
-               double, bool);
+  MMFilesExportCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    arangodb::MMFilesCollectionExport* ex,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+  );
 
   ~MMFilesExportCursor();
 
- public:
   CursorType type() const override final { return CURSOR_EXPORT; }
 
-  bool hasNext() override final;
+  bool hasNext();
 
-  arangodb::velocypack::Slice next() override final;
+  arangodb::velocypack::Slice next();
 
   size_t count() const override final;
 
-  void dump(velocypack::Builder&) override final;
+  std::pair<arangodb::aql::ExecutionState, Result> dump(
+      velocypack::Builder& result,
+      std::function<void()> const& ch) override final;
+
+  Result dumpSync(velocypack::Builder& result) override final;
+
+  std::shared_ptr<transaction::Context> context() const override final;
 
  private:
   DatabaseGuard _guard;
   arangodb::MMFilesCollectionExport* _ex;
+  size_t _position;
   size_t const _size;
 };
+
 }
 
 #endif

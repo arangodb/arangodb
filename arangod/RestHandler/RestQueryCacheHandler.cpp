@@ -34,8 +34,6 @@ RestQueryCacheHandler::RestQueryCacheHandler(GeneralRequest* request,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestQueryCacheHandler::isDirect() const { return false; }
-
 RestStatus RestQueryCacheHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
@@ -69,8 +67,8 @@ bool RestQueryCacheHandler::clearCache() {
     
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
   return true;
@@ -101,15 +99,13 @@ bool RestQueryCacheHandler::replaceProperties() {
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
-  bool validBody = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(validBody);
 
+  bool validBody = false;
+  VPackSlice body = this->parseVPackBody(validBody);
   if (!validBody) {
     // error message generated in parseJsonBody
     return true;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,

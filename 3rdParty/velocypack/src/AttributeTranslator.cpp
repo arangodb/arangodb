@@ -75,7 +75,7 @@ void AttributeTranslator::seal() {
 }
 
 // translate from string to id
-uint8_t const* AttributeTranslator::translate(std::string const& key) const {
+uint8_t const* AttributeTranslator::translate(std::string const& key) const noexcept {
   auto it = _keyToIdString.find(key);
 
   if (it == _keyToIdString.end()) {
@@ -87,7 +87,7 @@ uint8_t const* AttributeTranslator::translate(std::string const& key) const {
 
 // translate from string to id
 uint8_t const* AttributeTranslator::translate(char const* key,
-                                              ValueLength length) const {
+                                              ValueLength length) const noexcept {
   auto it = _keyToIdStringRef.find(StringRef(key, length));
 
   if (it == _keyToIdStringRef.end()) {
@@ -98,7 +98,7 @@ uint8_t const* AttributeTranslator::translate(char const* key,
 }
 
 // translate from id to string
-uint8_t const* AttributeTranslator::translate(uint64_t id) const {
+uint8_t const* AttributeTranslator::translate(uint64_t id) const noexcept {
   auto it = _idToKey.find(id);
 
   if (it == _idToKey.end()) {

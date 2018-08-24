@@ -21,7 +21,6 @@ endif()
 ################################################################################
 
 option(USE_TESTS "Build tests" OFF)
-option(USE_IQL "Build IQL" ON)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 
 if (USE_VALGRIND)
@@ -32,6 +31,22 @@ if (MSVC AND MSVC_BUILD_THREADS)
   set(CMAKE_C_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_C_FLAGS}")
   set(CMAKE_CXX_FLAGS "/MP${MSVC_BUILD_THREADS} ${CMAKE_CXX_FLAGS}")
 endif()
+
+################################################################################
+### directories
+################################################################################
+
+set(EXECUTABLE_OUTPUT_PATH
+  ${CMAKE_BINARY_DIR}/bin
+  CACHE PATH
+  "Executable output path"
+)
+
+set(LIBRARY_OUTPUT_PATH
+  ${CMAKE_BINARY_DIR}/bin
+  CACHE PATH 
+  "Library output path"
+)
 
 ################################################################################
 ### find 3rd party libraries
@@ -111,19 +126,6 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
-# set output directories
-set(EXECUTABLE_OUTPUT_PATH
-  ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH
-  "Executable output path"
-)
-
-set(LIBRARY_OUTPUT_PATH
-  ${CMAKE_BINARY_DIR}/bin
-  CACHE PATH 
-  "Library output path"
-)
-
 mark_as_advanced( 
   EXECUTABLE_OUTPUT_PATH 
   LIBRARY_OUTPUT_PATH
@@ -141,11 +143,6 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/tests/tests_config.hpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
 )
-
-# need iql for tests
-if (USE_TESTS AND NOT USE_IQL)
-  set(USE_IQL ON CACHE BOOL "Use IQL" FORCE)
-endif()
 
 add_subdirectory(core)
 add_subdirectory(external)
@@ -205,6 +202,8 @@ if (USE_TESTS)
 
   # setup target for memory allocation profiling
   add_custom_target(iresearch-tests-malloc
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to valgrind may be provided via an environment variable 'EXTRA_VALGRIND_ARGS'"
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     COMMAND ms_print --x=500 --y=100 massif.out > massif.log
     DEPENDS iresearch-tests
@@ -212,82 +211,42 @@ if (USE_TESTS)
 
   # setup target for memory allocation profiling
   add_custom_target(iresearch-tests-malloc-s
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to valgrind may be provided via an environment variable 'EXTRA_VALGRIND_ARGS'"
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    COMMAND ms_print --x=500 --y=100 massif.out > massif.log
-    DEPENDS iresearch-tests
-  )
-
-  # setup target for memory allocation profiling
-  add_custom_target(iresearch-tests-malloc-fast
-    COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    COMMAND ms_print --x=500 --y=100 massif.out > massif.log
-    DEPENDS iresearch-tests
-  )
-
-  # setup target for memory allocation profiling
-  add_custom_target(iresearch-tests-malloc-s-fast
-    COMMAND valgrind --tool=massif --depth=100 --max-snapshots=500 --time-unit=ms --detailed-freq=1 --massif-out-file=massif.out $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     COMMAND ms_print --x=500 --y=100 massif.out > massif.log
     DEPENDS iresearch-tests
   )
 
   # setup target for memory leak detection
   add_custom_target(iresearch-tests-memleak
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to valgrind may be provided via an environment variable 'EXTRA_VALGRIND_ARGS'"
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests
   )
 
   # setup target for memory leak detection
   add_custom_target(iresearch-tests-memleak-s
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to valgrind may be provided via an environment variable 'EXTRA_VALGRIND_ARGS'"
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
     COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    DEPENDS iresearch-tests-static
-  )
-
-  # setup target for memory leak detection
-  add_custom_target(iresearch-tests-memleak-fast
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    DEPENDS iresearch-tests
-  )
-
-  # setup target for memory leak detection
-  add_custom_target(iresearch-tests-memleak-s-fast
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --track-origins=yes --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    DEPENDS iresearch-tests-static
-  )
-
-  # setup target for memory leak detection
-  add_custom_target(iresearch-tests-memleak-shallow
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    DEPENDS iresearch-tests
-  )
-
-  # setup target for memory leak detection
-  add_custom_target(iresearch-tests-memleak-s-shallow
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    DEPENDS iresearch-tests-static
-  )
-
-  # setup target for memory leak detection
-  add_custom_target(iresearch-tests-memleak-shallow-fast
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
-    DEPENDS iresearch-tests
-  )
-
-  # setup target for memory leak detection
-  add_custom_target(iresearch-tests-memleak-s-shallow-fast
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --leak-check=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*:-:*europ*:-:*eco*:-:*postings_seek*:-:*profile* --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests-static
   )
 
   # setup target for thread race detection
   add_custom_target(iresearch-tests-threadrace
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to valgrind may be provided via an environment variable 'EXTRA_VALGRIND_ARGS'"
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests
   )
 
   # setup target for thread race detection
   add_custom_target(iresearch-tests-threadrace-s
-    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --gtest_filter=*_mt --ires_output $$EXTRA_VALGRIND_PROG_ARGS
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to valgrind may be provided via an environment variable 'EXTRA_VALGRIND_ARGS'"
+    COMMAND ${CMAKE_COMMAND} -E echo "Arguments to iresearch-tests${CMAKE_EXECUTABLE_SUFFIX} may be provided via an environment variable 'EXTRA_VALGRIND_PROG_ARGS'"
+    COMMAND valgrind --xml=yes --xml-file=valgrind.xml --tool=helgrind --read-var-info=yes --num-callers=64 $$EXTRA_VALGRIND_ARGS ${EXECUTABLE_OUTPUT_PATH}/iresearch-tests-s${CMAKE_EXECUTABLE_SUFFIX} --ires_output $$EXTRA_VALGRIND_PROG_ARGS
     DEPENDS iresearch-tests-static
   )
 

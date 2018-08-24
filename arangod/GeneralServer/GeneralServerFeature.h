@@ -25,9 +25,16 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/asio-helper.h"
-
 namespace arangodb {
+
+namespace aql {
+class QueryRegistry;
+}
+
+namespace traverser {
+class TraverserEngineRegistry;
+}
+
 namespace rest {
 class AsyncJobManager;
 class RestHandlerFactory;
@@ -82,9 +89,10 @@ class GeneralServerFeature final
   static GeneralServerFeature* GENERAL_SERVER;
 
  public:
-  explicit GeneralServerFeature(application_features::ApplicationServer*);
+  explicit GeneralServerFeature(
+    application_features::ApplicationServer& server
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -108,11 +116,14 @@ class GeneralServerFeature final
   void buildServers();
   void defineHandlers();
 
- private:
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
+  std::unique_ptr<
+      std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>>
+      _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
 };
+
 }
 
 #endif

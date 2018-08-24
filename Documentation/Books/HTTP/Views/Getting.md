@@ -1,11 +1,26 @@
 Getting Information about a View
 ================================
 
-<!-- js/actions/api-view.js -->
-@startDocuBlock JSA_get_api_view_name
+### View Listing
+
+A listing of all views in a database, regardless of their type, may be obtained
+via:
 
 <!-- js/actions/api-view.js -->
-@startDocuBlock JSA_get_api_view_properties
+@startDocuBlock get_api_views
+
+### Basic View Information
+
+Basic view information, common to all view types, for a specific view may be
+obtained via:
 
 <!-- js/actions/api-view.js -->
-@startDocuBlock JSF_get_api_views
+@startDocuBlock get_api_view_name
+
+### Full View Information
+
+A full description, populated with additional properties depending on view
+type, for a specific view may be obtained via:
+
+<!-- js/actions/api-view.js -->
+@startDocuBlock get_api_view_properties

@@ -1,8 +1,8 @@
-/* global describe, it, beforeEach, afterEach, it */
+/* global describe, it, beforeEach, afterEach */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for foxx manager
+// / @brief Spec for Foxx manager
 // /
 // / @file
 // /
@@ -248,7 +248,7 @@ describe('Foxx Manager install', function () {
     });
   });
 
-  describe('should not install on invalid mountpoint', function () {
+  describe('should not install on invalid mount point', function () {
     it('starting with _', function () {
       const mount = '/_disallowed';
       expect(function () {

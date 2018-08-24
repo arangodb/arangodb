@@ -72,10 +72,10 @@ class IRESEARCH_API by_column_existence final : public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
  protected:
-  virtual bool equals(const filter& rhs) const override;
+  virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

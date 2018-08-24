@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -226,7 +226,7 @@ function dumpTestSuite () {
         assertEqual("fulltext", c.getIndexes()[7].type);
         assertEqual([ "a_f" ], c.getIndexes()[7].fields);
 
-        assertEqual("geo2", c.getIndexes()[8].type);
+        assertEqual("geo", c.getIndexes()[8].type);
         assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);
       }
@@ -278,6 +278,48 @@ function dumpTestSuite () {
         assertEqual(i, doc.value);
         assertEqual({ value: [ i, i ] }, doc.more);
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test keygen padded
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenPadded : function () {
+      var c = db._collection("UnitTestsDumpKeygenPadded");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertEqual("padded", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1000, c.count());
+
+      c.toArray().forEach(function(doc) {
+        assertMatch(/^[0-9a-f]{16}$/, doc._key);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test keygen uuid
+////////////////////////////////////////////////////////////////////////////////
+
+    testKeygenUuid : function () {
+      var c = db._collection("UnitTestsDumpKeygenUuid");
+      var p = c.properties();
+
+      assertEqual(2, c.type()); // document
+      assertEqual("uuid", p.keyOptions.type);
+      assertFalse(p.keyOptions.allowUserKeys);
+
+      assertEqual(1, c.getIndexes().length); // just primary index
+      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1000, c.count());
+
+      c.toArray().forEach(function(doc) {
+        assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, doc._key);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,6 +434,43 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
       assertEqual(0, res.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test view restoring
+////////////////////////////////////////////////////////////////////////////////
+
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(Object.keys(props.links).length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
+      assertEqual(5000, res.length);
+
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+      assertEqual(2500, res.length);
+
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+      assertEqual(0, res.length);
+
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      assertEqual(1, res.length);
     }
 
   };

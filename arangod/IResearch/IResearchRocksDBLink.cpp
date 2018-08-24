@@ -31,45 +31,19 @@
 #include "VocBase/LogicalView.h"
 
 #include "IResearchRocksDBLink.h"
-
-NS_LOCAL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a reference to a static VPackSlice of an empty RocksDB index
-///        definition
-////////////////////////////////////////////////////////////////////////////////
-VPackSlice const& emptyParentSlice() {
-  static const struct EmptySlice {
-    VPackBuilder _builder;
-    VPackSlice _slice;
-    EmptySlice() {
-      VPackBuilder fieldsBuilder;
-
-      fieldsBuilder.openArray();
-      fieldsBuilder.close();  // empty array
-      _builder.openObject();
-      _builder.add("fields", fieldsBuilder.slice());  // empty array
-      arangodb::iresearch::IResearchLink::setType(
-          _builder);     // the index type required by Index
-      _builder.close();  // object with just one field required by the Index
-                         // constructor
-      _slice = _builder.slice();
-    }
-  } emptySlice;
-
-  return emptySlice._slice;
-}
-
-NS_END
+#include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchRocksDBLink::IResearchRocksDBLink(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
-    : RocksDBIndex(iid, collection, emptyParentSlice(),
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection
+)
+    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
 }
@@ -79,12 +53,13 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 }
 
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
 ) noexcept {
   try {
-    PTR_NAMED(IResearchRocksDBLink, ptr, iid, collection);
+    PTR_NAMED(IResearchRocksDBLink, ptr, id, collection);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* link =
@@ -95,14 +70,18 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 #endif
 
     return link && link->init(definition) ? ptr : nullptr;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, Logger::DEVEL)
+      << "caught exception while creating IResearch view RocksDB link '" << id << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-        << "caught exception while creating IResearch view RocksDB link '"
-        << iid << "'" << e.what();
+      << "caught exception while creating IResearch view RocksDB link '" << id << "': " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-        << "caught exception while creating IResearch view RocksDB link '"
-        << iid << "'";
+      << "caught exception while creating IResearch view RocksDB link '" << id << "'";
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -130,17 +109,19 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 
 void IResearchRocksDBLink::writeRocksWalMarker() {
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
-      Index::_collection->vocbase()->id(),
-      Index::_collection->cid(),
-      view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
-      Index::_iid);
-
+    Index::_collection.vocbase().id(),
+    Index::_collection.id(),
+    view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
+    Index::_iid
+  );
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   auto db = rocksutils::globalRocksDB();
 
   batch.PutLogData(logValue.slice());
+
   auto status = rocksutils::convertStatus(db->Write(wo, &batch));
+
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }

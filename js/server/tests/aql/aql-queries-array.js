@@ -201,6 +201,126 @@ function arrayIndexSuite () {
       db._drop(cName);
     },
 
+    testMultipleFilters : function () {
+      col.ensureHashIndex("a", "b[*]");
+      col.save({ a: true, b: [1, 2, 3], c: [1, 2, 3] });
+
+      let query = `FOR x IN ${cName} FILTER x.a == true && 2 IN x.b && 4 IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR x IN ${cName} FILTER x.a == true && NOOPT(2) IN x.b && NOOPT(4) IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR x IN ${cName} FILTER x.a == true && 2 IN x.b && 3 IN x.c RETURN x`;
+      assertEqual(1, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR x IN ${cName} FILTER x.a == true && NOOPT(2) IN x.b && NOOPT(3) IN x.c RETURN x`;
+      assertEqual(1, AQL_EXECUTE(query).json.length);
+    },
+    
+    testMultipleFiltersWithOuterLoop : function () {
+      col.ensureHashIndex("a", "b[*]");
+      col.save({ a: true, b: [1, 2, 3], c: [4, 5, 6] });
+
+      let query = `FOR y IN [1, 2, 3] FOR x IN ${cName} FILTER x.a == true && y IN x.b && y IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `RETURN LENGTH(FOR y IN [1, 2, 3] FOR x IN ${cName} FILTER x.a == true && y IN x.b && y IN x.c RETURN x)`;
+      assertEqual(1, AQL_EXECUTE(query).json.length);
+      assertEqual(0, AQL_EXECUTE(query).json[0]);
+    },
+    
+    testMultipleFiltersWithOuterLoopAttributes : function () {
+      col.ensureHashIndex("a", "b[*]");
+      col.save({ a: true, b: [1, 2, 3], c: [4, 5, 6] });
+
+      let query = `FOR y IN [{ val: 1 }, { val: 2 }, { val: 3 }] FOR x IN ${cName} FILTER x.a == true && y.val IN x.b && y.val IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR y IN [{ val: 1 }, { val: 2 }, { val: 3 }] RETURN LENGTH(FOR x IN ${cName} FILTER x.a == true && y.val IN x.b && y.val IN x.c RETURN x)`;
+      assertEqual(3, AQL_EXECUTE(query).json.length);
+      assertEqual(0, AQL_EXECUTE(query).json[0]);
+      assertEqual(0, AQL_EXECUTE(query).json[1]);
+      assertEqual(0, AQL_EXECUTE(query).json[2]);
+    },
+    
+    testHashPrefixMultiExpansion : function () {
+      col.ensureHashIndex("something", "a[*]", "b[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: i % 10, b: i % 5 });
+      }
+      // this will use an index with the RocksDB engine, but not with MMFiles
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testSkiplistPrefixMultiExpansion : function () {
+      col.ensureSkiplist("something", "a[*]", "b[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: i % 10, b: i % 5 });
+      }
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testHashPrefixMultiExpansionSub1 : function () {
+      col.ensureHashIndex("something", "a[*]", "b[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1, 2, 3, 4, 5 ] });
+      }
+      // this will use an index with the RocksDB engine, but not with MMFiles
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testHashPrefixMultiExpansionSub2 : function () {
+      col.ensureHashIndex("something", "a[*]", "b[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1 ] });
+      }
+      // this will use an index with the RocksDB engine, but not with MMFiles
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testHashPrefixMultiExpansionSub3 : function () {
+      col.ensureHashIndex("something", "a[*].a", "b[*].b");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
+      }
+      // this will use an index with the RocksDB engine, but not with MMFiles
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testSkiplistPrefixMultiExpansionSub1 : function () {
+      col.ensureSkiplist("something", "a[*]", "b[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1, 2, 3, 4, 5 ] });
+      }
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testSkiplistPrefixMultiExpansionSub2 : function () {
+      col.ensureSkiplist("something", "a[*]", "b[*]");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1 ] });
+      }
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+    
+    testSkiplistPrefixMultiExpansionSub3 : function () {
+      col.ensureSkiplist("something", "a[*].a", "b[*].b");
+      for (var i = 0; i < 100; ++i) {
+        col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
+      }
+      // this will use an index with the RocksDB engine, but not with MMFiles
+      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
+      assertEqual(100, AQL_EXECUTE(query).json.length);
+    },
+
     testHashPlainArray : function () {
       col.ensureHashIndex("a[*]");
       for (var i = 0; i < 100; ++i) {

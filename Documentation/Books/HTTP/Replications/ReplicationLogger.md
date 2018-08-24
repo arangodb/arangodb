@@ -11,7 +11,7 @@ of the logger and to fetch the latest changes written by the logger. The operati
 will return the state and data from the write-ahead log.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock JSF_get_api_replication_logger_return_state
+@startDocuBlock get_api_replication_logger_return_state
 
 To query the latest changes logged by the replication logger, the HTTP interface
 also provides the `logger-follow` method.
@@ -20,14 +20,14 @@ This method should be used by replication clients to incrementally fetch updates
 from an ArangoDB database.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock JSF_get_api_replication_logger_returns
+@startDocuBlock get_api_replication_logger_follow
 
 To check what range of changes is available (identified by tick values), the HTTP
 interface provides the methods `logger-first-tick` and `logger-tick-ranges`.
 Replication clients can use the methods to determine if certain data (identified
 by a tick *date*) is still available on the master.
 
-@startDocuBlock JSF_get_api_replication_logger_first_tick
+@startDocuBlock get_api_replication_logger_first_tick
 
-@startDocuBlock JSF_get_api_replication_logger_tick_ranges
+@startDocuBlock get_api_replication_logger_tick_ranges
 

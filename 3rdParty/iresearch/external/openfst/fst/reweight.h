@@ -1,28 +1,13 @@
-// reweight.h
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: allauzen@google.com (Cyril Allauzen)
-//
-// \file
 // Function to reweight an FST.
 
-#ifndef FST_LIB_REWEIGHT_H__
-#define FST_LIB_REWEIGHT_H__
+#ifndef FST_REWEIGHT_H_
+#define FST_REWEIGHT_H_
 
 #include <vector>
-using std::vector;
+#include <fst/log.h>
 
 #include <fst/mutable-fst.h>
 
@@ -31,116 +16,112 @@ namespace fst {
 
 enum ReweightType { REWEIGHT_TO_INITIAL, REWEIGHT_TO_FINAL };
 
-// Reweight FST according to the potentials defined by the POTENTIAL
-// vector in the direction defined by TYPE. Weight needs to be left
-// distributive when reweighting towards the initial state and right
-// distributive when reweighting towards the final states.
+// Reweights an FST according to a vector of potentials in a given direction.
+// The weight must be left distributive when reweighting towards the initial
+// state and right distributive when reweighting towards the final states.
 //
-// An arc of weight w, with an origin state of potential p and
-// destination state of potential q, is reweighted by p\wq when
-// reweighting towards the initial state and by pw/q when reweighting
-// towards the final states.
+// An arc of weight w, with an origin state of potential p and destination state
+// of potential q, is reweighted by p^-1 \otimes (w \otimes q) when reweighting
+// torwards the initial state, and by (p \otimes w) \otimes q^-1 when
+// reweighting towards the final states.
 template <class Arc>
 void Reweight(MutableFst<Arc> *fst,
-              const vector<typename Arc::Weight> &potential,
+              const std::vector<typename Arc::Weight> &potential,
               ReweightType type) {
-  typedef typename Arc::Weight Weight;
-
-  if (fst->NumStates() == 0)
-    return;
-
+  using Weight = typename Arc::Weight;
+  if (fst->NumStates() == 0) return;
+  // TODO(kbg): Make this a compile-time static_assert once we have a pleasant
+  // way to "deregister" this operation for non-distributive semirings so an
+  // informative error message is produced.
   if (type == REWEIGHT_TO_FINAL && !(Weight::Properties() & kRightSemiring)) {
     FSTERROR() << "Reweight: Reweighting to the final states requires "
-               << "Weight to be right distributive: "
-               << Weight::Type();
+               << "Weight to be right distributive: " << Weight::Type();
     fst->SetProperties(kError, kError);
     return;
   }
-
+  // TODO(kbg): Make this a compile-time static_assert once we have a pleasant
+  // way to "deregister" this operation for non-distributive semirings so an
+  // informative error message is produced.
   if (type == REWEIGHT_TO_INITIAL && !(Weight::Properties() & kLeftSemiring)) {
     FSTERROR() << "Reweight: Reweighting to the initial state requires "
-               << "Weight to be left distributive: "
-               << Weight::Type();
+               << "Weight to be left distributive: " << Weight::Type();
     fst->SetProperties(kError, kError);
     return;
   }
-
-  StateIterator< MutableFst<Arc> > sit(*fst);
-  for (; !sit.Done(); sit.Next()) {
-    typename Arc::StateId state = sit.Value();
-    if (state == potential.size())
-      break;
-    typename Arc::Weight weight = potential[state];
+  StateIterator<MutableFst<Arc>> siter(*fst);
+  for (; !siter.Done(); siter.Next()) {
+    const auto s = siter.Value();
+    if (s == potential.size()) break;
+    const auto &weight = potential[s];
     if (weight != Weight::Zero()) {
-      for (MutableArcIterator< MutableFst<Arc> > ait(fst, state);
-           !ait.Done();
-           ait.Next()) {
-        Arc arc = ait.Value();
-        if (arc.nextstate >= potential.size())
-          continue;
-        typename Arc::Weight nextweight = potential[arc.nextstate];
-        if (nextweight == Weight::Zero())
-          continue;
-        if (type == REWEIGHT_TO_INITIAL)
-          arc.weight = Divide(Times(arc.weight, nextweight), weight,
-                              DIVIDE_LEFT);
-        if (type == REWEIGHT_TO_FINAL)
-          arc.weight = Divide(Times(weight, arc.weight), nextweight,
-                              DIVIDE_RIGHT);
-        ait.SetValue(arc);
+      for (MutableArcIterator<MutableFst<Arc>> aiter(fst, s); !aiter.Done();
+           aiter.Next()) {
+        auto arc = aiter.Value();
+        if (arc.nextstate >= potential.size()) continue;
+        const auto &nextweight = potential[arc.nextstate];
+        if (nextweight == Weight::Zero()) continue;
+        if (type == REWEIGHT_TO_INITIAL) {
+          arc.weight =
+              Divide(Times(arc.weight, nextweight), weight, DIVIDE_LEFT);
+        }
+        if (type == REWEIGHT_TO_FINAL) {
+          arc.weight =
+              Divide(Times(weight, arc.weight), nextweight, DIVIDE_RIGHT);
+        }
+        aiter.SetValue(arc);
       }
-      if (type == REWEIGHT_TO_INITIAL)
-        fst->SetFinal(state, Divide(fst->Final(state), weight, DIVIDE_LEFT));
+      if (type == REWEIGHT_TO_INITIAL) {
+        fst->SetFinal(s, Divide(fst->Final(s), weight, DIVIDE_LEFT));
+      }
     }
-    if (type == REWEIGHT_TO_FINAL)
-      fst->SetFinal(state, Times(weight, fst->Final(state)));
+    if (type == REWEIGHT_TO_FINAL) {
+      fst->SetFinal(s, Times(weight, fst->Final(s)));
+    }
   }
-
   // This handles elements past the end of the potentials array.
-  for (; !sit.Done(); sit.Next()) {
-    typename Arc::StateId state = sit.Value();
-    if (type == REWEIGHT_TO_FINAL)
-      fst->SetFinal(state, Times(Weight::Zero(), fst->Final(state)));
+  for (; !siter.Done(); siter.Next()) {
+    const auto s = siter.Value();
+    if (type == REWEIGHT_TO_FINAL) {
+      fst->SetFinal(s, Times(Weight::Zero(), fst->Final(s)));
+    }
   }
-
-  typename Arc::Weight startweight = fst->Start() < potential.size() ?
-      potential[fst->Start()] : Weight::Zero();
+  const auto startweight = fst->Start() < potential.size()
+                               ? potential[fst->Start()]
+                               : Weight::Zero();
   if ((startweight != Weight::One()) && (startweight != Weight::Zero())) {
     if (fst->Properties(kInitialAcyclic, true) & kInitialAcyclic) {
-      typename Arc::StateId state = fst->Start();
-      for (MutableArcIterator< MutableFst<Arc> > ait(fst, state);
-           !ait.Done();
-           ait.Next()) {
-        Arc arc = ait.Value();
-        if (type == REWEIGHT_TO_INITIAL)
+      const auto s = fst->Start();
+      for (MutableArcIterator<MutableFst<Arc>> aiter(fst, s); !aiter.Done();
+           aiter.Next()) {
+        auto arc = aiter.Value();
+        if (type == REWEIGHT_TO_INITIAL) {
           arc.weight = Times(startweight, arc.weight);
-        else
-          arc.weight = Times(
-              Divide(Weight::One(), startweight, DIVIDE_RIGHT),
-              arc.weight);
-        ait.SetValue(arc);
+        } else {
+          arc.weight = Times(Divide(Weight::One(), startweight, DIVIDE_RIGHT),
+                             arc.weight);
+        }
+        aiter.SetValue(arc);
       }
-      if (type == REWEIGHT_TO_INITIAL)
-        fst->SetFinal(state, Times(startweight, fst->Final(state)));
-      else
-        fst->SetFinal(state, Times(Divide(Weight::One(), startweight,
-                                          DIVIDE_RIGHT),
-                                   fst->Final(state)));
+      if (type == REWEIGHT_TO_INITIAL) {
+        fst->SetFinal(s, Times(startweight, fst->Final(s)));
+      } else {
+        fst->SetFinal(s, Times(Divide(Weight::One(), startweight, DIVIDE_RIGHT),
+                               fst->Final(s)));
+      }
     } else {
-      typename Arc::StateId state = fst->AddState();
-      Weight w = type == REWEIGHT_TO_INITIAL ?  startweight :
-                 Divide(Weight::One(), startweight, DIVIDE_RIGHT);
-      Arc arc(0, 0, w, fst->Start());
-      fst->AddArc(state, arc);
-      fst->SetStart(state);
+      const auto s = fst->AddState();
+      const auto weight =
+          (type == REWEIGHT_TO_INITIAL)
+              ? startweight
+              : Divide(Weight::One(), startweight, DIVIDE_RIGHT);
+      fst->AddArc(s, Arc(0, 0, weight, fst->Start()));
+      fst->SetStart(s);
     }
   }
-
-  fst->SetProperties(ReweightProperties(
-                         fst->Properties(kFstProperties, false)),
+  fst->SetProperties(ReweightProperties(fst->Properties(kFstProperties, false)),
                      kFstProperties);
 }
 
 }  // namespace fst
 
-#endif  // FST_LIB_REWEIGHT_H_
+#endif  // FST_REWEIGHT_H_

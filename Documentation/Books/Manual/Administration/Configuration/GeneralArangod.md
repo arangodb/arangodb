@@ -5,44 +5,46 @@ General Options
 
 `--database.auto-upgrade`
 
-Specifying this option will make the server perform a database upgrade at
-start. A database upgrade will first compare the version number stored in the
-file VERSION in the database directory with the current server version.
-
-If the two version numbers match, the server will start normally.
+Specifying this option will make the server perform a database upgrade instead
+of starting the server normally. A database upgrade will first compare the
+version number stored in the file VERSION in the database directory with the
+current server version.
 
 If the version number found in the database directory is higher than the version
 number the server is running, the server expects this is an unintentional
-downgrade and will warn about this. It will however start normally. Using the
-server in these conditions is however not recommended nor supported.
+downgrade and will warn about this. Using the server in these conditions is
+neither recommended nor supported.
 
 If the version number found in the database directory is lower than the version
 number the server is running, the server will check whether there are any
 upgrade tasks to perform. It will then execute all required upgrade tasks and
 print their statuses. If one of the upgrade tasks fails, the server will exit
-and refuse to start. Re-starting the server with the upgrade option will then
-again trigger the upgrade check and execution until the problem is fixed. If all
-tasks are finished, the server will start normally.
+with an error. Re-starting the server with the upgrade option will then again
+trigger the upgrade check and execution until the problem is fixed.
 
 Whether or not this option is specified, the server will always perform a
 version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
 ### Storage Engine
-As of ArangoDB 3.2 two storage engines are supported. The "traditional"
-engine is called `MMFiles`, which is also the default storage engine.
+ArangoDB's "traditional" storage engine is called `MMFiles`, which also was the
+default storage engine up to including ArangoDB 3.3.
 
-An alternative engine based on [RocksDB](http://rocksdb.org) is also provided and
-can be turned on manually.
+Since ArangoDB 3.2, an alternative engine based on [RocksDB](http://rocksdb.org)
+is also provided and could be turned on manually. Since ArangoDB 3.4, the RocksDB
+storage engine is the default storage engine for new installations.
 
-One storage engine type is supported per server per installation. 
+One storage engine type is supported per server per installation.
 Live switching of storage engines on already installed systems isn't supported.
 Configuring the wrong engine (not matching the previously used one) will result
-in the server refusing to start. You may however use `auto` to let ArangoDB choose 
-the previously used one. 
-
+in the server refusing to start. You may however use `auto` to let ArangoDB choose
+the previously used one.
 
 `--server.storage-engine [auto|mmfiles|rocksdb]`
+
+Note that `auto` will default to `rocksdb` starting with ArangoDB 3.4, but in
+previous versions it defaulted to `mmfiles`.
+
 
 ### Daemon
 
@@ -144,13 +146,13 @@ daemon. This parameter must be specified if either the flag *daemon* or
 
 ### Check max memory mappings
 
-`--server.check-max-memory-mappings` can be used on Linux to make arangod 
+`--server.check-max-memory-mappings` can be used on Linux to make arangod
 check the number of memory mappings currently used by the process (as reported in
-*/proc/<pid>/maps*) and compare it with the maximum number of allowed mappings as 
+*/proc/<pid>/maps*) and compare it with the maximum number of allowed mappings as
 determined by */proc/sys/vm/max_map_count*. If the current number of memory
 mappings gets near the maximum allowed value, arangod will log a warning
 and disallow the creation of further V8 contexts temporarily until the current
-number of mappings goes down again. 
+number of mappings goes down again.
 
 If the option is set to false, no such checks will be performed. All non-Linux
 operating systems do not provide this option and will ignore it.
@@ -304,9 +306,23 @@ The default value for this option is *false*.
 
 ### Server threads
 
-`--server.threads number`
+`--server.minimal-threads number`
+
+`--server.maximal-threads number`
 
 Specifies the *number* of threads that are spawned to handle requests.
+
+The actual number of request processing threads is adjusted dynamically at runtime
+and will float between `--server.minimal-threads` and `--server.maximal-threads`.
+
+`--server.minimal-threads` determines the minimum number of request processing
+threads the server will start and that will always be kept around. The default
+value is *2*.
+
+`--server.maximal-threads` determines the maximum number of request processing
+threads the server is allowed to start for request handling. If that number of
+threads is already running, arangod will not start further threads for request
+handling. The default value is
 
 ### Toggling server statistics
 
@@ -315,16 +331,6 @@ Specifies the *number* of threads that are spawned to handle requests.
 If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
 option to turn it off might relieve heavy-loaded instances a bit.
-
-### Session timeout
-
-time to live for server sessions
-`--server.session-timeout value`
-
-The timeout for web interface sessions, using for authenticating requests
-to the web interface (/_admin/aardvark) and related areas.
-
-Sessions are only used when authentication is turned on.
 
 ### Foxx queues
 @startDocuBlock foxxQueues
@@ -359,8 +365,21 @@ directory as argument.
 /tmp/vocbase
 ```
 
+### Database directory state precondition
 
-### Journal size
+`--database.require-directory-state state`
+
+Using this option it is possible to require the database directory to be
+in a specific state on startup. the options for this value are:
+
+- non-existing: database directory must not exist
+- existing: database directory must exist
+- empty: database directory must exist but be empty
+- populated: database directory must exist and contain specific files already
+- any: any directory state allowed
+
+
+### Journal size (MMFiles only)
 @startDocuBlock databaseMaximalJournalSize
 
 
@@ -372,6 +391,19 @@ directory as argument.
 @startDocuBlock databaseForceSyncProperties
 
 
+### Data source flush synchronization
+
+`--server.flush-interval`
+
+ArangoDB will periodically ensure that all data sources (databases, views, etc.)
+have flushed all committed data to disk and write some checkpoint data to aid in
+future recovery. Increasing this value will result in fewer, larger write
+batches, while decreasing it will result in more, smaller writes. Setting the
+value too low can easily overwhelm the server, while setting the value too high
+may result in high memory usage and periodic slowdowns. Value is given in
+microseconds, with a typical range of 100000 (100ms) to 10000000 (10s) and a
+default of 1000000 (1s). Use caution when changing from the default.
+
 ### Limiting memory for AQL queries
 
 `--query.memory-limit value`
@@ -382,8 +414,8 @@ aborted with a *resource limit exceeded* exception. In a cluster, the memory
 accounting is done per shard, so the limit value is effectively a memory limit per
 query per shard.
 
-The global limit value can be overriden per query by setting the *memoryLimit* 
-option value for individual queries when running an AQL query. 
+The global limit value can be overriden per query by setting the *memoryLimit*
+option value for individual queries when running an AQL query.
 
 The default value is *0*, meaning that there is no memory limit.
 
@@ -393,7 +425,7 @@ The default value is *0*, meaning that there is no memory limit.
 `--query.fail-on-warning value`
 
 When set to *true*, AQL queries that produce warnings will instantly abort and
-throw an exception. This option can be set to catch obvious issues with AQL 
+throw an exception. This option can be set to catch obvious issues with AQL
 queries early. When set to *false*, AQL queries that produce warnings will not
 abort and return the warnings along with the query results.
 The option can also be overridden for each individual AQL query.
@@ -409,7 +441,7 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
-### Enable/disable tracking of bind variables in AQL queries 
+### Enable/disable tracking of bind variables in AQL queries
 
 `--query.tracking-with-bindvars flag`
 
@@ -490,7 +522,7 @@ This option only has an effect if the query cache mode is set to either *on* or
 
 This option can be used to control whether user-defined JavaScript code
 is allowed to be executed on server by sending via HTTP to the API endpoint
-`/_admin/execute`  with an authenticated user account. 
+`/_admin/execute`  with an authenticated user account.
 The default value is *false*, which disables the execution of user-defined
 code. This is also the recommended setting for production. In test environments,
 it may be convenient to turn the option on in order to send arbitrary setup
@@ -501,8 +533,8 @@ or teardown commands for execution on the server.
 
 `--javascript.v8-contexts number`
 
-Specifies the maximum *number* of V8 contexts that are created for executing 
-JavaScript code. More contexts allow executing more JavaScript actions in parallel, 
+Specifies the maximum *number* of V8 contexts that are created for executing
+JavaScript code. More contexts allow executing more JavaScript actions in parallel,
 provided that there are also enough threads available. Please note that each V8 context
 will use a substantial amount of memory and requires periodic CPU processing
 time for garbage collection.
@@ -511,7 +543,7 @@ Note that this value configures the maximum number of V8 contexts that can be
 used in parallel. Upon server start only as many V8 contexts will be created as are
 configured in option `--javascript.v8-contexts-minimum`. The actual number of
 available V8 contexts may float at runtime between `--javascript.v8-contexts-minimum`
-and `--javascript.v8-contexts`. When there are unused V8 contexts that linger around, 
+and `--javascript.v8-contexts`. When there are unused V8 contexts that linger around,
 the server's garbage collector thread will automatically delete them.
 
 
@@ -522,24 +554,24 @@ the server is running. The actual number of V8 contexts will never drop below th
 value, but it may go up as high as specified via the option `--javascript.v8-contexts`.
 
 When there are unused V8 contexts that linger around and the number of V8 contexts
-is greater than `--javascript.v8-contexts-minimum` the server's garbage collector 
+is greater than `--javascript.v8-contexts-minimum` the server's garbage collector
 thread will automatically delete them.
- 
-  
+
+
 `--javascript.v8-contexts-max-invocations`
 
-Specifies the maximum number of invocations after which a used V8 context is 
-disposed. The default value of `--javascript.v8-contexts-max-invocations` is 0, 
-meaning that the maximum number of invocations per context is unlimited. 
+Specifies the maximum number of invocations after which a used V8 context is
+disposed. The default value of `--javascript.v8-contexts-max-invocations` is 0,
+meaning that the maximum number of invocations per context is unlimited.
 
 `--javascript.v8-contexts-max-age`
 
-Specifies the time duration (in seconds) after which time a V8 context is disposed 
+Specifies the time duration (in seconds) after which time a V8 context is disposed
 automatically after its creation. If the time is elapsed, the context will be disposed.
 The default value for `--javascript.v8-contexts-max-age` is 60 seconds.
 
 If both `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
-are set, then the context will be destroyed when either of the specified threshold 
+are set, then the context will be destroyed when either of the specified threshold
 values is reached.
 
 
@@ -589,3 +621,17 @@ might change in the future if a different version of V8 is being used in
 ArangoDB. Not all options offered by V8 might be sensible to use in the context
 of ArangoDB. Use the specific options only if you are sure that they are not
 harmful for the regular database operation.
+
+
+#### Enable or Disable V8 JavaScript Engine entirely
+
+```
+--javascript.enabled bool
+```
+
+In certain types of ArangoDB instances you can now completely disable the V8 JavaScript engine. Be aware that this is
+an **highly experimental** feature and it is to be expected that certain functionality (e.g. some API endpoints, the WebUI,
+some AQL functions etc) will be missing or severly broken. Nevertheless you may whish to reduce the footprint of ArangoDB by disabling V8.
+
+This option is expected to **only** work reliably on a _single server_, _agency_ or in an _active failover_ setup. Do not try to use
+this feature on a _coordinator_, or _cluster database server_.

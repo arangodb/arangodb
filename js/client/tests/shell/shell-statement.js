@@ -28,10 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+const jsunity = require("jsunity");
 
-var arangodb = require("@arangodb");
-var db = arangodb.db;
+const arangodb = require("@arangodb");
+const queries = require('@arangodb/aql/queries');
+const db = arangodb.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -156,9 +157,80 @@ function StatementSuite () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: statements
+////////////////////////////////////////////////////////////////////////////////
+
+function StatementStreamSuite () {
+  'use strict';
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test cursor
+////////////////////////////////////////////////////////////////////////////////
+
+    testCursor : function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
+                                       options: { stream: true },
+                                       batchSize: 50});
+      var cursor = stmt.execute();
+
+      assertEqual(undefined, cursor.count());
+      for (var i = 1; i <= 100; ++i) {
+        assertEqual(i, cursor.next());
+        assertEqual(i !== 100, cursor.hasNext());
+      }
+
+      assertFalse(cursor.hasNext());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to string
+////////////////////////////////////////////////////////////////////////////////
+
+    testToString : function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", 
+                                       options: { stream: true } });
+      var cursor = stmt.execute();
+
+      assertEqual(undefined, cursor.count()); // count is not supported
+      assertTrue(cursor.hasNext());
+
+      // print it. this should not modify the cursor apart from when it's accessed for printing
+      cursor.toString();
+      assertTrue(more === cursor);
+      assertTrue(cursor._stream);
+
+      for (var i = 1; i <= 11; ++i) {
+        assertEqual(i, cursor.next());
+        assertEqual(i !== 11, cursor.hasNext());
+      }
+
+      assertFalse(cursor.hasNext());
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(StatementSuite);
+jsunity.run(StatementStreamSuite);
 return jsunity.done();
 

@@ -75,7 +75,6 @@ install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/js/actions
     ${PROJECT_SOURCE_DIR}/js/apps
-    ${PROJECT_SOURCE_DIR}/js/contrib
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
   REGEX       "^.*/server/tests$"                          EXCLUDE
@@ -178,27 +177,8 @@ if (UNIX)
         DESTINATION ${SYSTEMD_UNIT_DIR}/
         RENAME ${SERVICE_NAME}.service
       )
-
-      # configure and install logrotate file
-      configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
-        ${PROJECT_BINARY_DIR}/arangod.systemd
-        NEWLINE_STYLE UNIX
-      )
-      install(
-        FILES ${PROJECT_BINARY_DIR}/arangod.systemd
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
-        DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
-        RENAME ${SERVICE_NAME}
-      )
-
     else ()
       message(STATUS "-- systemd not found")
-      configure_file (
-        ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
-        ${PROJECT_BINARY_DIR}/arangod.sysv
-        NEWLINE_STYLE UNIX
-      )
     endif(SYSTEMD_FOUND)
   endif(NOT PKG_CONFIG_FOUND) 
 endif(UNIX)
@@ -255,16 +235,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   include(InstallRequiredSystemLibraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
   INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
-
-  # install openssl
-  if (NOT LIB_EAY_RELEASE_DLL OR NOT SSL_EAY_RELEASE_DLL)
-    message(FATAL_ERROR, "BUNDLE_OPENSSL set but couldn't locate SSL DLLs. Please set LIB_EAY_RELEASE_DLL and SSL_EAY_RELEASE_DLL")
-  endif()
-
-  install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
-  install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
 endif()
-
 
 if (THIRDPARTY_SBIN)
   install(FILES ${THIRDPARTY_SBIN}

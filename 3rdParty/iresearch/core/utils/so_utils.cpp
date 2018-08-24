@@ -21,19 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-  #include <boost/filesystem/operations.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "log.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
 #include "so_utils.hpp"
@@ -81,13 +70,13 @@
 #elif defined(__GNUC__) // GNU compiler
   #include <dlfcn.h>
 #else
-  #error define your copiler
+  #error define your compiler
 #endif
 
 NS_LOCAL
 
 #if defined(_MSC_VER) // Microsoft compiler
-  const std::string FILENAME_EXTENSION(".dll");
+  const std::wstring FILENAME_EXTENSION(L".dll");
 #elif defined(__APPLE__) // MacOS
   const std::string FILENAME_EXTENSION(".dylib");
 #elif defined(__GNUC__) // GNU compiler
@@ -105,20 +94,20 @@ void* load_library(const char* soname, int mode /* = 2 */) {
     return nullptr;
   }
 
-  std::string name(soname);
+  utf8_path name(soname);
 
   name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER) // Microsoft compiler
   UNUSED(mode);
-  auto handle = static_cast<void*>(::LoadLibraryA(name.c_str()));
+  auto handle = static_cast<void*>(::LoadLibraryW(name.c_str()));
 #elif defined(__GNUC__) // GNU compiler
   auto handle = dlopen(name.c_str(), mode);
 #endif
 
   if (!handle) {
     #ifdef _WIN32
-      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror().c_str());
+      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.utf8().c_str(), dlerror().c_str());
     #else
       IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror());
     #endif
@@ -148,45 +137,62 @@ void load_libraries(
   const std::string& prefix,
   const std::string& suffix
 ) {
-  ::boost::filesystem::path pluginPath(path);
+  utf8_path plugin_path(path);
+  bool result;
 
-  if (!::boost::filesystem::is_directory(pluginPath)) {
-    auto u8path = (utf8_path(pluginPath)).utf8();
-
-    IR_FRMT_INFO("library load failed, not a plugin path: %s", u8path.c_str());
+  if (!plugin_path.exists_directory(result) || !result) {
+    IR_FRMT_INFO("library load failed, not a plugin path: %s", plugin_path.utf8().c_str());
 
     return; // no plugins directory
   }
 
-  for (::boost::filesystem::directory_iterator itr(pluginPath), end; itr != end; ++itr) {
-    if (::boost::filesystem::is_directory(itr->status())) {
-      continue;
+  auto visitor = [&plugin_path, &prefix, &suffix](
+      const utf8_path::native_char_t* name
+  )->bool {
+    auto path = plugin_path;
+    bool result;
+
+    path /= name;
+
+    if (!path.exists_file(result)) {
+      IR_FRMT_ERROR("Failed to identify plugin file: %s", path.utf8().c_str());
+
+      return false;
     }
 
-    auto& file = itr->path();
-    auto extension = utf8_path(file.extension()).utf8();
-
-    if (FILENAME_EXTENSION != extension.c_str()) {
-      continue; // skip non-library extensions
+    if (!result) {
+      return true; // skip non-files
     }
 
-    auto stem = utf8_path(file.stem()).utf8();
+    auto path_parts = irs::file_utils::path_parts(name);
+
+    if (FILENAME_EXTENSION != path_parts.extension) {
+      return true; // skip non-library extensions
+    }
+
+    auto stem = utf8_path(path_parts.stem).utf8();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.c_str(), prefix.size()) != 0 ||
         strncmp(stem.c_str() + stem.size() - suffix.size(), suffix.c_str(), suffix.size()) != 0) {
-      continue; // filename does not match
+      return true; // filename does not match
     }
 
-    auto u8path = (utf8_path(file.parent_path())/=stem).utf8(); // strip extension
+    auto path_stem = plugin_path;
 
-    // FIMXE check double-load of same dll
-    void* handle = load_library(u8path.c_str(), 1);
+    path_stem /= stem; // strip extension
+
+    // FIXME TODO check double-load of same dll
+    void* handle = load_library(path_stem.utf8().c_str(), 1);
 
     if (!handle) {
-      IR_FRMT_ERROR("library load failed for path: %s", u8path.c_str());
+      IR_FRMT_ERROR("library load failed for path: %s", path_stem.utf8().c_str());
     }
-  }
+
+    return true;
+  };
+
+  plugin_path.visit_directory(visitor, false);
 }
 
 NS_END // ROOT

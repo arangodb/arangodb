@@ -26,22 +26,22 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <openssl/ssl.h>
-#include <boost/asio/ssl.hpp>
 
-#include "Basics/asio-helper.h"
+#include "Basics/asio_ns.h"
 
 namespace arangodb {
+
 class SslFeature final : public application_features::ApplicationFeature {
  public:
-  explicit SslFeature(application_features::ApplicationServer* server);
+  explicit SslFeature(application_features::ApplicationServer& server);
 
- public:
   void prepare() override final;
   void unprepare() override final;
 
  private:
-  static const boost::asio::ssl::detail::openssl_init<true> sslBase;
+  static const asio::ssl::detail::openssl_init<true> sslBase;
 };
+
 }
 
 #endif

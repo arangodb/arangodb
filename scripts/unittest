@@ -38,6 +38,8 @@ if [ -z "${ARANGOSH}" ];  then
         ARANGOSH="build/bin/arangosh${EXT}"
     elif [ -x bin/arangosh ];  then
         ARANGOSH="bin/arangosh${EXT}"
+    elif [ -x arangosh ]; then
+        ARANGOSH="arangosh${EXT}"
     elif [ -x usr/bin/arangosh ];  then
         ARANGOSH="usr/bin/arangosh${EXT}"
     else

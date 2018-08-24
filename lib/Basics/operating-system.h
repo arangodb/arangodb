@@ -28,6 +28,7 @@
 #error use <Basics/Common.h>
 #endif
 
+
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -533,11 +534,6 @@
 #define __STDC_LIMIT_MACROS 1
 #endif
 
-// for usleep
-#ifndef __USE_BSD
-#define __USE_BSD
-#endif
-
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
 
 // enabled features
@@ -746,7 +742,6 @@
 #define fsync _commit
 #define isatty _cyg_isatty
 #define putenv _putenv
-#define sleep TRI_sleep
 #define tzset _tzset
 
 // available features
@@ -769,9 +764,6 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 #define TRI_MISSING_MEMRCHR 1
-
-// usleep in POSIX is for microseconds - not milliseconds
-// has been redefined in win-utils.h
 
 typedef int ssize_t;
 
@@ -813,6 +805,19 @@ typedef unsigned char bool;
 
 // we do not have owner read and owner write under windows; so map these to
 // global read, global write these are used when creating a file
+
+#ifdef S_IRGRP
+#undef S_IRGRP
+#endif
+#ifdef S_IRUSR
+#undef S_IRUSR
+#endif
+#ifdef S_IWGRP
+#undef S_IWGRP
+#endif
+#ifdef S_IWUSR
+#undef S_IWUSR
+#endif
 
 #define S_IRGRP _S_IREAD
 #define S_IRUSR _S_IREAD

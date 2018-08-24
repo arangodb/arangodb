@@ -21,6 +21,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4244) // conversion from 'unsigned int' to 'unsigned char', possible loss of data
+  #pragma warning(disable: 4245) // conversion from 'int' to '...', signed/unsigned mismatch
+#endif
+
+  #include <boost/crc.hpp>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4244)
+  #pragma warning(default: 4245)
+#endif
+
 #include "shared.hpp"
 #include "store_utils.hpp"
 
@@ -60,12 +72,12 @@ float_t read_zvfloat(data_input& in) {
     return float_t((b & 0x7F) - 1);
   }
 
-  // positive float
-  const uint32_t iv = (b << 24U)
-    | (static_cast<uint32_t>(static_cast<uint16_t>(in.read_short())) << 8U)
-    | static_cast<uint32_t>(in.read_byte());
+  // positive float (ensure read order)
+  const auto part = uint32_t(uint16_t(in.read_short())) << 8;
 
-  return numeric_utils::i32tof(iv);
+  return numeric_utils::i32tof(
+    (b << 24) | part | uint32_t(in.read_byte())
+  );
 }
 
 void write_zvdouble(data_output& out, double_t v) {
@@ -102,16 +114,16 @@ double_t read_zvdouble(data_input& in) {
     return numeric_utils::i32tof(in.read_int());
   } else if (0 != (b & 0x80)) {
     // small signed value
-    return double_t((b & 0x7F) - 1U);
+    return double_t((b & 0x7F) - 1);
   }
 
-  // positive double
-  const uint64_t lv = (b << 56U)
-    | (static_cast<uint64_t>(static_cast<uint32_t>(in.read_int())) << 24U)
-    | (static_cast<uint64_t>(static_cast<uint16_t>(in.read_short())) << 8U)
-    | static_cast<uint64_t>(in.read_byte());
+  // positive double (ensure read order)
+  const auto part1 = uint64_t(uint32_t(in.read_int())) << 24;
+  const auto part2 = uint64_t(uint16_t(in.read_short())) << 8;
 
-  return numeric_utils::i64tod(lv);
+  return numeric_utils::i64tod(
+    (b << 56) | part1 | part2 | uint64_t(in.read_byte())
+  );
 }
 
 /* -------------------------------------------------------------------
@@ -263,7 +275,7 @@ uint32_t write_block(
 uint32_t write_block(
     data_output& out,
     const uint64_t* RESTRICT decoded,
-    uint32_t size,
+    uint64_t size,
     uint64_t* RESTRICT encoded) {
   assert(size);
   assert(encoded);
@@ -302,48 +314,38 @@ NS_END // encode
 /* bytes_output */
 
 bytes_output::bytes_output(size_t capacity) {
-  oversize(buf_, capacity);
+  buf_.reserve(capacity);
 }
 
 bytes_output::bytes_output(bytes_output&& other) NOEXCEPT
   : buf_(std::move(other.buf_)) {
-  this->data_ = buf_.data();
-  this->size_ = other.size();
-
 }
 
 bytes_output& bytes_output::operator=(bytes_output&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
-    this->data_ = buf_.data();
-    this->size_ = other.size();
-    other.size_ = 0;
   }
 
   return *this;
 }
 
-/* bytes_ref_input */
-
-bytes_ref_input::bytes_ref_input() : pos_(0) {}
+// ----------------------------------------------------------------------------
+// --SECTION--                                   bytes_ref_input implementation
+// ----------------------------------------------------------------------------
 
 bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
-  : data_(ref), pos_(0) {
+  : data_(ref), pos_(data_.begin()) {
 }
 
-byte_type bytes_ref_input::read_byte() {
-  assert(pos_ <= data_.size());
-  return this->data_[pos_++];
-}
+size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) {
+    size = std::min(size, size_t(std::distance(pos_, data_.end())));
+    std::memcpy(b, pos_, sizeof(byte_type) * size);
+    pos_ += size;
+    return size;
+    //assert( pos_ + size <= data_.size() );
+  }
 
-size_t bytes_ref_input::read_bytes( byte_type* b, size_t size) {
-  size = std::min(size, data_.size() - pos_);
-  std::memcpy( b, data_.c_str() + pos_, sizeof( byte_type ) * size );
-  pos_ += size;
-  return size;
-  //assert( pos_ + size <= data_.size() );
-}
-
+// append to buf
 void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   auto used = buf.size();
 
@@ -357,30 +359,40 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
   #endif // IRESEARCH_DEBUG
 }
 
-/* bytes_input */
+int64_t bytes_ref_input::checksum(size_t offset) const {
+  boost::crc_32_type crc;
 
-bytes_input::bytes_input() : pos_(0) {}
+  crc.process_block(pos_, std::min(pos_ + offset, data_.end()));
 
-bytes_input::bytes_input(const bytes_ref& data):
-  buf_(data.c_str(), data.size()), pos_(0) {
+  return crc.checksum();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                       bytes_input implementation
+// ----------------------------------------------------------------------------
+
+bytes_input::bytes_input(const bytes_ref& data)
+  : buf_(data.c_str(), data.size()),
+    pos_(this->buf_.c_str()) {
   this->data_ = buf_.data();
   this->size_ = data.size();
 }
 
 bytes_input::bytes_input(bytes_input&& other) NOEXCEPT
-  : buf_(std::move(other.buf_)), pos_(other.pos_) {
+  : buf_(std::move(other.buf_)),
+    pos_(other.pos_) {
   this->data_ = buf_.data();
   this->size_ = other.size();
-  other.pos_ = 0;
+  other.pos_ = other.buf_.c_str();
   other.size_ = 0;
 }
 
 bytes_input& bytes_input::operator=(const bytes_ref& data) {
   if (this != &data) {
     buf_.assign(data.c_str(), data.size());
+    pos_ = this->buf_.c_str();
     this->data_ = buf_.data();
     this->size_ = data.size();
-    pos_ = 0;
   }
 
   return *this;
@@ -389,9 +401,10 @@ bytes_input& bytes_input::operator=(const bytes_ref& data) {
 bytes_input& bytes_input::operator=(bytes_input&& other) NOEXCEPT {
   if (this != &other) {
     buf_ = std::move(other.buf_);
+    pos_ = buf_.c_str();
     this->data_ = buf_.data();
     this->size_ = other.size();
-    other.pos_ = 0;
+    other.pos_ = other.buf_.c_str();
     other.size_ = 0;
   }
 
@@ -411,20 +424,6 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
   #endif // IRESEARCH_DEBUG
 }
 
-byte_type bytes_input::read_byte() {
-  assert(pos_ <= size());
-  return this->data_[pos_++];
-}
-
-size_t bytes_input::read_bytes(byte_type* b, size_t size) {
-  assert(pos_ + size <= this->size());
-  size = std::min(size, this->size() - pos_);
-  std::memcpy(b, this->data_ + pos_, sizeof(byte_type) * size);
-  pos_ += size;
-  return size;
-
-}
-
 void bytes_input::read_from(data_input& in, size_t size) {
   if (!size) {
     /* nothing to read*/
@@ -436,13 +435,25 @@ void bytes_input::read_from(data_input& in, size_t size) {
 #ifdef IRESEARCH_DEBUG
   const auto read = in.read_bytes(&(buf_[0]), size);
   assert(read == size);
-#else 
+#else
   in.read_bytes(&(buf_[0]), size);
 #endif // IRESEARCH_DEBUG
 
   this->data_ = buf_.data();
   this->size_ = size;
-  pos_ = 0;
+  pos_ = this->data_;
+}
+
+size_t bytes_input::read_bytes(byte_type* b, size_t size) {
+  assert(pos_ + size <= this->end());
+  size = std::min(size, size_t(std::distance(pos_, this->end())));
+  std::memcpy(b, pos_, sizeof(byte_type) * size);
+  pos_ += size;
+  return size;
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

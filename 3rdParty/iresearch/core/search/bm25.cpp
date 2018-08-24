@@ -50,7 +50,7 @@ irs::sort::ptr make_from_object(
     const auto* key = "b";
 
     if (json.HasMember(key)) {
-      if (!json[key].IsFloat()) {
+      if (!json[key].IsNumber()) {
         IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
 
         return nullptr;
@@ -65,28 +65,13 @@ irs::sort::ptr make_from_object(
     const auto* key = "k";
 
     if (json.HasMember(key)) {
-      if (!json[key].IsFloat()) {
+      if (!json[key].IsNumber()) {
         IR_FRMT_ERROR("Non-float value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
 
         return nullptr;
       }
 
       scorer.k(json[key].GetFloat());
-    }
-  }
-
-  {
-    // optional bool
-    const auto* key= "with-norms";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing bm25 scorer from jSON arguments: %s", key, args.c_str());
-
-        return nullptr;
-      }
-
-      scorer.normalize(json[key].GetBool());
     }
   }
 
@@ -101,10 +86,10 @@ irs::sort::ptr make_from_array(
   const auto array = json.GetArray();
   const auto size = array.Size();
 
-  if (size > 3) {
+  if (size > 2) {
     // wrong number of arguments
     IR_FRMT_ERROR(
-      "Wrong number of arguments while constructing bm25 scorer from jSON arguments (must be <= 3): %s",
+      "Wrong number of arguments while constructing bm25 scorer from jSON arguments (must be <= 2): %s",
       args.c_str()
     );
     return nullptr;
@@ -113,46 +98,39 @@ irs::sort::ptr make_from_array(
   // default args
   auto k = irs::bm25_sort::K();
   auto b = irs::bm25_sort::B();
-  auto norms = irs::bm25_sort::WITH_NORMS();
 
-  size_t i = 0;
-
-  auto log_error = [&i, &args](){
-    IR_FRMT_ERROR(
-      "Non-float value on position '" IR_SIZE_T_SPECIFIER "' while constructing bm25 scorer from jSON arguments: %s",
-      i, args.c_str()
-    );
-  };
-
-  for (; i < size; ++i) {
+  for (rapidjson::SizeType i = 0; i < size; ++i) {
     auto& arg = array[i];
 
     switch (i) {
-      case 0: { // parse `b` coefficient
-        if (!arg.IsNumber()) {
-          log_error();
-          return nullptr;
-        }
-        k = static_cast<float_t>(arg.GetDouble());
-      } break;
-      case 1: { // parse `b` coefficient
-        if (!arg.IsNumber()) {
-          log_error();
-          return nullptr;
-        }
-        b = static_cast<float_t>(arg.GetDouble());
-      } break;
-      case 2: { // parse `with-norms`
-        if (!arg.IsBool()) {
-          log_error();
-          return nullptr;
-        }
-        norms = arg.GetBool();
-      } break;
+     case 0: // parse `b` coefficient
+      if (!arg.IsNumber()) {
+        IR_FRMT_ERROR(
+          "Non-float value on position '%u' while constructing bm25 scorer from jSON arguments: %s",
+          i, args.c_str()
+        );
+
+        return nullptr;
+      }
+
+      k = static_cast<float_t>(arg.GetDouble());
+      break;
+     case 1: // parse `b` coefficient
+      if (!arg.IsNumber()) {
+        IR_FRMT_ERROR(
+          "Non-float value on position '%u' while constructing bm25 scorer from jSON arguments: %s",
+          i, args.c_str()
+        );
+
+        return nullptr;
+      }
+
+      b = static_cast<float_t>(arg.GetDouble());
+      break;
     }
   }
 
-  PTR_NAMED(irs::bm25_sort, ptr, k, b, norms);
+  PTR_NAMED(irs::bm25_sort, ptr, k, b);
   return ptr;
 }
 
@@ -199,14 +177,14 @@ NS_ROOT
 // bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1.0 - b + b * |doc|/avgDL) + tf(doc, term))
 
 // inverted document frequency
-// idf(term) = 1 + log(total_docs_count / (1 + docs_count(term)) 
+// idf(term) = log(1 + (# documents with this field - # documents with this term + 0.5)/(# documents with this term + 0.5))
 
 // term frequency
 // tf(doc, term) = sqrt(frequency(doc, term));
 
 // document length
 // Current implementation is using the following as the document length
-// |doc| = index_time_doc_boost / sqrt(# of terms in a field within a document)
+// |doc| = 1 / sqrt(# of terms in a field within a document)
 
 // average document length
 // avgDL = sum(field_term_count) / (# documents with this field)
@@ -301,49 +279,50 @@ class norm_scorer final : public scorer {
 
 class collector final : public iresearch::sort::collector {
  public:
-  explicit collector(float_t k, float_t b, bool normalize)
-    : k_(k), b_(b), normalize_(normalize) {
+  collector(float_t k, float_t b)
+    : k_(k), b_(b) {
   }
 
   virtual void collect(
-      const sub_reader& segment,
+      const sub_reader& /*segment*/,
       const term_reader& field,
       const attribute_view& term_attrs
   ) override {
-    UNUSED(segment);
     auto& freq = field.attributes().get<frequency>();
     auto& meta = term_attrs.get<term_meta>();
 
+    docs_with_field += field.docs_count();
+
     if (freq) {
-      field_count += field.docs_count();
       total_term_freq += freq->value;
     }
 
     if (meta) {
-      docs_count += meta->docs_count;
+      docs_with_term += meta->docs_count;
     }
   }
 
   virtual void finish(
       attribute_store& filter_attrs,
-      const index_reader& index
+      const index_reader& /*index*/
   ) override {
     auto& bm25stats = filter_attrs.emplace<stats>();
 
     // precomputed idf value
     bm25stats->idf =
-      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
+      float_t(std::log(1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))));
 
-    if (!normalize_) {
-      return; // nothing more to do
+    if (b_ == 0.f) {
+      // BM11 without norms
+      return;
     }
 
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
     bm25stats->norm_length = kb;
-    if (total_term_freq && docs_count) {
-      const auto avg_doc_len = float_t(total_term_freq) / field_count;
+    if (total_term_freq && docs_with_field) {
+      const auto avg_doc_len = float_t(total_term_freq) / docs_with_field;
       bm25stats->norm_length /= avg_doc_len;
     }
 
@@ -352,22 +331,19 @@ class collector final : public iresearch::sort::collector {
   }
 
  private:
-  uint64_t docs_count = 0; // number of documents that have at least one term for processed fields
-  uint64_t field_count = 0; // number of documents with the specified field
-  uint64_t total_term_freq = 0; // number of tokens for processed fields
+  uint64_t docs_with_term = 0; // number of documents containing processed term
+  uint64_t docs_with_field = 0; // number of documents containing at least one term for processed field
+  uint64_t total_term_freq = 0; // number of terms for processed field
   float_t k_;
   float_t b_;
-  bool normalize_;
 }; // collector
 
 class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(float_t k, float_t b, bool normalize)
-    : k_(k),
-      b_(b),
-      normalize_(normalize) {
+  sort(float_t k, float_t b)
+    : k_(k), b_(b) {
   }
 
   virtual const flags& features() const override {
@@ -376,11 +352,11 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
     };
 
-    return FEATURES[normalize_];
+    return FEATURES[b_ != 0.f];
   }
 
   virtual iresearch::sort::collector::ptr prepare_collector() const override {
-    return irs::sort::collector::make<bm25::collector>(k_, b_, normalize_);
+    return irs::sort::collector::make<bm25::collector>(k_, b_);
   }
 
   virtual scorer::ptr prepare_scorer(
@@ -393,18 +369,21 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
       return nullptr; // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
     }
 
-    auto& norm = query_attrs.get<iresearch::norm>();
+    if (b_ != 0.f) {
+      auto& norm = query_attrs.get<iresearch::norm>();
 
-    if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
-      return bm25::scorer::make<bm25::norm_scorer>(      
-        k_, 
-        boost::extract(query_attrs),
-        query_attrs.get<bm25::stats>().get(),
-        doc_attrs.get<frequency>().get(),
-        &*norm
-      );
+      if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
+        return bm25::scorer::make<bm25::norm_scorer>(
+          k_,
+          boost::extract(query_attrs),
+          query_attrs.get<bm25::stats>().get(),
+          doc_attrs.get<frequency>().get(),
+          &*norm
+        );
+      }
     }
 
+    // BM11
     return bm25::scorer::make<bm25::scorer>(      
       k_, 
       boost::extract(query_attrs),
@@ -422,10 +401,8 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
   }
 
  private:
-  const std::function<bool(score_t, score_t)>* less_;
   float_t k_;
   float_t b_;
-  bool normalize_;
 }; // sort
 
 NS_END // bm25
@@ -435,9 +412,8 @@ DEFINE_FACTORY_DEFAULT(irs::bm25_sort);
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
-    float_t b /*= 0.75f*/,
-    bool normalize /*= false*/
-): sort(bm25_sort::type()), k_(k), b_(b), normalize_(normalize) {
+    float_t b /*= 0.75f*/
+): sort(bm25_sort::type()), k_(k), b_(b) {
 }
 
 /*static*/ void bm25_sort::init() {
@@ -445,7 +421,7 @@ bm25_sort::bm25_sort(
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return bm25::sort::make<bm25::sort>(k_, b_, normalize_);
+  return bm25::sort::make<bm25::sort>(k_, b_);
 }
 
 NS_END // ROOT

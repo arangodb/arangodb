@@ -48,15 +48,11 @@ class ExecutionEngine;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
-  size_t const orMember;
-  size_t const andMember;
-  size_t const operatorMember;
-  Expression* expression;
+  std::unique_ptr<Expression> expression;
+  std::vector<size_t> const indexPath;
 
-  NonConstExpression(size_t orM, size_t andM, size_t opM, Expression* exp)
-      : orMember(orM), andMember(andM), operatorMember(opM), expression(exp) {}
-
-  ~NonConstExpression() { delete expression; }
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
+    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
 };
 
 class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
@@ -65,20 +61,17 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   ~IndexBlock();
 
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
-
   /// @brief initializeCursor, here we release our docs from this collection
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
-  // skip between atLeast and atMost, returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  // skip between atMost documents, returns the number actually skipped . . .
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
+  void initializeOnce();
+
   /// @brief adds a SORT to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
@@ -90,9 +83,6 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief Initializes the indexes
   bool initIndexes();
-
-  /// @brief whether or not one of the bounds expressions requires V8
-  bool hasV8Expression() const;
 
   /// @brief execute the bounds expressions
   void executeExpressions();
@@ -121,7 +111,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
-  std::vector<NonConstExpression*> _nonConstExpressions;
+  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpressions;
 
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression
@@ -135,7 +125,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// createCursor (if any) so that it can be read in chunks and not
   /// necessarily all at once.
   arangodb::OperationCursor* _cursor;
-  
+
   /// @brief a vector of cursors for the index block. cursors can be
   /// reused
   std::vector<std::unique_ptr<OperationCursor>> _cursors;
@@ -146,25 +136,40 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
-  /// @brief whether or not at least one expression uses v8
-  bool _hasV8Expression;
-  
   /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
-  /// @brief Flag if all indexes are exhausted to be maintained accross several getSome() calls
+  /// @brief whether or not we will use an expression that requires V8, and we
+  /// need to take special care to enter a context before and exit it properly
+  bool _hasV8Expression;
+
+  /// @brief Flag if all indexes are exhausted to be maintained accross several
+  /// getSome() calls
   bool _indexesExhausted;
 
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
   bool _isLastIndex;
 
+  /// @brief true if one of the indexes uses more than one expanded attribute, e.g. 
+  /// the index is on values[*].name and values[*].type 
+  bool _hasMultipleExpansions;
+  
   /// @brief Counter how many documents have been returned/skipped
-  ///        during one call.
+  ///        during one call. Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
   size_t _returned;
+
+  /// @brief Capture from which row variables can be copied. Retained during WAITING
+  ///        Needs to be 0 after we return a result.
+  size_t _copyFromRow;
+
+  /// @brief Capture of all results that are produced before the last WAITING call.
+  ///        Needs to be nullptr after it got returned.
+  std::unique_ptr<AqlItemBlock> _resultInFlight;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

@@ -27,12 +27,10 @@
 
 #include <limits>
 
-namespace ir = iresearch;
-
 TEST(cost_attribute_test, consts) {
   ASSERT_EQ(
-    (std::numeric_limits<ir::cost::cost_t>::max)(),
-    ir::cost::cost_t(ir::cost::MAX)
+    (std::numeric_limits<irs::cost::cost_t>::max)(),
+    irs::cost::cost_t(irs::cost::MAX)
   );
 }
 
@@ -123,11 +121,11 @@ TEST(cost_attribute_test, extract) {
   irs::attribute_view attrs;
 
   ASSERT_EQ(
-    ir::cost::cost_t(ir::cost::MAX),
-    ir::cost::extract(attrs)
+    irs::cost::cost_t(irs::cost::MAX),
+    irs::cost::extract(attrs)
   );
 
-  ASSERT_EQ(5, ir::cost::extract(attrs, 5));
+  ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
   irs::cost cost;
   attrs.emplace(cost);
@@ -144,7 +142,7 @@ TEST(cost_attribute_test, extract) {
     });
     ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est, ir::cost::extract(attrs));
+    ASSERT_EQ(est, irs::cost::extract(attrs));
     ASSERT_TRUE(evaluated);
   }
 
@@ -157,7 +155,7 @@ TEST(cost_attribute_test, extract) {
     });
     ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
-    ASSERT_EQ(est+1, ir::cost::extract(attrs, 3));
+    ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
     ASSERT_TRUE(evaluated);
   }
 
@@ -165,8 +163,12 @@ TEST(cost_attribute_test, extract) {
   {
     evaluated = false;
     cost.clear();
-    ASSERT_EQ(est+1, ir::cost::extract(attrs, 3));
+    ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
     /* evaluate again */
     ASSERT_TRUE(evaluated);
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

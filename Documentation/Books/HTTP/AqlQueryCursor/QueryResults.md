@@ -9,7 +9,8 @@ There are two ways the client can get the result set from the server:
 * In a single roundtrip
 * Using a cursor
 
-### Single roundtrip
+Single roundtrip
+----------------
 
 The server will only transfer a certain number of result documents back to the
 client in one roundtrip. This number is controllable by the client by setting
@@ -50,7 +51,8 @@ Content-type: application/json
 }
 ```
 
-### Using a cursor
+Using a cursor
+--------------
 
 If the result set contains more documents than should be transferred in a single
 roundtrip (i.e. as set via the *batchSize* attribute), the server will return
@@ -165,7 +167,8 @@ Content-type: application/json
 }
 ```
 
-### Modifying documents
+Modifying documents
+-------------------
 
 The `_api/cursor` endpoint can also be used to execute modifying queries.
 
@@ -199,7 +202,8 @@ Content-type: application/json; charset=utf-8
 }
 ```
 
-### Setting a memory limit
+Setting a memory limit
+----------------------
 
 To set a memory limit for the query, the *memoryLimit* option can be passed to
 the server.

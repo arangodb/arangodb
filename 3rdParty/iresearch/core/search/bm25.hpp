@@ -40,32 +40,36 @@ class bm25_sort : public sort {
     return 0.75f;
   }
 
-  static CONSTEXPR bool WITH_NORMS() NOEXCEPT {
-    return true;
-  }
+  static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
   DECLARE_FACTORY_DEFAULT();
 
   typedef float_t score_t;
 
-  bm25_sort(float_t k = K(), float_t b = B(), bool normalize = WITH_NORMS());
+  bm25_sort(float_t k = K(), float_t b = B());
 
   float_t k() const { return k_; }
   void k(float_t k) { k_ = k; }
 
   float_t b() const { return b_; }
   void b(float_t b) { b_ = b; }
-  static void init(); // for trigering registration in a static build
-  bool normalize() const { return normalize_; }
-  void normalize(bool value) { normalize_ = value; }
 
-  virtual sort::prepared::ptr prepare() const;
+  // returns 'true' if current scorer is 'bm11'
+  bool bm11() const NOEXCEPT {
+    return b_ == 1.f;
+  }
+
+  // returns 'true' if current scorer is 'bm15'
+  bool bm15() const NOEXCEPT {
+    return b_ == 0.f;
+  }
+
+  virtual sort::prepared::ptr prepare() const override;
 
  private:
   float_t k_; // [1.2 .. 2.0]
   float_t b_; // 0.75
-  bool normalize_;
 }; // bm25_sort
 
 NS_END

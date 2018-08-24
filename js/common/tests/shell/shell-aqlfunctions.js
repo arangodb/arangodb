@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 200, unused: false*/
-/*global assertEqual, fail */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 /* unused for functions with 'what' parameter.*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,15 +93,16 @@ function AqlFunctionsSuite () {
 
       var actual;
 
-      aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 4; }, true);
+      var result = aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 4; }, true);
+
       assertEqual("function (what) { return what * 4; }", aqlfunctions.toArray("UnitTests")[0].code);
 
-      actual = db._createStatement({ query: "RETURN UnitTests::tryme::foo(4)" }).execute().toArray();
+      actual = db._query({ query: "RETURN UnitTests::tryme::foo(4)" }).toArray();
       assertEqual([ 16 ], actual);
 
       db._useDatabase("_system");
       assertEqual("function (what) { return what * 2; }", aqlfunctions.toArray("UnitTests")[0].code);
-      actual = db._createStatement({ query: "RETURN UnitTests::tryme::foo(4)" }).execute().toArray();
+      actual = db._query({ query: "RETURN UnitTests::tryme::foo(4)" }).toArray();
       assertEqual([ 8 ], actual);
 
       try {
@@ -141,18 +142,19 @@ function AqlFunctionsSuite () {
       aqlfunctions.register("UnitTests::tryme", function (what) { return what * 3; }, true);
       assertEqual("function (what) { return what * 3; }", aqlfunctions.toArray("UnitTests")[0].code);
 
-      actual = db._createStatement({ query: "RETURN UnitTests::tryme(3)" }).execute().toArray();
+      actual = db._query({ query: "RETURN UnitTests::tryme(3)" }).toArray();
       assertEqual([ 9 ], actual);
 
       aqlfunctions.register("UnitTests::tryme", function (what) { return what * 4; }, true);
       assertEqual("function (what) { return what * 4; }", aqlfunctions.toArray("UnitTests")[0].code);
-      actual = db._createStatement({ query: "RETURN UnitTests::tryme(3)" }).execute().toArray();
+      actual = db._query({ query: "RETURN UnitTests::tryme(3)" }).toArray();
       assertEqual([ 12 ], actual);
 
       db._useDatabase("_system");
+
       assertEqual(0, aqlfunctions.toArray("UnitTests").length);
       try {
-        db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+        db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
         fail();
       }
       catch (err) {
@@ -199,8 +201,8 @@ function AqlFunctionsSuite () {
       assertEqual([ "UnitTests58::tryme::bar" ], aqlfunctions.toArray("UnitTests58::tryme").map(function (f) { return f.name; }).sort());
       assertEqual([ "UnitTests58::tryme::bar" ], aqlfunctions.toArray("UnitTests58::tryme::").map(function (f) { return f.name; }).sort());
 
-      aqlfunctions.unregister("UnitTests58::tryme::bar", function (what) { return what * 2; }, true);
-      aqlfunctions.unregister("UnitTests58::whyme::bar", function (what) { return what * 2; }, true);
+      aqlfunctions.unregister("UnitTests58::tryme::bar");
+      aqlfunctions.unregister("UnitTests58::whyme::bar");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +249,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString1 : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", "function (what) { return what * 2; }", true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme", "function (what) { return what * 2; }", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +258,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString2 : function () {
       unregister("UnitTests::tryme::foo");
-      aqlfunctions.register("UnitTests::tryme::foo", "function (what) { return what * 2; }", true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme::foo", "function (what) { return what * 2; }", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +267,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString3 : function () {
       unregister("UnitTests::tryme::foo");
-      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,8 +276,8 @@ function AqlFunctionsSuite () {
 
     testReRegister : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
-      aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true));
+      assertTrue(aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,7 +351,7 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a function without surrounding function() 
+/// @brief register a function without surrounding function()
 ////////////////////////////////////////////////////////////////////////////////
 
     testRegisterNonFunction1 : function () {
@@ -364,7 +366,7 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a function without surrounding function() 
+/// @brief register a function without surrounding function()
 ////////////////////////////////////////////////////////////////////////////////
 
     testRegisterNonFunction2 : function () {
@@ -442,7 +444,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ 8 ], actual);
     },
 
@@ -456,7 +458,7 @@ function AqlFunctionsSuite () {
       aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
       aqlfunctions.register("UnitTests::foo", function (what) { return what * 4; }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4) + UnitTests::foo(9)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4) + UnitTests::foo(9)" }).toArray();
       assertEqual([ 4 * 2 + 9 * 4 ], actual);
     },
 
@@ -470,7 +472,7 @@ function AqlFunctionsSuite () {
       aqlfunctions.register("UnitTests::tryme", function (what) { return "foobar" + what; }, true);
       aqlfunctions.register("UnitTests::foo", function (what) { return (what * 4) + "barbaz"; }, true);
 
-      var actual = db._createStatement({ query: "RETURN CONCAT(UnitTests::tryme('abcdef'), UnitTests::foo(9))" }).execute().toArray();
+      var actual = db._query({ query: "RETURN CONCAT(UnitTests::tryme('abcdef'), UnitTests::foo(9))" }).toArray();
       assertEqual([ "foobar" + "abcdef" + (9 * 4) + "barbaz" ], actual);
     },
 
@@ -482,7 +484,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
 
-      var actual = db._createStatement({ query: "FOR i IN 1..10000 RETURN UnitTests::tryme(i)" }).execute().toArray();
+      var actual = db._query({ query: "FOR i IN 1..10000 RETURN UnitTests::tryme(i)" }).toArray();
       var expected = [ ];
       for (var i = 1; i <= 10000; ++i) {
         expected.push(i * 2);
@@ -499,7 +501,7 @@ function AqlFunctionsSuite () {
       aqlfunctions.register("UnitTests::tryme", function (what) { throw "peng"; }, true);
 
       try {
-        db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+        db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
         fail();
       }
       catch (err) {
@@ -515,7 +517,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ null ], actual);
     },
 
@@ -527,7 +529,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return 1 / 0; }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ null ], actual);
     },
 
@@ -539,7 +541,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return null; }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ null ], actual);
     },
 
@@ -551,7 +553,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return true; }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ true ], actual);
     },
 
@@ -563,7 +565,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return false; }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme(4)" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
       assertEqual([ false ], actual);
     },
 
@@ -589,7 +591,7 @@ function AqlFunctionsSuite () {
                             },
                             true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme()" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme()" }).toArray();
       assertEqual([ [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] ], actual);
     },
 
@@ -601,7 +603,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return true; }, true);
 
-      var actual = db._createStatement({ query: "// foo\n /* bar\nbaz\n*/ RETURN UnitTests::tryme(4) // some comment" }).execute().toArray();
+      var actual = db._query({ query: "// foo\n /* bar\nbaz\n*/ RETURN UnitTests::tryme(4) // some comment" }).toArray();
       assertEqual([ true ], actual);
     },
 
@@ -611,7 +613,7 @@ function AqlFunctionsSuite () {
 
     testQueryFuncWithComments : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", function (what) { 
+      aqlfunctions.register("UnitTests::tryme", function (what) {
         // foo 
         /* bar
         baz
@@ -619,7 +621,7 @@ function AqlFunctionsSuite () {
         return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ]; // some comment
       }, true);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::tryme()" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::tryme()" }).toArray();
       assertEqual([ [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] ], actual);
     },
 
@@ -644,7 +646,7 @@ function AqlFunctionsSuite () {
       };
       aqlfunctions.register("UnitTests::testFunc", testFunc);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::testFunc()" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::testFunc()" }).toArray();
       assertEqual([ 0 ], actual);
 
       db._drop("UnitTestsFunc");
@@ -669,7 +671,7 @@ function AqlFunctionsSuite () {
       };
       aqlfunctions.register("UnitTests::testFunc", testFunc);
 
-      var actual = db._createStatement({ query: "RETURN UnitTests::testFunc()" }).execute().toArray();
+      var actual = db._query({ query: "RETURN UnitTests::testFunc()" }).toArray();
       assertEqual("abc", actual[0].value1);
       assertEqual(123, actual[0].value2);
       assertEqual(null, actual[0].value3);
@@ -689,4 +691,3 @@ function AqlFunctionsSuite () {
 jsunity.run(AqlFunctionsSuite);
 
 return jsunity.done();
-

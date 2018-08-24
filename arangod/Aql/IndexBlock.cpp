@@ -24,15 +24,17 @@
 
 #include "IndexBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -44,6 +46,22 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+  /// resolve constant attribute accesses
+  static void resolveFCallConstAttributes(AstNode *fcall) {
+    TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
+    TRI_ASSERT(fcall->numMembers() == 1);
+    AstNode* array = fcall->getMemberUnchecked(0);
+    for (size_t x = 0; x < array->numMembers(); x++) {
+      AstNode* child = array->getMemberUnchecked(x);
+      if (child->type == NODE_TYPE_ATTRIBUTE_ACCESS && child->isConstant()) {
+        child = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(child));
+        array->changeMember(x, child);
+      }
+    }
+  }
+}
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
@@ -57,8 +75,13 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasV8Expression(false),
       _indexesExhausted(false),
       _isLastIndex(false),
-      _returned(0) {
+      _hasMultipleExpansions(false),
+      _returned(0),
+      _copyFromRow(0),
+      _resultInFlight(nullptr) {
   _mmdr.reset(new ManagedDocumentResult);
+
+  TRI_ASSERT(!_indexes.empty());
 
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
@@ -67,14 +90,17 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       for (size_t j = 0; j < andCond->numMembers(); ++j) {
         auto leaf = andCond->getMemberUnchecked(j);
 
-        if (leaf->numMembers() != 2) {
-          continue;
+        // geo index condition i.e. GEO_CONTAINS, GEO_INTERSECTS
+        if (leaf->type == NODE_TYPE_FCALL) {
+          ::resolveFCallConstAttributes(leaf);
+          continue; //
+        } else if (leaf->numMembers() != 2) {
+          continue; // Otherwise we only support binary conditions
         }
-        // We only support binary conditions
-        TRI_ASSERT(leaf->numMembers() == 2);
-        AstNode* lhs = leaf->getMember(0);
-        AstNode* rhs = leaf->getMember(1);
 
+        TRI_ASSERT(leaf->numMembers() == 2);
+        AstNode* lhs = leaf->getMemberUnchecked(0);
+        AstNode* rhs = leaf->getMemberUnchecked(1);
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->isConstant()) {
           lhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(lhs));
           leaf->changeMember(0, lhs);
@@ -83,9 +109,37 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
           rhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
           leaf->changeMember(1, rhs);
         }
+        // geo index condition i.e. `GEO_DISTANCE(x, y) <= d`
+        if (lhs->type == NODE_TYPE_FCALL) {
+          ::resolveFCallConstAttributes(lhs);
+        }
       }
     }
   }
+
+  // count how many attributes in the index are expanded (array index)
+  // if more than a single attribute, we always need to deduplicate the
+  // result later on
+  for (auto const& it : _indexes) {
+    size_t expansions = 0;
+    auto idx = it.getIndex();
+    auto const& fields = idx->fields();
+    for (size_t i = 0; i < fields.size(); ++i) {
+      if (idx->isAttributeExpanded(i)) {
+        ++expansions;
+        if (expansions > 1) {
+          _hasMultipleExpansions = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // build the _documentProducer callback for extracting
+  // documents from the index
+  buildCallback();
+
+  initializeOnce();
 }
 
 IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
@@ -95,7 +149,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
-    auto en = static_cast<IndexNode const*>(getPlanNode());
+    auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     auto ast = en->_plan->getAst();
     auto array = ast->createNodeArray();
     array->addMember(node);
@@ -107,7 +161,8 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"),
+                                         array);
     }
     // a regular UNIQUE will do
     return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array);
@@ -126,39 +181,51 @@ void IndexBlock::executeExpressions() {
   // the current incoming item:
 
   AqlItemBlock* cur = _buffer.front();
-  auto en = static_cast<IndexNode const*>(getPlanNode());
+  auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
+  AstNode const* oldCondition = _condition;
+  AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
+  _condition = newCondition;
+  TRI_DEFER(FINALIZE_SUBTREE(newCondition));
+
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
-    auto& toReplace = _nonConstExpressions[posInExpressions];
-    auto exp = toReplace->expression;
+    NonConstExpression* toReplace = _nonConstExpressions[posInExpressions].get();
+    auto exp = toReplace->expression.get();
 
     bool mustDestroy;
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions], mustDestroy);
+    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions],
+                              _inRegs[posInExpressions]);
+    AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
-    _condition->getMember(toReplace->orMember)
-        ->getMember(toReplace->andMember)
-        ->changeMember(toReplace->operatorMember, evaluatedNode);
+    AstNode* tmp = newCondition;
+    for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
+      size_t idx = toReplace->indexPath[x];
+      AstNode* old = tmp->getMember(idx);
+      if (x + 1 < toReplace->indexPath.size()) {
+        AstNode* cpy = ast->shallowCopyForModify(old);
+        tmp->changeMember(idx, cpy);
+        tmp = cpy;
+      } else {
+        tmp->changeMember(idx, evaluatedNode);
+      }
+    }
   }
   DEBUG_END_BLOCK();
 }
 
-int IndexBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initialize();
-
-  auto en = static_cast<IndexNode const*>(getPlanNode());
+void IndexBlock::initializeOnce() {
+  auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&](size_t i, size_t j, size_t k,
-                                   AstNode* a) -> void {
+  auto instantiateExpression = [&](AstNode* a,
+                                   std::vector<size_t>&& idxs) -> void {
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
@@ -166,15 +233,12 @@ int IndexBlock::initialize() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasV8Expression |= e->isV8();
+    _hasV8Expression |= e->willUseV8();
 
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
 
-    auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
-    e.release();
-    _nonConstExpressions.push_back(nce.get());
-    nce.release();
+    _nonConstExpressions.emplace_back(std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
@@ -192,18 +256,57 @@ int IndexBlock::initialize() {
   };
 
   if (_condition == nullptr) {
-    // This Node has no condition. Iterate over the complete index.
-    return TRI_ERROR_NO_ERROR;
+    // this node has no condition. Iterate over the complete index.
+    return;
   }
 
   auto outVariable = en->outVariable();
+  std::function<bool(AstNode const*)> hasOutVariableAccess =
+    [&](AstNode const* node) -> bool {
+    if (node->isAttributeAccessForVariable(outVariable, true)) {
+      return true;
+    }
 
+    bool accessedInSubtree = false;
+    for (size_t i = 0; i < node->numMembers() && !accessedInSubtree; i++) {
+      accessedInSubtree = hasOutVariableAccess(node->getMemberUnchecked(i));
+    }
+
+    return accessedInSubtree;
+  };
+
+  auto instFCallArgExpressions = [&](AstNode* fcall,
+                                     std::vector<size_t>&& indexPath) {
+    TRI_ASSERT(1 == fcall->numMembers());
+    indexPath.emplace_back(0); // for the arguments array
+    AstNode* array = fcall->getMemberUnchecked(0);
+    for (size_t k = 0; k < array->numMembers(); k++) {
+      AstNode* child = array->getMemberUnchecked(k);
+      if (!child->isConstant() && !hasOutVariableAccess(child)) {
+        std::vector<size_t> idx = indexPath;
+        idx.emplace_back(k);
+        instantiateExpression(child, std::move(idx));
+
+        TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+      }
+    }
+  };
+
+  // conditions can be of the form (a [<|<=|>|=>] b) && ...
+  // in case of a geo spatial index a might take the form
+  // of a GEO_* function. We might need to evaluate fcall arguments
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
     auto andCond = _condition->getMemberUnchecked(i);
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
       auto leaf = andCond->getMemberUnchecked(j);
 
-      if (leaf->numMembers() != 2) {
+      // FCALL at this level is most likely a geo index
+      if (leaf->type == NODE_TYPE_FCALL) {
+        instFCallArgExpressions(leaf, {i, j});
+        continue;
+      } else if (leaf->numMembers() != 2) {
         continue;
       }
 
@@ -213,22 +316,26 @@ int IndexBlock::initialize() {
       AstNode* rhs = leaf->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(outVariable, false)) {
-        // Index is responsible for the left side, check if right side has to be
-        // evaluated
+        // Index is responsible for the left side, check if right side
+        // has to be evaluated
         if (!rhs->isConstant()) {
           if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
             rhs = makeUnique(rhs);
           }
-          instantiateExpression(i, j, 1, rhs);
+          instantiateExpression(rhs, {i, j, 1});
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         }
       } else {
-        // Index is responsible for the right side, check if left side has to be
-        // evaluated
-        if (!lhs->isConstant()) {
-          instantiateExpression(i, j, 0, lhs);
+        // Index is responsible for the right side, check if left side
+        // has to be evaluated
+
+        if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
+          // most likely a geo index condition
+          instFCallArgExpressions(lhs, {i, j, 0});
+        } else if (!lhs->isConstant()) {
+          instantiateExpression(lhs, {i, j, 0});
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -236,11 +343,6 @@ int IndexBlock::initialize() {
       }
     }
   }
-
-  return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 // init the ranges for reading, this should be called once per new incoming
@@ -270,24 +372,21 @@ bool IndexBlock::initIndexes() {
     TRI_ASSERT(_condition != nullptr);
 
     if (_hasV8Expression) {
-      bool const isRunningInCluster =
-          arangodb::ServerState::instance()->isRunningInCluster();
-
       // must have a V8 context here to protect Expression::execute()
-      auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& e : _nonConstExpressions) {
-                e->expression->invalidate();
-              }
+      auto cleanup = [this]() {
+        if (arangodb::ServerState::instance()->isRunningInCluster()) {
+          // must invalidate the expression now as we might be called from
+          // different threads
+          for (auto const& e : _nonConstExpressions) {
+            e->expression->invalidate();
+          }
 
-              engine->getQuery()->exitContext();
-            }
-          }};
+          _engine->getQuery()->exitContext();
+        }
+      };
+
+      _engine->getQuery()->enterContext();
+      TRI_DEFER(cleanup());
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!
@@ -304,8 +403,8 @@ bool IndexBlock::initIndexes() {
       }
     }
   }
-  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-  if (node->_reverse) {
+  IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
+  if (!node->options().ascending) {
     _currentIndex = _indexes.size() - 1;
   } else {
     _currentIndex = 0;
@@ -317,7 +416,7 @@ bool IndexBlock::initIndexes() {
   }
 
   while (!_cursor->hasMore()) {
-    if (node->_reverse) {
+    if (!node->options().ascending) {
       --_currentIndex;
     } else {
       ++_currentIndex;
@@ -353,8 +452,8 @@ void IndexBlock::createCursor() {
 void IndexBlock::startNextCursor() {
   DEBUG_BEGIN_BLOCK();
 
-  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
-  if (node->_reverse) {
+  IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
+  if (!node->options().ascending) {
     --_currentIndex;
     _isLastIndex = (_currentIndex == 0);
   } else {
@@ -395,26 +494,20 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
 
     uint64_t returned = static_cast<uint64_t>(_returned);
-    int res = _cursor->skip(atMost - returned, returned);
+    _cursor->skip(atMost - returned, returned);
     _returned = static_cast<size_t>(returned);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      // We have skipped enough.
-      // And this index could return more.
-      // We are good.
-      return true;
-    }
+    return true;
   }
   return false;
-  
+
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexBlock::readIndex(
-    size_t atMost,
-    IndexIterator::DocumentCallback const& callback) {
+bool IndexBlock::readIndex(size_t atMost,
+                           IndexIterator::DocumentCallback const& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -428,7 +521,7 @@ bool IndexBlock::readIndex(
     // All indexes exhausted
     return false;
   }
-    
+
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
@@ -447,11 +540,29 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
- 
 
-    // TODO: optimize for the case when produceResult() is false
-    // in this case we do not need to fetch the documents at all 
-    bool res = _cursor->nextDocument(callback, atMost - _returned);
+    bool res;
+    if (!produceResult()) {
+      // optimization: iterate over index (e.g. for filtering), but do not fetch the
+      // actual documents
+      res = _cursor->next([&callback](LocalDocumentId const& id) {
+        callback(id, VPackSlice::nullSlice());
+      }, atMost - _returned);
+    } else {
+      // check if the *current* cursor supports covering index queries or not
+      // if we can optimize or not must be stored in our instance, so the
+      // DocumentProducingBlock can access the flag
+      _allowCoveringIndexOptimization = _cursor->hasCovering();
+
+      if (_allowCoveringIndexOptimization &&
+          !ExecutionNode::castTo<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
+        // index covers all projections
+        res = _cursor->nextCovering(callback, atMost - _returned);
+      } else {
+        // we need the documents later on. fetch entire documents
+       res = _cursor->nextDocument(callback, atMost - _returned);
+      }
+    }
 
     if (res) {
       // We have returned enough.
@@ -467,11 +578,14 @@ bool IndexBlock::readIndex(
   DEBUG_END_BLOCK();
 }
 
-int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -479,40 +593,44 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _returned = 0;
   _pos = 0;
   _currentIndex = 0;
+  _resultInFlight.reset();
+  _copyFromRow = 0;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
-AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
+    size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
   TRI_ASSERT(atMost > 0);
-  size_t curRegs;
-
-  std::unique_ptr<AqlItemBlock> res(
-      requestBlock(atMost,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-  _returned = 0;   // here we count how many of this AqlItemBlock we have
-                   // already filled
-  size_t copyFromRow;  // The row to copy values from
+  size_t const nrInRegs = getNrInputRegisters();
+  if (_resultInFlight == nullptr) {
+    // We handed sth out last call and need to reset now.
+    TRI_ASSERT(_returned == 0);
+    TRI_ASSERT(_copyFromRow == 0);
+    _resultInFlight.reset(requestBlock(atMost, getNrOutputRegisters()));
+  }
 
   // The following callbacks write one index lookup result into res at
   // position _returned:
 
   IndexIterator::DocumentCallback callback;
-  if (_indexes.size() > 1) {
+
+  if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
-    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
-      TRI_ASSERT(res != nullptr);
+    callback = [this, nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
+      TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
         if (!_alreadyReturned.emplace(token.id()).second) {
@@ -526,21 +644,34 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           return;
         }
       }
-      
-      _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
+
+      _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
   } else {
     // No uniqueness checks
-    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
-      TRI_ASSERT(res.get() != nullptr);
-      _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
+    callback = [this, nrInRegs](LocalDocumentId const&, VPackSlice slice) {
+      TRI_ASSERT(_resultInFlight != nullptr);
+      _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
   }
 
   do {
     if (_buffer.empty()) {
+      if (_upstreamState == ExecutionState::DONE) {
+        _done = true;
+        break;
+      }
+
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
+        return {ExecutionState::WAITING, nullptr};
+      }
+      if (!blockAppended || !initIndexes()) {
         _done = true;
         break;
       }
@@ -554,7 +685,20 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+        if (_upstreamState == ExecutionState::DONE) {
+          _done = true;
+          break;
+        }
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) =
+            ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
+          return {ExecutionState::WAITING, nullptr};
+        }
+        if (!blockAppended) {
           _done = true;
           break;
         }
@@ -571,21 +715,21 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
-    curRegs = cur->getNrRegs();
-   
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
+
+    TRI_ASSERT(nrInRegs <= _resultInFlight->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos, _returned);
-    copyFromRow = _returned;
+    inheritRegisters(cur, _resultInFlight.get(), _pos, _returned);
+    _copyFromRow = _returned;
 
     // Read the next elements from the indexes
     auto saveReturned = _returned;
     _indexesExhausted = !readIndex(atMost, callback);
     if (_returned == saveReturned) {
       // No results. Kill the registers:
-      for (arangodb::aql::RegisterId i = 0; i < curRegs; ++i) {
-        res->destroyValue(_returned, i);
+      for (arangodb::aql::RegisterId i = 0; i < nrInRegs; ++i) {
+        _resultInFlight->destroyValue(_returned, i);
       }
     } else {
       // Update statistics
@@ -599,37 +743,49 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   //   (2) The AqlItemBlock is half-full (0 < _returned < atMost)
   //   (3) The AqlItemBlock is full (_returned == atMost)
   if (_returned == 0) {
-    AqlItemBlock* dummy = res.release();
+    TRI_ASSERT(_copyFromRow == 0);
+    AqlItemBlock* dummy = _resultInFlight.release();
     returnBlock(dummy);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
+    return {getHasMoreState(), nullptr};
   }
   if (_returned < atMost) {
-    res->shrink(_returned);
+    _resultInFlight->shrink(_returned);
   }
 
+  _returned = 0;
+  _copyFromRow = 0;
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
+  clearRegisters(_resultInFlight.get());
+  traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
 
-  return res.release();
+  return {getHasMoreState(), std::move(_resultInFlight)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
+std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
-    return 0;
+    return {ExecutionState::DONE, 0};
   }
 
   _returned = 0;
 
-  while (_returned < atLeast) {
+  while (_returned < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        return {ExecutionState::WAITING, 0};
+      }
+      if (!blockAppended || !initIndexes()) {
         _done = true;
         break;
       }
@@ -644,7 +800,14 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          return {ExecutionState::WAITING, 0};
+        }
+        if (!blockAppended) {
           _done = true;
           break;
         }
@@ -664,7 +827,9 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
     _indexesExhausted = !skipIndex(atMost);
   }
 
-  return _returned;
+  size_t returned = _returned;
+  _returned = 0;
+  return {getHasMoreState(), returned}
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -672,9 +837,6 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
 /// @brief frees the memory for all non-constant expressions
 void IndexBlock::cleanupNonConstExpressions() {
-  for (auto& it : _nonConstExpressions) {
-    delete it;
-  }
   _nonConstExpressions.clear();
 }
 
@@ -695,10 +857,10 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
   // from _condition
   if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
     // yet no cursor for index, so create it
-    IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+    IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
         _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
-        node->_reverse));
+        node->_options));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

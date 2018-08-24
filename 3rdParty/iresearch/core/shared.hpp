@@ -58,11 +58,11 @@
   #define RESTRICT __restrict 
   #define ALIGNED_VALUE(_value, _type) union { _value; _type ___align; }
 #else
-  #if __GNUC__ >= 4
+  #if defined(__GNUC__) && __GNUC__ >= 4
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
-    #define	CONSTEXPR constexpr
+    #define CONSTEXPR constexpr
   #else
     #define IRESEARCH_HELPER_DLL_IMPORT
     #define IRESEARCH_HELPER_DLL_EXPORT
@@ -104,7 +104,7 @@
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
         || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) \
-        || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225831)))
+        || ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)))
   #define MSVC2017_345_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_345_OPTIMIZED_WORKAROUND(...)
@@ -115,6 +115,20 @@
   #define MSVC_ONLY(...) __VA_ARGS__
 #else
   #define MSVC_ONLY(...)
+#endif
+
+// hook for MSVC2013-only code
+#if defined(_MSC_VER) && _MSC_VER == 1800
+  #define MSVC2013_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2013_ONLY(...)
+#endif
+
+// hook for MSVC2015-only code
+#if defined(_MSC_VER) && _MSC_VER == 1900
+  #define MSVC2015_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2015_ONLY(...)
 #endif
 
 // hook for MSVC2015 optimized-only code
@@ -231,6 +245,14 @@
 //////////////////////////////////////////////////////////
 
 #define UNUSED(par) (void)(par)
+
+#ifndef AGB_IGNORE_UNUSED
+#if defined(__GNUC__)
+#define ADB_IGNORE_UNUSED __attribute__((unused))
+#else
+#define ADB_IGNORE_UNUSED /* unused */
+#endif
+#endif
 
 #define NS_BEGIN(ns) namespace ns {
 #define NS_LOCAL namespace {

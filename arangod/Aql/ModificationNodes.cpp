@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ModificationBlocks.h"
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 
@@ -35,26 +36,26 @@ static bool const Optional = true;
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
+      CollectionAccessingNode(plan, base),
       _options(base),
       _outVariableOld(
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)) {
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_collection != nullptr);
+          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)),
+      _countStats(base.get("countStats").getBool()) {
 }
 
 /// @brief toVelocyPack
 void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
-                                          bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(builder,
-                                           verbose);  // call base class method
+                                          unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(builder);
+
   // Now put info about vocbase and cid in there
-  builder.add("database", VPackValue(_vocbase->name()));
-  builder.add("collection", VPackValue(_collection->getName()));
+  builder.add("countStats", VPackValue(_countStats));
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -66,6 +67,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
     _outVariableNew->toVelocyPack(builder);
   }
   builder.add(VPackValue("modificationFlags"));
+
   _options.toVelocyPack(builder);
 }
 
@@ -89,13 +91,22 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ModificationNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
-void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<RemoveBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -112,12 +123,13 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options,
+  auto c = std::make_unique<RemoveNode>(plan, _id, _collection, _options,
                           inVariable, outVariableOld);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -125,9 +137,8 @@ InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack
-void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes,
-                                       verbose);  // call base class method
+void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags); // call base class method
 
   // Now put info about vocbase and cid in there
   nodes.add(VPackValue("inVariable"));
@@ -137,9 +148,18 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<InsertBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
+  auto outVariableOld = _outVariableOld;
   auto outVariableNew = _outVariableNew;
   auto inVariable = _inVariable;
 
@@ -148,15 +168,20 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
       outVariableNew =
           plan->getAst()->variables()->createVariable(outVariableNew);
     }
+    if (_outVariableOld != nullptr) {
+      outVariableOld =
+          plan->getAst()->variables()->createVariable(outVariableOld);
+    }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new InsertNode(plan, _id, _vocbase, _collection, _options,
-                          inVariable, outVariableNew);
+  auto c = std::make_unique<InsertNode>(plan, _id, _collection, _options,
+                          inVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -166,9 +191,10 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
-void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
-  
+void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
+
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 
@@ -180,6 +206,14 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<UpdateBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -206,13 +240,13 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c =
-      new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+  auto c = std::make_unique<UpdateNode>(plan, _id, _collection, _options, inDocVariable,
                      inKeyVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
@@ -223,8 +257,9 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
-void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -237,6 +272,14 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<ReplaceBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -263,13 +306,13 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c =
-      new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+  auto c = std::make_unique<ReplaceNode>(plan, _id, _collection, _options, inDocVariable,
                       inKeyVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -280,9 +323,9 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
-void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
-                              bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -294,6 +337,14 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<UpsertBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -316,11 +367,12 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
         plan->getAst()->variables()->createVariable(updateVariable);
   }
 
-  auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options,
+  auto c = std::make_unique<UpsertNode>(plan, _id, _collection, _options,
                           inDocVariable, insertVariable, updateVariable,
                           outVariableNew, _isReplace);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }

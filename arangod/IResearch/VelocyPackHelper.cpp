@@ -86,6 +86,51 @@ bool mergeSlice(
   return false;
 }
 
+bool mergeSliceSkipKeys(
+  arangodb::velocypack::Builder& builder,
+  arangodb::velocypack::Slice const& slice,
+  std::function<bool(irs::string_ref const& key)> const& acceptor
+) {
+  if (!builder.isOpenObject() || !slice.isObject()) {
+    return mergeSlice(builder, slice); // no keys to skip for non-objects
+  }
+
+  for (arangodb::velocypack::ObjectIterator itr(slice); itr.valid(); ++itr) {
+    auto key = itr.key();
+    auto value = itr.value();
+
+    if (!key.isString()) {
+      return false;
+    }
+
+    auto attr = getStringRef(key);
+
+    if (acceptor(attr)) {
+      builder.add(attr.c_str(), attr.size(), value);
+    }
+  }
+
+  return true;
+}
+
+bool mergeSliceSkipOffsets(
+  arangodb::velocypack::Builder& builder,
+  arangodb::velocypack::Slice const& slice,
+  std::function<bool(size_t offset)> const& acceptor
+) {
+  if (!builder.isOpenArray() || !slice.isArray()) {
+    return mergeSlice(builder, slice); // no offsets to skip for non-arrays
+  }
+
+  for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+    if (acceptor(itr.index())) {
+      builder.add(*itr);
+    }
+  }
+
+  return true;
+}
+
 // can't make it noexcept since VPackSlice::getNthOffset is not noexcept
 void Iterator::reset() {
   TRI_ASSERT(isArrayOrObject(_slice));

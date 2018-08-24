@@ -29,48 +29,65 @@
 #include "error/error.hpp"
 
 #include "utils/bit_utils.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
-#include "utils/checksum.hpp"
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
+#include <iterator>
+
 NS_ROOT
 
-/* -------------------------------------------------------------------
-* data_input
-* ------------------------------------------------------------------*/
+//////////////////////////////////////////////////////////////////////////////
+/// @struct data_input
+/// @brief base interface for all low-level input data streams
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API data_input
+    : std::iterator<std::forward_iterator_tag, byte_type, void, void, void> {
 
-struct IRESEARCH_API data_input {
   virtual ~data_input();
 
-  virtual uint8_t read_byte() = 0;
+  virtual byte_type read_byte() = 0;
 
   virtual size_t read_bytes(byte_type* b, size_t count) = 0;
 
   virtual size_t file_pointer() const = 0;
-  
+
   virtual size_t length() const = 0;
 
   virtual bool eof() const = 0;
 
-  // TODO: make functions virtual and override it in subclass in 
-  // order to achieve better performance
+  int16_t read_short() {
+    // important to read as unsigned
+    return irs::read<uint16_t>(*this);
+  }
 
-  int16_t read_short();
+  virtual int32_t read_int() {
+    // important to read as unsigned
+    return irs::read<uint32_t>(*this);
+  }
 
-  int32_t read_int();
+  virtual int64_t read_long() {
+    // important to read as unsigned
+    return irs::read<uint64_t>(*this);
+  }
 
-  uint32_t read_vint();
+  virtual uint32_t read_vint() {
+    return irs::vread<uint32_t>(*this);
+  }
 
-  int64_t read_long();
+  virtual uint64_t read_vlong() {
+    return irs::vread<uint64_t>(*this);
+  }
 
-  uint64_t read_vlong();
-};
+  byte_type operator*() { return read_byte(); }
+  data_input& operator++() NOEXCEPT { return *this; }
+  data_input& operator++(int) NOEXCEPT { return *this; }
+}; // data_input
 
-/* -------------------------------------------------------------------
-* index_input
-* ------------------------------------------------------------------*/
-
+//////////////////////////////////////////////////////////////////////////////
+/// @struct index_input
+//////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_input : public data_input {
  public:
   DECLARE_PTR(index_input);
@@ -81,20 +98,23 @@ struct IRESEARCH_API index_input : public data_input {
   virtual ptr reopen() const NOEXCEPT = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
 
+  // returns checksum from the current position to a
+  // specified offset without changing current position
+  virtual int64_t checksum(size_t offset) const = 0;
+
  private:
   index_input& operator=( const index_input& ) = delete;
-};
+}; // index_input
 
-/* -------------------------------------------------------------------
-* input_buf
-* ------------------------------------------------------------------*/
-
-class IRESEARCH_API input_buf: public std::streambuf, util::noncopyable {
+//////////////////////////////////////////////////////////////////////////////
+/// @class input_buf
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
  public:
   typedef std::streambuf::char_type char_type;
   typedef std::streambuf::int_type int_type;
 
-  input_buf( index_input* in );
+  explicit input_buf(index_input* in);
 
   virtual std::streamsize showmanyc() override;
 
@@ -102,35 +122,44 @@ class IRESEARCH_API input_buf: public std::streambuf, util::noncopyable {
 
   virtual int_type uflow() override;
 
+  virtual int_type underflow() override;
+
   operator index_input&() { return *in_; }
 
  private:
   index_input* in_;
-};
+}; // input_buf
 
-/* -------------------------------------------------------------------
-* buffered_index_input
-* ------------------------------------------------------------------*/
-
+//////////////////////////////////////////////////////////////////////////////
+/// @class buffered_index_input
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_input : public index_input {
  public:
   virtual ~buffered_index_input();
 
-  virtual byte_type read_byte() final;
+  virtual byte_type read_byte() override final;
 
-  virtual size_t read_bytes(byte_type* b, size_t count) final;
+  virtual size_t read_bytes(byte_type* b, size_t count) override final;
 
-  virtual size_t file_pointer() const final {
+  virtual size_t file_pointer() const override final {
     return start_ + offset();
   }
 
-  virtual bool eof() const final {
+  virtual bool eof() const override final {
     return file_pointer() >= length();
   }
 
-  virtual void seek(size_t pos) final;
+  virtual void seek(size_t pos) override final;
 
   size_t buffer_size() const { return buf_size_; }
+
+  virtual int32_t read_int() override final;
+
+  virtual int64_t read_long() override final;
+
+  virtual uint32_t read_vint() override final;
+
+  virtual uint64_t read_vlong() override final;
 
  protected:
   explicit buffered_index_input(size_t buf_size = 1024);
@@ -144,31 +173,31 @@ class IRESEARCH_API buffered_index_input : public index_input {
 
  private:
   // returns number of bytes between begin_ & end_
-  size_t refill(); 
-  
+  size_t refill();
+
   // returns number of elements between current position and beginning of the buffer
   FORCE_INLINE size_t offset() const { 
     return std::distance(buf_.get(), begin_); 
   }
-  
+
   // returns number of reamining bytes in the buffer 
   FORCE_INLINE size_t remain() const { 
     return std::distance(begin_, end_); 
   }
-  
+
   // returns number of valid bytes in the buffer 
   FORCE_INLINE size_t size() const { 
     return std::distance(buf_.get(), end_); 
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr< byte_type[] > buf_; // buffer itself 
+  std::unique_ptr< byte_type[] > buf_; // buffer itself
   byte_type* begin_{ buf_.get() }; // current position in the buffer
   byte_type* end_{ buf_.get() }; // end of the valid bytes in the buffer
-  size_t start_{}; // position of the buffer in file        
+  size_t start_{}; // position of the buffer in file
   size_t buf_size_; // size of the buffer in bytes
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // buffered_index_input
 
 NS_END
 

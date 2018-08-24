@@ -47,50 +47,73 @@ struct char_traits<::iresearch::byte_type> {
   typedef std::streamoff off_type;
   typedef std::streampos pos_type;
 
-  static void assign(char_type& dst, const char_type& src) { dst = src; }
+  static void assign(char_type& dst, const char_type& src) NOEXCEPT {
+    dst = src;
+  }
 
-  static char_type* assign(char_type* ptr, size_t count, char_type ch) {
+  static char_type* assign(char_type* ptr, size_t count, char_type ch) NOEXCEPT {
+    assert(ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
-  static int compare(const char_type* lhs, const char_type* rhs, size_t count) {
+  static int compare(const char_type* lhs, const char_type* rhs, size_t count) NOEXCEPT {
+    if (0 == count) {
+      return 0;
+    }
+
+    assert(lhs && rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
-  static char_type* copy(char_type* dst, const char_type* src, size_t count) {
+  static char_type* copy(char_type* dst, const char_type* src, size_t count) NOEXCEPT {
+    if (0 == count) {
+      return dst;
+    }
+
+    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
-  static int_type eof() { return -1; }
+  static int_type eof() NOEXCEPT { return -1; }
 
-  static bool eq(char_type lhs, char_type rhs) { return lhs == rhs; }
+  static bool eq(char_type lhs, char_type rhs) NOEXCEPT { return lhs == rhs; }
 
-  static bool eq_int_type(int_type lhs, int_type rhs) { return lhs == rhs; }
+  static bool eq_int_type(int_type lhs, int_type rhs) NOEXCEPT { return lhs == rhs; }
 
-  static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) {
+  static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) NOEXCEPT {
+    if (0 == count) {
+      return nullptr;
+    }
+
+    assert(ptr);
     return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
   }
 
-  static size_t length(const char_type* /*ptr*/) {
+  static size_t length(const char_type* /*ptr*/) NOEXCEPT {
     // binary string length cannot be determined from binary content
     assert(false);
     return (std::numeric_limits<size_t>::max)();
   }
 
-  static bool lt(char_type lhs, char_type rhs) { return lhs < rhs; }
+  static bool lt(char_type lhs, char_type rhs) NOEXCEPT { return lhs < rhs; }
 
-  static char_type* move(char_type* dst, const char_type* src, size_t count) {
+  static char_type* move(char_type* dst, const char_type* src, size_t count) NOEXCEPT {
+    if (0 == count) {
+      return dst;
+    }
+
+    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
 
-  static int_type not_eof(int_type i) { return i != eof(); }
+  static int_type not_eof(int_type i) NOEXCEPT { return i != eof(); }
 
-  static char_type to_char_type(int_type i) {
+  static char_type to_char_type(int_type i) NOEXCEPT {
     assert(int_type(char_type(i)) == i);
     return char_type(i);
   }
 
-  static int_type to_int_type(char_type ch) { return ch; }
+  static int_type to_int_type(char_type ch) NOEXCEPT { return ch; }
 
   MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
@@ -126,7 +149,8 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  static const basic_string_ref nil;
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL; // null string
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref EMPTY; // empty string
 
   CONSTEXPR basic_string_ref() NOEXCEPT
     : data_(nullptr), size_(0) {
@@ -134,8 +158,7 @@ class basic_string_ref {
 
   // Constructs a string reference object from a ref and a size.
   basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
-    : data_(ref.data_),
-    size_(size) {
+    : data_(ref.data_), size_(size) {
     assert(size <= ref.size_);
   }
 
@@ -169,7 +192,7 @@ class basic_string_ref {
   // Returns the string size.
   CONSTEXPR size_t size() const NOEXCEPT { return size_; }
 
-  CONSTEXPR bool null() const NOEXCEPT { return !data_; }
+  CONSTEXPR bool null() const NOEXCEPT { return nullptr == data_; }
   CONSTEXPR bool empty() const NOEXCEPT { return null() || 0 == size_; }
   CONSTEXPR const char_type* begin() const NOEXCEPT{ return data_; }
   CONSTEXPR const char_type* end() const NOEXCEPT{ return data_ + size_; }
@@ -179,78 +202,73 @@ class basic_string_ref {
   }
 
   // friends
-  friend int compare( const basic_string_ref& lhs, 
-                      const char_type* rhs, 
-                      size_t rhs_size ) {
+  friend int compare(
+      const basic_string_ref& lhs,
+      const char_type* rhs,
+      size_t rhs_size
+  ) {
     const size_t lhs_size = lhs.size();
     int r = traits_type::compare( 
       lhs.c_str(), rhs, 
-      ( std::min )( lhs_size, rhs_size ) 
+      (std::min)(lhs_size, rhs_size)
     );
 
-    if ( !r ) {
-      r = int( lhs_size - rhs_size );
+    if (!r) {
+      r = int(lhs_size - rhs_size);
     }
 
     return r;
   }
 
   friend int compare(
-    const basic_string_ref& lhs, const std::basic_string<char_type>& rhs
+      const basic_string_ref& lhs, const std::basic_string<char_type>& rhs
   ) {
-    return compare( lhs, rhs.c_str(), rhs.size() );
+    return compare(lhs, rhs.c_str(), rhs.size());
   }
 
   friend int compare(const basic_string_ref& lhs, const char_type* rhs) {
     return compare(lhs, rhs, traits_type::length(rhs));
   }
 
-  friend int compare( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return compare( lhs, rhs.c_str(), rhs.size() );
+  friend int compare(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return compare(lhs, rhs.c_str(), rhs.size());
   }
 
-  friend bool operator<( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return compare( lhs, rhs ) < 0;
+  friend bool operator<(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return compare(lhs, rhs) < 0;
   }
 
   friend bool operator<(
-    const std::basic_string<char_type>& lhs, const basic_string_ref& rhs
+      const std::basic_string<char_type>& lhs,
+      const basic_string_ref& rhs
   ) {
     return lhs.compare(0, std::basic_string<char_type>::npos, rhs.c_str(), rhs.size()) < 0;
   }
  
-  //friend bool operator==(const std::basic_string<_Elem>& lhs, const basic_string_ref& rhs) {
-  //  return 0 == lhs.compare(0, std::basic_string<_Elem>::npos, rhs.c_str(), rhs.size());
-  //}
-  
-  //friend bool operator<(const basic_string_ref& lhs, const std::basic_string<_Elem>& rhs) {
-  //  return compare(lhs, rhs.c_str(), rhs.size()) < 0;
-  //}
-
-  friend bool operator>=( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return !( lhs < rhs );
+  friend bool operator>=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return !(lhs < rhs);
   }
 
-  friend bool operator>( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return compare( lhs, rhs ) > 0;
+  friend bool operator>(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return compare(lhs, rhs) > 0;
   }
 
-  friend bool operator<=( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return !( lhs > rhs );
+  friend bool operator<=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return !(lhs > rhs);
   }
 
-  friend bool operator==( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return 0 == compare( lhs, rhs );
+  friend bool operator==(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return 0 == compare(lhs, rhs);
   }
 
-  friend bool operator!=( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
-    return !( lhs == rhs );
+  friend bool operator!=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
+    return !(lhs == rhs);
   }
 
   friend std::basic_ostream<char_type, std::char_traits<char_type>>& operator<<(
-    std::basic_ostream<char_type,
-    std::char_traits<char_type>>& os,
-    const basic_string_ref& d
+      std::basic_ostream<char_type,
+      std::char_traits<char_type>>& os,
+      const basic_string_ref& d
   ) {
     return os.write( d.c_str(), d.size() );
   }
@@ -260,11 +278,18 @@ class basic_string_ref {
   size_t size_;
 }; // basic_string_ref
 
+template<typename Elem, typename Traits>
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::NIL(
+  nullptr, 0
+);
+
+template<typename Elem, typename Traits>
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::EMPTY(
+  reinterpret_cast<const Elem*>(""), 0 // FIXME
+);
+
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
-
-template < typename _Elem, typename _Traits > 
-const basic_string_ref< _Elem, _Traits > basic_string_ref< _Elem, _Traits >::nil;
 
 template< typename _Elem, typename _Traits >
 inline bool starts_with(

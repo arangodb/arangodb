@@ -40,7 +40,7 @@ class text_token_stream : public analyzer, util::noncopyable {
    public:
     void clear() {
       buf_.clear();
-      value_ = irs::bytes_ref::nil;
+      value_ = irs::bytes_ref::NIL;
     }
 
     void value(irs::bstring&& data) {

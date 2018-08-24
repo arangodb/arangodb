@@ -35,7 +35,7 @@
 
 #include "memory.hpp"
 #include "ebo.hpp"
-#include "misc.hpp"
+#include "bytes_utils.hpp"
 
 NS_ROOT
 
@@ -465,7 +465,7 @@ class block_pool_sliced_reader : public std::iterator < std::input_iterator_tag,
     } else {
       level_ = LEVELS[level_].next;
 
-      const size_t next_address = bytes_io<uint32_t>::read(where_);
+      const size_t next_address = irs::read<uint32_t>(where_);
 
       where_.reset(next_address);
       left_ = std::min(end_ - where_.pool_offset(),
@@ -615,14 +615,14 @@ class block_pool_inserter : public std::iterator < std::output_iterator_tag, voi
 
     alloc_slice(size); // reserve next slice
 
-    /* copy data to new slice */
+    // copy data to new slice
     std::copy(pos - addr_offset, pos, where_);
 
-    /* write next address at the end of current slice */
+    // write next address at the end of current slice
     {
-      /* write gets non-const reference. need explicit copy here */
+      // write gets non-const reference. need explicit copy here
       block_pool_inserter it = pos - addr_offset;
-      bytes_io< uint32_t>::write(it, uint32_t(where_.pool_offset()));
+      irs::write<uint32_t>(it, uint32_t(where_.pool_offset()));
     }
 
     pos.reset(where_.pool_offset() + addr_offset);

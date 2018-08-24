@@ -45,8 +45,8 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
   virtual void Free(void* data, size_t) override { free(data); }
 };
 
-static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType type,
-                               v8::GCCallbackFlags flags) {
+static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
+                               v8::GCCallbackFlags /*flags*/) {
   // if (type != v8::kGCTypeMarkSweepCompact) {
   //   return;
   // }
@@ -119,11 +119,11 @@ static void fatalCallback(char const* location, char const* message) {
 }
 
 V8PlatformFeature::V8PlatformFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("ClusterPhase");
 }
 
 void V8PlatformFeature::collectOptions(
@@ -229,4 +229,3 @@ void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   // because Isolate::Dispose() will delete isolate!
   isolate->Dispose();
 }
-

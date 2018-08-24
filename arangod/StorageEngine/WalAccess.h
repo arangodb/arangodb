@@ -34,49 +34,40 @@
 namespace arangodb {
 
 struct WalAccessResult : public Result {
-  WalAccessResult()
-      : Result(TRI_ERROR_NO_ERROR),
-        _fromTickIncluded(false),
-        _lastIncludedTick(0),
-        _latestTick(0) {}
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
-                  TRI_voc_tick_t latest)
+  WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
+
+  WalAccessResult(int code, bool ft, TRI_voc_tick_t included, 
+                  TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : Result(code),
         _fromTickIncluded(ft),
         _lastIncludedTick(included),
+        _lastScannedTick(lastScannedTick),
         _latestTick(latest) {}
 
-  WalAccessResult(WalAccessResult const& other)
-      : Result(other),
-        _fromTickIncluded(other._fromTickIncluded),
-        _lastIncludedTick(other._lastIncludedTick),
-        _latestTick(other._latestTick) {}
-  
-  WalAccessResult& operator=(WalAccessResult const& other) {
-    _errorNumber = other._errorNumber;
-    _errorMessage = other._errorMessage;
-    _fromTickIncluded = other._fromTickIncluded;
-    _lastIncludedTick = other._lastIncludedTick;
-    _latestTick = other._latestTick;
-    return *this;
-  }
-
+/*
+  WalAccessResult(WalAccessResult const& other) = default;
+  WalAccessResult& operator=(WalAccessResult const& other)  = default;
+*/
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
+  TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
+  void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included, TRI_voc_tick_t lastScannedTick,
                 TRI_voc_tick_t latest) {
     _errorNumber = errorNumber;
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
+    _lastScannedTick = lastScannedTick;
     _latestTick = latest;
     return *this;
   }
-
+ 
  private:
   bool _fromTickIncluded;
   TRI_voc_tick_t _lastIncludedTick;
+  TRI_voc_tick_t _lastScannedTick;
   TRI_voc_tick_t _latestTick;
 };
 
@@ -88,7 +79,7 @@ class WalAccess {
 
  protected:
   WalAccess() {}
-  virtual ~WalAccess(){};
+  virtual ~WalAccess() {}
 
  public:
   struct Filter {
@@ -150,10 +141,16 @@ struct WalAccessContext {
   ~WalAccessContext() {}
 
   
+  /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
+  
+  /// @brief check if view should be handled, might already be deleted
+  bool shouldHandleView(TRI_voc_tick_t dbid,
+                        TRI_voc_cid_t vid) const;
 
-  /// @brief Check if collection is in filter
-  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) const;
+  /// @brief Check if collection is in filter, will load collection
+  /// and prevent deletion
+  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
 
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);

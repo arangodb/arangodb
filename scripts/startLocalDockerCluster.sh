@@ -37,13 +37,12 @@ docker run -d --net=host -e ARANGO_NO_AUTH=1 --name=agency \
   --agency.supervision false \
   --agency.supervision-frequency 5 \
   --server.endpoint tcp://0.0.0.0:4001 \
-  --server.statistics false \
-  --server.threads 16
+  --server.statistics false 
 sleep 1
 
 start() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+      ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
     fi
@@ -55,7 +54,6 @@ start() {
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.level trace \
                 --server.statistics false
@@ -63,7 +61,7 @@ start() {
 
 startTerminal() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+      ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
     fi
@@ -76,7 +74,6 @@ startTerminal() {
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --server.statistics false \
                 --console &

@@ -89,7 +89,7 @@ GraphFormat<int64_t, int64_t>* ConnectedComponents::inputFormat() const {
 struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
   MyCompensation() {}
   void compensate(bool inLostPartition) override {
-    // actually don't do anything, graph format will reinitalize lost vertices
+    // actually don't do anything, graph format will reinitialize lost vertices
 
     /*if (inLostPartition) {
       int64_t* data = mutableVertexData();

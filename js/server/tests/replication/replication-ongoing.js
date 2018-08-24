@@ -34,6 +34,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 
 const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
 const console = require("console");
 const internal = require("internal");
 const masterEndpoint = arango.getEndpoint();
@@ -59,28 +60,6 @@ const collectionChecksum = function(name) {
 
 const collectionCount = function(name) {
   return db._collection(name).count();
-};
-
-const compareTicks = function(l, r) {
-  var i;
-  if (l === null) {
-    l = "0";
-  }
-  if (r === null) {
-    r = "0";
-  }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
 };
 
 const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
@@ -118,6 +97,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   applierConfiguration.endpoint = masterEndpoint;
   applierConfiguration.username = "root";
   applierConfiguration.password = "";
+  applierConfiguration.force32mode = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
@@ -180,6 +160,69 @@ function BaseTestConfig() {
   'use strict';
 
   return {
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test duplicate _key issue and replacement
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testPrimaryKeyConflict: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._drop(cn);
+          db._create(cn);
+        },
+
+        function(state) {
+          // insert same record on slave that we will insert on the master
+          connectToSlave();
+          db[cn].insert({ _key: "boom", who: "slave" });
+          connectToMaster();
+          db[cn].insert({ _key: "boom", who: "master" });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          // master document version must have one
+          assertEqual("master", db[cn].document("boom").who);
+        }
+      );
+    },
+    
+    testSecondaryKeyConflict: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._drop(cn);
+          db._create(cn);
+          db[cn].ensureIndex({ type: "hash", fields: ["value"], unique: true });
+        },
+
+        function(state) {
+          // insert same record on slave that we will insert on the master
+          connectToSlave();
+          db[cn].insert({ _key: "slave", value: "one" });
+          connectToMaster();
+          db[cn].insert({ _key: "master", value: "one" });
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertNull(db[cn].firstExample({ _key: "slave" }));
+          assertNotNull(db[cn].firstExample({ _key: "master" }));
+          assertEqual("master", db[cn].toArray()[0]._key);
+          assertEqual("one", db[cn].toArray()[0].value);
+        }
+      );
+    },
    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation
@@ -355,6 +398,66 @@ function BaseTestConfig() {
 
         function(state) {
           assertTrue(db._collection(cn).properties().waitForSync);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test truncating a small collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateCollectionSmall: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          for (let i = 0; i < 1000; i++) {
+            c.insert({value:i});
+          }
+        },
+
+        function(state) {
+          db._collection(cn).truncate();
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).all().toArray().length, 0);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test truncating a bigger collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateCollectionBigger: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          for (let i = 0; i < (32 * 1024 + 1); i++) {
+            c.insert({value:i});
+          }
+        },
+
+        function(state) {
+          db._collection(cn).truncate(); // should hit range-delete in rocksdb
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).all().toArray().length, 0);
         }
       );
     },
@@ -590,6 +693,124 @@ function BaseTestConfig() {
           assertEqual(state.count, collectionCount(cn));
         }
       );
+    },
+
+    testViewBasic: function() {
+      connectToMaster();
+
+      compare(
+        function() {},
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function() {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+
+    testViewRename: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          try {
+            db._create(cn);
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            let links = {};
+            links[cn] =  { 
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            view.properties({"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          // rename view on master
+          let view = db._view("UnitTestsSyncView");
+          view.rename("UnitTestsSyncViewRenamed");
+          view = db._view("UnitTestsSyncViewRenamed");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        function(state) {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncViewRenamed");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+
+    testViewDrop: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          try {
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          // rename view on master
+          let view = db._view("UnitTestsSyncView");
+          view.drop();
+        },
+        function(state) {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+    
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view === null);
+        },
+        {}
+      );
     }
 
   };
@@ -630,6 +851,8 @@ function ReplicationSuite() {
   suite.tearDown = function() {
     connectToMaster();
 
+    db._dropView("UnitTestsSyncView");
+    db._dropView("UnitTestsSyncViewRenamed");
     db._drop(cn);
     db._drop(cn2);
 
@@ -637,6 +860,8 @@ function ReplicationSuite() {
     replication.applier.stop();
     replication.applier.forget();
 
+    db._dropView("UnitTestsSyncView");
+    db._dropView("UnitTestsSyncViewRenamed");
     db._drop(cn);
     db._drop(cn2);
     db._drop(cn + "Renamed");

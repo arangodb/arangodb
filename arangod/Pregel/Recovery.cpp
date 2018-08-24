@@ -76,10 +76,10 @@ void RecoveryManager::monitorCollections(
   for (CollectionID const& collname : collections) {
     std::shared_ptr<LogicalCollection> coll =
         ci->getCollection(database, collname);
-
-    CollectionID cid = coll->cid_as_string();
+    CollectionID cid = std::to_string(coll->id());
     std::shared_ptr<std::vector<ShardID>> shards =
         ClusterInfo::instance()->getShardList(cid);
+
     if (!shards) {
       continue;
     }
@@ -150,7 +150,7 @@ void RecoveryManager::updatedFailedServers() {
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->post([this, shard] { _renewPrimaryServer(shard); });
+      scheduler->post([this, shard] { _renewPrimaryServer(shard); }, false);
     }
   }
 }
@@ -175,7 +175,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   do {
     std::shared_ptr<std::vector<ServerID>> servers =
         ci->getResponsibleServer(shard);
-    if (servers) {
+    if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
         _primaryServers[shard] = nextPrimary;

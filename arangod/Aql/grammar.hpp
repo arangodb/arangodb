@@ -59,23 +59,23 @@ extern int Aqldebug;
     T_WITH = 268,
     T_INTO = 269,
     T_AGGREGATE = 270,
-    T_VIEW = 271,
-    T_GRAPH = 272,
-    T_SHORTEST_PATH = 273,
-    T_DISTINCT = 274,
-    T_REMOVE = 275,
-    T_INSERT = 276,
-    T_UPDATE = 277,
-    T_REPLACE = 278,
-    T_UPSERT = 279,
-    T_NULL = 280,
-    T_TRUE = 281,
-    T_FALSE = 282,
-    T_STRING = 283,
-    T_QUOTED_STRING = 284,
-    T_INTEGER = 285,
-    T_DOUBLE = 286,
-    T_PARAMETER = 287,
+    T_GRAPH = 271,
+    T_SHORTEST_PATH = 272,
+    T_DISTINCT = 273,
+    T_REMOVE = 274,
+    T_INSERT = 275,
+    T_UPDATE = 276,
+    T_REPLACE = 277,
+    T_UPSERT = 278,
+    T_NULL = 279,
+    T_TRUE = 280,
+    T_FALSE = 281,
+    T_STRING = 282,
+    T_QUOTED_STRING = 283,
+    T_INTEGER = 284,
+    T_DOUBLE = 285,
+    T_PARAMETER = 286,
+    T_DATA_SOURCE_PARAMETER = 287,
     T_ASSIGN = 288,
     T_NOT = 289,
     T_AND = 290,
@@ -125,7 +125,7 @@ extern int Aqldebug;
 
 union YYSTYPE
 {
-#line 20 "Aql/grammar.y" /* yacc.c:1909  */
+#line 34 "Aql/grammar.y" /* yacc.c:1909  */
 
   arangodb::aql::AstNode*  node;
   struct {

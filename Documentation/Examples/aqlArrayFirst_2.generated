@@ -1,0 +1,7 @@
+@Q:
+RETURN FIRST([])
+
+@R
+[
+  <span class="hljs-literal">null</span>
+]

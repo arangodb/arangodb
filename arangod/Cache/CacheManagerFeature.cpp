@@ -31,8 +31,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/process-utils.h"
-#include "Basics/WorkMonitor.h"
-#include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Logger/Logger.h"
@@ -41,18 +39,20 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::cache;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 Manager* CacheManagerFeature::MANAGER = nullptr;
 const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
 CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
@@ -61,8 +61,7 @@ CacheManagerFeature::CacheManagerFeature(
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Scheduler");
+  startsAfter("BasicsPhase");
 }
 
 CacheManagerFeature::~CacheManagerFeature() {}
@@ -99,7 +98,7 @@ void CacheManagerFeature::validateOptions(
 void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->post(fn);
+    scheduler->post(fn, false);
     return true;
   };
   _manager.reset(new Manager(postFn, _cacheSize));
@@ -124,3 +123,5 @@ void CacheManagerFeature::stop() {
 }
 
 void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
+
+} // arangodb

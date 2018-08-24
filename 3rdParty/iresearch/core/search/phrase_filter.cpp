@@ -46,6 +46,7 @@
 
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -119,9 +120,9 @@ class phrase_query : public filter::prepared {
     auto terms = phrase_state->reader->iterator();
     auto term_stats = stats_.begin();
     for (auto& term_state : phrase_state->terms) {
-      // use bytes_ref::nil here since we do not need just to "jump"
+      // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
-      if (!terms->seek(bytes_ref::nil, *term_state.first)) {
+      if (!terms->seek(bytes_ref::NIL, *term_state.first)) {
         return doc_iterator::empty();
       }
 
@@ -174,12 +175,12 @@ DEFINE_FACTORY_DEFAULT(by_phrase);
 by_phrase::by_phrase(): filter(by_phrase::type()) {
 }
 
-bool by_phrase::equals(const filter& rhs) const {
+bool by_phrase::equals(const filter& rhs) const NOEXCEPT {
   const by_phrase& trhs = static_cast<const by_phrase&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && phrase_ == trhs.phrase_;
 }
 
-size_t by_phrase::hash() const {
+size_t by_phrase::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);

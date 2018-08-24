@@ -7,7 +7,7 @@ The main differences between the new endpoints and the objects returned by contr
 
 * `bodyParam` is now simply called `body`; it is no longer neccessary or possible to give the body a name and the request body will not show up in the request parameters. It's also possible to specify a MIME type
 
-* `body`, `queryParam` and `pathParam` now take position arguments instead of an object. For specifics see the [endpoint documentation](../../Router/Endpoints.md).
+* `body`, `queryParam` and `pathParam` now take position arguments instead of an object. For specifics see the [endpoint documentation](../../Reference/Routers/Endpoints.md).
 
 * `notes` is now called `description` and takes a single string argument.
 

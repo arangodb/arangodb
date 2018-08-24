@@ -68,7 +68,11 @@ function ahuacatlCallApplyTestSuite () {
 
       data.forEach(function (d) {
         var actual = getQueryResults("RETURN CALL(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
-        assertEqual(d[0], actual[0], d);
+        if (Array.isArray(d[0])) {
+          assertEqual(d[0].sort(), actual[0].sort(), d);
+        } else {
+          assertEqual(d[0], actual[0], d);
+        }
       });
     },
 
@@ -97,23 +101,35 @@ function ahuacatlCallApplyTestSuite () {
     testCallNonExisting : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN CALL()"); 
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('nono-existing', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('foobar', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL(' trim', 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('nono-existing', [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL('foobar', 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN CALL(' trim', 'baz')"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL('foo::bar::baz', 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL(123, 'baz')"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN CALL([ ], 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL(123, 'baz')"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN CALL([ ], 'baz')"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test call function
 ////////////////////////////////////////////////////////////////////////////////
+    testCallRecursive : function () {
+      var actual = getQueryResults("RETURN CALL('CALL', 'TRIM', '  foo bar  ')");
+      assertEqual(actual, [ 'foo bar' ]);
+      actual = getQueryResults("RETURN CALL('APPLY', 'TRIM', ['  foo bar  '])");
+      assertEqual(actual, [ 'foo bar' ]);
 
-    testCallDisallowed : function () {
-      assertQueryError(errors.ERROR_QUERY_DISALLOWED_DYNAMIC_CALL.code, "RETURN CALL('CALL')"); 
-      assertQueryError(errors.ERROR_QUERY_DISALLOWED_DYNAMIC_CALL.code, "RETURN CALL('APPLY')"); 
+      let recursion = [];
+      for (let i = 0; i < 100; i++) {
+        recursion.push('CALL');
+      }
+      recursion.push('TRIM');
+      recursion.push('  foo bar  ');
+      let query = "RETURN CALL('" + recursion.join('\',\'') + "')";
+      actual = getQueryResults(query);
+      
+      assertEqual(actual, [ 'foo bar' ]);
+
     },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test apply function
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +160,11 @@ function ahuacatlCallApplyTestSuite () {
           args.push(d[1][i]);
         }
         var actual = getQueryResults("RETURN APPLY(" + JSON.stringify(d[1][0]) + ", " + JSON.stringify(args) + ")");
-        assertEqual(d[0], actual[0], d);
+        if (Array.isArray(d[0])) {
+          assertEqual(d[0].sort(), actual[0].sort(), d);
+        } else {
+          assertEqual(d[0], actual[0], d);
+        }
       });
     },
 
@@ -174,21 +194,42 @@ function ahuacatlCallApplyTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN APPLY('TRIM', 1, 2)"); 
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('nono-existing', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('foobar', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY(' trim', [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('nono-existing', [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY('foobar', [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code, "RETURN APPLY(' trim', [ 'baz' ])"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY('foo::bar::baz', [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY(123, [ 'baz' ])"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code, "RETURN APPLY([ ], [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY(123, [ 'baz' ])"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN APPLY([ ], [ 'baz' ])"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test apply function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testApplyDisallowed : function () {
-      assertQueryError(errors.ERROR_QUERY_DISALLOWED_DYNAMIC_CALL.code, "RETURN APPLY('CALL')"); 
-      assertQueryError(errors.ERROR_QUERY_DISALLOWED_DYNAMIC_CALL.code, "RETURN APPLY('APPLY')"); 
+    testApplyRecursive : function () {
+      var actual = getQueryResults("RETURN APPLY('CALL', ['TRIM', '  foo bar  '])");
+      assertEqual(actual, [ 'foo bar' ]);
+      actual = getQueryResults("RETURN APPLY('APPLY', ['TRIM', ['  foo bar  ']])");
+      assertEqual(actual, [ 'foo bar' ]);
+
+      let recursion = '';
+      let close = '';
+      let rDepth = 20;
+      for (let i = 0; i < rDepth; i++) {
+        if (i > 0) {
+          recursion += '[';
+        }
+        recursion += '\'APPLY\'';
+        if (i < rDepth) {
+          recursion += ',';
+        }
+        close += ']';
+      }
+      recursion += '[\'TRIM\', [ \'  foo bar  \'] ' + close;
+      let query = "RETURN APPLY(" + recursion + ")";
+      actual = getQueryResults(query);
+      
+      assertEqual(actual, [ 'foo bar' ]);
     }
 
   };

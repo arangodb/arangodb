@@ -46,54 +46,45 @@
 
 /// @brief cause a segmentation violation
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_SegfaultDebugging(char const*);
+void TRI_SegfaultDebugging(char const* value);
 #else
-static inline void TRI_SegfaultDebugging(char const* unused) { (void)unused; }
+inline void TRI_SegfaultDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-bool TRI_ShouldFailDebugging(char const*);
+bool TRI_ShouldFailDebugging(char const* value);
 #else
-static inline bool TRI_ShouldFailDebugging(char const* unused) {
-  (void)unused;
-  return false;
-}
+inline constexpr bool TRI_ShouldFailDebugging(char const*) { return false; }
 #endif
 
 /// @brief add a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_AddFailurePointDebugging(char const*);
+void TRI_AddFailurePointDebugging(char const* value);
 #else
-static inline void TRI_AddFailurePointDebugging(char const* unused) {
-  (void)unused;
-}
+inline void TRI_AddFailurePointDebugging(char const*) {}
 #endif
 
 /// @brief remove a failure point
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_RemoveFailurePointDebugging(char const*);
+void TRI_RemoveFailurePointDebugging(char const* value);
 #else
-static inline void TRI_RemoveFailurePointDebugging(char const* unused) {
-  (void)unused;
-}
+inline void TRI_RemoveFailurePointDebugging(char const*) {}
 #endif
 
 /// @brief clear all failure points
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_ClearFailurePointsDebugging(void);
+void TRI_ClearFailurePointsDebugging();
 #else
-static inline void TRI_ClearFailurePointsDebugging(void) {}
+inline void TRI_ClearFailurePointsDebugging() {}
 #endif
 
 /// @brief returns whether failure point debugging can be used
-static inline bool TRI_CanUseFailurePointsDebugging(void) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  return true;
+inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }
 #else
-  return false;
+inline constexpr bool TRI_CanUseFailurePointsDebugging() { return false; }
 #endif
-}
 
 /// @brief appends a backtrace to the string provided
 void TRI_GetBacktrace(std::string& btstr);
@@ -101,14 +92,8 @@ void TRI_GetBacktrace(std::string& btstr);
 /// @brief prints a backtrace on stderr
 void TRI_PrintBacktrace();
 
-/// @brief logs a backtrace in loglevel warning
+/// @brief logs a backtrace in log level warning
 void TRI_LogBacktrace();
-
-/// @brief initialize the debugging
-void TRI_InitializeDebugging();
-
-/// @brief shutdown the debugging
-void TRI_ShutdownDebugging();
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging();

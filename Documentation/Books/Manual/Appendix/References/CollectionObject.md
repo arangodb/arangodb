@@ -10,7 +10,7 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.drop()](../../DataModeling/Collections/CollectionMethods.md#drop)
 * [collection.figures()](../../DataModeling/Collections/CollectionMethods.md#figures)
 * [collection.load()](../../DataModeling/Collections/CollectionMethods.md#load)
-* [collection.properties()](../../DataModeling/Collections/CollectionMethods.md#properties)
+* [collection.properties(options)](../../DataModeling/Collections/CollectionMethods.md#properties)
 * [collection.revision()](../../DataModeling/Collections/CollectionMethods.md#revision)
 * [collection.rotate()](../../DataModeling/Collections/CollectionMethods.md#rotate)
 * [collection.toArray()](../../DataModeling/Documents/DocumentMethods.md#toarray)
@@ -20,7 +20,7 @@ The following methods exist on the collection object (returned by *db.name*):
 
 *Indexes*
 
-* [collection.dropIndex(index)](../../Indexing/WorkingWithIndexes.md#dropping-an-index)
+* [collection.dropIndex(index)](../../Indexing/WorkingWithIndexes.md#dropping-an-index-via-a-collection-handle)
 * [collection.ensureIndex(description)](../../Indexing/WorkingWithIndexes.md#creating-an-index)
 * [collection.getIndexes(name)](../../Indexing/WorkingWithIndexes.md#listing-all-indexes-of-a-collection)
 * [collection.index(index)](../../Indexing/WorkingWithIndexes.md#index-identifiers-and-handles)
@@ -29,6 +29,7 @@ The following methods exist on the collection object (returned by *db.name*):
 
 * [collection.all()](../../DataModeling/Documents/DocumentMethods.md#all)
 * [collection.any()](../../DataModeling/Documents/DocumentMethods.md#any)
+* [collection.byExample(example)](../../DataModeling/Documents/DocumentMethods.md#query-by-example)
 * [collection.closedRange(attribute, left, right)](../../DataModeling/Documents/DocumentMethods.md#closed-range)
 * [collection.document(object)](../../DataModeling/Documents/DocumentMethods.md#document)
 * [collection.documents(keys)](../../DataModeling/Documents/DocumentMethods.md#lookup-by-keys)
@@ -40,9 +41,9 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.edges(vertices)](../../DataModeling/Documents/DocumentMethods.md#edges)
 * [collection.iterate(iterator,options)](../../DataModeling/Documents/DocumentMethods.md#misc)
 * [collection.outEdges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#edges)
-* [collection.queryByExample(example)](../../DataModeling/Documents/DocumentMethods.md#query-by-example)
 * [collection.range(attribute, left, right)](../../DataModeling/Documents/DocumentMethods.md#range)
 * [collection.remove(selector)](../../DataModeling/Documents/DocumentMethods.md#remove)
+* [collection.removeByExample(example)](../../DataModeling/Documents/DocumentMethods.md#remove-by-example)
 * [collection.removeByKeys(keys)](../../DataModeling/Documents/DocumentMethods.md#remove-by-keys)
 * [collection.rename()](../../DataModeling/Collections/CollectionMethods.md#rename)
 * [collection.replace(selector, data)](../../DataModeling/Documents/DocumentMethods.md#replace)

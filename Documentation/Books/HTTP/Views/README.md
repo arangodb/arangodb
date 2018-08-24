@@ -1,11 +1,12 @@
 HTTP Interface for Views
 ========================
 
-### Views
+Views
+-----
 
 This is an introduction to ArangoDB's HTTP interface for views.
 
-#### View
+### View
 
 A view consists of documents. It is uniquely identified by its
 identifier.
@@ -15,16 +16,9 @@ change the view name, but not the view identifier.
 Views have a type that is specified by the user when the view
 is created. 
 
-The only available view type currently is: "arangosearch".
+The only available view type currently is: [ArangoSearch](ArangoSearch.md).
 
-#### ArangoSearch View
-
-A natively integrated AQL extension that allows one to:
- * evaluate together documents located in different collections
- * filter documents based on AQL boolean expressions and functions
- * sort the resultset based on how closely each document matched the filter
-
-#### View Identifier
+### View Identifier
 
 A view identifier lets you refer to a view in a database.
 It is a string value and is unique within the database.
@@ -35,7 +29,7 @@ clipped by clients that do not support big integers. Clients should treat
 the view ids returned by ArangoDB as opaque strings when they store
 or use them locally.
 
-#### View Name
+### View Name
 
 A view name identifies a view in a database. It is a string
 and is unique within the database. Unlike the view identifier it is
@@ -62,3 +56,10 @@ the view name is *demo*, then the URL of that view is:
 
     http://localhost:8529/_api/view/demo
 
+### View Operations
+
+A view instance may be:
+* [Created](Creating.md)
+* [Retrieved](Getting.md)
+* [Modifled](Modifying.md)
+* [Deleted](Dropping.md)

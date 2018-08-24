@@ -244,7 +244,7 @@ struct index_meta_reader : public iresearch::index_meta_reader {
   virtual void read(
     const iresearch::directory& dir,
     iresearch::index_meta& meta,
-    const iresearch::string_ref& filename = iresearch::string_ref::nil
+    const iresearch::string_ref& filename = iresearch::string_ref::NIL
   ) override;
 };
 
@@ -270,7 +270,7 @@ struct segment_meta_reader : public iresearch::segment_meta_reader {
   virtual void read(
     const iresearch::directory& dir,
     iresearch::segment_meta& meta,
-    const iresearch::string_ref& filename = iresearch::string_ref::nil
+    const iresearch::string_ref& filename = iresearch::string_ref::NIL
   ) override;
 };
 

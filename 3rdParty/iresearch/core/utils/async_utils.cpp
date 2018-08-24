@@ -358,7 +358,7 @@ void thread_pool::run() {
         try {
           pool_.emplace_back([](thread_pool* pool)->void{ pool->run(); }, this); // add one thread
         } catch (std::bad_alloc&) {
-          IR_EXCEPTION(); // log and ignore exception, new tasks will start new thread
+          IR_LOG_EXCEPTION(); // log and ignore exception, new tasks will start new thread
         }
       }
 
@@ -367,7 +367,7 @@ void thread_pool::run() {
       try {
         fn();
       } catch (...) {
-        IR_EXCEPTION();
+        IR_LOG_EXCEPTION();
       }
 
       lock.lock();

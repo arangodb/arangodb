@@ -1,98 +1,61 @@
-// relabel.h
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
+//
+// Functions and classes to relabel an FST (either on input or output).
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: johans@google.com (Johan Schalkwyk)
-//
-// \file
-// Functions and classes to relabel an Fst (either on input or output)
-//
-#ifndef FST_LIB_RELABEL_H__
-#define FST_LIB_RELABEL_H__
+#ifndef FST_RELABEL_H_
+#define FST_RELABEL_H_
 
-#include <unordered_map>
-using std::unordered_map;
-using std::unordered_multimap;
 #include <string>
+#include <unordered_map>
 #include <utility>
-using std::pair; using std::make_pair;
 #include <vector>
-using std::vector;
+
+#include <fst/log.h>
 
 #include <fst/cache.h>
 #include <fst/test-properties.h>
 
 
 #include <unordered_map>
-using std::unordered_map;
-using std::unordered_multimap;
 
 namespace fst {
 
-//
 // Relabels either the input labels or output labels. The old to
-// new labels are specified using a vector of pair<Label,Label>.
+// new labels are specified using a vector of std::pair<Label, Label>.
 // Any label associations not specified are assumed to be identity
-// mapping. The destination labels must be valid labels (e.g. no kNoLabel).
-//
-// \param fst input fst, must be mutable
-// \param ipairs vector of input label pairs indicating old to new mapping
-// \param opairs vector of output label pairs indicating old to new mapping
-//
-template <class A>
+// mapping. The destination labels must be valid labels (e.g., not kNoLabel).
+template <class Arc>
 void Relabel(
-    MutableFst<A> *fst,
-    const vector<pair<typename A::Label, typename A::Label> >& ipairs,
-    const vector<pair<typename A::Label, typename A::Label> >& opairs) {
-  typedef typename A::StateId StateId;
-  typedef typename A::Label   Label;
-
-  uint64 props = fst->Properties(kFstProperties, false);
-
-  // construct label to label hash.
-  unordered_map<Label, Label> input_map;
-  for (size_t i = 0; i < ipairs.size(); ++i) {
-    input_map[ipairs[i].first] = ipairs[i].second;
-  }
-
-  unordered_map<Label, Label> output_map;
-  for (size_t i = 0; i < opairs.size(); ++i) {
-    output_map[opairs[i].first] = opairs[i].second;
-  }
-
-  for (StateIterator<MutableFst<A> > siter(*fst);
-       !siter.Done(); siter.Next()) {
-    StateId s = siter.Value();
-    for (MutableArcIterator<MutableFst<A> > aiter(fst, s);
+    MutableFst<Arc> *fst,
+    const std::vector<std::pair<typename Arc::Label, typename Arc::Label>>
+        &ipairs,
+    const std::vector<std::pair<typename Arc::Label, typename Arc::Label>>
+        &opairs) {
+  using Label = typename Arc::Label;
+  const auto props = fst->Properties(kFstProperties, false);
+  // Constructs label-to-label maps.
+  std::unordered_map<Label, Label> input_map;
+  for (auto &ipair : ipairs) input_map[ipair.first] = ipair.second;
+  std::unordered_map<Label, Label> output_map;
+  for (auto &opair : opairs) output_map[opair.first] = opair.second;
+  for (StateIterator<MutableFst<Arc>> siter(*fst); !siter.Done();
+       siter.Next()) {
+    for (MutableArcIterator<MutableFst<Arc>> aiter(fst, siter.Value());
          !aiter.Done(); aiter.Next()) {
-      A arc = aiter.Value();
-
-      // relabel input
-      // only relabel if relabel pair defined
-      typename unordered_map<Label, Label>::iterator it =
-        input_map.find(arc.ilabel);
+      auto arc = aiter.Value();
+      // Relabels input.
+      auto it = input_map.find(arc.ilabel);
       if (it != input_map.end()) {
         if (it->second == kNoLabel) {
-          FSTERROR() << "Input symbol id " << arc.ilabel
+          FSTERROR() << "Input symbol ID " << arc.ilabel
                      << " missing from target vocabulary";
           fst->SetProperties(kError, kError);
           return;
         }
         arc.ilabel = it->second;
       }
-
-      // relabel output
+      // Relabels output.
       it = output_map.find(arc.olabel);
       if (it != output_map.end()) {
         if (it->second == kNoLabel) {
@@ -103,203 +66,218 @@ void Relabel(
         }
         arc.olabel = it->second;
       }
-
       aiter.SetValue(arc);
     }
   }
-
   fst->SetProperties(RelabelProperties(props), kFstProperties);
 }
 
-//
 // Relabels either the input labels or output labels. The old to
-// new labels mappings are specified using an input Symbol set.
-// Any label associations not specified are assumed to be identity
-// mapping.
-//
-// \param fst input fst, must be mutable
-// \param new_isymbols symbol set indicating new mapping of input symbols.
-//        Must contain (at least) all input symbols in the fst.
-// \param new_osymbols symbol set indicating new mapping of output symbols
-//        Must contain (at least) all output symbols in the fst.
-template<class A>
-void Relabel(MutableFst<A> *fst,
-             const SymbolTable* new_isymbols,
-             const SymbolTable* new_osymbols) {
-  Relabel(fst,
-          fst->InputSymbols(), new_isymbols, true,    // Attach new isymbols?
-          fst->OutputSymbols(), new_osymbols, true);  // Attach new osymbols?
-}
-
-// new_isymbols must contain (at least) all symbols in the fst.
-// new_osymbols must contain (at least) all symbols in the fst.
-template<class A>
-void Relabel(MutableFst<A> *fst,
-             const SymbolTable* old_isymbols,
-             const SymbolTable* new_isymbols,
-             bool attach_new_isymbols,
-             const SymbolTable* old_osymbols,
-             const SymbolTable* new_osymbols,
-             bool attach_new_osymbols) {
-  typedef typename A::StateId StateId;
-  typedef typename A::Label   Label;
-
-  vector<pair<Label, Label> > ipairs;
+// new labels are specified using pairs of old and new symbol tables.
+// The tables must contain (at least) all labels on the appropriate side of the
+// FST. If the 'unknown_i(o)symbol' is non-empty, it is used to label any
+// missing symbol in new_i(o)symbols table.
+template <class Arc>
+void Relabel(MutableFst<Arc> *fst,
+             const SymbolTable *old_isymbols, const SymbolTable *new_isymbols,
+             const string &unknown_isymbol, bool attach_new_isymbols,
+             const SymbolTable *old_osymbols, const SymbolTable *new_osymbols,
+             const string &unknown_osymbol, bool attach_new_osymbols) {
+  using Label = typename Arc::Label;
+  // Constructs vectors of input-side label pairs.
+  std::vector<std::pair<Label, Label>> ipairs;
   if (old_isymbols && new_isymbols) {
     size_t num_missing_syms = 0;
-    for (SymbolTableIterator syms_iter(*old_isymbols); !syms_iter.Done();
-         syms_iter.Next()) {
-      const string isymbol = syms_iter.Symbol();
-      const int isymbol_val = syms_iter.Value();
-      const int new_isymbol_val = new_isymbols->Find(isymbol);
-      if (new_isymbol_val == kNoLabel) {
-        VLOG(1) << "Input symbol id " << isymbol_val << " symbol '"
-                << isymbol << "' missing from target symbol table.";
+    Label unknown_ilabel = kNoLabel;
+    if (!unknown_isymbol.empty()) {
+      unknown_ilabel = new_isymbols->Find(unknown_isymbol);
+      if (unknown_ilabel == kNoLabel) {
+        VLOG(1) << "Input symbol '" << unknown_isymbol
+                << "' missing from target symbol table";
         ++num_missing_syms;
       }
-      ipairs.push_back(std::make_pair(isymbol_val, new_isymbol_val));
+    }
+
+    for (SymbolTableIterator siter(*old_isymbols); !siter.Done();
+         siter.Next()) {
+      const auto old_index = siter.Value();
+      const auto symbol = siter.Symbol();
+      auto new_index = new_isymbols->Find(siter.Symbol());
+      if (new_index == kNoLabel) {
+        if (unknown_ilabel != kNoLabel) {
+          new_index = unknown_ilabel;
+        } else {
+          VLOG(1) << "Input symbol ID " << old_index << " symbol '" << symbol
+                  << "' missing from target symbol table";
+          ++num_missing_syms;
+        }
+      }
+      ipairs.push_back(std::make_pair(old_index, new_index));
     }
     if (num_missing_syms > 0) {
-      LOG(WARNING) << "Target symbol table missing: "
-                   << num_missing_syms << " input symbols.";
+      LOG(WARNING) << "Target symbol table missing: " << num_missing_syms
+                   << " input symbols";
     }
-    if (attach_new_isymbols)
-      fst->SetInputSymbols(new_isymbols);
+    if (attach_new_isymbols) fst->SetInputSymbols(new_isymbols);
   }
-
-  vector<pair<Label, Label> > opairs;
+  // Constructs vectors of output-side label pairs.
+  std::vector<std::pair<Label, Label>> opairs;
   if (old_osymbols && new_osymbols) {
     size_t num_missing_syms = 0;
-    for (SymbolTableIterator syms_iter(*old_osymbols); !syms_iter.Done();
-         syms_iter.Next()) {
-      const string osymbol = syms_iter.Symbol();
-      const int osymbol_val = syms_iter.Value();
-      const int new_osymbol_val = new_osymbols->Find(osymbol);
-      if (new_osymbol_val == kNoLabel) {
-        VLOG(1) << "Output symbol id " << osymbol_val << " symbol '"
-                << osymbol << "' missing from target symbol table.";
+    Label unknown_olabel = kNoLabel;
+    if (!unknown_osymbol.empty()) {
+      unknown_olabel = new_osymbols->Find(unknown_osymbol);
+      if (unknown_olabel == kNoLabel) {
+        VLOG(1) << "Output symbol '" << unknown_osymbol
+                << "' missing from target symbol table";
         ++num_missing_syms;
       }
-      opairs.push_back(std::make_pair(osymbol_val, new_osymbol_val));
+    }
+
+    for (SymbolTableIterator siter(*old_osymbols); !siter.Done();
+         siter.Next()) {
+      const auto old_index = siter.Value();
+      const auto symbol = siter.Symbol();
+      auto new_index = new_osymbols->Find(siter.Symbol());
+      if (new_index == kNoLabel) {
+        if (unknown_olabel != kNoLabel) {
+          new_index = unknown_olabel;
+        } else {
+          VLOG(1) << "Output symbol ID " << old_index << " symbol '" << symbol
+                  << "' missing from target symbol table";
+          ++num_missing_syms;
+        }
+      }
+      opairs.push_back(std::make_pair(old_index, new_index));
     }
     if (num_missing_syms > 0) {
-      LOG(WARNING) << "Target symbol table missing: "
-                   << num_missing_syms << " output symbols.";
+      LOG(WARNING) << "Target symbol table missing: " << num_missing_syms
+                   << " output symbols";
     }
-    if (attach_new_osymbols)
-      fst->SetOutputSymbols(new_osymbols);
+    if (attach_new_osymbols) fst->SetOutputSymbols(new_osymbols);
   }
-
-  // call relabel using vector of relabel pairs.
+  // Calls relabel using vector of relabel pairs.
   Relabel(fst, ipairs, opairs);
 }
 
+// Same as previous but no special allowance for unknown symbols. Kept
+// for backward compat.
+template <class Arc>
+void Relabel(MutableFst<Arc> *fst, const SymbolTable *old_isymbols,
+             const SymbolTable *new_isymbols, bool attach_new_isymbols,
+             const SymbolTable *old_osymbols, const SymbolTable *new_osymbols,
+             bool attach_new_osymbols) {
+  Relabel(fst,
+          old_isymbols, new_isymbols, "" /* no unknown isymbol */,
+          attach_new_isymbols,
+          old_osymbols, new_osymbols, "" /* no unknown ioymbol */,
+          attach_new_osymbols);
+}
 
-typedef CacheOptions RelabelFstOptions;
 
-template <class A> class RelabelFst;
+// Relabels either the input labels or output labels. The old to
+// new labels are specified using symbol tables. Any label associations not
+// specified are assumed to be identity mapping.
+template <class Arc>
+void Relabel(MutableFst<Arc> *fst, const SymbolTable *new_isymbols,
+             const SymbolTable *new_osymbols) {
+  Relabel(fst, fst->InputSymbols(), new_isymbols, true, fst->OutputSymbols(),
+          new_osymbols, true);
+}
 
-//
-// \class RelabelFstImpl
-// \brief Implementation for delayed relabeling
-//
-// Relabels an FST from one symbol set to another. Relabeling
-// can either be on input or output space. RelabelFst implements
-// a delayed version of the relabel. Arcs are relabeled on the fly
-// and not cached. I.e each request is recomputed.
-//
-template<class A>
-class RelabelFstImpl : public CacheImpl<A> {
-  friend class StateIterator< RelabelFst<A> >;
+using RelabelFstOptions = CacheOptions;
+
+template <class Arc>
+class RelabelFst;
+
+namespace internal {
+
+// Relabels an FST from one symbol set to another. Relabeling can either be on
+// input or output space. RelabelFst implements a delayed version of the
+// relabel. Arcs are relabeled on the fly and not cached; i.e., each request is
+// recomputed.
+template <class Arc>
+class RelabelFstImpl : public CacheImpl<Arc> {
  public:
-  using FstImpl<A>::SetType;
-  using FstImpl<A>::SetProperties;
-  using FstImpl<A>::WriteHeader;
-  using FstImpl<A>::SetInputSymbols;
-  using FstImpl<A>::SetOutputSymbols;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
 
-  using CacheImpl<A>::PushArc;
-  using CacheImpl<A>::HasArcs;
-  using CacheImpl<A>::HasFinal;
-  using CacheImpl<A>::HasStart;
-  using CacheImpl<A>::SetArcs;
-  using CacheImpl<A>::SetFinal;
-  using CacheImpl<A>::SetStart;
+  using Store = DefaultCacheStore<Arc>;
+  using State = typename Store::State;
 
-  typedef A Arc;
-  typedef typename A::Label   Label;
-  typedef typename A::Weight  Weight;
-  typedef typename A::StateId StateId;
-  typedef DefaultCacheStore<A> Store;
-  typedef typename Store::State State;
+  using FstImpl<Arc>::SetType;
+  using FstImpl<Arc>::SetProperties;
+  using FstImpl<Arc>::WriteHeader;
+  using FstImpl<Arc>::SetInputSymbols;
+  using FstImpl<Arc>::SetOutputSymbols;
 
+  using CacheImpl<Arc>::PushArc;
+  using CacheImpl<Arc>::HasArcs;
+  using CacheImpl<Arc>::HasFinal;
+  using CacheImpl<Arc>::HasStart;
+  using CacheImpl<Arc>::SetArcs;
+  using CacheImpl<Arc>::SetFinal;
+  using CacheImpl<Arc>::SetStart;
 
-  RelabelFstImpl(const Fst<A>& fst,
-                 const vector<pair<Label, Label> >& ipairs,
-                 const vector<pair<Label, Label> >& opairs,
+  friend class StateIterator<RelabelFst<Arc>>;
+
+  RelabelFstImpl(const Fst<Arc> &fst,
+                 const std::vector<std::pair<Label, Label>> &ipairs,
+                 const std::vector<std::pair<Label, Label>> &opairs,
                  const RelabelFstOptions &opts)
-      : CacheImpl<A>(opts), fst_(fst.Copy()),
-        relabel_input_(false), relabel_output_(false) {
-    uint64 props = fst.Properties(kCopyProperties, false);
-    SetProperties(RelabelProperties(props));
+      : CacheImpl<Arc>(opts),
+        fst_(fst.Copy()),
+        relabel_input_(false),
+        relabel_output_(false) {
+    SetProperties(RelabelProperties(fst.Properties(kCopyProperties, false)));
     SetType("relabel");
-
-    // create input label map
-    if (ipairs.size() > 0) {
-      for (size_t i = 0; i < ipairs.size(); ++i) {
-        input_map_[ipairs[i].first] = ipairs[i].second;
-      }
+    // Creates input label map.
+    if (!ipairs.empty()) {
+      for (auto &ipair : ipairs) input_map_[ipair.first] = ipair.second;
       relabel_input_ = true;
     }
-
-    // create output label map
-    if (opairs.size() > 0) {
-      for (size_t i = 0; i < opairs.size(); ++i) {
-        output_map_[opairs[i].first] = opairs[i].second;
-      }
+    // Creates output label map.
+    if (!opairs.empty()) {
+      for (auto &opair : opairs) output_map_[opair.first] = opair.second;
       relabel_output_ = true;
     }
   }
 
-  RelabelFstImpl(const Fst<A>& fst,
-                 const SymbolTable* old_isymbols,
-                 const SymbolTable* new_isymbols,
-                 const SymbolTable* old_osymbols,
-                 const SymbolTable* new_osymbols,
-                 const RelabelFstOptions &opts)
-      : CacheImpl<A>(opts), fst_(fst.Copy()),
-        relabel_input_(false), relabel_output_(false) {
+  RelabelFstImpl(const Fst<Arc> &fst, const SymbolTable *old_isymbols,
+                 const SymbolTable *new_isymbols,
+                 const SymbolTable *old_osymbols,
+                 const SymbolTable *new_osymbols, const RelabelFstOptions &opts)
+      : CacheImpl<Arc>(opts),
+        fst_(fst.Copy()),
+        relabel_input_(false),
+        relabel_output_(false) {
     SetType("relabel");
-
-    uint64 props = fst.Properties(kCopyProperties, false);
-    SetProperties(RelabelProperties(props));
+    SetProperties(RelabelProperties(fst.Properties(kCopyProperties, false)));
     SetInputSymbols(old_isymbols);
     SetOutputSymbols(old_osymbols);
-
     if (old_isymbols && new_isymbols &&
         old_isymbols->LabeledCheckSum() != new_isymbols->LabeledCheckSum()) {
-      for (SymbolTableIterator syms_iter(*old_isymbols); !syms_iter.Done();
-           syms_iter.Next()) {
-        input_map_[syms_iter.Value()] = new_isymbols->Find(syms_iter.Symbol());
+      for (SymbolTableIterator siter(*old_isymbols); !siter.Done();
+           siter.Next()) {
+        input_map_[siter.Value()] = new_isymbols->Find(siter.Symbol());
       }
       SetInputSymbols(new_isymbols);
       relabel_input_ = true;
     }
-
     if (old_osymbols && new_osymbols &&
         old_osymbols->LabeledCheckSum() != new_osymbols->LabeledCheckSum()) {
-      for (SymbolTableIterator syms_iter(*old_osymbols); !syms_iter.Done();
-           syms_iter.Next()) {
-        output_map_[syms_iter.Value()] =
-          new_osymbols->Find(syms_iter.Symbol());
+      for (SymbolTableIterator siter(*old_osymbols); !siter.Done();
+           siter.Next()) {
+        output_map_[siter.Value()] = new_osymbols->Find(siter.Symbol());
       }
       SetOutputSymbols(new_osymbols);
       relabel_output_ = true;
     }
   }
 
-  RelabelFstImpl(const RelabelFstImpl<A>& impl)
-      : CacheImpl<A>(impl),
+  RelabelFstImpl(const RelabelFstImpl<Arc> &impl)
+      : CacheImpl<Arc>(impl),
         fst_(impl.fst_->Copy(true)),
         input_map_(impl.input_map_),
         output_map_(impl.output_map_),
@@ -311,244 +289,190 @@ class RelabelFstImpl : public CacheImpl<A> {
     SetOutputSymbols(impl.OutputSymbols());
   }
 
-  ~RelabelFstImpl() { delete fst_; }
-
   StateId Start() {
-    if (!HasStart()) {
-      StateId s = fst_->Start();
-      SetStart(s);
-    }
-    return CacheImpl<A>::Start();
+    if (!HasStart()) SetStart(fst_->Start());
+    return CacheImpl<Arc>::Start();
   }
 
   Weight Final(StateId s) {
-    if (!HasFinal(s)) {
-      SetFinal(s, fst_->Final(s));
-    }
-    return CacheImpl<A>::Final(s);
+    if (!HasFinal(s)) SetFinal(s, fst_->Final(s));
+    return CacheImpl<Arc>::Final(s);
   }
 
   size_t NumArcs(StateId s) {
-    if (!HasArcs(s)) {
-      Expand(s);
-    }
-    return CacheImpl<A>::NumArcs(s);
+    if (!HasArcs(s)) Expand(s);
+    return CacheImpl<Arc>::NumArcs(s);
   }
 
   size_t NumInputEpsilons(StateId s) {
-    if (!HasArcs(s)) {
-      Expand(s);
-    }
-    return CacheImpl<A>::NumInputEpsilons(s);
+    if (!HasArcs(s)) Expand(s);
+    return CacheImpl<Arc>::NumInputEpsilons(s);
   }
 
   size_t NumOutputEpsilons(StateId s) {
-    if (!HasArcs(s)) {
-      Expand(s);
-    }
-    return CacheImpl<A>::NumOutputEpsilons(s);
+    if (!HasArcs(s)) Expand(s);
+    return CacheImpl<Arc>::NumOutputEpsilons(s);
   }
 
-  uint64 Properties() const { return Properties(kFstProperties); }
+  uint64 Properties() const override { return Properties(kFstProperties); }
 
-  // Set error if found; return FST impl properties.
-  uint64 Properties(uint64 mask) const {
-    if ((mask & kError) && fst_->Properties(kError, false))
+  // Sets error if found, and returns other FST impl properties.
+  uint64 Properties(uint64 mask) const override {
+    if ((mask & kError) && fst_->Properties(kError, false)) {
       SetProperties(kError, kError);
+    }
     return FstImpl<Arc>::Properties(mask);
   }
 
-  void InitArcIterator(StateId s, ArcIteratorData<A>* data) {
-    if (!HasArcs(s)) {
-      Expand(s);
-    }
-    CacheImpl<A>::InitArcIterator(s, data);
+  void InitArcIterator(StateId s, ArcIteratorData<Arc> *data) {
+    if (!HasArcs(s)) Expand(s);
+    CacheImpl<Arc>::InitArcIterator(s, data);
   }
 
   void Expand(StateId s) {
-    for (ArcIterator<Fst<A> > aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
-      A arc = aiter.Value();
-
-      // relabel input
+    for (ArcIterator<Fst<Arc>> aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
+      auto arc = aiter.Value();
       if (relabel_input_) {
-        typename unordered_map<Label, Label>::iterator it =
-          input_map_.find(arc.ilabel);
-        if (it != input_map_.end()) { arc.ilabel = it->second; }
+        auto it = input_map_.find(arc.ilabel);
+        if (it != input_map_.end()) arc.ilabel = it->second;
       }
-
-      // relabel output
       if (relabel_output_) {
-        typename unordered_map<Label, Label>::iterator it =
-          output_map_.find(arc.olabel);
-        if (it != output_map_.end()) { arc.olabel = it->second; }
+        auto it = output_map_.find(arc.olabel);
+        if (it != output_map_.end()) {
+          arc.olabel = it->second;
+        }
       }
-
       PushArc(s, arc);
     }
     SetArcs(s);
   }
 
-
  private:
-  const Fst<A> *fst_;
+  std::unique_ptr<const Fst<Arc>> fst_;
 
-  unordered_map<Label, Label> input_map_;
-  unordered_map<Label, Label> output_map_;
+  std::unordered_map<Label, Label> input_map_;
+  std::unordered_map<Label, Label> output_map_;
   bool relabel_input_;
   bool relabel_output_;
-
-  void operator=(const RelabelFstImpl<A> &);  // disallow
 };
 
+}  // namespace internal
 
-//
-// \class RelabelFst
-// \brief Delayed implementation of arc relabeling
-//
 // This class attaches interface to implementation and handles
 // reference counting, delegating most methods to ImplToFst.
 template <class A>
-class RelabelFst : public ImplToFst< RelabelFstImpl<A> > {
+class RelabelFst : public ImplToFst<internal::RelabelFstImpl<A>> {
  public:
-  friend class ArcIterator< RelabelFst<A> >;
-  friend class StateIterator< RelabelFst<A> >;
+  using Arc = A;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
 
-  typedef A Arc;
-  typedef typename A::Label   Label;
-  typedef typename A::Weight  Weight;
-  typedef typename A::StateId StateId;
-  typedef DefaultCacheStore<A> Store;
-  typedef typename Store::State State;
-  typedef RelabelFstImpl<A> Impl;
+  using Store = DefaultCacheStore<Arc>;
+  using State = typename Store::State;
+  using Impl = internal::RelabelFstImpl<Arc>;
 
-  RelabelFst(const Fst<A>& fst,
-             const vector<pair<Label, Label> >& ipairs,
-             const vector<pair<Label, Label> >& opairs)
-      : ImplToFst<Impl>(new Impl(fst, ipairs, opairs, RelabelFstOptions())) {}
+  friend class ArcIterator<RelabelFst<A>>;
+  friend class StateIterator<RelabelFst<A>>;
 
-  RelabelFst(const Fst<A>& fst,
-             const vector<pair<Label, Label> >& ipairs,
-             const vector<pair<Label, Label> >& opairs,
-             const RelabelFstOptions &opts)
-      : ImplToFst<Impl>(new Impl(fst, ipairs, opairs, opts)) {}
+  RelabelFst(const Fst<Arc> &fst,
+             const std::vector<std::pair<Label, Label>> &ipairs,
+             const std::vector<std::pair<Label, Label>> &opairs,
+             const RelabelFstOptions &opts = RelabelFstOptions())
+      : ImplToFst<Impl>(std::make_shared<Impl>(fst, ipairs, opairs, opts)) {}
 
-  RelabelFst(const Fst<A>& fst,
-             const SymbolTable* new_isymbols,
-             const SymbolTable* new_osymbols)
-      : ImplToFst<Impl>(new Impl(fst, fst.InputSymbols(), new_isymbols,
-                                 fst.OutputSymbols(), new_osymbols,
-                                 RelabelFstOptions())) {}
+  RelabelFst(const Fst<Arc> &fst, const SymbolTable *new_isymbols,
+             const SymbolTable *new_osymbols,
+             const RelabelFstOptions &opts = RelabelFstOptions())
+      : ImplToFst<Impl>(
+            std::make_shared<Impl>(fst, fst.InputSymbols(), new_isymbols,
+                                   fst.OutputSymbols(), new_osymbols, opts)) {}
 
-  RelabelFst(const Fst<A>& fst,
-             const SymbolTable* new_isymbols,
-             const SymbolTable* new_osymbols,
-             const RelabelFstOptions &opts)
-      : ImplToFst<Impl>(new Impl(fst, fst.InputSymbols(), new_isymbols,
-                                 fst.OutputSymbols(), new_osymbols, opts)) {}
-
-  RelabelFst(const Fst<A>& fst,
-             const SymbolTable* old_isymbols,
-             const SymbolTable* new_isymbols,
-             const SymbolTable* old_osymbols,
-             const SymbolTable* new_osymbols)
-    : ImplToFst<Impl>(new Impl(fst, old_isymbols, new_isymbols, old_osymbols,
-                               new_osymbols, RelabelFstOptions())) {}
-
-  RelabelFst(const Fst<A>& fst,
-             const SymbolTable* old_isymbols,
-             const SymbolTable* new_isymbols,
-             const SymbolTable* old_osymbols,
-             const SymbolTable* new_osymbols,
-             const RelabelFstOptions &opts)
-    : ImplToFst<Impl>(new Impl(fst, old_isymbols, new_isymbols, old_osymbols,
-                               new_osymbols, opts)) {}
+  RelabelFst(const Fst<Arc> &fst, const SymbolTable *old_isymbols,
+             const SymbolTable *new_isymbols, const SymbolTable *old_osymbols,
+             const SymbolTable *new_osymbols,
+             const RelabelFstOptions &opts = RelabelFstOptions())
+      : ImplToFst<Impl>(std::make_shared<Impl>(fst, old_isymbols, new_isymbols,
+                                               old_osymbols, new_osymbols,
+                                               opts)) {}
 
   // See Fst<>::Copy() for doc.
-  RelabelFst(const RelabelFst<A> &fst, bool safe = false)
-    : ImplToFst<Impl>(fst, safe) {}
+  RelabelFst(const RelabelFst<Arc> &fst, bool safe = false)
+      : ImplToFst<Impl>(fst, safe) {}
 
-  // Get a copy of this RelabelFst. See Fst<>::Copy() for further doc.
-  virtual RelabelFst<A> *Copy(bool safe = false) const {
-    return new RelabelFst<A>(*this, safe);
+  // Gets a copy of this RelabelFst. See Fst<>::Copy() for further doc.
+  RelabelFst<Arc> *Copy(bool safe = false) const override {
+    return new RelabelFst<Arc>(*this, safe);
   }
 
-  virtual void InitStateIterator(StateIteratorData<A> *data) const;
+  void InitStateIterator(StateIteratorData<Arc> *data) const override;
 
-  virtual void InitArcIterator(StateId s, ArcIteratorData<A> *data) const {
-    return GetImpl()->InitArcIterator(s, data);
+  void InitArcIterator(StateId s, ArcIteratorData<Arc> *data) const override {
+    return GetMutableImpl()->InitArcIterator(s, data);
   }
 
  private:
-  // Makes visible to friends.
-  Impl *GetImpl() const { return ImplToFst<Impl>::GetImpl(); }
+  using ImplToFst<Impl>::GetImpl;
+  using ImplToFst<Impl>::GetMutableImpl;
 
-  void operator=(const RelabelFst<A> &fst);  // disallow
+  RelabelFst &operator=(const RelabelFst &) = delete;
 };
 
 // Specialization for RelabelFst.
-template<class A>
-class StateIterator< RelabelFst<A> > : public StateIteratorBase<A> {
+template <class Arc>
+class StateIterator<RelabelFst<Arc>> : public StateIteratorBase<Arc> {
  public:
-  typedef typename A::StateId StateId;
+  using StateId = typename Arc::StateId;
 
-  explicit StateIterator(const RelabelFst<A> &fst)
+  explicit StateIterator(const RelabelFst<Arc> &fst)
       : impl_(fst.GetImpl()), siter_(*impl_->fst_), s_(0) {}
 
-  bool Done() const { return siter_.Done(); }
+  bool Done() const final { return siter_.Done(); }
 
-  StateId Value() const { return s_; }
+  StateId Value() const final { return s_; }
 
-  void Next() {
+  void Next() final {
     if (!siter_.Done()) {
       ++s_;
       siter_.Next();
     }
   }
 
-  void Reset() {
+  void Reset() final {
     s_ = 0;
     siter_.Reset();
   }
 
  private:
-  bool Done_() const { return Done(); }
-  StateId Value_() const { return Value(); }
-  void Next_() { Next(); }
-  void Reset_() { Reset(); }
-
-  const RelabelFstImpl<A> *impl_;
-  StateIterator< Fst<A> > siter_;
+  const internal::RelabelFstImpl<Arc>* impl_;
+  StateIterator<Fst<Arc>> siter_;
   StateId s_;
 
-  DISALLOW_COPY_AND_ASSIGN(StateIterator);
+  StateIterator(const StateIterator &) = delete;
+  StateIterator &operator=(const StateIterator &) = delete;
 };
-
 
 // Specialization for RelabelFst.
-template <class A>
-class ArcIterator< RelabelFst<A> >
-    : public CacheArcIterator< RelabelFst<A> > {
+template <class Arc>
+class ArcIterator<RelabelFst<Arc>> : public CacheArcIterator<RelabelFst<Arc>> {
  public:
-  typedef typename A::StateId StateId;
+  using StateId = typename Arc::StateId;
 
-  ArcIterator(const RelabelFst<A> &fst, StateId s)
-      : CacheArcIterator< RelabelFst<A> >(fst.GetImpl(), s) {
-    if (!fst.GetImpl()->HasArcs(s))
-      fst.GetImpl()->Expand(s);
+  ArcIterator(const RelabelFst<Arc> &fst, StateId s)
+      : CacheArcIterator<RelabelFst<Arc>>(fst.GetMutableImpl(), s) {
+    if (!fst.GetImpl()->HasArcs(s)) fst.GetMutableImpl()->Expand(s);
   }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ArcIterator);
 };
 
-template <class A> inline
-void RelabelFst<A>::InitStateIterator(StateIteratorData<A> *data) const {
-  data->base = new StateIterator< RelabelFst<A> >(*this);
+template <class Arc>
+inline void RelabelFst<Arc>::InitStateIterator(
+    StateIteratorData<Arc> *data) const {
+  data->base = new StateIterator<RelabelFst<Arc>>(*this);
 }
 
 // Useful alias when using StdArc.
-typedef RelabelFst<StdArc> StdRelabelFst;
+using StdRelabelFst = RelabelFst<StdArc>;
 
 }  // namespace fst
 
-#endif  // FST_LIB_RELABEL_H__
+#endif  // FST_RELABEL_H_

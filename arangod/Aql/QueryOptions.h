@@ -34,6 +34,19 @@ class Slice;
 }
 
 namespace aql {
+  
+enum ProfileLevel : uint32_t {
+  /// no profiling information
+  PROFILE_LEVEL_NONE = 0,
+  /// Output timing for query stages
+  PROFILE_LEVEL_BASIC = 1,
+  /// Enable instrumentation for getSome calls
+  PROFILE_LEVEL_BLOCKS = 2,
+  /// Log tracing info for getSome calls
+  PROFILE_LEVEL_TRACE_1 = 3,
+  /// Log tracing information including getSome results
+  PROFILE_LEVEL_TRACE_2 = 4
+};
 
 struct QueryOptions {
   QueryOptions();
@@ -45,9 +58,9 @@ struct QueryOptions {
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
   int64_t literalSizeThreshold;
-  int64_t tracing;
   double satelliteSyncWait;
-  bool profile;
+  /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
+  ProfileLevel profile;
   bool allPlans;
   bool verbosePlans;
   bool silent;

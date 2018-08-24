@@ -46,7 +46,7 @@ LineRank::LineRank(arangodb::velocypack::Slice params)
 
 struct LRMasterContext : MasterContext {
   bool _stopNext = false;
-  bool postGlobalSuperstep() {
+  bool postGlobalSuperstep() override {
     float const* diff = getAggregatedValue<float>(kDiff);
     TRI_ASSERT(!_stopNext || *diff == 0);
     if (_stopNext) {

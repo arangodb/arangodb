@@ -57,7 +57,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     return static_cast<type&>(*filters_.back());
   }
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
   void clear() { return filters_.clear(); }
   bool empty() const { return filters_.empty(); }
@@ -68,11 +68,11 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     const order::prepared& ord,
     boost_t boost,
     const attribute_view& ctx
-  ) const final;
+  ) const override final;
 
  protected:
   boolean_filter(const type_id& type) NOEXCEPT;
-  virtual bool equals(const filter& rhs) const override;
+  virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
   virtual void optimize(
       std::vector<const filter*>& /*incl*/,
@@ -214,10 +214,10 @@ class IRESEARCH_API Not: public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
  protected:
-  virtual bool equals( const iresearch::filter& rhs ) const override;
+  virtual bool equals(const iresearch::filter& rhs) const NOEXCEPT override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

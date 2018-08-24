@@ -61,12 +61,12 @@ class empty_term_reader: public irs::term_reader {
 
   // least significant term
   virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
-    return irs::bytes_ref::nil;
+    return irs::bytes_ref::NIL;
   }
 
   // most significant term
   virtual const irs::bytes_ref& (max)() const NOEXCEPT override {
-    return irs::bytes_ref::nil;
+    return irs::bytes_ref::NIL;
   }
 
  private:

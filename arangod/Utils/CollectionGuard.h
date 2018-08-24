@@ -56,7 +56,7 @@ class CollectionGuard {
     _collection = _vocbase->useCollection(id, _originalStatus);
 
     if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -73,7 +73,7 @@ class CollectionGuard {
     }
 
     if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -92,7 +92,7 @@ class CollectionGuard {
     }
 
     if (_collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 
@@ -103,7 +103,7 @@ class CollectionGuard {
         _restoreOriginalStatus(false) {
     int res = _vocbase->useCollection(collection, _originalStatus);
     if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
 

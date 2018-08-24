@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -83,6 +83,205 @@ function gatherBlockTestSuite () {
       c1 = null;
       c2 = null;
       c3 = null;
+    },
+
+    testSingleShard : function () {
+      let query = "FOR doc IN " + cn2 + " SORT doc.Hallo RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length);
+      assertTrue(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual([], gatherNode.elements); // no sorting in GatherNode
+    },
+    
+    testSingleShardDescending : function () {
+      let query = "FOR doc IN " + cn2 + " SORT doc.Hallo DESC RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = 99999999999;
+      result.forEach(function(value) {
+        assertTrue(value <= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length);
+      assertFalse(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual([], gatherNode.elements); // no sorting in GatherNode
+    },
+
+    testSingleShardWithIndex : function () {
+      c2.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn2 + " SORT doc.Hallo RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertFalse(indexNode.reverse);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual([], gatherNode.elements); // no sorting in GatherNode
+    },
+    
+    testSingleShardWithIndexDescending : function () {
+      c2.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn2 + " SORT doc.Hallo DESC RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = 99999999999;
+      result.forEach(function(value) {
+        assertTrue(value <= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertTrue(indexNode.reverse);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual([], gatherNode.elements); // no sorting in GatherNode
+    },
+    
+    testMultipleShards : function () {
+      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
+      assertTrue(gatherNode.elements[0].ascending);
+    },
+    
+    testMultipleShardsDescending : function () {
+      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo DESC RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = 99999999999;
+      result.forEach(function(value) {
+        assertTrue(value <= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length); // must do sorting in SortNode
+      assertFalse(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
+      assertFalse(gatherNode.elements[0].ascending);
+    },
+    
+    testMultipleShardsWithIndex : function () {
+      c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertFalse(indexNode.reverse);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
+      assertEqual(["Hallo"], gatherNode.elements[0].path); 
+      assertTrue(gatherNode.elements[0].ascending);
+    },
+    
+    testMultipleShardsWithIndexDescending : function () {
+      c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn1 + " SORT doc.Hallo DESC RETURN doc.Hallo";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      let last = 99999999999;
+      result.forEach(function(value) {
+        assertTrue(value <= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertTrue(indexNode.reverse);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must do sorting in GatherNode
+      assertEqual(["Hallo"], gatherNode.elements[0].path); 
+      assertFalse(gatherNode.elements[0].ascending);
+    },
+    
+    testMultipleShardsCollect : function () {
+      c1.ensureIndex({ type: "skiplist", fields: ["Hallo"] });
+      let query = "FOR doc IN " + cn1 + " FILTER doc.Hallo == 10 COLLECT WITH COUNT INTO length RETURN length";
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have no sort but a gather node
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
+      let indexNode = nodes[nodeTypes.indexOf("IndexNode")];
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(0, gatherNode.elements.length); // no sorting here
     },
     
     testSubqueryValuePropagation : function () {

@@ -27,6 +27,8 @@
 
 #include "Basics/Common.h"
 
+#include <chrono>
+
 /// @brief construct locker with file and line information
 #ifdef TRI_SHOW_LOCK_TIME
 
@@ -35,7 +37,7 @@
 
 #else
 
-#define CONDITION_LOCKER(a, b) arangodb::basics::ConditionLocker a(&b)
+#define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&b)
 
 #endif
 
@@ -72,7 +74,7 @@ class ConditionLocker {
   ~ConditionLocker();
 
  public:
-  
+
   /// @brief whether or not the condition is locked
   bool isLocked() const { return _isLocked; }
 
@@ -80,8 +82,12 @@ class ConditionLocker {
   void wait();
 
   /// @brief waits for an event to occur, using a timeout in micro seconds
-  /// returns true when the condition was signaled, false on timeout 
+  /// returns true when the condition was signaled, false on timeout
   bool wait(uint64_t);
+
+  /// @brief waits for an event to occur, using a timeout
+  /// returns true when the condition was signaled, false on timeout
+  bool wait(std::chrono::microseconds);
 
   /// @brief broadcasts an event
   void broadcast();

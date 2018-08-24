@@ -65,7 +65,7 @@ class IRESEARCH_API memory_file:
  public:
   DECLARE_PTR(memory_file);
 
-  explicit memory_file() {
+  memory_file() {
     touch(meta_.mtime);
   }
 
@@ -78,7 +78,7 @@ class IRESEARCH_API memory_file:
     auto length = len_;
 
     for (size_t i = 0, count = buffer_count(); i < count && length; ++i) {
-      auto buffer = get_buffer(i);
+      auto& buffer = get_buffer(i);
       auto to_copy = (std::min)(length, buffer.size);
 
       out.write_bytes(buffer.data, to_copy);
@@ -102,7 +102,7 @@ class IRESEARCH_API memory_file:
     auto last_buf = buffer_offset(len_);
 
     if (i == last_buf) {
-      auto buffer = get_buffer(i);
+      auto& buffer = get_buffer(i);
 
       // %size for the case if the last buffer is not one of the precomputed buckets
       return (len_ - buffer.offset) % buffer.size;
@@ -146,6 +146,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
   explicit memory_index_input(const memory_file& file) NOEXCEPT;
 
   virtual ptr dup() const NOEXCEPT override;
+  virtual int64_t checksum(size_t offset) const override;
   virtual bool eof() const override;
   virtual byte_type read_byte() override;
   virtual size_t read_bytes(byte_type* b, size_t len) override;
@@ -156,10 +157,20 @@ class IRESEARCH_API memory_index_input final : public index_input {
 
   virtual void seek(size_t pos) override;
 
+  virtual int32_t read_int() override;
+  virtual int64_t read_long() override;
+  virtual uint32_t read_vint() override;
+  virtual uint64_t read_vlong() override;
+
  private:
   memory_index_input(const memory_index_input&) = default;
 
   void switch_buffer(size_t pos);
+
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(begin_, end_);
+  }
 
   const memory_file* file_; // underline file
   const byte_type* buf_{}; // current buffer
@@ -172,7 +183,7 @@ class IRESEARCH_API memory_index_input final : public index_input {
  * memory_index_output
  * ------------------------------------------------------------------*/
 
-class IRESEARCH_API memory_index_output final : public index_output {
+class IRESEARCH_API memory_index_output : public index_output {
  public:
   explicit memory_index_output(memory_file& file) NOEXCEPT;
   memory_index_output(const memory_index_output&) = default; 
@@ -182,28 +193,45 @@ class IRESEARCH_API memory_index_output final : public index_output {
 
   // data_output
 
-  virtual void close() override;
+  virtual void close() override final;
 
-  virtual void write_byte( byte_type b ) override;
+  virtual void write_byte(byte_type b) override final;
 
-  virtual void write_bytes( const byte_type* b, size_t len ) override;
+  virtual void write_bytes(const byte_type* b, size_t len) override final;
 
   // index_output
 
   virtual void flush() override; // deprecated
 
-  virtual size_t file_pointer() const override;
+  virtual size_t file_pointer() const override final;
 
   virtual int64_t checksum() const override;
 
-  void operator>>( data_output& out );
+  void operator>>(data_output& out);
+
+  virtual void write_int(int32_t v) override final;
+
+  virtual void write_long(int64_t v) override final;
+
+  virtual void write_vint(uint32_t v) override final;
+
+  virtual void write_vlong(uint64_t v) override final;
+
+ protected:
+  virtual void switch_buffer();
 
  private:
-  void switch_buffer();
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(pos_, end_);
+  }
 
-  memory_file& file_; // underlying file
+ protected:
   memory_file::buffer_t buf_; // current buffer
-  size_t pos_; /* position in current buffer */
+  byte_type* pos_; // position in current buffer
+ private:
+  memory_file& file_; // underlying file
+  byte_type* end_;
 };
 
 // -------------------------------------------------------------------

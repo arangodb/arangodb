@@ -1,16 +1,22 @@
+<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Monitoring datacenter to datacenter replication
 
-This section includes information related to the monitoring of the _datacenter 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
+This section includes information related to the monitoring of the _datacenter
 to datacenter replication_.
 
 For a general introduction to the _datacenter to datacenter replication_, please
-refer to the [Datacenter to datacenter replication](..\..\Scalability\DC2DC\README.md)
+refer to the [Datacenter to datacenter replication](../../Architecture/DeploymentModes/DC2DC/README.md)
 chapter.
 
-# Metrics
+## Metrics
 
-_ArangoSync_ (_master_ & _worker_) provide metrics that can be used for monitoring 
-the _datacenter to datacenter repliation_ solution. These metrics are available 
+_ArangoSync_ (_master_ & _worker_) provide metrics that can be used for monitoring
+the _datacenter to datacenter replication_ solution. These metrics are available
 using the following HTTPS endpoints:
 
 - GET `/metrics`: Provides metrics in a format supported by Prometheus.
@@ -18,7 +24,7 @@ using the following HTTPS endpoints:
 
 Both endpoints include help information per metrics.
 
-Note: Both endpoints require authentication. Besides the usual authentication methods 
+Note: Both endpoints require authentication. Besides the usual authentication methods
 these endpoints are also accessible using a special bearer token specified using the `--monitoring.token`
 command line option.
 

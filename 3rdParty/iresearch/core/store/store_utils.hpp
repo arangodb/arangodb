@@ -32,6 +32,7 @@
 
 #include "utils/string.hpp"
 #include "utils/bit_utils.hpp"
+#include "utils/bytes_utils.hpp"
 #include "utils/bit_packing.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/attributes.hpp"
@@ -44,239 +45,52 @@ NS_LOCAL
 using iresearch::data_input;
 using iresearch::data_output;
 
-template<typename T>
-struct read_write_helper {
+template<typename T, size_t N = sizeof(T)>
+struct read_write_helper{
   static T read(data_input& in);
   static T write(data_output& out, T size);
 };
 
-template<>
-struct read_write_helper<uint32_t> {
-  inline static uint32_t read( data_input& in ) { 
+template<typename T>
+struct read_write_helper<T, sizeof(uint32_t)> {
+  inline static T read(data_input& in) {
     return in.read_vint();
   }
 
-  inline static void write( data_output& out, uint32_t size ) {
-    out.write_vint(size);
+  inline static void write(data_output& out, T in) {
+    out.write_vint(in);
   }
 };
 
-template<>
-struct read_write_helper<uint64_t> {
-  inline static uint64_t read( data_input& in ) {
+template<typename T>
+struct read_write_helper<T, sizeof(uint64_t)> {
+  inline static T read(data_input& in) {
     return in.read_vlong();
   }
 
-  inline static void write( data_output& out, uint64_t size ) {
-    out.write_vlong(size);
+  inline static void write(data_output& out, T in) {
+    out.write_vlong(in);
   }
 };
-
-// MacOS size_t is a different type from any of the above
-#if defined(__APPLE__)
-  template<>
-  struct read_write_helper<size_t> {
-    inline static size_t read(data_input& in) {
-      return in.read_vlong();
-    }
-
-    inline static void write(data_output& out, size_t size) {
-      out.write_vlong(size);
-    }
-  };
-#endif
 
 NS_END // LOCAL
 
-NS_BEGIN(detail)
-
-template<class T, T max_size_val>
-struct vencode_traits_base {
-    static const T const_max_size = max_size_val;
-};
-
-NS_END // detail
-
 NS_ROOT
 
-inline byte_type* write_vint(uint32_t v, byte_type* begin) {
-  while (v >= 0x80) {
-    *begin++ = static_cast<byte_type>(v | 0x80);
-    v >>= 7;
-  }
-
-  *begin = static_cast<byte_type>(v);
-  return begin + 1;
-}
-
-inline byte_type* write_vlong(uint64_t v, byte_type* begin) {
-  while (v >= uint64_t(0x80)) {
-    *begin++ = static_cast<byte_type>(v | uint64_t(0x80));
-    v >>= 7;
-  }
-
-  *begin = static_cast<byte_type>(v);
-  return begin + 1;
-}
-
-inline std::pair<uint32_t, const byte_type*> read_vint(const byte_type* begin) {
-  uint32_t out = *begin++; if (!(out & 0x80)) return std::make_pair(out, begin);
-
-  uint32_t b;
-  out -= 0x80;
-  b = *begin++; out += b << 7; if (!(b & 0x80)) return std::make_pair(out, begin);
-  out -= 0x80 << 7;
-  b = *begin++; out += b << 14; if (!(b & 0x80)) return std::make_pair(out, begin);
-  out -= 0x80 << 14;
-  b = *begin++; out += b << 21; if (!(b & 0x80)) return std::make_pair(out, begin);
-  out -= 0x80 << 21;
-  b = *begin++; out += b << 28;
-  // last byte always has MSB == 0, so we don't need to subtract 0x80
-
-  return std::make_pair(out, begin);
-}
-
-inline std::pair<uint64_t, const byte_type*> read_vlong(const byte_type* begin) {
-  const uint64_t MASK = 0x80;
-  uint64_t out = *begin++; if (!(out & MASK)) return std::make_pair(out, begin);
-
-  uint64_t b;
-  out -= MASK;
-  b = *begin++; out += b << 7; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 7;
-  b = *begin++; out += b << 14; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 14;
-  b = *begin++; out += b << 21; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 21;
-  b = *begin++; out += b << 28; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 28;
-  b = *begin++; out += b << 35; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 35;
-  b = *begin++; out += b << 42; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 42;
-  b = *begin++; out += b << 49; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 49;
-  b = *begin++; out += b << 56; if (!(b & MASK)) return std::make_pair(out, begin);
-  out -= MASK << 56;
-  b = *begin++; out += b << 63;
-  // last byte always has MSB == 0, so we don't need to subtract MASK
-
-  return std::make_pair(out, begin);
-}
 
 template<
   typename StringType,
   typename TraitsType = typename StringType::traits_type
-> StringType to_string(const byte_type* const begin) {
+> StringType to_string(const byte_type* begin) {
   typedef typename TraitsType::char_type char_type;
 
-  const auto res = read_vint(begin);
+  const auto size = irs::vread<uint32_t>(begin);
 
   return StringType(
-    reinterpret_cast<const char_type*>(res.second),
-    res.first
+    reinterpret_cast<const char_type*>(begin),
+    size
   );
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @returns number of bytes required to store value in variable length format
-////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE uint32_t vencode_size_32(uint32_t value) {
-  // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
-
-  // OR 0x1 since log2_floor_32 does not accept 0
-  const uint32_t log2 = math::log2_floor_32(value | 0x1);
-
-  // division within range [1;31]
-  return (73 + 9*log2) >> 6;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @returns number of bytes required to store value in variable length format
-////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE uint64_t vencode_size_64(uint64_t value) {
-  // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
-
-  // OR 0x1 since log2_floor_64 does not accept 0
-  const uint64_t log2 = math::log2_floor_64(value | 0x1);
-
-  // division within range [1;63]
-  return (73 + 9*log2) >> 6;
-}
-
-template<typename T>
-struct vencode_traits {
-  static size_t size(T value);
-  CONSTEXPR static size_t max_size();
-  static byte_type* write(T value, byte_type* dst);
-  static std::pair<T, const byte_type*> read(const byte_type* begin);
-}; // vencode_traits
-
-template<>
-struct vencode_traits<uint32_t>: ::detail::vencode_traits_base<size_t, 5> {
-  typedef uint32_t type;
-
-  static size_t size(type v) {
-    return vencode_size_32(v);
-  }
-
-  CONSTEXPR static size_t max_size() {
-    return const_max_size; // may take up to 5 bytes
-  }
-
-  static byte_type* write(type v, byte_type* begin) {
-    return write_vint(v, begin);
-  }
-
-  static std::pair<type, const byte_type*> read(const byte_type* begin) {
-    return read_vint(begin);
-  }
-}; // vencode_traits<uint32_t>
-
-template<>
-struct vencode_traits<uint64_t>: ::detail::vencode_traits_base<size_t, 10> {
-  typedef uint64_t type;
-
-  static size_t size(type v) {
-    return vencode_size_64(v);
-  }
-
-  CONSTEXPR static size_t max_size() {
-    return const_max_size; // may take up to 10 bytes
-  }
-
-  static byte_type* write(type v, byte_type* begin) {
-    return write_vlong(v, begin);
-  }
-
-  static std::pair<type, const byte_type*> read(const byte_type* begin) {
-    return read_vlong(begin);
-  }
-}; // vencode_traits<uint64_t>
-
-// MacOS size_t is a different type from any of the above
-#if defined(__APPLE__)
-  template<>
-  struct vencode_traits<size_t>: ::detail::vencode_traits_base<size_t, 10> {
-    typedef size_t type;
-
-    static size_t size(type v) {
-      return vencode_size_64(v);
-    }
-
-    CONSTEXPR static size_t max_size() {
-      return const_max_size; // may take up to 10 bytes
-    }
-
-    static byte_type* write(type v, byte_type* begin) {
-      return write_vlong(v, begin);
-    }
-
-    static std::pair<type, const byte_type*> read(const byte_type* begin) {
-      return read_vlong(begin);
-    }
-  };
-#endif
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
@@ -318,12 +132,12 @@ T read_enum(data_input& in) {
   );
 }
 
-inline void write_size( data_output& out, size_t size ) {
-  ::read_write_helper<size_t>::write( out, size );
+inline void write_size(data_output& out, size_t size) {
+  ::read_write_helper<size_t>::write(out, size);
 }
 
-inline size_t read_size( data_input& in ) {
-  return ::read_write_helper<size_t>::read( in );
+inline size_t read_size(data_input& in) {
+  return ::read_write_helper<size_t>::read(in);
 }
 
 void IRESEARCH_API write_zvfloat(data_output& out, float_t v);
@@ -334,23 +148,23 @@ void IRESEARCH_API write_zvdouble(data_output& out, double_t v);
 
 double_t IRESEARCH_API read_zvdouble(data_input& in);
 
-inline void write_zvint( data_output& out, int32_t v ) {
-  out.write_vint( zig_zag_encode32( v ) );
+inline void write_zvint(data_output& out, int32_t v) {
+  out.write_vint(zig_zag_encode32(v));
 }
 
-inline int32_t read_zvint( data_input& in ) {
-  return zig_zag_decode32( in.read_vint() );
+inline int32_t read_zvint(data_input& in) {
+  return zig_zag_decode32(in.read_vint());
 }
 
-inline void write_zvlong( data_output& out, int64_t v ) {
-  out.write_vlong( zig_zag_encode64( v ) );
+inline void write_zvlong(data_output& out, int64_t v) {
+  out.write_vlong(zig_zag_encode64(v));
 }
 
-inline int64_t read_zvlong( data_input& in ) {
-  return zig_zag_decode64( in.read_vlong() );
+inline int64_t read_zvlong(data_input& in) {
+  return zig_zag_decode64(in.read_vlong());
 }
 
-inline void write_string( data_output& out, const char* s, size_t len ) {
+inline void write_string(data_output& out, const char* s, size_t len) {
   assert(len < integer_traits<uint32_t>::const_max);
   out.write_vint(uint32_t(len));
   out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
@@ -407,7 +221,99 @@ inline ContType read_strings(data_input& in) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                     skip helpers 
+// --SECTION--                                                    bytes helpers
+// ----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' array of data pointed by 'value' of length 'size'
+/// @return bytes written
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename T>
+size_t write_bytes(OutputIterator& out, const T* value, size_t size) {
+  auto* data = reinterpret_cast<const byte_type*>(value);
+
+  size = sizeof(T) * size;
+
+  // write data out byte-by-byte
+  for (auto i = size; i; --i) {
+    *out = *data;
+    ++out;
+    ++data;
+  }
+
+  return size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' raw byte representation of data in 'value'
+/// @return bytes written
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename T>
+size_t write_bytes(OutputIterator& out, const T& value) {
+  return write_bytes(out, &value, 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a value of the specified type from 'in'
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+T& read_ref(const byte_type*& in) {
+  auto& data = reinterpret_cast<T&>(*in);
+
+  in += sizeof(T); // increment past value
+
+  return data;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read an array of the specified type and length of 'size' from 'in'
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+T* read_ref(const byte_type*& in, size_t size) {
+  auto* data = reinterpret_cast<T*>(&(*in));
+
+  in += sizeof(T) * size; // increment past value
+
+  return data;
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                   string helpers
+// ----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' size + data pointed by 'value' of length 'size'
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename CharType>
+void vwrite_string(OutputIterator& out, const CharType* value, size_t size) {
+  vwrite<uint64_t>(out, size);
+  write_bytes(out, value, size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write to 'out' data in 'value'
+////////////////////////////////////////////////////////////////////////////////
+template<typename OutputIterator, typename StringType>
+void vwrite_string(OutputIterator& out, const StringType& value) {
+  vwrite_string(out, value.c_str(), value.size());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a string + size into a value of type 'StringType' from 'in'
+////////////////////////////////////////////////////////////////////////////////
+template<
+  typename StringType,
+  typename TraitsType = typename StringType::traits_type
+>
+StringType vread_string(const byte_type*& in) {
+  typedef typename TraitsType::char_type char_type;
+  const auto size = vread<uint64_t>(in);
+
+  return StringType(read_ref<const char_type>(in, size), size);
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                     skip helpers
 // ----------------------------------------------------------------------------
 
 const uint64_t SKIP_BUFFER_SIZE = 1024U;
@@ -422,12 +328,12 @@ IRESEARCH_API void skip(
 // ----------------------------------------------------------------------------
 
 FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
-  assert(val <= 0x7FFFFFFFFFFFFFFFLL);
+  assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
   return (val << 1) | (b ? 1 : 0);
 }
 
 FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) {
-  assert(val <= 0x7FFFFFFF);
+  assert(val <= UINT32_C(0x7FFFFFFF));
   return (val << 1) | (b ? 1 : 0);
 }
 
@@ -445,27 +351,34 @@ FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
 // --SECTION--                                                      I/O streams
 // ----------------------------------------------------------------------------
 
-class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
+//////////////////////////////////////////////////////////////////////////////
+/// @class bytes_output
+//////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API bytes_output final : public data_output {
  public:
   bytes_output() = default;
-  explicit bytes_output( size_t capacity );
+  explicit bytes_output(size_t capacity);
   bytes_output(bytes_output&& rhs) NOEXCEPT;
   bytes_output& operator=(bytes_output&& rhs) NOEXCEPT;
 
   void reset(size_t size = 0) { 
-    this->size_ = size; 
+    buf_.resize(size);
   }
 
-  virtual void write_byte( byte_type b ) override {
-    oversize(buf_, this->size() + 1).replace(this->size(), 1, 1, b);
-    this->data_ = buf_.data();
-    ++this->size_;
+  virtual void write_byte(byte_type b) override {
+    buf_ += b;
   }
 
-  virtual void write_bytes( const byte_type* b, size_t size ) override {
-    oversize(buf_, this->size() + size).replace(this->size(), size, b, size);
-    this->data_ = buf_.data();
-    this->size_ += size;
+  virtual void write_bytes(const byte_type* b, size_t size) override {
+    buf_.append(b, size);
+  }
+
+  size_t size() const NOEXCEPT {
+    return buf_.size();
+  }
+
+  operator bytes_ref() const NOEXCEPT {
+    return buf_;
   }
 
   virtual void close() override { }
@@ -474,25 +387,28 @@ class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // bytes_output
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class bytes_ref_input
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API bytes_ref_input : public index_input {
  public:
-  bytes_ref_input();
+  bytes_ref_input() = default;
   explicit bytes_ref_input(const bytes_ref& data);
 
   void skip(size_t size) NOEXCEPT {
-    assert(pos_ + size < data_.size());
+    assert(pos_ + size <= data_.end());
     pos_ += size;
   }
 
   virtual void seek(size_t pos) NOEXCEPT override {
-    assert(pos < data_.size());
-    pos_ = pos;
+    assert(data_.begin() + pos <= data_.end());
+    pos_ = data_.begin() + pos;
   }
 
   virtual size_t file_pointer() const NOEXCEPT override {
-    return pos_;
+    return std::distance(data_.begin(), pos_);
   }
 
   virtual size_t length() const NOEXCEPT override {
@@ -500,16 +416,22 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   }
 
   virtual bool eof() const NOEXCEPT override {
-    return pos_ >= data_.size();
+    return pos_ >= data_.end();
   }
 
-  virtual byte_type read_byte() override;
-  virtual size_t read_bytes(byte_type* b, size_t size) override;
-  void read_bytes(bstring& buf, size_t size); // append to buf
+  virtual byte_type read_byte() override final {
+    assert(pos_ < data_.end());
+    return *pos_++;
+  }
+
+  virtual size_t read_bytes(byte_type* b, size_t size) override final;
+
+  // append to buf
+  void read_bytes(bstring& buf, size_t size);
 
   void reset(const byte_type* data, size_t size) NOEXCEPT {
     data_ = bytes_ref(data, size);
-    pos_ = 0;
+    pos_ = data;
   }
 
   void reset(const bytes_ref& ref) NOEXCEPT {
@@ -528,14 +450,35 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return dup();
   }
 
+  virtual int32_t read_int() override final {
+    return irs::read<uint32_t>(pos_);
+  }
+
+  virtual int64_t read_long() override final {
+    return irs::read<uint64_t>(pos_);
+  }
+
+  virtual uint64_t read_vlong() override final {
+    return irs::vread<uint64_t>(pos_);
+  }
+
+  virtual uint32_t read_vint() override final {
+    return irs::vread<uint32_t>(pos_);
+  }
+
+  virtual int64_t checksum(size_t offset) const override final;
+
  private:
   bytes_ref data_;
-  size_t pos_;
+  const byte_type* pos_{ data_.begin() };
 }; // bytes_ref_input
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class bytes_input
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
  public:
-  bytes_input();
+  bytes_input() = default;
   explicit bytes_input(const bytes_ref& data);
   bytes_input(bytes_input&& rhs) NOEXCEPT;
   bytes_input& operator=(bytes_input&& rhs) NOEXCEPT;
@@ -544,17 +487,17 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
   void read_from(data_input& in, size_t size);
 
   void skip(size_t size) {
-    assert(pos_ + size <= this->size());
+    assert(pos_ + size <= this->end());
     pos_ += size;
   }
 
   void seek(size_t pos) {
-    assert(pos <= this->size());
-    pos_ = pos;
+    assert(this->begin() + pos <= this->end());
+    pos_ = this->begin() + pos;
   }
 
   virtual size_t file_pointer() const override { 
-    return pos_; 
+    return std::distance(this->begin(), pos_);
   }
 
   virtual size_t length() const override { 
@@ -562,19 +505,41 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
   }
 
   virtual bool eof() const override {
-    return pos_ >= this->size();
+    return pos_ >= this->end();
   }
 
-  virtual byte_type read_byte() override;
-  virtual size_t read_bytes(byte_type* b, size_t size) override;
-  void read_bytes(bstring& buf, size_t size); // append to buf
+  virtual byte_type read_byte() override final {
+    assert(pos_ < this->end());
+    return *pos_++;
+  }
+
+  virtual size_t read_bytes(byte_type* b, size_t size) override final;
+
+  // append to buf
+  void read_bytes(bstring& buf, size_t size);
+
+  virtual int32_t read_int() override final {
+    return irs::read<uint32_t>(pos_);
+  }
+
+  virtual int64_t read_long() override final {
+    return irs::read<uint64_t>(pos_);
+  }
+
+  virtual uint32_t read_vint() override final {
+    return irs::vread<uint32_t>(pos_);
+  }
+
+  virtual uint64_t read_vlong() override final {
+    return irs::vread<uint64_t>(pos_);
+  }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   bstring buf_;
-  size_t pos_;
+  const byte_type* pos_{ buf_.c_str() };
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // bytes_input
 
 NS_BEGIN(encode)
 
@@ -651,7 +616,7 @@ IRESEARCH_API uint32_t write_block(
 IRESEARCH_API uint32_t write_block(
   data_output& out,
   const uint64_t* RESTRICT decoded,
-  uint32_t size,
+  uint64_t size, // same type as 'decoded'/'encoded'
   uint64_t* RESTRICT encoded
 );
 

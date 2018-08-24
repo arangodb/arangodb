@@ -25,11 +25,15 @@
 
 using namespace arangodb;
 
+/// @brief rocksdb format version
+char arangodb::rocksDBFormatVersion() { return '1'; }
+
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
 static rocksdb::Slice Placeholder(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&placeholder),
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &placeholder),
     1);
 
 static RocksDBEntryType database = arangodb::RocksDBEntryType::Database;
@@ -85,10 +89,16 @@ static rocksdb::Slice FulltextIndexValue(
         &fulltextIndexValue),
     1);
 
-static RocksDBEntryType geoIndexValue = RocksDBEntryType::GeoIndexValue;
-static rocksdb::Slice GeoIndexValue(
+static RocksDBEntryType geoIndexValue = RocksDBEntryType::LegacyGeoIndexValue;
+static rocksdb::Slice LegacyGeoIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &geoIndexValue),
+    1);
+
+static RocksDBEntryType s2IndexValue = RocksDBEntryType::GeoIndexValue;
+static rocksdb::Slice GeoIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &s2IndexValue),
     1);
 
 static RocksDBEntryType view = RocksDBEntryType::View;
@@ -150,8 +160,10 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "ReplicationApplierConfig";
     case arangodb::RocksDBEntryType::FulltextIndexValue:
       return "FulltextIndexValue";
+    case arangodb::RocksDBEntryType::LegacyGeoIndexValue:
+      return "LegacyGeoIndexValue";
     case arangodb::RocksDBEntryType::GeoIndexValue:
-      return "GeoIndexValue";
+      return "SphericalIndexValue";
     case arangodb::RocksDBEntryType::IndexEstimateValue:
       return "IndexEstimateValue";
     case arangodb::RocksDBEntryType::KeyGeneratorValue:
@@ -174,6 +186,8 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "CollectionRename";
     case arangodb::RocksDBLogType::CollectionChange:
       return "CollectionChange";
+    case arangodb::RocksDBLogType::CollectionTruncate:
+      return "CollectionTruncate";
     case arangodb::RocksDBLogType::IndexCreate:
       return "IndexCreate";
     case arangodb::RocksDBLogType::IndexDrop:
@@ -184,24 +198,28 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
       return "ViewDrop";
     case arangodb::RocksDBLogType::ViewChange:
       return "ViewChange";
-    case arangodb::RocksDBLogType::ViewRename:
-      return "ViewRename";
 #ifdef USE_IRESEARCH
     case arangodb::RocksDBLogType::IResearchLinkDrop:
       return "IResearchLinkDrop";
 #endif
     case arangodb::RocksDBLogType::BeginTransaction:
       return "BeginTransaction";
+    case arangodb::RocksDBLogType::CommitTransaction:
+      return "CommitTransaction";
     case arangodb::RocksDBLogType::DocumentOperationsPrologue:
       return "DocumentOperationsPrologue";
     case arangodb::RocksDBLogType::DocumentRemove:
       return "DocumentRemove";
+    case arangodb::RocksDBLogType::DocumentRemoveV2:
+      return "DocumentRemoveV2";
     case arangodb::RocksDBLogType::DocumentRemoveAsPartOfUpdate:
       return "IgnoreRemoveAsPartOfUpdate";
     case arangodb::RocksDBLogType::SinglePut:
       return "SinglePut";
     case arangodb::RocksDBLogType::SingleRemove:
       return "SingleRemove";
+    case arangodb::RocksDBLogType::SingleRemoveV2:
+      return "SingleRemoveV2";
     case arangodb::RocksDBLogType::Invalid:
       return "Invalid";
   }
@@ -230,6 +248,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueVPackIndexValue;
     case RocksDBEntryType::FulltextIndexValue:
       return FulltextIndexValue;
+    case RocksDBEntryType::LegacyGeoIndexValue:
+      return LegacyGeoIndexValue;
     case RocksDBEntryType::GeoIndexValue:
       return GeoIndexValue;
     case RocksDBEntryType::View:
@@ -247,7 +267,3 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Placeholder;  // avoids warning - errorslice instead ?!
 }
 
-
-char arangodb::rocksDBFormatVersion() {
-  return '0';
-}

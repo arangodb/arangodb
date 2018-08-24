@@ -39,9 +39,11 @@
 
 using namespace arangodb;
 
-MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
-                                   std::string const& name,
-                                   CollectionExport::Restrictions const& restrictions)
+MMFilesCollectionExport::MMFilesCollectionExport(
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions
+)
     : _collection(nullptr),
       _ditch(nullptr),
       _name(name),
@@ -49,7 +51,7 @@ MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
       _restrictions(restrictions) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard.reset(new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
+  _guard.reset(new arangodb::CollectionGuard(&vocbase, _name.c_str(), false));
 
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
@@ -65,7 +67,9 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
 
   // try to acquire the exclusive lock on the compaction
-  engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
+  engine->preventCompaction(
+    &(_collection->vocbase()),
+    [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
     _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
                  ->ditches()
@@ -79,11 +83,11 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     static uint64_t const SleepTime = 10000;
-
     uint64_t tries = 0;
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+
     while (++tries < maxTries) {
       if (mmColl->isFullyCollected()) {
         break;
@@ -98,13 +102,15 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     // already locked by guard above
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
     Result res = trx.begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
-    size_t maxDocuments = _collection->numberDocuments(&trx);
+
+    size_t maxDocuments = _collection->numberDocuments(&trx, transaction::CountType::Normal);
+
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {

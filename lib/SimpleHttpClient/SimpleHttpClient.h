@@ -93,10 +93,7 @@ struct SimpleHttpClientParams {
 
   void setJwt(std::string const& jwt) { _jwt = jwt; }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief sets username and password
-  ////////////////////////////////////////////////////////////////////////////////
-
+  // sets username and password
   void setUserNamePassword(char const* prefix,
                            std::string const& username,
                            std::string const& password) {
@@ -224,7 +221,7 @@ class SimpleHttpClient {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief close connection, go to state IN_CONNECT and clear the input
-  /// buffer. This is used to organise a retry of the connection.
+  /// buffer. This is used to organize a retry of the connection.
   //////////////////////////////////////////////////////////////////////////////
 
   void close();

@@ -345,7 +345,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   //      }
 
   TRI_GET_GLOBAL_STRING(AuthorizedKey);
-  if (request->authorized()) {
+  if (request->authenticated()) {
     req->ForceSet(AuthorizedKey, v8::True(isolate));
   } else {
     req->ForceSet(AuthorizedKey, v8::False(isolate));
@@ -415,7 +415,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
-
+  // intentional copy, as we will modify the headers later
   auto headers = request->headers();
 
   TRI_GET_GLOBAL_STRING(HeadersKey);
@@ -431,7 +431,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       }
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(isolate, body));
-      headers["content-length"] = StringUtils::itoa(request->contentLength());
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
       // FIXME not every VPack can be converted to JSON
@@ -443,8 +443,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
           << jsonString;
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString));
-      headers["content-length"] = StringUtils::itoa(jsonString.size());
-      headers["content-type"] = StaticStrings::MimeTypeJson;
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
+      headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
     } else {
       throw std::logic_error("unhandled request type");
     }
@@ -526,7 +526,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(ParametersKey);
   req->ForceSet(ParametersKey, valuesObject);
 
-  // copy cookie -- only for http protocl
+  // copy cookie -- only for http protocol
   if (request->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
     v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
 
@@ -591,8 +591,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         break;
 
       case Endpoint::TransportType::VST:
-        response->setHeader(arangodb::StaticStrings::ContentTypeHeader,
-                            contentType);
+        response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader,
+                              contentType);
         break;
 
       default:
@@ -1014,7 +1014,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the action name
   TRI_Utf8ValueNFC utf8name(args[0]);
 
-  if (*utf8name == 0) {
+  if (*utf8name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<name> must be an UTF-8 string");
   }
 
@@ -1422,9 +1422,8 @@ static int clusterSendToAllServers(
   auto reqBodyString = std::make_shared<std::string>(body);
 
   DBServers = ci->getCurrentDBServers();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }

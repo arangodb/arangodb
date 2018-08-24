@@ -54,11 +54,11 @@ struct MMFilesHashIndexHelper {
   MMFilesHashIndexHelper(size_t n, bool allowExpansion)
     : _numFields(n), _allowExpansion(allowExpansion) {}
 
-  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+  static inline uint64_t HashKey(VPackSlice const* key) {
     return MMFilesHashIndexElement::hash(*key);
   }
 
-  static inline uint64_t HashElement(void*, MMFilesHashIndexElement const* element, bool byKey) {
+  static inline uint64_t HashElement(MMFilesHashIndexElement const* element, bool byKey) {
     uint64_t hash = element->hash();
 
     if (byKey) {
@@ -208,7 +208,6 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   /// @brief Construct an MMFilesHashIndexIterator based on Ast Conditions
   MMFilesHashIndexIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            MMFilesHashIndex const* index,
                            arangodb::aql::AstNode const*,
                            arangodb::aql::Variable const*);
@@ -218,6 +217,7 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "hash-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -226,50 +226,26 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   MMFilesHashIndexLookupBuilder _lookups;
   std::vector<MMFilesHashIndexElement*> _buffer;
   size_t _posInBuffer;
-};
-
-class MMFilesHashIndexIteratorVPack final : public IndexIterator {
- public:
-  /// @brief Construct an MMFilesHashIndexIterator based on VelocyPack
-  MMFilesHashIndexIteratorVPack(
-      LogicalCollection* collection, transaction::Methods* trx,
-      ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
-      std::unique_ptr<arangodb::velocypack::Builder>& searchValues);
-
-  ~MMFilesHashIndexIteratorVPack();
-
-  char const* typeName() const override { return "hash-index-iterator-vpack"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  MMFilesHashIndex const* _index;
-  std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
-  arangodb::velocypack::ArrayIterator _iterator;
-  std::vector<MMFilesHashIndexElement*> _buffer;
-  size_t _posInBuffer;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   friend class MMFilesHashIndexIterator;
-  friend class MMFilesHashIndexIteratorVPack;
 
  public:
   MMFilesHashIndex() = delete;
 
-  MMFilesHashIndex(TRI_idx_iid_t, LogicalCollection*,
-                   arangodb::velocypack::Slice const&);
+  MMFilesHashIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesHashIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
 
   char const* typeName() const override { return "hash"; }
-
-  bool allowExpansion() const override { return true; }
 
   bool canBeDropped() const override { return true; }
 
@@ -277,8 +253,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 
@@ -313,7 +288,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

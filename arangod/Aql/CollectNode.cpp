@@ -23,6 +23,7 @@
 
 #include "CollectNode.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
@@ -55,9 +56,9 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() {}
 
 /// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // group variables
   nodes.add(VPackValue("groups"));
@@ -120,6 +121,29 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  switch (aggregationMethod()) {
+    case CollectOptions::CollectMethod::HASH:
+      return std::make_unique<HashedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::SORTED:
+      return std::make_unique<SortedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::DISTINCT:
+      return std::make_unique<DistinctCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::COUNT:
+      return std::make_unique<CountCollectBlock>(&engine, this);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot instantiate CollectBlock with "
+        "undetermined aggregation method"
+      );
+  }
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
                                   bool withProperties) const {
@@ -157,8 +181,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c =
-      new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
+  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables, aggregateVariables,
                       expressionVariable, outVariable, _keepVariables,
                       _variableMap, _count, _isDistinctCommand);
 
@@ -167,9 +190,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
-
-  return static_cast<ExecutionNode*>(c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief helper struct for finding variables
@@ -230,9 +251,7 @@ void CollectNode::getVariablesUsedHere(
     vars.emplace(p.second);
   }
   for (auto const& p : _aggregateVariables) {
-    if (Aggregator::requiresInput(p.second.second)) {
-      vars.emplace(p.second.first);
-    }
+    vars.emplace(p.second.first);
   }
 
   if (_expressionVariable != nullptr) {
@@ -245,14 +264,14 @@ void CollectNode::getVariablesUsedHere(
       // amongst our dependencies:
       UserVarFinder finder(1);
       auto myselfAsNonConst = const_cast<CollectNode*>(this);
-      myselfAsNonConst->walk(&finder);
+      myselfAsNonConst->walk(finder);
       if (finder.depth == 1) {
         // we are top level, let's run again with mindepth = 0
         finder.userVars.clear();
         finder.mindepth = 0;
         finder.depth = -1;
         finder.reset();
-        myselfAsNonConst->walk(&finder);
+        myselfAsNonConst->walk(finder);
       }
       for (auto& x : finder.userVars) {
         vars.emplace(x);
@@ -263,6 +282,11 @@ void CollectNode::getVariablesUsedHere(
       }
     }
   }
+}
+  
+void CollectNode::setAggregateVariables(
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
+  _aggregateVariables = aggregateVariables;
 }
 
 /// @brief estimateCost
@@ -277,7 +301,7 @@ double CollectNode::estimateCost(size_t& nrItems) const {
   // Nevertheless, the optimizer does not do much with CollectNodes
   // and thus this potential overestimation does not really matter.
 
-  if (_count && _groupVariables.empty()) {
+  if (_groupVariables.empty()) {
     // we are known to only produce a single output row
     nrItems = 1;
   } else {

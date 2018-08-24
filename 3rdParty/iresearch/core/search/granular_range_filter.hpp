@@ -78,7 +78,7 @@ class IRESEARCH_API by_granular_range: public filter {
 
   by_granular_range& field(std::string fld);
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
   template<Bound B>
   bool include() const { return Bound_Type::INCLUSIVE == get<B>::type(rng_); }
@@ -195,7 +195,7 @@ class IRESEARCH_API by_granular_range: public filter {
   }
 
  protected:
-  virtual bool equals(const filter& rhs) const override;
+  virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
  private:
   typedef detail::range<terms_t> range_t;

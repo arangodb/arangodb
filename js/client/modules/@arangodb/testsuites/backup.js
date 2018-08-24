@@ -59,6 +59,13 @@ const asRoot = {
 const syssys = 'systemsystem';
 const sysNoSys = 'systemnosystem';
 
+const testPaths = {
+  'BackupNoAuthSysTests': ['js/server/tests/backup/backup-system-incl-system.js'],
+  'BackupNoAuthNoSysTests': ['js/server/tests/backup/backup-system-excl-system.js'],
+  'BackupAuthSysTests': ['js/server/tests/backup/backup-system-incl-system.js'],
+  'BackupAuthNoSysTests': ['js/server/tests/backup/backup-system-excl-system.js']
+};
+
 const failPreStartMessage = (msg) => {
   return {
     state: false,
@@ -124,6 +131,7 @@ const generateDumpData = (options) => {
     log('Dump successful');
   } finally {
     log('Shutting down dump server');
+
     if (isAlive(instanceInfo, options)) {
       pu.shutdownInstance(instanceInfo, options);
     }
@@ -147,10 +155,11 @@ const setServerOptions = (options, serverOptions, customInstanceInfos, startStop
 
   startStopHandlers['path'] = path;
 
-  const auth = { };
   if (startStopHandlers.useAuth) {
     serverOptions['server.authentication'] = 'true';
     serverOptions['server.jwt-secret'] = 'haxxmann';
+    options['server.authentication'] = 'true';
+    options['server.jwt-secret'] = 'haxxmann';
   } else {
     serverOptions['server.authentication'] = 'false';
   }
@@ -204,7 +213,7 @@ const BackupNoAuthSysTests = (options) => {
   };
 
   return tu.performTests(options,
-                         ['js/server/tests/backup/backup-system-incl-system.js'],
+                         testPaths.BackupNoAuthSysTests,
                          'BackupNoAuthSysTests',
                          tu.runInArangosh, {},
                          startStopHandlers);
@@ -226,7 +235,7 @@ const BackupNoAuthNoSysTests = (options) => {
   };
 
   return tu.performTests(options,
-                         ['js/server/tests/backup/backup-system-excl-system.js'],
+                         testPaths.BackupNoAuthNoSysTests,
                          'BackupNoAuthNoSysTests',
                          tu.runInArangosh, {},
                          startStopHandlers);
@@ -248,7 +257,7 @@ const BackupAuthSysTests = (options) => {
   };
 
   return tu.performTests(options,
-                         ['js/server/tests/backup/backup-system-incl-system.js'],
+                         testPaths.BackupAuthSysTests,
                          'BackupAuthSysTests',
                          tu.runInArangosh, {},
                          startStopHandlers);
@@ -270,13 +279,14 @@ const BackupAuthNoSysTests = (options) => {
   };
 
   return tu.performTests(options,
-                         ['js/server/tests/backup/backup-system-excl-system.js'],
+                         testPaths.BackupAuthNoSysTests,
                          'BackupAuthNoSysTests',
                          tu.runInArangosh, {},
                          startStopHandlers);
 };
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['BackupNoAuthSysTests'] = BackupNoAuthSysTests;
   testFns['BackupNoAuthNoSysTests'] = BackupNoAuthNoSysTests;
   testFns['BackupAuthSysTests'] = BackupAuthSysTests;

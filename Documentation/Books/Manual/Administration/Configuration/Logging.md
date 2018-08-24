@@ -44,12 +44,14 @@ Some relevant log topics available in ArangoDB 3 are:
 - `compactor`: information about the collection datafile compactor
 - `datafiles`: datafile-related operations
 - `mmap`: information about memory-mapping operations (including msync)
-- `performance`: performance-releated messages
+- `performance`: performance-related messages
 - `queries`: executed AQL queries, slow queries
 - `replication`: replication-related info
 - `requests`: HTTP requests
 - `startup`: information about server startup and shutdown
 - `threads`: information about threads
+
+See more [log levels](../../../HTTP/AdministrationAndMonitoring/index.html#modify-and-return-the-current-server-log-level)
 
 ### Log outputs
 
@@ -108,6 +110,30 @@ local time-zone. If not specified, all dates and times in log messages
 will be printed in UTC / Zulu time. The date and time format used in logs
 is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
 is used, a `Z` will be appended to indicate Zulu time.
+
+
+### Escaping
+
+`--log.escape value`
+
+This option toggles the escaping of log output. 
+
+If set to `true`, the following characters in the log output are escaped:
+
+* the carriage return character (hex 0d)
+* the newline character (hex 0a)
+* the tabstop character (hex 09)
+* any other characters with an ordinal value less than hex 20
+
+If the option is set to `false`, no characters are escaped. Characters with
+an ordinal value less than hex 20 will not be printed in this mode but will
+be replaced with a space character (hex 20).
+
+A side effect of turning off the escaping is that it will reduce the CPU 
+overhead for the logging. However, this will only be noticeable when logging
+is set to a very verbose level (e.g. debug or trace).
+
+The default value for this option is `true`.
 
 
 ### Color logging

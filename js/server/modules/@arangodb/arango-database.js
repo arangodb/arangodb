@@ -95,6 +95,17 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief queryProfile execute a query with profiling information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._profileQuery = function (query, bindVars, options) {
+  options = options || {};
+  options.profile = 2;
+  query = { query: query, bindVars: bindVars, options: options };
+  require('@arangodb/aql/explainer').profileQuery(query);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief explains a query
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -127,6 +138,28 @@ ArangoDatabase.prototype._parse = function (query) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._executeTransaction = function (data) {
+  if (data && typeof data === 'object') {
+    data = Object.assign({}, data);
+    if (data.collections && typeof data.collections === 'object') {
+      data.collections = Object.assign({}, data.collections);
+      if (data.collections.read) {
+        if (!Array.isArray(data.collections.read)) {
+          data.collections.read = [data.collections.read];
+        }
+        data.collections.read = data.collections.read.map(
+          col => col.isArangoCollection ? col.name() : col
+        );
+      }
+      if (data.collections.write) {
+        if (!Array.isArray(data.collections.write)) {
+          data.collections.write = [data.collections.write];
+        }
+        data.collections.write = data.collections.write.map(
+          col => col.isArangoCollection ? col.name() : col
+        );
+      }
+    }
+  }
   return TRANSACTION(data);
 };
 
@@ -150,7 +183,7 @@ ArangoDatabase.prototype._drop = function (name, options) {
   } catch (err) {
     // ignore if the collection does not exist
     if (err instanceof ArangoError &&
-      err.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+      err.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
       return;
     }
     // rethrow exception
@@ -209,8 +242,8 @@ ArangoDatabase.prototype._index = function (id) {
 
   if (col === null) {
     err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+    err.errorNum = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code;
+    err.errorMessage = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message;
     throw err;
   }
 
@@ -251,8 +284,8 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 
   if (col === null) {
     err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+    err.errorNum = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code;
+    err.errorMessage = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message;
     throw err;
   }
 

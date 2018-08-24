@@ -1,178 +1,176 @@
-// string-weight.h
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: riley@google.com (Michael Riley)
-//
-// \file
 // String weight set and associated semiring operation definitions.
 
-#ifndef FST_LIB_STRING_WEIGHT_H__
-#define FST_LIB_STRING_WEIGHT_H__
+#ifndef FST_STRING_WEIGHT_H_
+#define FST_STRING_WEIGHT_H_
+
+#include <cstdlib>
 
 #include <list>
 #include <string>
+#include <vector>
 
 #include <fst/product-weight.h>
 #include <fst/union-weight.h>
 #include <fst/weight.h>
-#include <fst/string-weight-decl.h>
+
 
 namespace fst {
 
-const int kStringInfinity = -1;      // Label for the infinite string
-const int kStringBad = -2;           // Label for a non-string
-const char kStringSeparator = '_';   // Label separator in strings
+FST_CONSTEXPR const int kStringInfinity = -1;     // Label for the infinite string.
+FST_CONSTEXPR const int kStringBad = -2;          // Label for a non-string.
+FST_CONSTEXPR const char kStringSeparator = '_';  // Label separator in strings.
 
-template <typename L, StringType S>
-bool operator==(const StringWeight<L, S> &,  const StringWeight<L, S> &);
+// Determines whether to use left or right string semiring.  Includes a
+// 'restricted' version that signals an error if proper prefixes/suffixes
+// would otherwise be returned by Plus, useful with various
+// algorithms that require functional transducer input with the
+// string semirings.
+enum StringType { STRING_LEFT = 0, STRING_RIGHT = 1, STRING_RESTRICT = 2 };
+
+inline FST_CONSTEXPR StringType ReverseStringType(StringType s) {
+  return s == STRING_LEFT ? STRING_RIGHT
+                          : (s == STRING_RIGHT ? STRING_LEFT : STRING_RESTRICT);
+}
+
+// MSVC2013 doesn't support 'constexpr'
+#if defined _MSC_VER && _MSC_VER < 1900
+  #define REVERSE_STRING_TYPE(S)                               \
+   ((S) == STRING_LEFT ? STRING_RIGHT :                        \
+   ((S) == STRING_RIGHT ? STRING_LEFT :                        \
+     STRING_RESTRICT))
+#else
+  #define REVERSE_STRING_TYPE(S) ReverseStringType(S)
+#endif
+
+template <class>
+class StringWeightIterator;
+template <class>
+class StringWeightReverseIterator;
 
 // String semiring: (longest_common_prefix/suffix, ., Infinity, Epsilon)
-template <typename L, StringType S>
+template <typename Label_, StringType S = STRING_LEFT>
 class StringWeight {
  public:
-  typedef L Label;
-  typedef StringWeight<L, REVERSE_STRING_TYPE(S)> ReverseWeight;
+  using Label = Label_;
+  using ReverseWeight = StringWeight<Label, REVERSE_STRING_TYPE(S)>;
+  using Iterator = StringWeightIterator<StringWeight>;
+  using ReverseIterator = StringWeightReverseIterator<StringWeight>;
 
-  friend class StringWeightIterator<L, S>;
-  friend class StringWeightReverseIterator<L, S>;
-  friend bool operator==<>(const StringWeight<L, S> &,
-                           const StringWeight<L, S> &);
+  friend class StringWeightIterator<StringWeight>;
+  friend class StringWeightReverseIterator<StringWeight>;
 
-  StringWeight() { Init(); }
+  StringWeight() {}
 
-  StringWeight(const StringWeight&) = default;
-  StringWeight& operator=(const StringWeight&) = default;
-
-  StringWeight(StringWeight&& rhs)
-    : first_(rhs.first_),
-      rest_(std::move(rhs.rest_)) {
-    rhs.first_ = 0;
-  }
-  StringWeight& operator=(StringWeight&& rhs) {
-    if (this != &rhs) {
-      first_ = rhs.first_;
-      rhs.first_ = 0;
-      rest_ = std::move(rhs.rest_);
-    }
-    return *this;
+  template <typename Iterator>
+  StringWeight(const Iterator &begin, const Iterator &end) {
+    for (auto iter = begin; iter != end; ++iter) PushBack(*iter);
   }
 
-  template <typename Iter>
-  StringWeight(const Iter &begin, const Iter &end) {
-    Init();
-    for (Iter iter = begin; iter != end; ++iter)
-      PushBack(*iter);
+  explicit StringWeight(Label label) { PushBack(label); }
+
+  static const StringWeight &Zero() {
+    static const auto *const zero = new StringWeight(Label(kStringInfinity));
+    return *zero;
   }
 
-  explicit StringWeight(L l) { Init(); PushBack(l); }
-
-  static const StringWeight<L, S> &Zero() {
-    static const StringWeight<L, S> zero(kStringInfinity);
-    return zero;
+  static const StringWeight &One() {
+    static const auto *const one = new StringWeight();
+    return *one;
   }
 
-  static const StringWeight<L, S> &One() {
-    static const StringWeight<L, S> one;
-    return one;
-  }
-
-  static const StringWeight<L, S> &NoWeight() {
-    static const StringWeight<L, S> no_weight(kStringBad);
-    return no_weight;
+  static const StringWeight &NoWeight() {
+    static const auto *const no_weight = new StringWeight(Label(kStringBad));
+    return *no_weight;
   }
 
   static const string &Type() {
-    static const string type =
-        S == STRING_LEFT ? "left_string" :
-        (S == STRING_RIGHT ? "right_string" :  "restricted_string");
-    return type;
+    static const string *const type = new string(
+        S == STRING_LEFT
+            ? "left_string"
+            : (S == STRING_RIGHT ? "right_string" : "restricted_string"));
+    return *type;
   }
 
   bool Member() const;
 
-  istream &Read(istream &strm);
+  std::istream &Read(std::istream &strm);
 
-  ostream &Write(ostream &strm) const;
+  std::ostream &Write(std::ostream &strm) const;
 
   size_t Hash() const;
 
-  StringWeight<L, S> Quantize(float delta = kDelta) const {
-    return *this;
-  }
+  StringWeight Quantize(float delta = kDelta) const { return *this; }
 
   ReverseWeight Reverse() const;
 
-  static uint64 Properties() {
-    if (S == STRING_LEFT) {
-      return kLeftSemiring | kIdempotent;
-    } else if (S == STRING_RIGHT) {
-      return kRightSemiring | kIdempotent;
-    } else {
-      return kLeftSemiring | kRightSemiring | kIdempotent;
-    }
+  static FST_CONSTEXPR uint64 Properties() {
+    return kIdempotent |
+           (S == STRING_LEFT ? kLeftSemiring
+                             : (S == STRING_RIGHT
+                                    ? kRightSemiring
+                                    : /* S == STRING_RESTRICT */ kLeftSemiring |
+                                          kRightSemiring));
   }
 
   // These operations combined with the StringWeightIterator and
-  // StringWeightReverseIterator provide the access and mutation of
-  // the string internal elements.
-
-  // Common initializer among constructors.
-  void Init() { first_ = 0; }
+  // StringWeightReverseIterator provide the access and mutation of the string
+  // internal elements.
 
   // Clear existing StringWeight.
-  void Clear() { first_ = 0; rest_.clear(); }
+  void Clear() {
+    first_ = 0;
+    rest_.clear();
+  }
 
   size_t Size() const { return first_ ? rest_.size() + 1 : 0; }
 
-  void PushFront(L l) {
-    if (first_)
-      rest_.push_front(first_);
-    first_ = l;
+  void PushFront(Label label) {
+    if (first_) rest_.push_front(first_);
+    first_ = label;
   }
 
-  void PushBack(L l) {
-    if (!first_)
-      first_ = l;
-    else
-      rest_.push_back(l);
+  void PushBack(Label label) {
+    if (!first_) {
+      first_ = label;
+    } else {
+      rest_.push_back(label);
+    }
   }
 
  private:
-  L first_;         // first label in string (0 if empty)
-  list<L> rest_;    // remaining labels in string
+  Label first_ = 0;        // First label in string (0 if empty).
+  std::list<Label> rest_;  // Remaining labels in string.
 };
 
-
 // Traverses string in forward direction.
-template <typename L, StringType S>
+template <class StringWeight_>
 class StringWeightIterator {
  public:
-  explicit StringWeightIterator(const StringWeight<L, S>& w)
-      : first_(w.first_), rest_(w.rest_), init_(true),
-        iter_(rest_.begin()) {}
+  using Weight = StringWeight_;
+  using Label = typename Weight::Label;
+
+  explicit StringWeightIterator(const Weight &w)
+      : first_(w.first_), rest_(w.rest_), init_(true), iter_(rest_.begin()) {}
 
   bool Done() const {
-    if (init_) return first_ == 0;
-    else return iter_ == rest_.end();
+    if (init_) {
+      return first_ == 0;
+    } else {
+      return iter_ == rest_.end();
+    }
   }
 
-  const L& Value() const { return init_ ? first_ : *iter_; }
+  const Label &Value() const { return init_ ? first_ : *iter_; }
 
   void Next() {
-    if (init_) init_ = false;
-    else  ++iter_;
+    if (init_) {
+      init_ = false;
+    } else {
+      ++iter_;
+    }
   }
 
   void Reset() {
@@ -181,30 +179,35 @@ class StringWeightIterator {
   }
 
  private:
-  const L &first_;
-  const list<L> &rest_;
-  bool init_;   // in the initialized state?
-  typename list<L>::const_iterator iter_;
-
-  DISALLOW_COPY_AND_ASSIGN(StringWeightIterator);
+  const Label &first_;
+  const decltype(Weight::rest_) &rest_;
+  bool init_;  // In the initialized state?  
+  typename std::remove_reference<decltype (Weight::rest_)>::type::const_iterator iter_;
 };
 
-
 // Traverses string in backward direction.
-template <typename L, StringType S>
+template <class StringWeight_>
 class StringWeightReverseIterator {
  public:
-  explicit StringWeightReverseIterator(const StringWeight<L, S>& w)
-      : first_(w.first_), rest_(w.rest_), fin_(first_ == 0),
+  using Weight = StringWeight_;
+  using Label = typename Weight::Label;
+
+  explicit StringWeightReverseIterator(const Weight &w)
+      : first_(w.first_),
+        rest_(w.rest_),
+        fin_(first_ == Label()),
         iter_(rest_.rbegin()) {}
 
   bool Done() const { return fin_; }
 
-  const L& Value() const { return iter_ == rest_.rend() ? first_ : *iter_; }
+  const Label &Value() const { return iter_ == rest_.rend() ? first_ : *iter_; }
 
   void Next() {
-    if (iter_ == rest_.rend()) fin_ = true;
-    else  ++iter_;
+    if (iter_ == rest_.rend()) {
+      fin_ = true;
+    } else {
+      ++iter_;
+    }
   }
 
   void Reset() {
@@ -213,440 +216,496 @@ class StringWeightReverseIterator {
   }
 
  private:
-  const L &first_;
-  const list<L> &rest_;
-  bool fin_;   // in the final state?
-  typename list<L>::const_reverse_iterator iter_;
-
-  DISALLOW_COPY_AND_ASSIGN(StringWeightReverseIterator);
+  const Label &first_;
+  const decltype(Weight::rest_) &rest_;
+  bool fin_;  // In the final state?
+  typename std::remove_reference<decltype (Weight::rest_)>::type::const_reverse_iterator iter_;
 };
-
 
 // StringWeight member functions follow that require
 // StringWeightIterator or StringWeightReverseIterator.
 
-template <typename L, StringType S>
-inline istream &StringWeight<L, S>::Read(istream &strm) {
+template <typename Label, StringType S>
+inline std::istream &StringWeight<Label, S>::Read(std::istream &strm) {
   Clear();
   int32 size;
   ReadType(strm, &size);
-  for (int i = 0; i < size; ++i) {
-    L label;
+  for (int32 i = 0; i < size; ++i) {
+    Label label;
     ReadType(strm, &label);
     PushBack(label);
   }
   return strm;
 }
 
-template <typename L, StringType S>
-inline ostream &StringWeight<L, S>::Write(ostream &strm) const {
-  int32 size =  Size();
+template <typename Label, StringType S>
+inline std::ostream &StringWeight<Label, S>::Write(std::ostream &strm) const {
+  const int32 size = Size();
   WriteType(strm, size);
-  for (StringWeightIterator<L, S> iter(*this); !iter.Done(); iter.Next()) {
-    L label = iter.Value();
-    WriteType(strm, label);
+  for (Iterator iter(*this); !iter.Done(); iter.Next()) {
+    WriteType(strm, iter.Value());
   }
   return strm;
 }
 
-template <typename L, StringType S>
-inline bool StringWeight<L, S>::Member() const {
-  if (Size() != 1)
-    return true;
-  StringWeightIterator<L, S> iter(*this);
-  return iter.Value() != kStringBad;
+template <typename Label, StringType S>
+inline bool StringWeight<Label, S>::Member() const {
+  Iterator iter(*this);
+  return iter.Value() != Label(kStringBad);
 }
 
-template <typename L, StringType S>
-inline typename StringWeight<L, S>::ReverseWeight
-StringWeight<L, S>::Reverse() const {
-  ReverseWeight rw;
-  for (StringWeightIterator<L, S> iter(*this); !iter.Done(); iter.Next())
-    rw.PushFront(iter.Value());
-  return rw;
+template <typename Label, StringType S>
+inline typename StringWeight<Label, S>::ReverseWeight
+StringWeight<Label, S>::Reverse() const {
+  ReverseWeight rweight;
+  for (Iterator iter(*this); !iter.Done(); iter.Next()) {
+    rweight.PushFront(iter.Value());
+  }
+  return rweight;
 }
 
-template <typename L, StringType S>
-inline size_t StringWeight<L, S>::Hash() const {
+template <typename Label, StringType S>
+inline size_t StringWeight<Label, S>::Hash() const {
   size_t h = 0;
-  for (StringWeightIterator<L, S> iter(*this); !iter.Done(); iter.Next())
-    h ^= h<<1 ^ iter.Value();
+  for (Iterator iter(*this); !iter.Done(); iter.Next()) {
+    h ^= h << 1 ^ iter.Value();
+  }
   return h;
 }
 
-template <typename L, StringType S>
-inline bool operator==(const StringWeight<L, S> &w1,
-                       const StringWeight<L, S> &w2) {
-  if (w1.Size() != w2.Size())
-    return false;
-
-  StringWeightIterator<L, S> iter1(w1);
-  StringWeightIterator<L, S> iter2(w2);
-
-  for (; !iter1.Done() ; iter1.Next(), iter2.Next())
-    if (iter1.Value() != iter2.Value())
-      return false;
-
+template <typename Label, StringType S>
+inline bool operator==(const StringWeight<Label, S> &w1,
+                       const StringWeight<Label, S> &w2) {
+  if (w1.Size() != w2.Size()) return false;
+  using Iterator = typename StringWeight<Label, S>::Iterator;
+  Iterator iter1(w1);
+  Iterator iter2(w2);
+  for (; !iter1.Done(); iter1.Next(), iter2.Next()) {
+    if (iter1.Value() != iter2.Value()) return false;
+  }
   return true;
 }
 
-template <typename L, StringType S>
-inline bool operator!=(const StringWeight<L, S> &w1,
-                       const StringWeight<L, S> &w2) {
+template <typename Label, StringType S>
+inline bool operator!=(const StringWeight<Label, S> &w1,
+                       const StringWeight<Label, S> &w2) {
   return !(w1 == w2);
 }
 
-template <typename L, StringType S>
-inline bool ApproxEqual(const StringWeight<L, S> &w1,
-                        const StringWeight<L, S> &w2,
+template <typename Label, StringType S>
+inline bool ApproxEqual(const StringWeight<Label, S> &w1,
+                        const StringWeight<Label, S> &w2,
                         float delta = kDelta) {
   return w1 == w2;
 }
 
-template <typename L, StringType S>
-inline ostream &operator<<(ostream &strm, const StringWeight<L, S> &w) {
-  StringWeightIterator<L, S> iter(w);
-  if (iter.Done())
+template <typename Label, StringType S>
+inline std::ostream &operator<<(std::ostream &strm,
+                                const StringWeight<Label, S> &weight) {
+  typename StringWeight<Label, S>::Iterator iter(weight);
+  if (iter.Done()) {
     return strm << "Epsilon";
-  else if (iter.Value() == kStringInfinity)
+  } else if (iter.Value() == Label(kStringInfinity)) {
     return strm << "Infinity";
-  else if (iter.Value() == kStringBad)
+  } else if (iter.Value() == Label(kStringBad)) {
     return strm << "BadString";
-  else
+  } else {
     for (size_t i = 0; !iter.Done(); ++i, iter.Next()) {
-      if (i > 0)
-        strm << kStringSeparator;
+      if (i > 0) strm << kStringSeparator;
       strm << iter.Value();
     }
+  }
   return strm;
 }
 
-template <typename L, StringType S>
-inline istream &operator>>(istream &strm, StringWeight<L, S> &w) {
-  string s;
-  strm >> s;
-  if (s == "Infinity") {
-    w = StringWeight<L, S>::Zero();
-  } else if (s == "Epsilon") {
-    w = StringWeight<L, S>::One();
+template <typename Label, StringType S>
+inline std::istream &operator>>(std::istream &strm,
+                                StringWeight<Label, S> &weight) {
+  string str;
+  strm >> str;
+  using Weight = StringWeight<Label, S>;
+  if (str == "Infinity") {
+    weight = Weight::Zero();
+  } else if (str == "Epsilon") {
+    weight = Weight::One();
   } else {
-    w.Clear();
-    char *p = 0;
-    for (const char *cs = s.c_str(); !p || *p != '\0'; cs = p + 1) {
-      int l = strtoll(cs, &p, 10);
+    weight.Clear();
+    char *p = nullptr;
+    for (const char *cs = str.c_str(); !p || *p != '\0'; cs = p + 1) {
+      const Label label = strtoll(cs, &p, 10);
       if (p == cs || (*p != 0 && *p != kStringSeparator)) {
         strm.clear(std::ios::badbit);
         break;
       }
-      w.PushBack(l);
+      weight.PushBack(label);
     }
   }
   return strm;
 }
 
-
-// Default is for the restricted string semiring.  String
-// equality is required (for non-Zero() input. The restriction
-// is used in e.g. Determinize to ensure functional input.
-template <typename L, StringType S>  inline StringWeight<L, S>
-Plus(const StringWeight<L, S> &w1,
-     const StringWeight<L, S> &w2) {
-  if (!w1.Member() || !w2.Member())
-    return StringWeight<L, S>::NoWeight();
-  if (w1 == StringWeight<L, S>::Zero())
-    return w2;
-  if (w2 == StringWeight<L, S>::Zero())
-    return w1;
-
+// Default is for the restricted string semiring. String equality is required
+// (for non-Zero() input). The restriction is used (e.g., in determinization)
+// to ensure the input is functional.
+template <typename Label, StringType S>
+inline StringWeight<Label, S> Plus(const StringWeight<Label, S> &w1,
+                                   const StringWeight<Label, S> &w2) {
+  using Weight = StringWeight<Label, S>;
+  if (!w1.Member() || !w2.Member()) return Weight::NoWeight();
+  if (w1 == Weight::Zero()) return w2;
+  if (w2 == Weight::Zero()) return w1;
   if (w1 != w2) {
-    FSTERROR() << "StringWeight::Plus: unequal arguments "
+    FSTERROR() << "StringWeight::Plus: Unequal arguments "
                << "(non-functional FST?)"
-               << " w1 = " << w1
-               << " w2 = " << w2;
-    return StringWeight<L, S>::NoWeight();
+               << " w1 = " << w1 << " w2 = " << w2;
+    return Weight::NoWeight();
   }
-
   return w1;
 }
 
-
 // Longest common prefix for left string semiring.
-template <typename L>  inline StringWeight<L, STRING_LEFT>
-Plus(const StringWeight<L, STRING_LEFT> &w1,
-     const StringWeight<L, STRING_LEFT> &w2) {
-  if (!w1.Member() || !w2.Member())
-    return StringWeight<L, STRING_LEFT>::NoWeight();
-  if (w1 == StringWeight<L, STRING_LEFT>::Zero())
-    return w2;
-  if (w2 == StringWeight<L, STRING_LEFT>::Zero())
-    return w1;
-
-  StringWeight<L, STRING_LEFT> sum;
-  StringWeightIterator<L, STRING_LEFT> iter1(w1);
-  StringWeightIterator<L, STRING_LEFT> iter2(w2);
+template <typename Label>
+inline StringWeight<Label, STRING_LEFT> Plus(
+    const StringWeight<Label, STRING_LEFT> &w1,
+    const StringWeight<Label, STRING_LEFT> &w2) {
+  using Weight = StringWeight<Label, STRING_LEFT>;
+  if (!w1.Member() || !w2.Member()) return Weight::NoWeight();
+  if (w1 == Weight::Zero()) return w2;
+  if (w2 == Weight::Zero()) return w1;
+  Weight sum;
+  typename Weight::Iterator iter1(w1);
+  typename Weight::Iterator iter2(w2);
   for (; !iter1.Done() && !iter2.Done() && iter1.Value() == iter2.Value();
-       iter1.Next(), iter2.Next())
+       iter1.Next(), iter2.Next()) {
     sum.PushBack(iter1.Value());
+  }
   return sum;
 }
-
 
 // Longest common suffix for right string semiring.
-template <typename L>  inline StringWeight<L, STRING_RIGHT>
-Plus(const StringWeight<L, STRING_RIGHT> &w1,
-     const StringWeight<L, STRING_RIGHT> &w2) {
-  if (!w1.Member() || !w2.Member())
-    return StringWeight<L, STRING_RIGHT>::NoWeight();
-  if (w1 == StringWeight<L, STRING_RIGHT>::Zero())
-    return w2;
-  if (w2 == StringWeight<L, STRING_RIGHT>::Zero())
-    return w1;
-
-  StringWeight<L, STRING_RIGHT> sum;
-  StringWeightReverseIterator<L, STRING_RIGHT> iter1(w1);
-  StringWeightReverseIterator<L, STRING_RIGHT> iter2(w2);
+template <typename Label>
+inline StringWeight<Label, STRING_RIGHT> Plus(
+    const StringWeight<Label, STRING_RIGHT> &w1,
+    const StringWeight<Label, STRING_RIGHT> &w2) {
+  using Weight = StringWeight<Label, STRING_RIGHT>;
+  if (!w1.Member() || !w2.Member()) return Weight::NoWeight();
+  if (w1 == Weight::Zero()) return w2;
+  if (w2 == Weight::Zero()) return w1;
+  Weight sum;
+  typename Weight::ReverseIterator iter1(w1);
+  typename Weight::ReverseIterator iter2(w2);
   for (; !iter1.Done() && !iter2.Done() && iter1.Value() == iter2.Value();
-       iter1.Next(), iter2.Next())
+       iter1.Next(), iter2.Next()) {
     sum.PushFront(iter1.Value());
+  }
   return sum;
 }
 
-
-template <typename L, StringType S>
-inline StringWeight<L, S> Times(const StringWeight<L, S> &w1,
-                             const StringWeight<L, S> &w2) {
-  if (!w1.Member() || !w2.Member())
-    return StringWeight<L, S>::NoWeight();
-  if (w1 == StringWeight<L, S>::Zero() || w2 == StringWeight<L, S>::Zero())
-    return StringWeight<L, S>::Zero();
-
-  StringWeight<L, S> prod(w1);
-  for (StringWeightIterator<L, S> iter(w2); !iter.Done(); iter.Next())
-    prod.PushBack(iter.Value());
-
-  return prod;
+template <typename Label, StringType S>
+inline StringWeight<Label, S> Times(const StringWeight<Label, S> &w1,
+                                    const StringWeight<Label, S> &w2) {
+  using Weight = StringWeight<Label, S>;
+  if (!w1.Member() || !w2.Member()) return Weight::NoWeight();
+  if (w1 == Weight::Zero() || w2 == Weight::Zero()) return Weight::Zero();
+  Weight product(w1);
+  for (typename Weight::Iterator iter(w2); !iter.Done(); iter.Next()) {
+    product.PushBack(iter.Value());
+  }
+  return product;
 }
 
-
 // Left division in a left string semiring.
-template <typename L, StringType S> inline StringWeight<L, S>
-DivideLeft(const StringWeight<L, S> &w1, const StringWeight<L, S> &w2) {
-  if (!w1.Member() || !w2.Member())
-    return StringWeight<L, S>::NoWeight();
-
-  if (w2 == StringWeight<L, S>::Zero())
-    return StringWeight<L, S>(kStringBad);
-  else if (w1 == StringWeight<L, S>::Zero())
-    return StringWeight<L, S>::Zero();
-
-  StringWeight<L, S> div;
-  StringWeightIterator<L, S> iter(w1);
-  for (int i = 0; !iter.Done(); iter.Next(), ++i) {
-    if (i >= w2.Size())
-      div.PushBack(iter.Value());
+template <typename Label, StringType S>
+inline StringWeight<Label, S> DivideLeft(const StringWeight<Label, S> &w1,
+                                         const StringWeight<Label, S> &w2) {
+  using Weight = StringWeight<Label, S>;
+  if (!w1.Member() || !w2.Member()) return Weight::NoWeight();
+  if (w2 == Weight::Zero()) {
+    return Weight(Label(kStringBad));
+  } else if (w1 == Weight::Zero()) {
+    return Weight::Zero();
   }
-  return div;
+  Weight result;
+  typename Weight::Iterator iter(w1);
+  size_t i = 0;
+  for (; !iter.Done() && i < w2.Size(); iter.Next(), ++i) {
+  }
+  for (; !iter.Done(); iter.Next()) result.PushBack(iter.Value());
+  return result;
 }
 
 // Right division in a right string semiring.
-template <typename L, StringType S> inline StringWeight<L, S>
-DivideRight(const StringWeight<L, S> &w1, const StringWeight<L, S> &w2) {
-  if (!w1.Member() || !w2.Member())
-    return StringWeight<L, S>::NoWeight();
-
-  if (w2 == StringWeight<L, S>::Zero())
-    return StringWeight<L, S>(kStringBad);
-  else if (w1 == StringWeight<L, S>::Zero())
-    return StringWeight<L, S>::Zero();
-
-  StringWeight<L, S> div;
-  StringWeightReverseIterator<L, S> iter(w1);
-  for (int i = 0; !iter.Done(); iter.Next(), ++i) {
-    if (i >= w2.Size())
-      div.PushFront(iter.Value());
+template <typename Label, StringType S>
+inline StringWeight<Label, S> DivideRight(const StringWeight<Label, S> &w1,
+                                          const StringWeight<Label, S> &w2) {
+  using Weight = StringWeight<Label, S>;
+  if (!w1.Member() || !w2.Member()) return Weight::NoWeight();
+  if (w2 == Weight::Zero()) {
+    return Weight(Label(kStringBad));
+  } else if (w1 == Weight::Zero()) {
+    return Weight::Zero();
   }
-  return div;
+  Weight result;
+  typename Weight::ReverseIterator iter(w1);
+  size_t i = 0;
+  for (; !iter.Done() && i < w2.Size(); iter.Next(), ++i) {
+  }
+  for (; !iter.Done(); iter.Next()) result.PushFront(iter.Value());
+  return result;
 }
 
 // Default is the restricted string semiring.
-template <typename L, StringType S> inline StringWeight<L, S>
-Divide(const StringWeight<L, S> &w1,
-       const StringWeight<L, S> &w2,
-       DivideType typ) {
-  if (typ == DIVIDE_LEFT) {
+template <typename Label, StringType S>
+inline StringWeight<Label, S> Divide(const StringWeight<Label, S> &w1,
+                                     const StringWeight<Label, S> &w2,
+                                     DivideType divide_type) {
+  using Weight = StringWeight<Label, S>;
+  if (divide_type == DIVIDE_LEFT) {
     return DivideLeft(w1, w2);
-  } else if (typ == DIVIDE_RIGHT) {
+  } else if (divide_type == DIVIDE_RIGHT) {
     return DivideRight(w1, w2);
   } else {
     FSTERROR() << "StringWeight::Divide: "
-               << "only explicit left or right division is defined "
-               << "for the " << StringWeight<L, S>::Type() << " semiring";
-    return StringWeight<L, S>::NoWeight();
+               << "Only explicit left or right division is defined "
+               << "for the " << Weight::Type() << " semiring";
+    return Weight::NoWeight();
   }
 }
 
 // Left division in the left string semiring.
-template <typename L> inline StringWeight<L, STRING_LEFT>
-Divide(const StringWeight<L, STRING_LEFT> &w1,
-       const StringWeight<L, STRING_LEFT> &w2,
-       DivideType typ) {
-  if (typ != DIVIDE_LEFT) {
-    FSTERROR() << "StringWeight::Divide: only left division is defined "
+template <typename Label>
+inline StringWeight<Label, STRING_LEFT> Divide(
+    const StringWeight<Label, STRING_LEFT> &w1,
+    const StringWeight<Label, STRING_LEFT> &w2, DivideType divide_type) {
+  if (divide_type != DIVIDE_LEFT) {
+    FSTERROR() << "StringWeight::Divide: Only left division is defined "
                << "for the left string semiring";
-    return StringWeight<L, STRING_LEFT>::NoWeight();
+    return StringWeight<Label, STRING_LEFT>::NoWeight();
   }
   return DivideLeft(w1, w2);
 }
 
 // Right division in the right string semiring.
-template <typename L> inline StringWeight<L, STRING_RIGHT>
-Divide(const StringWeight<L, STRING_RIGHT> &w1,
-       const StringWeight<L, STRING_RIGHT> &w2,
-       DivideType typ) {
-  if (typ != DIVIDE_RIGHT) {
-    FSTERROR() << "StringWeight::Divide: only right division is defined "
+template <typename Label>
+inline StringWeight<Label, STRING_RIGHT> Divide(
+    const StringWeight<Label, STRING_RIGHT> &w1,
+    const StringWeight<Label, STRING_RIGHT> &w2, DivideType divide_type) {
+  if (divide_type != DIVIDE_RIGHT) {
+    FSTERROR() << "StringWeight::Divide: Only right division is defined "
                << "for the right string semiring";
-    return StringWeight<L, STRING_RIGHT>::NoWeight();
+    return StringWeight<Label, STRING_RIGHT>::NoWeight();
   }
   return DivideRight(w1, w2);
 }
 
-// Determines whether to use left, right, or (general) gallic semiring.
-// Includes a 'restricted' version that signals an error if proper
-// string prefixes/suffixes would otherwise be returned by string
-// Plus, useful with various algorithms that require functional
-// transducer input. Also includes 'min' version that changes the Plus
-// to keep only the lowest W weight string.
-enum GallicType { GALLIC_LEFT = 0, GALLIC_RIGHT = 1 , GALLIC_RESTRICT = 2,
-                  GALLIC_MIN = 3, GALLIC = 4
+// This function object generates StringWeights that are random integer strings
+// from {1, ... , alphabet_size)^{0, max_string_length} U { Zero }. This is
+// intended primarily for testing.
+template <class Label, StringType S>
+class WeightGenerate<StringWeight<Label, S>> {
+ public:
+  using Weight = StringWeight<Label, S>;
+
+  explicit WeightGenerate(bool allow_zero = true,
+                          size_t alphabet_size = kNumRandomWeights,
+                          size_t max_string_length = kNumRandomWeights)
+      : allow_zero_(allow_zero),
+        alphabet_size_(alphabet_size),
+        max_string_length_(max_string_length) {}
+
+  Weight operator()() const {
+    size_t n = rand() % (max_string_length_ + allow_zero_);  // NOLINT
+    if (allow_zero_ && n == max_string_length_) return Weight::Zero();
+    std::vector<Label> labels;
+    labels.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      labels.push_back(rand() % alphabet_size_ + 1);  // NOLINT
+    }
+    return Weight(labels.begin(), labels.end());
+  }
+
+ private:
+  // Permits Zero() and zero divisors.
+  const bool allow_zero_;
+  // Alphabet size for random weights.
+  const size_t alphabet_size_;
+  // Number of alternative random weights.
+  const size_t max_string_length_;
 };
 
-#define GALLIC_STRING_TYPE(G)                                   \
-   ((G) == GALLIC_LEFT ? STRING_LEFT :                          \
-    ((G) == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT))
+// Determines whether to use left, right, or (general) gallic semiring. Includes
+// a restricted version that signals an error if proper string prefixes or
+// suffixes would otherwise be returned by string Plus. This is useful with
+// algorithms that require functional transducer input. Also includes min
+// version that changes the Plus to keep only the lowest W weight string.
+enum GallicType {
+  GALLIC_LEFT = 0,
+  GALLIC_RIGHT = 1,
+  GALLIC_RESTRICT = 2,
+  GALLIC_MIN = 3,
+  GALLIC = 4
+};
 
-#define REVERSE_GALLIC_TYPE(G)                                  \
-   ((G) == GALLIC_LEFT ? GALLIC_RIGHT :                         \
-    ((G) == GALLIC_RIGHT ? GALLIC_LEFT :                        \
-     ((G) == GALLIC_RESTRICT ? GALLIC_RESTRICT :                \
+inline FST_CONSTEXPR StringType GallicStringType(GallicType g) {
+  return g == GALLIC_LEFT
+             ? STRING_LEFT
+             : (g == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT);
+}
+
+inline FST_CONSTEXPR GallicType ReverseGallicType(GallicType g) {
+  return g == GALLIC_LEFT
+             ? GALLIC_RIGHT
+             : (g == GALLIC_RIGHT
+                    ? GALLIC_LEFT
+                    : (g == GALLIC_RESTRICT
+                           ? GALLIC_RESTRICT
+                           : (g == GALLIC_MIN ? GALLIC_MIN : GALLIC)));
+}
+
+// MSVC2013 doesn't support 'constexpr'
+#if defined _MSC_VER && _MSC_VER < 1900
+  #define GALLIC_STRING_TYPE(G)                                   \
+     ((G) == GALLIC_LEFT ? STRING_LEFT :                          \
+      ((G) == GALLIC_RIGHT ? STRING_RIGHT : STRING_RESTRICT))
+
+  #define REVERSE_GALLIC_TYPE(G)                                  \
+   ((G) == GALLIC_LEFT ? GALLIC_RIGHT :                           \
+    ((G) == GALLIC_RIGHT ? GALLIC_LEFT :                          \
+     ((G) == GALLIC_RESTRICT ? GALLIC_RESTRICT :                  \
       ((G) == GALLIC_MIN ? GALLIC_MIN : GALLIC))))
+#else
+  #define GALLIC_STRING_TYPE(G) GallicStringType(G)
+  #define REVERSE_GALLIC_TYPE(G) ReverseGallicType(G)
+#endif
 
-// Product of string weight and an arbitray weight.
-template <class L, class W, GallicType G = GALLIC_LEFT>
+// Product of string weight and an arbitraryy weight.
+template <class Label, class W, GallicType G = GALLIC_LEFT>
 struct GallicWeight
-    : public ProductWeight<StringWeight<L, GALLIC_STRING_TYPE(G)>, W> {
-  typedef StringWeight<L, GALLIC_STRING_TYPE(G)> SW;
-  typedef GallicWeight<L, typename W::ReverseWeight, REVERSE_GALLIC_TYPE(G)>
-  ReverseWeight;
+    : public ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W> {
+  using ReverseWeight =
+      GallicWeight<Label, typename W::ReverseWeight, REVERSE_GALLIC_TYPE(G)>;
+  using SW = StringWeight<Label, GALLIC_STRING_TYPE(G)>;
 
-  using ProductWeight<SW, W>::Zero;
-  using ProductWeight<SW, W>::One;
-  using ProductWeight<SW, W>::NoWeight;
-  using ProductWeight<SW, W>::Quantize;
-  using ProductWeight<SW, W>::Reverse;
+  using ProductWeight<SW, W>::Properties;
 
   GallicWeight() {}
 
-  GallicWeight(SW w1, W w2)
-      : ProductWeight<SW, W>(w1, w2) {}
+  GallicWeight(SW w1, W w2) : ProductWeight<SW, W>(w1, w2) {}
 
-  explicit GallicWeight(const string &s, int *nread = 0)
+  explicit GallicWeight(const string &s, int *nread = nullptr)
       : ProductWeight<SW, W>(s, nread) {}
 
-  GallicWeight(const ProductWeight<SW, W> &w) : ProductWeight<SW, W>(w) {}
+  explicit GallicWeight(const ProductWeight<SW, W> &w)
+      : ProductWeight<SW, W>(w) {}
 
-  static const GallicWeight<L, W, G> &Zero() {
-    static const GallicWeight<L, W, G> zero(ProductWeight<SW, W>::Zero());
+  static const GallicWeight &Zero() {
+    static const GallicWeight zero(ProductWeight<SW, W>::Zero());
     return zero;
   }
 
-  static const GallicWeight<L, W, G> &One() {
-    static const GallicWeight<L, W, G> one(ProductWeight<SW, W>::One());
+  static const GallicWeight &One() {
+    static const GallicWeight one(ProductWeight<SW, W>::One());
     return one;
   }
 
-  static const GallicWeight<L, W, G> &NoWeight() {
-    static const GallicWeight<L, W, G> no_weight(
-        ProductWeight<SW, W>::NoWeight());
+  static const GallicWeight &NoWeight() {
+    static const GallicWeight no_weight(ProductWeight<SW, W>::NoWeight());
     return no_weight;
   }
 
   static const string &Type() {
-    static const string type =
-        G == GALLIC_LEFT ? "left_gallic" :
-        (G == GALLIC_RIGHT ? "right_gallic" :
-         (G == GALLIC_RESTRICT ? "restricted_gallic" :
-          (G == GALLIC_MIN ? "min_gallic" : "gallic")));
-    return type;
+    static const string *const type = new string(
+        G == GALLIC_LEFT
+            ? "left_gallic"
+            : (G == GALLIC_RIGHT
+                   ? "right_gallic"
+                   : (G == GALLIC_RESTRICT
+                          ? "restricted_gallic"
+                          : (G == GALLIC_MIN ? "min_gallic" : "gallic"))));
+    return *type;
   }
 
-  GallicWeight<L, W, G> Quantize(float delta = kDelta) const {
-    return ProductWeight<SW, W>::Quantize(delta);
+  GallicWeight Quantize(float delta = kDelta) const {
+    return GallicWeight(ProductWeight<SW, W>::Quantize(delta));
   }
 
-  ReverseWeight Reverse() const { return ProductWeight<SW, W>::Reverse(); }
+  ReverseWeight Reverse() const {
+    return ReverseWeight(ProductWeight<SW, W>::Reverse());
+  }
 };
 
-// Default plus
-template <class L, class W, GallicType G>
-inline GallicWeight<L, W, G> Plus(const GallicWeight<L, W, G> &w,
-                                   const GallicWeight<L, W, G> &v) {
-  return GallicWeight<L, W, G>(Plus(w.Value1(), v.Value1()),
-                               Plus(w.Value2(), v.Value2()));
+// Default plus.
+template <class Label, class W, GallicType G>
+inline GallicWeight<Label, W, G> Plus(const GallicWeight<Label, W, G> &w,
+                                      const GallicWeight<Label, W, G> &v) {
+  return GallicWeight<Label, W, G>(Plus(w.Value1(), v.Value1()),
+                                   Plus(w.Value2(), v.Value2()));
 }
 
-// Min gallic plus
-template <class L, class W>
-inline GallicWeight<L, W, GALLIC_MIN>
-Plus(const GallicWeight<L, W, GALLIC_MIN> &w1,
-     const GallicWeight<L, W, GALLIC_MIN> &w2) {
-  NaturalLess<W> less;
+// Min gallic plus.
+template <class Label, class W>
+inline GallicWeight<Label, W, GALLIC_MIN> Plus(
+    const GallicWeight<Label, W, GALLIC_MIN> &w1,
+    const GallicWeight<Label, W, GALLIC_MIN> &w2) {
+  static const NaturalLess<W> less;
   return less(w1.Value2(), w2.Value2()) ? w1 : w2;
 }
 
-template <class L, class W, GallicType G>
-inline GallicWeight<L, W, G> Times(const GallicWeight<L, W, G> &w,
-                                   const GallicWeight<L, W, G> &v) {
-  return GallicWeight<L, W, G>(Times(w.Value1(), v.Value1()),
-                               Times(w.Value2(), v.Value2()));
+template <class Label, class W, GallicType G>
+inline GallicWeight<Label, W, G> Times(const GallicWeight<Label, W, G> &w,
+                                       const GallicWeight<Label, W, G> &v) {
+  return GallicWeight<Label, W, G>(Times(w.Value1(), v.Value1()),
+                                   Times(w.Value2(), v.Value2()));
 }
 
-template <class L, class W, GallicType G>
-inline GallicWeight<L, W, G> Divide(const GallicWeight<L, W, G> &w,
-                                    const GallicWeight<L, W, G> &v,
-                                    DivideType typ = DIVIDE_ANY) {
-  return GallicWeight<L, W, G>(Divide(w.Value1(), v.Value1(), typ),
-                               Divide(w.Value2(), v.Value2(), typ));
+template <class Label, class W, GallicType G>
+inline GallicWeight<Label, W, G> Divide(const GallicWeight<Label, W, G> &w,
+                                        const GallicWeight<Label, W, G> &v,
+                                        DivideType divide_type = DIVIDE_ANY) {
+  return GallicWeight<Label, W, G>(Divide(w.Value1(), v.Value1(), divide_type),
+                                   Divide(w.Value2(), v.Value2(), divide_type));
 }
+
+// This function object generates gallic weights by calling an underlying
+// product weight generator. This is intended primarily for testing.
+template <class Label, class W, GallicType G>
+class WeightGenerate<GallicWeight<Label, W, G>>
+    : public WeightGenerate<
+          ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W>> {
+ public:
+  using Weight = GallicWeight<Label, W, G>;
+  using Generate = WeightGenerate<
+      ProductWeight<StringWeight<Label, GALLIC_STRING_TYPE(G)>, W>>;
+
+  explicit WeightGenerate(bool allow_zero = true) : generate_(allow_zero) {}
+
+  Weight operator()() const { return Weight(generate_()); }
+
+ private:
+  const Generate generate_;
+};
 
 // Union weight options for (general) GALLIC type.
-template <class L, class W>
+template <class Label, class W>
 struct GallicUnionWeightOptions {
-  typedef GallicUnionWeightOptions<L, W> ReverseOptions;
-  typedef GallicWeight<L, W, GALLIC_RESTRICT> GW;
-  typedef StringWeight<L, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> SW;
-  typedef StringWeightIterator<L, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> SI;
+  using ReverseOptions = GallicUnionWeightOptions<Label, W>;
+  using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
+  using SW = StringWeight<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)>;
+  using SI = StringWeightIterator<SW>;
 
-  // Military order
+  // Military order.
   struct Compare {
-    bool operator() (const GW &w1, const GW &w2) {
-
-      SW s1 = w1.Value1();
-      SW s2 = w2.Value1();
-      if (s1.Size() < s2.Size()) {
-        return true;
-      }
-      if (s1.Size() > s2.Size())
-        return false;
+    bool operator()(const GW &w1, const GW &w2) const {
+      const SW &s1 = w1.Value1();
+      const SW &s2 = w2.Value1();
+      if (s1.Size() < s2.Size()) return true;
+      if (s1.Size() > s2.Size()) return false;
       SI iter1(s1);
       SI iter2(s2);
       while (!iter1.Done()) {
-        L l1 = iter1.Value();
-        L l2 = iter2.Value();
-        if (l1 < l2)
-          return true;
-        if (l1 > l2)
-          return false;
+        const auto l1 = iter1.Value();
+        const auto l2 = iter2.Value();
+        if (l1 < l2) return true;
+        if (l1 > l2) return false;
         iter1.Next();
         iter2.Next();
       }
@@ -656,101 +715,119 @@ struct GallicUnionWeightOptions {
 
   // Adds W weights when string part equal.
   struct Merge {
-    GW operator()(const GW &w1, const GW &w2) {
+    GW operator()(const GW &w1, const GW &w2) const {
       return GW(w1.Value1(), Plus(w1.Value2(), w2.Value2()));
     }
   };
 };
 
 // Specialization for the (general) GALLIC type.
-template <class L, class W>
-struct GallicWeight <L, W, GALLIC>
-    : public UnionWeight<GallicWeight<L, W, GALLIC_RESTRICT>,
-                         GallicUnionWeightOptions<L, W> > {
-  typedef GallicWeight<L, W, GALLIC_RESTRICT> GW;
-  typedef StringWeight<L, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> SW;
-  typedef StringWeightIterator<L, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> SI;
-  typedef UnionWeight<GW, GallicUnionWeightOptions<L, W> > U;
-  typedef GallicWeight<L, W, GALLIC> ReverseWeight;
+template <class Label, class W>
+struct GallicWeight<Label, W, GALLIC>
+    : public UnionWeight<GallicWeight<Label, W, GALLIC_RESTRICT>,
+                         GallicUnionWeightOptions<Label, W>> {
+  using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
+  using SW = StringWeight<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)>;
+  using SI = StringWeightIterator<SW>;
+  using UW = UnionWeight<GW, GallicUnionWeightOptions<Label, W>>;
+  using UI = UnionWeightIterator<GW, GallicUnionWeightOptions<Label, W>>;
+  using ReverseWeight = GallicWeight<Label, W, GALLIC>;
 
-  using U::Zero;
-  using U::One;
-  using U::NoWeight;
-  using U::Quantize;
-  using U::Reverse;
+  using UW::Properties;
 
   GallicWeight() {}
 
   // Copy constructor.
-  GallicWeight(const U &w) : U(w) {}  // NOLINT
+  GallicWeight(const UW &weight) : UW(weight) {}  // NOLINT
 
-  // Singleton constructors: create a GALLIC weight containing
-  // a single GALLIC_RESTRICT weight.
-  // Takes as argument (1) a GALLIC_RESTRICT weight or
+  // Singleton constructors: create a GALLIC weight containing a single
+  // GALLIC_RESTRICT weight. Takes as argument (1) a GALLIC_RESTRICT weight or
   // (2) the two components of a GALLIC_RESTRICT weight.
-  explicit GallicWeight(const GW &w) : U(w) {}
-  GallicWeight(SW w1, W w2) : U(GW(w1, w2)) {}
+  explicit GallicWeight(const GW &weight) : UW(weight) {}
 
-  explicit GallicWeight(const string &s, int *nread = 0) : U(s, nread) {}
+  GallicWeight(SW w1, W w2) : UW(GW(w1, w2)) {}
 
-  static const GallicWeight<L, W, GALLIC> &Zero() {
-    static const GallicWeight<L, W, GALLIC> zero(U::Zero());
+  explicit GallicWeight(const string &str, int *nread = nullptr)
+      : UW(str, nread) {}
+
+  static const GallicWeight<Label, W, GALLIC> &Zero() {
+    static const GallicWeight<Label, W, GALLIC> zero(UW::Zero());
     return zero;
   }
 
-  static const GallicWeight<L, W, GALLIC> &One() {
-    static const GallicWeight<L, W, GALLIC> one(U::One());
+  static const GallicWeight<Label, W, GALLIC> &One() {
+    static const GallicWeight<Label, W, GALLIC> one(UW::One());
     return one;
   }
 
-  static const GallicWeight<L, W, GALLIC> &NoWeight() {
-    static const GallicWeight<L, W, GALLIC> no_weight(U::NoWeight());
+  static const GallicWeight<Label, W, GALLIC> &NoWeight() {
+    static const GallicWeight<Label, W, GALLIC> no_weight(UW::NoWeight());
     return no_weight;
   }
 
   static const string &Type() {
-    static const string type = "gallic";
-    return type;
+    static const string *const type = new string("gallic");
+    return *type;
   }
 
-  GallicWeight<L, W, GALLIC> Quantize(float delta = kDelta) const {
-    return U::Quantize(delta);
+  GallicWeight<Label, W, GALLIC> Quantize(float delta = kDelta) const {
+    return UW::Quantize(delta);
   }
 
-  ReverseWeight Reverse() const { return U::Reverse(); }
+  ReverseWeight Reverse() const { return UW::Reverse(); }
 };
 
-// (General) gallic plus
-template <class L, class W>
-inline GallicWeight<L, W, GALLIC>
-Plus(const GallicWeight<L, W, GALLIC> &w1,
-     const GallicWeight<L, W, GALLIC> &w2) {
-  typedef GallicWeight<L, W, GALLIC_RESTRICT> GW;
-  typedef UnionWeight<GW, GallicUnionWeightOptions<L, W> > U;
-  return Plus(static_cast<U>(w1), static_cast<U>(w2));
+// (General) gallic plus.
+template <class Label, class W>
+inline GallicWeight<Label, W, GALLIC> Plus(
+    const GallicWeight<Label, W, GALLIC> &w1,
+    const GallicWeight<Label, W, GALLIC> &w2) {
+  using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
+  using UW = UnionWeight<GW, GallicUnionWeightOptions<Label, W>>;
+  return Plus(static_cast<UW>(w1), static_cast<UW>(w2));
 }
 
-// (General) gallic times
-template <class L, class W>
-inline GallicWeight<L, W, GALLIC>
-Times(const GallicWeight<L, W, GALLIC> &w1,
-      const GallicWeight<L, W, GALLIC> &w2) {
-  typedef GallicWeight<L, W, GALLIC_RESTRICT> GW;
-  typedef UnionWeight<GW, GallicUnionWeightOptions<L, W> > U;
-  return Times(static_cast<U>(w1), static_cast<U>(w2));
+// (General) gallic times.
+template <class Label, class W>
+inline GallicWeight<Label, W, GALLIC> Times(
+    const GallicWeight<Label, W, GALLIC> &w1,
+    const GallicWeight<Label, W, GALLIC> &w2) {
+  using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
+  using UW = UnionWeight<GW, GallicUnionWeightOptions<Label, W>>;
+  return Times(static_cast<UW>(w1), static_cast<UW>(w2));
 }
 
-// (General) gallic divide
-template <class L, class W>
-inline GallicWeight<L, W, GALLIC>
-Divide(const GallicWeight<L, W, GALLIC> &w1,
-       const GallicWeight<L, W, GALLIC> &w2,
-       DivideType typ = DIVIDE_ANY) {
-  typedef GallicWeight<L, W, GALLIC_RESTRICT> GW;
-  typedef UnionWeight<GW, GallicUnionWeightOptions<L, W> > U;
-  return Divide(static_cast<U>(w1), static_cast<U>(w2), typ);
+// (General) gallic divide.
+template <class Label, class W>
+inline GallicWeight<Label, W, GALLIC> Divide(
+    const GallicWeight<Label, W, GALLIC> &w1,
+    const GallicWeight<Label, W, GALLIC> &w2,
+    DivideType divide_type = DIVIDE_ANY) {
+  using GW = GallicWeight<Label, W, GALLIC_RESTRICT>;
+  using UW = UnionWeight<GW, GallicUnionWeightOptions<Label, W>>;
+  return Divide(static_cast<UW>(w1), static_cast<UW>(w2), divide_type);
 }
+
+// This function object generates gallic weights by calling an underlying
+// union weight generator. This is intended primarily for testing.
+template <class Label, class W>
+class WeightGenerate<GallicWeight<Label, W, GALLIC>>
+    : public WeightGenerate<UnionWeight<GallicWeight<Label, W, GALLIC_RESTRICT>,
+                                        GallicUnionWeightOptions<Label, W>>> {
+ public:
+  using Weight = GallicWeight<Label, W, GALLIC>;
+  using Generate =
+      WeightGenerate<UnionWeight<GallicWeight<Label, W, GALLIC_RESTRICT>,
+                                 GallicUnionWeightOptions<Label, W>>>;
+
+  explicit WeightGenerate(bool allow_zero = true) : generate_(allow_zero) {}
+
+  Weight operator()() const { return Weight(generate_()); }
+
+ private:
+  const Generate generate_;
+};
 
 }  // namespace fst
 
-#endif  // FST_LIB_STRING_WEIGHT_H__
+#endif  // FST_STRING_WEIGHT_H_

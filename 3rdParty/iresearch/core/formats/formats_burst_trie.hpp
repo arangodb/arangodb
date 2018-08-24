@@ -101,7 +101,7 @@ class volatile_ref : util::noncopyable {
 
   void clear() {
     str_.clear();
-    ref_ = ref_t::nil;
+    ref_ = ref_t::NIL;
   }
 
   template<bool Volatile>
@@ -127,7 +127,7 @@ class volatile_ref : util::noncopyable {
 
  private:
   str_t str_;
-  ref_t ref_;
+  ref_t ref_{ ref_t::NIL };
 }; // volatile_ref
 
 typedef volatile_ref<byte_type> volatile_byte_ref;

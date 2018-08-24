@@ -30,19 +30,11 @@
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "formats/empty_term_reader.hpp"
+#include "utils/hash_utils.hpp"
 
 #include <type_traits>
 
 NS_LOCAL
-
-FORCE_INLINE size_t hash_combine(size_t seed, size_t v) {
-  return seed ^ (v + 0x9e3779b9 + (seed<<6) + (seed>>2));
-}
-
-template<typename T>
-FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
-  return hash_combine(seed, std::hash<T>()(v));
-}
 
 template<typename T>
 inline irs::filter::prepared::ptr compileQuery(
@@ -243,9 +235,9 @@ NS_BEGIN(iresearch)
 ///////////////////////////////////////////////////////////////////////////////
 
 size_t ExpressionCompilationContext::hash() const noexcept {
-  return hash_combine(
-    hash_combine(
-      hash_combine(
+  return irs::hash_combine(
+    irs::hash_combine(
+      irs::hash_combine(
         1610612741,
         arangodb::aql::AstNodeValueHash()(node.get())
       ),
@@ -272,12 +264,12 @@ ByExpression::ByExpression() noexcept
   : irs::filter(ByExpression::type()) {
 }
 
-bool ByExpression::equals(irs::filter const& rhs) const {
+bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& typed = static_cast<ByExpression const&>(rhs);
   return irs::filter::equals(rhs) && _ctx == typed._ctx;
 }
 
-size_t ByExpression::hash() const {
+size_t ByExpression::hash() const noexcept {
   return _ctx.hash();
 }
 

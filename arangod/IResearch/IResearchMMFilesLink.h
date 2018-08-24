@@ -38,15 +38,11 @@ class IResearchMMFilesLink final
 
   virtual ~IResearchMMFilesLink();
 
-  virtual bool allowExpansion() const override {
-    return IResearchLink::allowExpansion();
-  }
-
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
-  ) {
+  ) override {
     IResearchLink::batchInsert(trx, documents, queue);
   }
 
@@ -57,6 +53,10 @@ class IResearchMMFilesLink final
   virtual int drop() override {
     return IResearchLink::drop();
   }
+    
+  void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -92,9 +92,10 @@ class IResearchMMFilesLink final
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
   ) noexcept;
 
   virtual bool matchesDefinition(
@@ -145,7 +146,7 @@ class IResearchMMFilesLink final
  private:
   IResearchMMFilesLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 };
 

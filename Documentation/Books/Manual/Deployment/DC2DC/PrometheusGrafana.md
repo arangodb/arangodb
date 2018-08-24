@@ -1,9 +1,10 @@
+<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Prometheus & Grafana (optional)
 
 _ArangoSync_ provides metrics in a format supported by [Prometheus](https://prometheus.io).
 We also provide a standard set of dashboards for viewing those metrics in [Grafana](https://grafana.org).
 
-If you want to use these tools, please refer to their websites for instructions 
+If you want to use these tools, please refer to their websites for instructions
 on how to deploy them.
 
 After deployment, you must configure _Prometheus_ using a configuration file that
@@ -55,7 +56,7 @@ scrape_configs:
     tls_config:
       insecure_skip_verify: true
     static_configs:
-      - targets: 
+      - targets:
         - "${IPWORKERA1}:8729"
         - "${IPWORKERA2}:8729"
         - "${IPWORKERB1}:8729"
@@ -81,8 +82,8 @@ scrape_configs:
         replacement:   2
 ```
 
-Note: The above example assumes 2 datacenters, with 2 _sync masters_ & 2 _sync workers_ 
-per datacenter. You have to replace all `${...}` variables in the above configuration 
+Note: The above example assumes 2 datacenters, with 2 _sync masters_ & 2 _sync workers_
+per datacenter. You have to replace all `${...}` variables in the above configuration
 with applicable values from your environment.
 
 ## Recommended deployment environment

@@ -34,7 +34,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
-#include "Basics/WorkMonitor.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -51,6 +51,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-user-functions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
 
@@ -60,8 +61,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
-static thread_local bool alreadyLockedInThread = false;
 
 namespace {
 class V8GcThread : public Thread {
@@ -91,29 +90,27 @@ class V8GcThread : public Thread {
 }
 
 V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "V8Dealer"),
-      _gcFrequency(30.0),
-      _gcInterval(1000),
+      _gcFrequency(60.0),
+      _gcInterval(2000),
       _maxContextAge(60.0),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
+      _enableJS(true),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
+  setOptional(true);
+  startsAfter("ClusterPhase");
+
   startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -166,9 +163,21 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute));
+  
+  options->addHiddenOption(
+      "--javascript.enabled",
+      "enable the V8 JavaScript engine",
+      new BooleanParameter(&_enableJS));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (!_enableJS) {
+    disable();
+    application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
+      "Script", "FoxxQueues", "Frontend"});
+    return;
+  }
+  
   // check the startup path
   if (_startupDirectory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8)
@@ -196,12 +205,20 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_appPath, "javascript.app-path", true);
+  // Tests if this path is either a directory (ok) or does not exist (we create it in ::start)
+  // If it is something else this will throw an error.
+  ctx->normalizePath(_appPath, "javascript.app-path", false);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+}
+
+void V8DealerFeature::prepare() {
+  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  TRI_ASSERT(cluster != nullptr);
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
 }
 
 void V8DealerFeature::start() {
@@ -218,6 +235,23 @@ void V8DealerFeature::start() {
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
+
+
+      // create app directory if it does not exist 
+      if (!basics::FileUtils::isDirectory(_appPath)) {
+        std::string systemErrorStr;
+        long errorNo;
+
+        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo,
+                                               systemErrorStr);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created javascript.app-path directory '" << _appPath << "'";
+        } else {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create javascript.app-path directory '" << _appPath << "': " << systemErrorStr;
+          FATAL_ERROR_EXIT();
+        }
+      }
     }
 
     LOG_TOPIC(INFO, arangodb::Logger::V8) << "JavaScript using " << StringUtils::join(paths, ", ");
@@ -333,17 +367,8 @@ bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
     return result;
   };
 
-  if (alreadyLockedInThread) {
-    // the condition lock has already been acquired in this thread
-    // we cannot detect this easily here without a thread-local variable
-    // as we may be called from a JavaScript callback here
-    return cb();
-  } else {
-    // the condition lock has not been acquired in this thread, so
-    // we are responsible for locking properly!
-    CONDITION_LOCKER(guard, _contextCondition);
-    return cb();
-  }
+  CONDITION_LOCKER(guard, _contextCondition);
+  return cb();
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -420,8 +445,7 @@ void V8DealerFeature::collectGarbage() {
       gc->updateGcStamp(lastGc);
 
       if (context != nullptr) {
-        arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->id());
-
+        
         LOG_TOPIC(TRACE, arangodb::Logger::V8) << "collecting V8 garbage in context #" << context->id()
                   << ", invocations total: " << context->invocations()  
                   << ", invocations since last gc: " << context->invocationsSinceLastGc()  
@@ -432,7 +456,7 @@ void V8DealerFeature::collectGarbage() {
         {
           // this guard will lock and enter the isolate
           // and automatically exit and unlock it when it runs out of scope
-          V8ContextGuard contextGuard(context);
+          V8ContextEntryGuard contextGuard(context);
 
           v8::HandleScope scope(isolate);
 
@@ -504,9 +528,6 @@ void V8DealerFeature::unblockDynamicContextCreation() {
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-  
   if (builder != nullptr) {
     builder->openArray();
   }
@@ -582,30 +603,6 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
   if (builder != nullptr) {
     builder->close();
-  }
-}
-
-void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
-    std::string const& file, VPackBuilder* builder) {
-  // find context with id 0
-    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-
-  // enter context #0
-  V8Context* context = enterContext(vocbase, true, 0);
-  
-  if (context == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not acquire default V8 context");
-  }
-
-  TRI_DEFER(exitContext(context));
-  
-  try {
-    loadJavaScriptFileInternal(file, context, builder);
-  } catch (...) {
-    LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->id();
-    throw;
   }
 }
 
@@ -815,13 +812,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      {
-        JobGuard jobGuard(SchedulerFeature::SCHEDULER);
-        jobGuard.block();
-        
-        TRI_ASSERT(guard.isLocked());
-        guard.wait(100000);
-      }
+      TRI_ASSERT(guard.isLocked());
+      guard.wait(100000);
 
       if (exitWhenNoContext.tick()) {
         vocbase->release();
@@ -1205,14 +1197,14 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   try {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextGuard contextGuard(context.get());
+    V8ContextEntryGuard contextGuard(context.get());
 
     v8::HandleScope scope(isolate);
 
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     v8::Persistent<v8::Context> persistentContext;
-    persistentContext.Reset(isolate, v8::Context::New(isolate, 0, global));
+    persistentContext.Reset(isolate, v8::Context::New(isolate, nullptr, global));
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
@@ -1249,12 +1241,12 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                    FileUtils::buildFilename(directory, "common/modules") + sep +
                    FileUtils::buildFilename(directory, "node");
       }
-
+      TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
-      TRI_InitV8Buffer(isolate, localContext);
+      TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8DebugUtils(isolate, localContext);
-      TRI_InitV8Shell(isolate, localContext);
+      TRI_InitV8Shell(isolate);
 
       {
         v8::HandleScope scope(isolate);
@@ -1371,6 +1363,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
     }
   }
   
+  localContext->Exit();
+  
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file << "' for V8 context #" << context->id();
 }
 
@@ -1382,7 +1376,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextGuard contextGuard(context);
+    V8ContextEntryGuard contextGuard(context);
 
     v8::HandleScope scope(isolate);
 
@@ -1435,4 +1429,33 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
 
   delete context;
+}
+
+V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate, TRI_vocbase_t* vocbase, bool allowModification)
+  : _isolate(isolate)
+  , _context(nullptr)
+  , _active(isolate ? false : true)
+{
+  if (_active) {
+    if(!vocbase){
+      res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - no vocbase provided");
+      return;
+    }
+    _context = V8DealerFeature::DEALER->enterContext(vocbase, allowModification);
+    if (!_context) {
+      res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - could not acquire context");
+      return;
+    }
+    isolate = _context->_isolate;
+  }
+}
+
+V8ContextDealerGuard::~V8ContextDealerGuard() {
+  if (_active && _context) {
+    try {
+      V8DealerFeature::DEALER->exitContext(_context);
+    }
+    catch (...) {}
+    _isolate = nullptr;
+  }
 }

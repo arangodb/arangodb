@@ -75,7 +75,7 @@ TEST(token_streams_tests, boolean_stream) {
 }
 
 TEST(token_streams_tests, null_stream) {
-  auto& expected = bytes_ref::nil;
+  auto& expected = bytes_ref::NIL;
   null_token_stream stream;
   ASSERT_EQ(2, stream.attributes().size());
   auto& inc = stream.attributes().get<increment>();
@@ -97,7 +97,7 @@ TEST(token_streams_tests, null_stream) {
 TEST( string_token_stream_tests, ctor ) {
   {
     iresearch::string_token_stream ts;
-    ts.reset(string_ref::nil);
+    ts.reset(string_ref::NIL);
     ASSERT_EQ(3U, ts.attributes().size() );
     ASSERT_FALSE(!ts.attributes().get<increment>());
     ASSERT_FALSE(!ts.attributes().get<offset>());
@@ -106,7 +106,7 @@ TEST( string_token_stream_tests, ctor ) {
 
   {
     iresearch::string_token_stream ts;
-    ts.reset(bytes_ref::nil);
+    ts.reset(bytes_ref::NIL);
     ASSERT_EQ(3, ts.attributes().size() );
     ASSERT_FALSE(!ts.attributes().get<increment>());
     ASSERT_FALSE(!ts.attributes().get<offset>());
@@ -137,7 +137,7 @@ TEST( string_token_stream_tests, next_end) {
   ASSERT_EQ( ref.size(), offs->end);
   ASSERT_FALSE( ts.next());
   ASSERT_FALSE( ts.next());
-  ASSERT_EQ( irs::bytes_ref::nil, term->value());
+  ASSERT_EQ( irs::bytes_ref::NIL, term->value());
   ASSERT_EQ( 0, offs->start);
   ASSERT_EQ( 0, offs->end);
 

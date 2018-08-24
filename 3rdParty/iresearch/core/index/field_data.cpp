@@ -43,6 +43,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/unicode_utils.hpp"
+#include "utils/bytes_utils.hpp"
 
 #include <set>
 #include <algorithm>
@@ -117,16 +118,16 @@ class pos_iterator final : public irs::position::impl {
     }
 
     uint32_t pos;
-    if (shift_unpack_32(bytes_io<uint32_t>::vread(prox_in_), pos)) {
-      const size_t size = bytes_io<size_t>::vread(prox_in_);
+    if (shift_unpack_32(irs::vread<uint32_t>(prox_in_), pos)) {
+      const size_t size = irs::vread<size_t>(prox_in_);
       pay_.resize(size);
       prox_in_.read(pay_.data(), size);
     }
     val_ += pos;
 
     if (has_offs_) {
-      offs_.start += bytes_io<uint32_t>::vread(prox_in_);
-      offs_.end = offs_.start + bytes_io<uint32_t>::vread(prox_in_);
+      offs_.start += irs::vread<uint32_t>(prox_in_);
+      offs_.end = offs_.start + irs::vread<uint32_t>(prox_in_);
     }
     ++pos_;
     return true;
@@ -214,15 +215,15 @@ class doc_iterator : public irs::doc_iterator {
       if (has_freq_) {
         doc_id_t delta;
 
-        if (shift_unpack_64( bytes_io<uint64_t>::vread(freq_in_), delta)) {
+        if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
           freq_.value = 1U;
         } else {
-          freq_.value = bytes_io< uint32_t >::vread( freq_in_ );
+          freq_.value = irs::vread<uint32_t>(freq_in_);
         }
 
         doc_.value += delta;
       } else {
-        doc_.value += bytes_io<uint64_t>::vread(freq_in_);
+        doc_.value += irs::vread<uint64_t>(freq_in_);
       }
 
       assert(doc_.value != posting_->doc);
@@ -257,7 +258,7 @@ class term_iterator : public irs::term_iterator {
     postings_.clear();
     postings_.insert(field.terms_.begin(), field.terms_.end());
 
-    max = min = &irs::bytes_ref::nil;
+    max = min = &irs::bytes_ref::NIL;
     if (!postings_.empty()) {
       min = &(postings_.begin()->first);
       max = &((--postings_.end())->first);
@@ -269,7 +270,7 @@ class term_iterator : public irs::term_iterator {
     // reset state
     itr_ = postings_.begin();
     itr_increment_ = false;
-    term_ = irs::bytes_ref::nil;
+    term_ = irs::bytes_ref::NIL;
   }
 
   virtual const bytes_ref& value() const override {
@@ -314,7 +315,7 @@ class term_iterator : public irs::term_iterator {
 
     if (itr_ == postings_.end()) {
       itr_increment_ = false;
-      term_ = irs::bytes_ref::nil;
+      term_ = irs::bytes_ref::NIL;
 
       return false;
     }
@@ -379,8 +380,8 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
 
  private:
   mutable detail::term_iterator it_;
-  const irs::bytes_ref* min_{ &irs::bytes_ref::nil };
-  const irs::bytes_ref* max_{ &irs::bytes_ref::nil };
+  const irs::bytes_ref* min_{ &irs::bytes_ref::NIL };
+  const irs::bytes_ref* max_{ &irs::bytes_ref::NIL };
 }; // term_reader
 
 NS_END // detail
@@ -398,8 +399,8 @@ void field_data::write_offset( posting& p, int_block_pool::iterator& where, cons
 
   byte_block_pool::sliced_inserter out( byte_writer_, *where );
 
-  bytes_io<uint32_t>::vwrite( out, start_offset - p.offs );
-  bytes_io<uint32_t>::vwrite( out, end_offset - start_offset );
+  irs::vwrite<uint32_t>(out, start_offset - p.offs);
+  irs::vwrite<uint32_t>(out, end_offset - start_offset);
 
   *where = out.pool_offset();
   p.offs = start_offset;
@@ -409,11 +410,11 @@ void field_data::write_prox( posting& p, int_block_pool::iterator& where,
                              uint32_t prox, const payload* pay ) {
   byte_block_pool::sliced_inserter out( byte_writer_, *where );
 
-  if ( !pay || pay->value.null() ) {
-    bytes_io<uint32_t>::vwrite( out, shift_pack_32( prox, false ) );
+  if (!pay || pay->value.empty()) {
+    irs::vwrite<uint32_t>(out, shift_pack_32(prox, false));
   } else {
-    bytes_io<uint32_t>::vwrite( out, shift_pack_32( prox, true ) );
-    bytes_io<size_t>::vwrite( out, pay->value.size() );
+    irs::vwrite<uint32_t>(out, shift_pack_32(prox, true));
+    irs::vwrite<size_t>(out, pay->value.size());
     out.write( pay->value.c_str(), pay->value.size() );
 
     // saw payloads
@@ -513,7 +514,7 @@ void field_data::add_term(
       assert( did > p.doc );
 
       byte_block_pool::sliced_inserter out( byte_writer_, *it );
-      bytes_io<uint64_t>::vwrite( out, p.doc_code );
+      irs::vwrite<uint64_t>(out, p.doc_code);
       *it = out.pool_offset();
 
       p.doc_code = did - p.doc;
@@ -526,10 +527,10 @@ void field_data::add_term(
     byte_block_pool::sliced_inserter out( byte_writer_, *it );
 
     if ( 1U == p.freq ) {
-      bytes_io<uint64_t>::vwrite(out, p.doc_code | 1);
+      irs::vwrite<uint64_t>(out, p.doc_code | 1);
     } else {
-      bytes_io<uint64_t>::vwrite(out, p.doc_code);
-      bytes_io<uint32_t>::vwrite( out, p.freq );
+      irs::vwrite<uint64_t>(out, p.doc_code);
+      irs::vwrite<uint32_t>(out, p.freq);
     }
 
     *it = out.pool_offset();

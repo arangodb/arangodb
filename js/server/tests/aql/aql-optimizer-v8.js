@@ -106,58 +106,10 @@ function optimizerUserFunctionsTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
-function optimizerNativeFunctionsTestSuite () {
-  'use strict';
-
-  return {
-    setUp : function () {
-    },
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test data modification
-////////////////////////////////////////////////////////////////////////////////
-
-    testDataModificationObject : function () {
-      var data = { a: 2, b: 42, c: [ 1 ], d: [ 1 ], e: { a: 1 }, f: [ 0, 1 ] };
-      var expected = { a: 1, b: 3, c: [ 1, 2 ], d: [ 1, [ 1, 2 ] ], e: { a: 1, f: { a: 1, b: 2 } }, g: "foo" };
-      var result = AQL_EXECUTE("FOR i IN 1..1 RETURN NOOPT(TEST_INTERNAL('MODIFY_OBJECT'," + JSON.stringify(data) + "))", { }, { literalSizeThreshold: 0 });
-
-      assertEqual(1, result.json.length);
-      for (var i = 0; i < 1; ++i) {
-        assertEqual(expected, result.json[i]);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test data modification
-////////////////////////////////////////////////////////////////////////////////
-
-    testUserFunctionDataModificationArray : function () {
-      var data = [ 2, 3, [ 1 ], [ 1 ], { a: 1 }, [ 0, 1 ] ];
-      var expected = [ 1, 42, [ 1, 2 ], [ 1, [ 1, 2 ] ], { a: 9, b: 2 }, [ 0, 1 ], "foo" ];
-      var result = AQL_EXECUTE("FOR i IN 1..10 RETURN NOOPT(TEST_INTERNAL('MODIFY_ARRAY'," + JSON.stringify(data) + "))", { }, { literalSizeThreshold: 0 });
-
-      assertEqual(10, result.json.length);
-      for (var i = 0; i < 10; ++i) {
-        assertEqual(expected, result.json[i]);
-      }
-    }
-
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerUserFunctionsTestSuite);
-jsunity.run(optimizerNativeFunctionsTestSuite);
 
 return jsunity.done();
 

@@ -94,6 +94,8 @@ set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/compat.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/flags.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/fst.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/fst-types.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/openfst/weight.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/mapped-file.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/properties.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table.cc

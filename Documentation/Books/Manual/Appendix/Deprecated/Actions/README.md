@@ -5,7 +5,8 @@ ArangoDB's Actions
 It is recommended to use [**Foxx**](../../../Foxx/README.md) instead.
 {% endhint %}
 
-### Introduction to User Actions
+Introduction to User Actions
+----------------------------
 
 In some ways the communication layer of the ArangoDB server behaves like a Web
 server. Unlike a Web server, it normally responds to HTTP requests by delivering

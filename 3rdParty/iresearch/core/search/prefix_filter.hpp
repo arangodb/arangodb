@@ -68,10 +68,10 @@ class IRESEARCH_API by_prefix final : public by_term {
     return scored_terms_limit_;
   }
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
  protected:
-  virtual bool equals(const filter& rhs) const override;
+  virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
  private:
   size_t scored_terms_limit_{1024};

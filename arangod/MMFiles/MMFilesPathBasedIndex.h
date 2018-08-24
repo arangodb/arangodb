@@ -41,12 +41,16 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
  public:
   MMFilesPathBasedIndex() = delete;
 
-  MMFilesPathBasedIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                 arangodb::velocypack::Slice const&, size_t baseSize, bool allowPartialIndex);
+  MMFilesPathBasedIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    size_t baseSize,
+    bool allowPartialIndex
+  );
 
   ~MMFilesPathBasedIndex();
 
- public:
   void toVelocyPackFigures(arangodb::velocypack::Builder&) const override;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder,
@@ -102,9 +106,6 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
 
   /// @brief whether or not array indexes will de-duplicate their input values
   bool _deduplicate;
-
-  /// @brief whether or not at least one attribute is expanded
-  bool _useExpansion;
 
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;

@@ -53,9 +53,9 @@ class ConditionFinder : public WalkerWorker<ExecutionNode> {
 
  protected:
   bool handleFilterCondition(ExecutionNode* en,
-                             std::unique_ptr<Condition>& condition);
+                             std::unique_ptr<Condition> const& condition);
   void handleSortCondition(ExecutionNode* en, Variable const* outVar,
-                           std::unique_ptr<Condition>& condition,
+                           std::unique_ptr<Condition> const& condition,
                            std::unique_ptr<SortCondition>& sortCondition);
 
  private:

@@ -239,7 +239,7 @@ static void JS_ProcessJsonFile(
   // extract the filename
   TRI_Utf8ValueNFC filename(args[0]);
 
-  if (*filename == 0) {
+  if (*filename == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
@@ -269,7 +269,7 @@ static void JS_ProcessJsonFile(
 
       char* error = nullptr;
       v8::Handle<v8::Value> object =
-          TRI_FromJsonString(isolate, line.c_str(), &error);
+          TRI_FromJsonString(isolate, line.c_str(), line.size(), &error);
 
       if (object->IsUndefined()) {
         if (error != nullptr) {
@@ -305,7 +305,7 @@ static void JS_ProcessJsonFile(
 /// @brief stores the V8 shell functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
+void TRI_InitV8Shell(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
   // .............................................................................

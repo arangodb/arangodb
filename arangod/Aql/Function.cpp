@@ -28,40 +28,25 @@ using namespace arangodb::aql;
 
 /// @brief create the function
 Function::Function(std::string const& name,
-                   char const* arguments, 
-                   bool isDeterministic, bool canThrow, bool canRunOnDBServer,
-                   bool canPassArgumentsByReference,
-                   FunctionImplementation implementation,
-                   ExecutionCondition condition)
+                   char const* arguments,
+                   std::underlying_type<Flags>::type flags,
+                   FunctionImplementation const& implementation)
     : name(name),
-      nonAliasedName(name),
       arguments(arguments),
-      isDeterministic(isDeterministic),
-      canThrow(canThrow),
-      canRunOnDBServer(canRunOnDBServer),
-      canPassArgumentsByReference(canPassArgumentsByReference),
+      flags(flags),
       implementation(implementation),
-      condition(condition),
       conversions() {
   initializeArguments();
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << 
-                                     "'. cacheable: " << isCacheable() << 
-                                     ", deterministic: " << isDeterministic << 
-                                     ", canThrow: " << canThrow << 
-                                     ", canRunOnDBServer: " << canRunOnDBServer << 
-                                     ", canPassArgumentsByReference: " << canPassArgumentsByReference << 
-                                     ", hasCxxImplementation: " << (implementation != nullptr) << 
+  // almost all AQL functions have a cxx implementation
+  // only function V8() plus the ArangoSearch functions do not
+  LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
+                                     "'. cacheable: " << hasFlag(Flags::Cacheable) <<
+                                     ", deterministic: " << hasFlag(Flags::Deterministic) <<
+                                     ", canRunOnDBServer: " << hasFlag(Flags::CanRunOnDBServer) <<
+                                     ", hasCxxImplementation: " << (implementation != nullptr) <<
                                      ", hasConversions: " << !conversions.empty();
-                                     
-  // condition must only be set if we also have an implementation
-  TRI_ASSERT(implementation != nullptr || condition == nullptr);
-  
-  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << ", hasImpl:" << hasImplementation(); 
 }
-
-/// @brief destroy the function
-Function::~Function() {}
 
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
@@ -117,7 +102,7 @@ void Function::initializeArguments() {
       case '+':
         // repeated optional argument
         TRI_ASSERT(inOptional);
-        maxRequiredArguments = MaxArguments;
+        maxRequiredArguments = maxArguments;
         return;
 
       case 'h':
@@ -126,10 +111,10 @@ void Function::initializeArguments() {
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
-          conversions.emplace_back(CONVERSION_REQUIRED);
-        } else if (conversions[position] == CONVERSION_NONE) {
+          conversions.emplace_back(Conversion::Required);
+        } else if (conversions[position] == Conversion::None) {
           // we already had a parameter at this position
-          conversions[position] = CONVERSION_OPTIONAL;
+          conversions[position] = Conversion::Optional;
         }
         foundArg = true;
         break;
@@ -140,20 +125,20 @@ void Function::initializeArguments() {
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
-          conversions.emplace_back(CONVERSION_NONE);
-        } else if (conversions[position] == CONVERSION_REQUIRED) {
+          conversions.emplace_back(Conversion::None);
+        } else if (conversions[position] == Conversion::Required) {
           // we already had a parameter at this position
-          conversions[position] = CONVERSION_OPTIONAL;
+          conversions[position] = Conversion::Optional;
         }
         foundArg = true;
         break;
-      
+
       default: {
         // unknown parameter type
         std::string message("unknown function signature parameter type for AQL function '");
         message += name + "': " + c;
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-      } 
+      }
     }
   }
 }

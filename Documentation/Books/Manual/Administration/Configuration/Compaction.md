@@ -20,7 +20,7 @@ these documents are marked as 'dead' with a deletion marker.
 
 Over time the number of dead documents may rise, and we don't want to use the previously mentioned
 resources, plus the disk space should be given back to the system.
-Thus several journal files can be combined to one, ommitting the dead documents.
+Thus several journal files can be combined to one, omitting the dead documents.
 
 Combining several of these data files into one is called compaction. The compaction process reads
 the alive documents from the original data files, and writes them into new data file.
@@ -33,7 +33,8 @@ under which conditions the system should perform which amount of these compactio
 ArangoDB spawns one compactor thread per database. The settings below vary in scope. 
 
 
-# Activity control
+Activity control
+----------------
 
 The activity control parameters alter the behaviour in terms of scan / execution frequency
 of the compaction.
@@ -51,7 +52,9 @@ before we execute the compaction on this collection again.
 This is here to let eventually piled up user load be worked out. Scope: collection.
 
 
-# Source data files
+Source data files
+-----------------
+
 These parameters control which data files are taken into account for a compaction run.
 You can specify several criteria which each off may be sufficcient alone.
 
@@ -90,7 +93,9 @@ and 400 kbytes of dead documents, the share of the dead documents is:
 If this value if higher than the specified threshold, the data file will be compacted.
 
 
-# Compacted target files
+Compacted target files
+----------------------
+
 Once data files of a collection are qualified for a compaction run, these parameters control 
 how many data files are merged into one, (or even one source data file may be compacted into
 one smaller target data file)

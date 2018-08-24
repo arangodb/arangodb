@@ -38,7 +38,6 @@ SET MINP=2.0
 SET MAXP=10.0
 SET SFRE=2.5
 SET COMP=1000
-SET NATH=16
 SET AID=0
 SET BASE=4000
 SET ENDPOINTS=
@@ -46,7 +45,7 @@ CALL ECHO Starting %NRAGENTS% agents
 for /l %%I in (1, 1, %NRAGENTS%) do (
   SET /a PORT=%%I+%BASE%
   SET /a AID=%%I-1
-  CALL SET CMD=arangod -c none --agency.id %%AID%% --agency.compaction-step-size %COMP% --agency.election-timeout-min %MINP% --agency.election-timeout-max %MAXP% --agency.size %NRAGENTS% --agency.supervision true --agency.supervision-frequency %SFRE% --agency.wait-for-sync false --database.directory cluster/data%%PORT%% --javascript.app-path cluster/js --javascript.startup-directory %JS_STARTUP_PATH% --javascript.v8-contexts 1 --log.file cluster/%%PORT%%.log --server.authentication false --server.endpoint tcp://127.0.0.1:%%PORT%% --server.statistics false --server.threads %NATH% --log.force-direct true
+  CALL SET CMD=arangod -c none --agency.id %%AID%% --agency.compaction-step-size %COMP% --agency.election-timeout-min %MINP% --agency.election-timeout-max %MAXP% --agency.size %NRAGENTS% --agency.supervision true --agency.supervision-frequency %SFRE% --agency.wait-for-sync false --database.directory cluster/data%%PORT%% --javascript.app-path cluster/js --javascript.startup-directory %JS_STARTUP_PATH% --javascript.v8-contexts 1 --log.file cluster/%%PORT%%.log --server.authentication false --server.endpoint tcp://127.0.0.1:%%PORT%% --server.statistics false --log.force-direct true
   CALL SET "ENDPOINTS=%%ENDPOINTS%%--agency.endpoint tcp://127.0.0.1:%%PORT%% "
   IF %%I == %NRAGENTS% (
     CALL SET "ENDPOINTS=%%ENDPOINTS%% --agency.notify true"
@@ -58,11 +57,11 @@ timeout /T 10 /NOBREAK
 
 :: DB servers
 SET BASE=8628
-SET ROLE=PRIMARY
+SET ROLE=DBSERVER
 CALL ECHO Starting %NRDBSERVERS% db servers
 for /l %%I in (1, 1, %NRDBSERVERS%) do (
   SET /a PORT=%%I+%BASE%
-  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-local-info %TYPE%:127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --server.threads 5 --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
+  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
 )
 
 :: Coordinators
@@ -71,6 +70,6 @@ SET ROLE=COORDINATOR
 CALL ECHO Starting %NRCOORDINATORS% coordinators
 for /l %%I in (1, 1, %NRCOORDINATORS%) do (
   SET /a PORT=%%I+%BASE%
-  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-local-info %TYPE%:127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --server.threads 5 --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
+  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
 )
 

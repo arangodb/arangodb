@@ -105,7 +105,7 @@ function post_api_traversal (req, res) {
 
     if (edgeCollection === undefined ||
       edgeCollection === null) {
-      return notFound(req, res, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      return notFound(req, res, arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
         'invalid edgeCollection');
     }
   } else {

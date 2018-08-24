@@ -40,13 +40,13 @@ class SimpleHttpResult;
 namespace import {
 struct ImportStatistics;
 
-class SenderThread : public arangodb::Thread {
+class SenderThread final : public arangodb::Thread {
  private:
   SenderThread(SenderThread const&) = delete;
   SenderThread& operator=(SenderThread const&) = delete;
 
  public:
-  explicit SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>&&,
+  explicit SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>,
                         ImportStatistics* stats,
                         std::function<void()> const& wakeup);
 
@@ -74,7 +74,7 @@ class SenderThread : public arangodb::Thread {
 
  private:
   basics::ConditionVariable _condition;
-  httpclient::SimpleHttpClient* _client;
+  std::unique_ptr<httpclient::SimpleHttpClient> _client;
   std::function<void()> _wakeup;
   std::string _url;
   basics::StringBuffer _data;

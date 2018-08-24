@@ -56,7 +56,7 @@ var helpArangoStatement = arangosh.createHelpHeadline('ArangoStatement help') +
   ' > stmt.setCount(<value>)               set count flag (return number of' + '\n' +
   '                                        results in "count" attribute)   ' + '\n' +
   'Get query options:                                                      ' + '\n' +
-  ' > stmt.setBatchSize()                  return the max. number of results' + '\n' +
+  ' > stmt.getBatchSize()                  return the max. number of results' + '\n' +
   '                                        to be transferred per roundtrip ' + '\n' +
   ' > stmt.getCount()                      return count flag (return number' + '\n' +
   '                                        of results in "count" attribute)' + '\n' +
@@ -86,8 +86,7 @@ ArangoStatement.prototype.parse = function () {
   };
 
   var requestResult = this._database._connection.POST(
-    '/_api/query',
-    JSON.stringify(body));
+    '/_api/query', body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -104,7 +103,7 @@ ArangoStatement.prototype.parse = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function (options) {
-  var opts = this._options || { };
+  let opts = this._options || { };
   if (typeof opts === 'object' && typeof options === 'object') {
     Object.keys(options).forEach(function (o) {
       // copy options
@@ -112,15 +111,14 @@ ArangoStatement.prototype.explain = function (options) {
     });
   }
 
-  var body = {
+  let body = {
     query: this._query,
     bindVars: this._bindVars,
     options: opts
   };
 
-  var requestResult = this._database._connection.POST(
-    '/_api/explain',
-    JSON.stringify(body));
+  let requestResult = this._database._connection.POST(
+    '/_api/explain', body);
 
   arangosh.checkRequestResult(requestResult);
 
@@ -168,12 +166,16 @@ ArangoStatement.prototype.execute = function () {
   }
 
   var requestResult = this._database._connection.POST(
-    '/_api/cursor',
-    JSON.stringify(body));
+    '/_api/cursor', body);
 
   arangosh.checkRequestResult(requestResult);
 
-  return new ArangoQueryCursor(this._database, requestResult);
+  let isStream = false;
+  if (this._options && this._options.stream) {
+    isStream = this._options.stream;
+  }
+
+  return new ArangoQueryCursor(this._database, requestResult, isStream);
 };
 
 exports.ArangoStatement = ArangoStatement;

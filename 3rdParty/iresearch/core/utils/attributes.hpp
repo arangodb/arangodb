@@ -36,7 +36,7 @@
 #include "noncopyable.hpp"
 #include "string.hpp"
 
-#include <unordered_set>
+#include <set>
 
 NS_ROOT
 
@@ -162,7 +162,8 @@ struct IRESEARCH_API_TEMPLATE basic_stored_attribute : stored_attribute {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API flags {
  public:  
-  typedef std::unordered_set<const attribute::type_id*> type_map;
+  // std::set<...> is 25% faster than std::unordered_set<...> as per profile_bulk_index test
+  typedef std::set<const attribute::type_id*> type_map;
 
   static const flags& empty_instance();
 
@@ -208,7 +209,9 @@ class IRESEARCH_API flags {
   bool empty() const { return map_.empty(); }
   size_t size() const { return map_.size(); }
   void clear() NOEXCEPT { map_.clear(); }
-  void reserve(size_t cap) { map_.reserve( cap ); }
+  void reserve(size_t /*capacity*/) {
+    // NOOP for std::set
+  }
 
   template< typename T >
   bool check() const NOEXCEPT {
@@ -298,7 +301,7 @@ template<
   struct ref {
     typedef Ref<U, Args...> type;
 
-    static const type nil;
+    IRESEARCH_HELPER_DLL_LOCAL static const type NIL;
 
     static_assert(
       sizeof(typename ref<T>::type) == sizeof(type),
@@ -381,7 +384,7 @@ template<
 
   template<typename A>
   inline const typename ref<A>::type& get(
-      const typename ref<A>::type& fallback = ref<A>::nil
+      const typename ref<A>::type& fallback = ref<A>::NIL
   ) const NOEXCEPT {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
@@ -444,7 +447,7 @@ template<
 
   const typename ref<T>::type& get(
       const attribute::type_id& type,
-      const typename ref<T>::type& fallback = ref<T>::nil
+      const typename ref<T>::type& fallback = ref<T>::NIL
   ) const NOEXCEPT {
     return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
   }
@@ -471,7 +474,7 @@ template<
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
 typename attribute_map<T, Ref, Args...>::template ref<U>::type
-const attribute_map<T, Ref, Args...>::ref<U>::nil;
+const attribute_map<T, Ref, Args...>::ref<U>::NIL;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes

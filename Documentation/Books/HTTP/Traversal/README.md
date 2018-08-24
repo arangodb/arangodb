@@ -18,7 +18,7 @@ are offered.
 Executing Traversals via HTTP
 -----------------------------
 
-@startDocuBlock JSF_HTTP_API_TRAVERSAL
+@startDocuBlock HTTP_API_TRAVERSAL
 
 All examples were using this graph:
 

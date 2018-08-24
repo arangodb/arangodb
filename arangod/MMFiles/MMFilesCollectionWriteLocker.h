@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "StorageEngine/TransactionState.h"
 
 namespace arangodb {
 
@@ -37,12 +38,14 @@ class MMFilesCollectionWriteLocker {
 
   /// @brief create the locker
   MMFilesCollectionWriteLocker(arangodb::MMFilesCollection* collection,
-                               bool useDeadlockDetector, bool doLock)
+                               bool useDeadlockDetector, TransactionState const* state,
+                               bool doLock)
       : _collection(collection),
         _useDeadlockDetector(useDeadlockDetector),
+        _state(state),
         _doLock(false) {
     if (doLock) {
-      int res = _collection->lockWrite(_useDeadlockDetector);
+      int res = _collection->lockWrite(_useDeadlockDetector, _state);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -58,7 +61,7 @@ class MMFilesCollectionWriteLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->unlockWrite(_useDeadlockDetector);
+      _collection->unlockWrite(_useDeadlockDetector, _state);
       _doLock = false;
     }
   }
@@ -69,6 +72,8 @@ class MMFilesCollectionWriteLocker {
 
   /// @brief whether or not to use the deadlock detector
   bool const _useDeadlockDetector;
+  
+  TransactionState const* _state;
 
   /// @brief lock flag
   bool _doLock;

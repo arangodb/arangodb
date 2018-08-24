@@ -145,6 +145,75 @@ function ahuacatlFulltextTestSuite () {
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'prefix:quergestreift,|koedern,|prefix:römer,-melken', 2) RETURN d.id");
       assertEqual(2, actual.length);
     },
+    
+    testLimit : function () {
+      fulltext.save({ id : 1, text : "some rubbish text" });
+      fulltext.save({ id : 2, text : "More rubbish test data. The index should be able to handle all this." });
+      fulltext.save({ id : 3, text : "even MORE rubbish. Nevertheless this should be handled well, too." });
+      
+      let actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1, 1 RETURN d._id");
+      assertEqual([ ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 0, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 0, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 0, 3 RETURN 1");
+      assertEqual([ 1, 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 0, 4 RETURN 1");
+      assertEqual([ 1, 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 1, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 1, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 1, 3 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 2, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 2, 2 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 3, 1 RETURN 1");
+      assertEqual([ ], actual);
+    },
+    
+    testLimitMany : function () {
+      for (let i = 0; i < 2000; ++i) {
+        fulltext.save({ text : "some rubbish text" });
+      }
+      
+      let actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 999, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 999, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1000, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1000, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1998, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1999, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1999, 2 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 2000, 1 RETURN 1");
+      assertEqual([ ], actual);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test without fulltext index available
@@ -153,8 +222,8 @@ function ahuacatlFulltextTestSuite () {
     testNonIndexed : function () {
       assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); 
       assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); 
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT('NotExistingFooCollection', 'text', 'foo')"); 
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "RETURN FULLTEXT('NotExistingFooCollection', 'text', 'foo')"); 
     }
 
   };

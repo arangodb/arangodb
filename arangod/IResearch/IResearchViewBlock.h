@@ -86,20 +86,18 @@ class ViewExpressionContext final : public aql::ExpressionContext {
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    arangodb::iresearch::CompoundReader&& reader,
+    arangodb::iresearch::PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
 
-  aql::AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  std::pair<aql::ExecutionState, std::unique_ptr<aql::AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  std::pair<aql::ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
-  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
+  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
   bool readDocument(size_t segmentId, irs::doc_id_t docId);
@@ -117,7 +115,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  iresearch::CompoundReader _reader;
+  iresearch::PrimaryKeyIndexReader const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
@@ -125,6 +123,9 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
+
+  /// @brief The number of documents inflight if we hit a WAITING state.
+  size_t _inflight;
 }; // IResearchViewBlockBase
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -133,7 +134,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -166,7 +167,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -194,7 +195,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
 class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
  public:
   IResearchViewOrderedBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );

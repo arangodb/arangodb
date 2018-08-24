@@ -36,35 +36,27 @@ NS_LOCAL
 
 const std::string FILENAME_PREFIX("libformat-");
 
-const irs::columnstore_iterator::value_type INVALID {
-  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-  irs::bytes_ref::nil
-};
-
-const irs::columnstore_iterator::value_type EOFMAX {
-  irs::type_limits<irs::type_t::doc_id_t>::eof(),
-  irs::bytes_ref::nil
-};
-
 class format_register :
   public irs::tagged_generic_register<irs::string_ref, irs::format::ptr(*)(), irs::string_ref, format_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
 
-    std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
-    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), key.c_str(), key.size());
+    std::memcpy(
+      &filename[0],
+      FILENAME_PREFIX.c_str(),
+      FILENAME_PREFIX.size()
+    );
+
+    irs::string_ref::traits_type::copy(
+      &filename[0] + FILENAME_PREFIX.size(),
+      key.c_str(),
+      key.size()
+    );
 
     return filename;
   }
 }; // format_register
-
-struct empty_column_iterator final : irs::columnstore_iterator {
- public:
-  virtual const value_type& value() const override { return EOFMAX; }
-  virtual const value_type& seek(irs::doc_id_t) override { return EOFMAX; }
-  virtual bool next() override { return false; }
-}; // empty_column_iterator
 
 iresearch::columnstore_reader::values_reader_f INVALID_COLUMN =
   [] (irs::doc_id_t, irs::bytes_ref&) { return false; };
@@ -95,10 +87,6 @@ column_meta_reader::~column_meta_reader() {}
 columnstore_writer::~columnstore_writer() {}
 columnstore_reader::~columnstore_reader() {}
 
-/* static */ columnstore_iterator::ptr columnstore_reader::empty_iterator() {
-  return columnstore_iterator::make<empty_column_iterator>();
-}
-
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
   return INVALID_COLUMN;
 }
@@ -128,7 +116,7 @@ index_meta_reader::~index_meta_reader() {}
 format::~format() {}
 
 /*static*/ bool formats::exists(const string_ref& name) {
-  return format_register::instance().get(name);
+  return nullptr != format_register::instance().get(name);
 }
 
 /*static*/ format::ptr formats::get(const string_ref& name) {
@@ -199,7 +187,7 @@ format_registrar::format_registrar(
       );
     }
 
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 }
 

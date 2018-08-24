@@ -1,5 +1,3 @@
-// lock.h
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -12,82 +10,53 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: riley@google.com (Michael Riley)
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-// \file
-// Google-compatibility locking declarations and inline definitions
-//
-// Classes and functions here are no-ops (by design); proper locking requires
-// actual implementation.
+// Google-compatibility locking declarations and inline definitions.
 
-#ifndef FST_LIB_LOCK_H__
-#define FST_LIB_LOCK_H__
+#ifndef FST_LIB_LOCK_H_
+#define FST_LIB_LOCK_H_
 
-#include <atomic>
-#include <fst/compat.h>  // for DISALLOW_COPY_AND_ASSIGN
+#include <mutex>
 
 namespace fst {
 
 using namespace std;
 
-//
-// Single initialization  - single-thread implementation
-//
-
-typedef int FstOnceType;
-
-static const int FST_ONCE_INIT = 1;
-
-inline int FstOnceInit(FstOnceType *once, void (*init)(void)) {
-  if (*once)
-    (*init)();
-  *once = 0;
-  return 0;
-}
-
-//
-// Thread locking - single-thread (non-)implementation
-//
-
 class Mutex {
  public:
   Mutex() {}
 
+  inline void Lock() { mu_.lock(); }
+
+  inline void Unlock() { mu_.unlock(); }
+
  private:
-  DISALLOW_COPY_AND_ASSIGN(Mutex);
+  std::mutex mu_;
+
+  Mutex(const Mutex &) = delete;
+  Mutex &operator=(const Mutex &) = delete;
 };
 
 class MutexLock {
  public:
-  MutexLock(Mutex *) {}
+  explicit MutexLock(Mutex *mu) : mu_(mu) { mu_->Lock(); }
+
+  ~MutexLock() { mu_->Unlock(); }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MutexLock);
+  Mutex *mu_;
+
+  MutexLock(const MutexLock &) = delete;
+  MutexLock &operator=(const MutexLock &) = delete;
 };
 
-class ReaderMutexLock {
- public:
-  ReaderMutexLock(Mutex *) {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ReaderMutexLock);
-};
-
-// Reference counting - single-thread implementation
-class RefCounter {
- public:
-  RefCounter() : count_(1) {}
-
-  int count() const { return count_; }
-  int Incr() const { return ++count_; }
-  int Decr() const {  return --count_; }
-
- private:
-  mutable std::atomic<int> count_; // NOTE!!! can be concurrently modified
-
-  DISALLOW_COPY_AND_ASSIGN(RefCounter);
-};
+// Currently, we don't use a separate reader lock.
+// TODO(kbg): Implement this with std::shared_mutex once C++17 becomes widely
+// available.
+using ReaderMutexLock = MutexLock;
 
 }  // namespace fst
 
-#endif  // FST_LIB_LOCK_H__
+#endif  // FST_LIB_LOCK_H_

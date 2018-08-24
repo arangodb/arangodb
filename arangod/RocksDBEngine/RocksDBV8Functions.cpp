@@ -141,7 +141,7 @@ static void JS_RecalculateCounts(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto physical = toRocksDBCollection(collection);
+  auto physical = toRocksDBCollection(*collection);
 
   v8::Handle<v8::Value> result = v8::Number::New(
       isolate, static_cast<double>(physical->recalculateCounts()));
@@ -163,7 +163,7 @@ static void JS_CompactCollection(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  RocksDBCollection* physical = toRocksDBCollection(collection);
+  RocksDBCollection* physical = toRocksDBCollection(*collection);
   physical->compact();
 
   TRI_V8_RETURN_UNDEFINED();
@@ -183,12 +183,22 @@ static void JS_EstimateCollectionSize(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  RocksDBCollection* physical = toRocksDBCollection(collection);
+  RocksDBCollection* physical = toRocksDBCollection(*collection);
   VPackBuilder builder;
   physical->estimateSize(builder);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -220,4 +230,8 @@ void RocksDBV8Functions::registerResources() {
                                JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "WAIT_FOR_ESTIMATOR_SYNC"),
+                               JS_WaitForEstimatorSync, true);
 }

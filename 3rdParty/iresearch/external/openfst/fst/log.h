@@ -1,5 +1,3 @@
-// log.h
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -12,13 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: riley@google.com (Michael Riley)
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-// \file
 // Google-style logging declarations and inline definitions.
 
-#ifndef FST_LIB_LOG_H__
-#define FST_LIB_LOG_H__
+#ifndef FST_LIB_LOG_H_
+#define FST_LIB_LOG_H_
 
 #include <cassert>
 #include <iostream>
@@ -60,7 +58,7 @@ inline void FstCheck(bool x, const char* expr,
   }
 }
 
-#define CHECK(x) FstCheck((x), #x, __FILE__, __LINE__)
+#define CHECK(x) FstCheck(static_cast<bool>(x), #x, __FILE__, __LINE__)
 #define CHECK_EQ(x, y) CHECK((x) == (y))
 #define CHECK_LT(x, y) CHECK((x) < (y))
 #define CHECK_GT(x, y) CHECK((x) > (y))
@@ -81,4 +79,4 @@ inline void FstCheck(bool x, const char* expr,
 // Ports
 #define ATTRIBUTE_DEPRECATED __attribute__((deprecated))
 
-#endif  // FST_LIB_LOG_H__
+#endif  // FST_LIB_LOG_H_

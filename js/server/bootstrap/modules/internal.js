@@ -62,6 +62,27 @@
 
   exports.ArangoUsers = global.ArangoUsers;
   delete global.ArangoUsers;
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoGeneralGraphModule
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoGeneralGraphModule = global.ArangoGeneralGraphModule;
+  delete global.ArangoGeneralGraphModule;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoGeneralGraphClass
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoGraph = global.ArangoGraph;
+  delete global.ArangoGraph;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoSmartGraphClass
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoSmartGraph = global.ArangoSmartGraph;
+  delete global.ArangoSmartGraph;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoDatabase
@@ -106,13 +127,6 @@
   exports.resetEngine = function () {
     require('@arangodb/actions').reloadRouting();
   };
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief rebuilds the authentication cache
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.reloadAuth = global.RELOAD_AUTH;
-  delete global.RELOAD_AUTH;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief write-ahead log object
@@ -261,6 +275,11 @@
     exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
   }
 
+  if (global.REPLICATION_APPLIER_STATE_ALL) {
+    // TODO: remove this export from the internal module
+    exports.getStateReplicationApplierAll = global.REPLICATION_APPLIER_STATE_ALL;
+  }
+
   if (global.REPLICATION_APPLIER_FORGET) {
     // TODO: remove this export from the internal module
     exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
@@ -382,8 +401,8 @@
   // / @brief getCollectionShardDistrbiution
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION) {
-    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
-    delete global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
+  if (global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION) {
+    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
   }
 }());

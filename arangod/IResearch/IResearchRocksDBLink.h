@@ -38,15 +38,11 @@ class IResearchRocksDBLink final
 
   virtual ~IResearchRocksDBLink();
 
-  virtual bool allowExpansion() const override {
-    return IResearchLink::allowExpansion();
-  }
-
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
-  ) {
+  ) override {
     IResearchLink::batchInsert(trx, documents, queue);
   }
 
@@ -58,6 +54,10 @@ class IResearchRocksDBLink final
     writeRocksWalMarker();
     return IResearchLink::drop();
   }
+    
+  virtual void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -90,9 +90,10 @@ class IResearchRocksDBLink final
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
   ) noexcept;
 
   virtual bool matchesDefinition(
@@ -145,7 +146,7 @@ class IResearchRocksDBLink final
   void writeRocksWalMarker();
   IResearchRocksDBLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 };
 

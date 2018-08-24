@@ -23,20 +23,23 @@
 #include "PageSizeFeature.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace arangodb {
 
 size_t PageSizeFeature::PageSize = 0;
 
 PageSizeFeature::PageSizeFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void PageSizeFeature::prepare() {
   PageSize = static_cast<size_t>(getpagesize());
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
 }
+
+} // arangodb

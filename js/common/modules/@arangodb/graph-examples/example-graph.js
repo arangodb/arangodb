@@ -1,5 +1,3 @@
-/* jshint maxlen:160 */
-'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Graph Data for Example
@@ -51,6 +49,28 @@ var createTraversalExample = function () {
   g.knows.save(e._id, b._id, {vertex:e._key});
   return g;
 };
+
+// we create a graph with 'edges2' pointing from 'verts' to 'verts'
+var createMpsTraversal = function () {
+  var g = Graph._create('mps_graph',
+    [Graph._relation('mps_edges', 'mps_verts', 'mps_verts')]
+  );  
+  var a = g.mps_verts.save({_key: 'A'});
+  var b = g.mps_verts.save({_key: 'B'});
+  var c = g.mps_verts.save({_key: 'C'});
+  var d = g.mps_verts.save({_key: 'D'});
+  var e = g.mps_verts.save({_key: 'E'});
+  var f = g.mps_verts.save({_key: 'F'});
+  g.mps_edges.save(a._id, b._id, {vertex:a._key});
+  g.mps_edges.save(a._id, e._id, {vertex:a._key});
+  g.mps_edges.save(a._id, d._id, {vertex:a._key});
+  g.mps_edges.save(b._id, c._id, {vertex:b._key});
+  g.mps_edges.save(d._id, c._id, {vertex:d._key});
+  g.mps_edges.save(e._id, f._id, {vertex:e._key});
+  g.mps_edges.save(f._id, c._id, {vertex:f._key});
+  return g;
+};
+
 
 // we create a graph with 'relation' pointing from 'female' to 'male' and 'male
 var createSocialGraph = function () {
@@ -374,6 +394,9 @@ var createTraversalGraph = function () {
 var knownGraphs = {
   'knows_graph': {create: createTraversalExample, dependencies: [
       'knows', 'persons'
+  ]},
+  'mps_graph': {create: createMpsTraversal, dependencies: [
+      'mps_edges', 'mps_verts'
   ]},
   'routeplanner': {create: createRoutePlannerGraph, dependencies: [
       'frenchHighway', 'frenchCity', 'germanCity', 'germanHighway', 'internationalHighway'

@@ -42,11 +42,25 @@ namespace iresearch {
 
 class IResearchLink;
 
-class IResearchRocksDBRecoveryHelper : public RocksDBRecoveryHelper {
+class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
-  IResearchRocksDBRecoveryHelper();
+  struct IndexId {
+    TRI_voc_tick_t db;
+    TRI_voc_cid_t cid;
+    TRI_idx_iid_t iid;
 
-  virtual ~IResearchRocksDBRecoveryHelper() override;
+    IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, TRI_idx_iid_t iid) noexcept
+      : db(db), cid(cid), iid(iid) {
+    }
+
+    bool operator<(IndexId const& rhs) const noexcept {
+      return db < rhs.db && cid < rhs.cid && iid < rhs.iid;
+    }
+  };
+
+  IResearchRocksDBRecoveryHelper() = default;
+
+  virtual ~IResearchRocksDBRecoveryHelper() override = default;
 
   virtual void prepare() override;
 
@@ -62,15 +76,7 @@ class IResearchRocksDBRecoveryHelper : public RocksDBRecoveryHelper {
   virtual void LogData(const rocksdb::Slice& blob) override;
 
  private:
-  std::pair<TRI_vocbase_t*, LogicalCollection*> lookupDatabaseAndCollection(
-      uint64_t objectId) const;
-  std::vector<IResearchLink*> lookupLinks(LogicalCollection* coll) const;
-  void dropCollectionFromAllViews(TRI_voc_tick_t dbId,
-                                  TRI_voc_cid_t collectionId);
-  void dropCollectionFromView(TRI_voc_tick_t dbId, TRI_voc_cid_t collectionId,
-                              TRI_voc_cid_t viewId);
-
- private:
+  std::set<IndexId> _recoveredIndexes; // set of already recovered indexes
   DatabaseFeature* _dbFeature;
   RocksDBEngine* _engine;
   uint32_t _documentCF;

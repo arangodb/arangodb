@@ -534,11 +534,11 @@ class RetainedBufferInfo : public v8::RetainedObjectInfo {
   explicit RetainedBufferInfo(V8Buffer* buffer);
 
  public:
-  virtual void Dispose();
-  virtual bool IsEquivalent(RetainedObjectInfo* other);
-  virtual intptr_t GetHash();
-  virtual char const* GetLabel();
-  virtual intptr_t GetSizeInBytes();
+  virtual void Dispose() override;
+  virtual bool IsEquivalent(RetainedObjectInfo* other) override;
+  virtual intptr_t GetHash() override;
+  virtual char const* GetLabel() override;
+  virtual intptr_t GetSizeInBytes() override;
 
  private:
   static char const _label[];
@@ -777,7 +777,7 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
                        free_callback_fptr callback, void* hint) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
-  if (_callback != 0) {
+  if (_callback != nullptr) {
     _callback(_data, _callbackHint);
   } else if (0 < _length) {
     delete[] _data;
@@ -791,7 +791,7 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
   _callback = callback;
   _callbackHint = hint;
 
-  if (_callback != 0) {
+  if (_callback != nullptr) {
     _data = data;
   } else if (0 < _length) {
     _data = new char[_length + SAFETY_OVERHEAD];
@@ -1625,7 +1625,7 @@ static void MapSetIndexedBuffer(
 /// @brief initializes the buffer module
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
+void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
   // sanity checks

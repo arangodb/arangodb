@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/Value.h>
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
@@ -52,6 +53,14 @@ typedef uint64_t TRI_server_id_t;
 /// @brief Convert a revision ID to a string
 std::string TRI_RidToString(TRI_voc_rid_t rid);
 
+/// @brief Convert a revision ID to a string
+/// the result buffer must be at least 11 chars long
+/// the length of the encoded value and the start position into
+/// the result buffer are returned
+std::pair<size_t, size_t> TRI_RidToString(TRI_voc_rid_t rid, char* result);
+
+arangodb::velocypack::ValuePair TRI_RidToValuePair(TRI_voc_rid_t rid, char* result);
+
 /// @brief Convert a string into a revision ID, returns UINT64_MAX if invalid
 TRI_voc_rid_t TRI_StringToRid(std::string const& ridStr, bool& isOld, bool warn);
 
@@ -68,12 +77,6 @@ enum TRI_voc_document_operation_e : uint8_t {
   TRI_VOC_DOCUMENT_OPERATION_UPDATE,
   TRI_VOC_DOCUMENT_OPERATION_REPLACE,
   TRI_VOC_DOCUMENT_OPERATION_REMOVE
-};
-
-/// @brief server operation modes
-enum TRI_vocbase_operationmode_e {
-  TRI_VOCBASE_MODE_NORMAL = 1,     // CRUD is allowed
-  TRI_VOCBASE_MODE_NO_CREATE = 2,  // C & U not allowed RD allowed
 };
 
 /// @brief edge direction
@@ -105,7 +108,6 @@ struct TRI_vocbase_t;
 
 struct DatabasesLists {
   std::unordered_map<std::string, TRI_vocbase_t*> _databases;
-  std::unordered_map<std::string, TRI_vocbase_t*> _coordinatorDatabases;
   std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
 };
 

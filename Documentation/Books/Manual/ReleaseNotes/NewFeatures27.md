@@ -403,12 +403,12 @@ If the query cache is operated in `demand` mode, it can be controlled per query
 if the cache should be checked for a result.
 
 
-### Miscellaneous changes
+### Miscellaneous AQL changes
 
 ### Optimizer
 
 The AQL optimizer rule `patch-update-statements` has been added. This rule can
-optimize certain AQL UPDATE queries that update documents in the a collection
+optimize certain AQL UPDATE queries that update documents in a collection
 that they also iterate over.
 
 For example, the following query reads documents from a collection in order

@@ -24,7 +24,7 @@
 #ifndef ARANGOD_INDEXES_INDEX_FACTORY_H
 #define ARANGOD_INDEXES_INDEX_FACTORY_H 1
 
-#include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -39,30 +39,94 @@ class Slice;
 
 class IndexFactory {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief typedef for a Index factory function
+  /// This typedef is used when registering the factory function for any index
+  /// type. The factory function is called when a index is first created or
+  /// re-opened after a server restart. The VelocyPack Slice will contain all
+  /// information about the indexs' general and implementation-specific
+  /// properties.
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::function<std::shared_ptr<Index>(
+    LogicalCollection& collection,
+    velocypack::Slice const& definition, // index definition
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+  )> IndexTypeFactory;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief typedef for a Index definition normalizer function
+  /// This typedef is used when registering the normalizer function for any
+  /// index type. The normalizer function is called when a index definition
+  /// needs to be normalized before using it to create the index. The resulting
+  /// VelocyBuilder will contain the 'type' that should be used for index
+  /// factory lookup (if no normalizer is registered then use the original type)
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::function<Result(
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )> IndexNormalizer;
+
   IndexFactory() = default;
   IndexFactory(IndexFactory const&) = delete;
   IndexFactory& operator=(IndexFactory const&) = delete;
 
   virtual ~IndexFactory() = default;
 
-  virtual int enhanceIndexDefinition(
-      arangodb::velocypack::Slice const definition,
-      arangodb::velocypack::Builder& enhanced, bool isCreation,
-      bool isCoordinator) const = 0;
+  /// @return 'factory' for 'type' was added successfully
+  Result emplaceFactory(
+    std::string const& type,
+    IndexTypeFactory const& factory
+  );
 
-  virtual std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
-      arangodb::velocypack::Slice info, bool generateKey,
-      arangodb::LogicalCollection* col, bool isClusterConstructor) const = 0;
+  /// @return 'normalizer' for 'type' was added successfully
+  Result emplaceNormalizer(
+    std::string const& type,
+    IndexNormalizer const& normalizer
+  );
 
+  virtual Result enhanceIndexDefinition(
+    velocypack::Slice const definition,
+    velocypack::Builder& normalized,
+    bool isCreation,
+    bool isCoordinator
+  ) const;
+
+  std::shared_ptr<Index> prepareIndexFromSlice(
+    velocypack::Slice definition,
+    bool generateKey,
+    LogicalCollection& collection,
+    bool isClusterConstructor
+  ) const;
+
+  /// @brief used to display storage engine capabilities
+  virtual std::vector<std::string> supportedIndexes() const;
+
+  /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(
-      arangodb::LogicalCollection* col,
-      std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes
+  ) const = 0;
 
-  virtual std::vector<std::string> supportedIndexes() const = 0;
-  
+  /// @brief create indexes from a list of index definitions
+  virtual void prepareIndexes(
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+  ) const = 0;
+
+ protected:
+  /// @brief clear internal factory/normalizer maps
+  void clear();
+
   static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info, 
                                      bool generateKey, 
                                      bool isClusterConstructor);
+
+ private:
+  std::unordered_map<std::string, IndexTypeFactory> _factories;
+  std::unordered_map<std::string, IndexNormalizer> _normalizers;
 };
 
 }  // namespace arangodb

@@ -29,6 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
 #include "Utils/OperationResult.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -41,7 +42,7 @@
 #ifdef USE_ENTERPRISE
   #define ENTERPRISE_VIRT virtual
 #else
-  #define ENTERPRISE_VIRT
+  #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
 namespace arangodb {
@@ -71,7 +72,6 @@ class BaseEngine;
 }
 
 namespace transaction {
-class CallbackInvoker;
 class Context;
 struct Options;
 }
@@ -81,6 +81,7 @@ class CollectionNameResolver;
 class LocalDocumentId;
 class Index;
 class ManagedDocumentResult;
+struct IndexIteratorOptions;
 struct OperationCursor;
 struct OperationOptions;
 class TransactionState;
@@ -90,7 +91,6 @@ namespace transaction {
 
 class Methods {
   friend class traverser::BaseEngine;
-  friend class CallbackInvoker;
 
  public:
   class IndexHandle {
@@ -117,8 +117,6 @@ class Methods {
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
-  double const TRX_FOLLOWER_TIMEOUT = 3.0;
-
   /// @brief transaction::Methods
  private:
   Methods() = delete;
@@ -128,14 +126,45 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  Methods(std::shared_ptr<transaction::Context> const& transactionContext, transaction::Options const& options = transaction::Options());
+  Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+          transaction::Options const& options = transaction::Options());
 
  public:
+
+  /// @brief create the transaction, used to be UserTransaction
+  Methods(std::shared_ptr<transaction::Context> const& ctx,
+          std::vector<std::string> const& readCollections,
+          std::vector<std::string> const& writeCollections,
+          std::vector<std::string> const& exclusiveCollections,
+          transaction::Options const& options);
 
   /// @brief destroy the transaction
   virtual ~Methods();
 
- public:
+  typedef Result(*DataSourceRegistrationCallback)(LogicalDataSource& dataSource, Methods& trx);
+
+  /// @brief definition from TransactionState::StatusChangeCallback
+  /// @param status the new status of the transaction
+  ///               will match trx.state()->status() for top-level transactions
+  ///               may not match trx.state()->status() for embeded transactions
+  ///               since their staus is not updated from RUNNING
+  typedef std::function<void(transaction::Methods& trx, transaction::Status status)> StatusChangeCallback;
+
+  /// @brief add a callback to be called for LogicalDataSource instance
+  ///        association events, e.g. addCollection(...)
+  /// @note not thread-safe on the assumption of static factory registration
+  static void addDataSourceRegistrationCallback(DataSourceRegistrationCallback const& callback);
+
+  /// @brief add a callback to be called for state change events
+  /// @param callback nullptr and empty functers are ignored, treated as success
+  /// @return success
+  bool addStatusChangeCallback(StatusChangeCallback const* callback);
+
+  /// @brief clear all called for LogicalDataSource instance association events
+  /// @note not thread-safe on the assumption of static factory registration
+  /// @note FOR USE IN TESTS ONLY to reset test state
+  /// FIXME TODO StateRegistrationCallback logic should be moved into its own feature
+  static void clearDataSourceRegistrationCallbacks();
 
   /// @brief default batch size for index and other operations
   static constexpr uint64_t defaultBatchSize() { return 1000; }
@@ -146,19 +175,14 @@ class Methods {
     ANY
   };
 
-  /// @brief register a callback for transaction commit or abort
-  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& cb) {
-    _callbacks.emplace_back(cb);
-  }
-
   /// @brief return database of transaction
-  TRI_vocbase_t* vocbase() const;
-  inline std::string const& databaseName() const { return vocbase()->name(); }
+  TRI_vocbase_t& vocbase() const;
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
 
   Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
+  Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection, char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {
@@ -195,6 +219,9 @@ class Methods {
   Result finish(int errorNum);
   Result finish(Result const& res);
 
+  /// @brief return the transaction id
+  TRI_voc_tid_t tid() const;
+
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
 
@@ -211,9 +238,7 @@ class Methods {
   /// @brief read many documents, using skip and limit in arbitrary order
   /// The result guarantees that all documents are contained exactly once
   /// as long as the collection is not modified.
-  ENTERPRISE_VIRT OperationResult any(std::string const&,
-                                      uint64_t skip = 0,
-                                      uint64_t limit = 1);
+  ENTERPRISE_VIRT OperationResult any(std::string const& collectionName);
 
   /// @brief add a collection to the transaction for read, at runtime
   ENTERPRISE_VIRT TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid,
@@ -307,7 +332,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  ENTERPRISE_VIRT OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, CountType type);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -357,19 +382,42 @@ class Methods {
   OperationCursor* indexScanForCondition(IndexHandle const&,
                                          arangodb::aql::AstNode const*,
                                          arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*, bool reverse);
+                                         ManagedDocumentResult*,
+                                         IndexIteratorOptions const&);
 
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
-                                             CursorType cursorType,
-                                             bool reverse);
+                                             CursorType cursorType);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
                                 AccessMode::Type) const;
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shardName shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shardName) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shardName shard the shard name
+   */
+  void setLockedShard(std::string const& shardName);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
@@ -392,8 +440,8 @@ class Methods {
   CollectionNameResolver const* resolver() const;
 
 #ifdef USE_ENTERPRISE
-  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t cid) { return false; }
-  virtual bool isInaccessibleCollection(std::string const& cid) { return false; }
+  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) { return false; }
+  virtual bool isInaccessibleCollection(std::string const& /*cid*/) { return false; }
 #endif
 
  private:
@@ -401,6 +449,8 @@ class Methods {
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
+
+  //SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
                              StringRef const& key, TRI_voc_rid_t rid,
@@ -453,11 +503,9 @@ class Methods {
                            uint64_t skip, uint64_t limit,
                            OperationOptions& options);
 
-  OperationResult anyCoordinator(std::string const& collectionName,
-                                 uint64_t skip, uint64_t limit);
+  OperationResult anyCoordinator(std::string const& collectionName);
 
-  OperationResult anyLocal(std::string const& collectionName, uint64_t skip,
-                           uint64_t limit);
+  OperationResult anyLocal(std::string const& collectionName);
 
   OperationResult truncateCoordinator(std::string const& collectionName,
                                       OperationOptions& options);
@@ -472,11 +520,16 @@ class Methods {
                                            OperationOptions const& options);
 
 
-
-  OperationResult countCoordinator(std::string const& collectionName, bool aggregate);
-  OperationResult countLocal(std::string const& collectionName);
-
  protected:
+
+  OperationResult countCoordinator(std::string const& collectionName,
+                                   CountType type);
+
+  OperationResult countCoordinatorHelper(
+      std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
+
+  OperationResult countLocal(std::string const& collectionName, CountType type);
+
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
                                AccessMode::Type type = AccessMode::Type::READ) const;
@@ -486,13 +539,7 @@ class Methods {
       TransactionCollection const*) const;
 
   /// @brief add a collection by id, with the name supplied
-  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, char const*, AccessMode::Type);
-
-  /// @brief add a collection by id, with the name supplied
-  Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
-
-  /// @brief add a collection by id
-  Result addCollection(TRI_voc_cid_t, AccessMode::Type);
+  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
@@ -515,6 +562,7 @@ class Methods {
   OperationResult clusterResultInsert(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      OperationOptions const& options,
       std::unordered_map<int, size_t> const& errorCounter) const;
 
 /// @brief Helper create a Cluster Communication modify result
@@ -562,18 +610,6 @@ class Methods {
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
       std::string const&) const;
 
-  /// @brief add a collection to an embedded transaction
-  Result addCollectionEmbedded(TRI_voc_cid_t, char const* name, AccessMode::Type);
-
-  /// @brief add a collection to a top-level transaction
-  Result addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
-
-  /// @brief set up an embedded transaction
-  void setupEmbedded(TRI_vocbase_t*);
-
-  /// @brief set up a top-level transaction
-  void setupToplevel(TRI_vocbase_t*, transaction::Options const&);
-
  protected:
   /// @brief the state
   TransactionState* _state;
@@ -594,23 +630,6 @@ class Methods {
     std::string name;
   }
   _collectionCache;
-
-  /// @brief optional callback function that will be called on transaction
-  /// commit or abort
-  std::vector<std::function<void(arangodb::transaction::Methods* trx)>> _callbacks;
-};
-
-class CallbackInvoker {
- public:
-  explicit CallbackInvoker(transaction::Methods* trx) : _trx(trx) {}
-  ~CallbackInvoker() {
-    invoke();
-  }
-
-  void invoke() noexcept;
-
- private:
-  transaction::Methods* _trx;
 };
 
 }

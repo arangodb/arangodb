@@ -54,6 +54,10 @@ namespace arangodb {
 namespace basics {
 namespace Nonce {
 
+void setInitialSize(size_t size) {
+  SizeNonces = size;
+}
+
 void create(size_t size) {
   if (SizeNonces < 64) {
     SizeNonces = 64;
@@ -84,7 +88,7 @@ void destroy() {
 }
 
 std::string createNonce() {
-  uint32_t timestamp = (uint32_t)time(0);
+  uint32_t timestamp = (uint32_t)time(nullptr);
   uint32_t rand1 = RandomGenerator::interval(UINT32_MAX);
   uint32_t rand2 = RandomGenerator::interval(UINT32_MAX);
 
@@ -150,7 +154,7 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
   }
 
   // statistics, compute the log2 of the age and increment the proofs count
-  uint32_t now = (uint32_t)time(0);
+  uint32_t now = (uint32_t)time(nullptr);
   uint32_t age = 1;
 
   if (timestamp < now) {

@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef IRESEARCH_UNICODE_UTILS_H
+#define IRESEARCH_UNICODE_UTILS_H
+
 NS_ROOT
 
 const int32_t MIN_SUPPLEMENTARY_CODE_POINT = 65536;
@@ -51,3 +54,5 @@ IRESEARCH_API bool utf8_less(
   size_t rhs_len );
 
 NS_END
+
+#endif

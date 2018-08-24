@@ -23,7 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "store/store_utils.hpp"
-#include "utils/misc.hpp"
+#include "utils/bytes_utils.hpp"
 
 using namespace iresearch;
 
@@ -196,14 +196,22 @@ void shift_pack_unpack_core_64(uint64_t value, bool flag) {
 
 template<typename T>
 void vencode_from_array(T expected_value, size_t expected_length) {
-  typedef vencode_traits<T> traits_t;
-  ASSERT_EQ(expected_length, traits_t::size(expected_value));
-  irs::byte_type buf[traits_t::const_max_size]{};
-  const auto ptr = traits_t::write(expected_value, buf);
-  ASSERT_EQ(expected_length, std::distance(std::begin(buf), ptr));
-  const auto res = traits_t::read(buf);
-  ASSERT_EQ(expected_value, res.first);
-  ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), res.second));
+  ASSERT_EQ(expected_length, irs::bytes_io<T>::vsize(expected_value));
+  irs::byte_type buf[irs::bytes_io<T>::const_max_vsize]{};
+
+  // write data
+  {
+    auto* ptr = buf;
+    irs::vwrite<T>(ptr, expected_value);
+    ASSERT_EQ(expected_length, std::distance(buf, ptr));
+  }
+
+  // read data
+  {
+    const auto* ptr = buf;
+    ASSERT_EQ(expected_value, irs::vread<T>(ptr));
+    ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), ptr));
+  }
 }
 
 } // detail
@@ -672,7 +680,7 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     );
 
     ASSERT_EQ(
-      irs::vencode_size_64(step) + irs::vencode_size_64(step) + irs::vencode_size_32(irs::encode::bitpack::ALL_EQUAL) + irs::vencode_size_64(0), // base + avg + bits + single value
+      irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint32_t>::vsize(irs::encode::bitpack::ALL_EQUAL) + irs::bytes_io<uint64_t>::vsize(0), // base + avg + bits + single value
       out.size()
     );
 

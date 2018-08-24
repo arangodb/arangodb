@@ -131,7 +131,7 @@ static std::string buildPrefix(Ticket ticketId) {
 
 static std::atomic_uint_fast64_t NEXT_TICKET_ID(static_cast<uint64_t>(1));
 static std::vector<char> urlDotSeparators{'/', '#', '?'};
-}
+} // namespace
 
 Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   curl_global_init(CURL_GLOBAL_ALL);
@@ -140,7 +140,7 @@ Communicator::Communicator() : _curl(nullptr), _mc(CURLM_OK), _enabled(true) {
   if (_curl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, "unable to initialize curl");
   }
-
+  
 #ifdef _WIN32
   int err = dumb_socketpair(_socks, 0);
   if (err != 0) {
@@ -301,9 +301,23 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
     }
   }
 
+  if (request->requestType() == RequestType::POST ||
+      request->requestType() == RequestType::PUT) {
+    // work around curl's Expect-100 Continue obsession
+    // by sending an empty "Expect:" header
+    // this tells curl to not send its "Expect: 100-continue" header
+    requestHeaders = curl_slist_append(requestHeaders, "Expect:");
+  }
+
+  std::string thisHeader;
   for (auto const& header : request->headers()) {
-    std::string thisHeader(header.first + ": " + header.second);
+    thisHeader.reserve(header.first.size() + header.second.size() + 2);
+    thisHeader.append(header.first);
+    thisHeader.append(": ", 2);
+    thisHeader.append(header.second);
     requestHeaders = curl_slist_append(requestHeaders, thisHeader.c_str());
+    
+    thisHeader.clear();
   }
 
   std::string url = createSafeDottedCurlUrl(newRequest._destination.url());
@@ -323,7 +337,7 @@ void Communicator::createRequestInProgress(NewRequest&& newRequest) {
   curl_easy_setopt(handle, CURLOPT_HEADERDATA, handleInProgress->_rip.get());
   curl_easy_setopt(handle, CURLOPT_ERRORBUFFER,
                    handleInProgress->_rip.get()->_errorBuffer);
-
+  
   // mop: XXX :S CURLE 51 and 60...
   curl_easy_setopt(handle, CURLOPT_SSL_VERIFYPEER, 0L);
   curl_easy_setopt(handle, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -417,18 +431,18 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   }
   
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
+      << ::buildPrefix(rip->_ticketId) << "curl rc is : " << rc << " after "
       << Logger::FIXED(TRI_microtime() - rip->_startTime) << " s";
   
   if (CURLE_OPERATION_TIMEDOUT == rc) {
     curl_easy_getinfo(handle, CURLINFO_CONNECT_TIME, &connectTime);
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      << buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
+      << ::buildPrefix(rip->_ticketId) << "CURLINFO_CONNECT_TIME is " << connectTime;
   } // if
 
   if (strlen(rip->_errorBuffer) != 0) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-        << buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
+        << ::buildPrefix(rip->_ticketId) << "curl error details: " << rip->_errorBuffer;
   }
 
   MUTEX_LOCKER(guard, _handlesLock);
@@ -551,7 +565,7 @@ int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
   TRI_ASSERT(data != nullptr);
 
   std::string dataStr(data, size);
-  std::string prefix(buildPrefix(request->_ticketId));
+  std::string prefix(::buildPrefix(request->_ticketId));
 
   switch (type) {
     case CURLINFO_TEXT:
@@ -665,7 +679,7 @@ void Communicator::abortRequestInternal(Ticket ticketId) {
   }
 
   LOG_TOPIC(WARN, Logger::REQUESTS) 
-      << buildPrefix(handle->second->_rip->_ticketId) 
+      << ::buildPrefix(handle->second->_rip->_ticketId) 
       << "aborting request to " << handle->second->_rip->_destination.url();
   handle->second->_rip->_aborted = true;
 }
@@ -685,7 +699,7 @@ void Communicator::callErrorFn(Ticket const& ticketId, Destination const& destin
 
   if (total > CALLBACK_WARN_TIME) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION) 
-        << buildPrefix(ticketId) << "error callback for request to " << destination.url() << " took " << total << "s";
+        << ::buildPrefix(ticketId) << "error callback for request to " << destination.url() << " took " << total << "s";
   }
 }
 
@@ -701,6 +715,6 @@ void Communicator::callSuccessFn(Ticket const& ticketId, Destination const& dest
 
   if (total > CALLBACK_WARN_TIME) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION) 
-        << buildPrefix(ticketId) << "success callback for request to " << destination.url() << " took " << (total) << "s";
+        << ::buildPrefix(ticketId) << "success callback for request to " << destination.url() << " took " << (total) << "s";
   }
 }

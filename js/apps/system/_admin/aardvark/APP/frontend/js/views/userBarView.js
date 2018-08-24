@@ -15,12 +15,20 @@
     },
 
     initialize: function (options) {
+      // set user ro/rw mode
+      arangoHelper.checkDatabasePermissions(this.setUserCollectionMode.bind(this));
       this.userCollection = options.userCollection;
       this.userCollection.fetch({
         cache: false,
         async: true
       });
       this.userCollection.bind('change:extra', this.render.bind(this));
+    },
+
+    setUserCollectionMode: function (readOnly) {
+      if (readOnly) {
+        this.userCollection.authOptions.ro = true;
+      }
     },
 
     template: templateEngine.createTemplate('userBarView.ejs'),
@@ -72,6 +80,15 @@
           var currentUser = null;
           if (username !== false) {
             var continueFunc = function () {
+              if (frontendConfig.ldapEnabled) {
+                self.userCollection.add({
+                  name: window.App.currentUser,
+                  user: window.App.currentUser,
+                  username: window.App.currentUser,
+                  active: true,
+                  img: undefined
+                });
+              }
               currentUser = self.userCollection.findWhere({user: username});
               currentUser.set({loggedIn: true});
               name = currentUser.get('extra').name;

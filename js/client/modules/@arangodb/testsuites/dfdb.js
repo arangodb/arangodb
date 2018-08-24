@@ -34,6 +34,10 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 
+const testPaths = {
+  'dfdb': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: dfdb
 // //////////////////////////////////////////////////////////////////////////////
@@ -53,7 +57,7 @@ function dfdb (options) {
 
   let results = { failed: 0 };
 
-  results.dfdb = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'dfdb', dataDir);
+  results.dfdb = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'dfdb', dataDir, false, options.coreCheck);
 
   print();
   results.dfdb.failed = results.dfdb.status ? 0 : 1;
@@ -64,11 +68,10 @@ function dfdb (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['dfdb'] = dfdb;
   defaultFns.push('dfdb');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

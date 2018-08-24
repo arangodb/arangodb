@@ -53,8 +53,152 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace {
+arangodb::Result writeCounterValue(
+    std::unordered_map<uint64_t, rocksdb::SequenceNumber>& syncedSeqNums,
+    rocksdb::Transaction* rtrx, VPackBuilder& b,
+    std::pair<uint64_t, arangodb::RocksDBSettingsManager::CMValue> const&
+        pair) {
+  using arangodb::Logger;
+  using arangodb::Result;
+  using arangodb::RocksDBColumnFamily;
+  using arangodb::RocksDBKey;
+  using arangodb::rocksutils::convertStatus;
+
+  // Skip values which we did not change
+  auto const& it = syncedSeqNums.find(pair.first);
+  if (it != syncedSeqNums.end() && it->second == pair.second._sequenceNum) {
+    return Result();
+  }
+
+  b.clear();
+  pair.second.serialize(b);
+
+  RocksDBKey key;
+  key.constructCounterValue(pair.first);
+  rocksdb::Slice value((char*)b.start(), b.size());
+  rocksdb::Status s =
+      rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
+  if (!s.ok()) {
+    rtrx->Rollback();
+    auto rStatus = convertStatus(s);
+    LOG_TOPIC(WARN, Logger::ENGINES)
+        << "writing counters failed: " << rStatus.errorMessage();
+    return rStatus;
+  }
+
+  return Result();
+}
+}  // namespace
+
+namespace {
+arangodb::Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
+                               uint64_t seqNumber) {
+  using arangodb::EngineSelectorFeature;
+  using arangodb::Logger;
+  using arangodb::Result;
+  using arangodb::RocksDBColumnFamily;
+  using arangodb::RocksDBKey;
+  using arangodb::RocksDBSettingsType;
+  using arangodb::StorageEngine;
+
+  // now write global settings
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  b.clear();
+  b.openObject();
+  b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
+  b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
+  b.add("releasedTick", VPackValue(std::to_string(engine->releasedTick())));
+  b.add("lastSync", VPackValue(std::to_string(seqNumber)));
+  b.close();
+
+  VPackSlice slice = b.slice();
+  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
+
+  RocksDBKey key;
+  key.constructSettingsValue(RocksDBSettingsType::ServerTick);
+  rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
+
+  rocksdb::Status s =
+      rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
+
+  if (!s.ok()) {
+    auto rStatus = arangodb::rocksutils::convertStatus(s);
+    LOG_TOPIC(WARN, Logger::ENGINES)
+        << "writing settings failed: " << rStatus.errorMessage();
+    rtrx->Rollback();
+    return rStatus;
+  }
+
+  return Result();
+}
+}  // namespace
+
+namespace {
+std::pair<arangodb::Result, rocksdb::SequenceNumber>
+writeIndexEstimatorsAndKeyGenerator(
+    rocksdb::Transaction* rtrx,
+    std::pair<uint64_t, arangodb::RocksDBSettingsManager::CMValue> const& pair,
+    rocksdb::SequenceNumber baseSeq) {
+  using arangodb::DatabaseFeature;
+  using arangodb::Logger;
+  using arangodb::Result;
+  using arangodb::RocksDBCollection;
+  using arangodb::application_features::ApplicationServer;
+  using arangodb::rocksutils::mapObjectToCollection;
+
+  auto returnSeq = baseSeq;
+  auto dbColPair = mapObjectToCollection(pair.first);
+  if (dbColPair.second == 0 && dbColPair.first == 0) {
+    // collection with this objectID not known.Skip.
+    return std::make_pair(Result(), returnSeq);
+  }
+  auto dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(dbfeature != nullptr);
+  auto vocbase = dbfeature->useDatabase(dbColPair.first);
+  if (vocbase == nullptr) {
+    // Bad state, we have references to a database that is not known
+    // anymore.
+    // However let's just skip in production. Not allowed to crash.
+    // If we cannot find this infos during recovery we can either recompute
+    // or start fresh.
+    return std::make_pair(Result(), returnSeq);
+  }
+  TRI_DEFER(vocbase->release());
+
+  auto collection = vocbase->lookupCollection(dbColPair.second);
+  if (collection == nullptr) {
+    // Bad state, we have references to a collection that is not known
+    // anymore.
+    // However let's just skip in production. Not allowed to crash.
+    // If we cannot find this infos during recovery we can either recompute
+    // or start fresh.
+    return std::make_pair(Result(), returnSeq);
+  }
+  auto rocksCollection =
+      static_cast<RocksDBCollection*>(collection->getPhysical());
+  TRI_ASSERT(rocksCollection != nullptr);
+  auto serializeResult =
+      rocksCollection->serializeIndexEstimates(rtrx, baseSeq);
+  if (!serializeResult.first.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed: "
+                                     << serializeResult.first.errorMessage();
+    return std::make_pair(serializeResult.first, returnSeq);
+  }
+  returnSeq = std::min(returnSeq, serializeResult.second);
+
+  Result res = rocksCollection->serializeKeyGenerator(rtrx);
+  if (!res.ok()) {
+    LOG_TOPIC(WARN, Logger::ENGINES)
+        << "writing key generators failed: " << res.errorMessage();
+    return std::make_pair(res, returnSeq);
+  }
+
+  return std::make_pair(Result(), returnSeq);
+}
+}  // namespace
+
+namespace arangodb {
 
 RocksDBSettingsManager::CMValue::CMValue(VPackSlice const& slice)
     : _sequenceNum(0), _count(0), _revisionId(0) {
@@ -87,10 +231,10 @@ RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
-  readSettings();
-  readIndexEstimates();
-  readCounterValues();
-  readKeyGenerators();
+  loadSettings();
+  loadIndexEstimates();
+  loadCounterValues();
+  loadKeyGenerators();
 
   EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
 }
@@ -177,8 +321,8 @@ void RocksDBSettingsManager::removeCounter(uint64_t objectId) {
 std::unordered_map<uint64_t, rocksdb::SequenceNumber>
 RocksDBSettingsManager::counterSeqs() {
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqs;
-  {  // block all updates
-    WRITE_LOCKER(guard, _rwLock);
+  {  // block all updates while we copy
+    READ_LOCKER(guard, _rwLock);
     for (auto it : _counters) {
       seqs.emplace(it.first, it.second._sequenceNum);
     }
@@ -210,118 +354,6 @@ bool RocksDBSettingsManager::lockForSync(bool force) {
   return true;
 }
 
-Result RocksDBSettingsManager::writeCounterValue(
-    rocksdb::Transaction* rtrx, VPackBuilder& b,
-    std::pair<uint64_t, CMValue> const& pair) {
-  // Skip values which we did not change
-  auto const& it = _syncedSeqNums.find(pair.first);
-  if (it != _syncedSeqNums.end() && it->second == pair.second._sequenceNum) {
-    return Result();
-  }
-
-  b.clear();
-  pair.second.serialize(b);
-
-  RocksDBKey key;
-  key.constructCounterValue(pair.first);
-  rocksdb::Slice value((char*)b.start(), b.size());
-  rocksdb::Status s =
-      rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
-  if (!s.ok()) {
-    rtrx->Rollback();
-    auto rStatus = rocksutils::convertStatus(s);
-    LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing counters failed: " << rStatus.errorMessage();
-    return rStatus;
-  }
-
-  return Result();
-}
-
-Result RocksDBSettingsManager::writeSettings(rocksdb::Transaction* rtrx,
-                                             VPackBuilder& b,
-                                             uint64_t seqNumber) {
-  // now write global settings
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  b.clear();
-  b.openObject();
-  b.add("tick", VPackValue(std::to_string(TRI_CurrentTickServer())));
-  b.add("hlc", VPackValue(std::to_string(TRI_HybridLogicalClock())));
-  b.add("releasedTick", VPackValue(std::to_string(engine->releasedTick())));
-  b.add("lastSync", VPackValue(std::to_string(seqNumber)));
-  b.close();
-
-  VPackSlice slice = b.slice();
-  LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
-
-  RocksDBKey key;
-  key.constructSettingsValue(RocksDBSettingsType::ServerTick);
-  rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
-
-  rocksdb::Status s =
-      rtrx->Put(RocksDBColumnFamily::definitions(), key.string(), value);
-
-  if (!s.ok()) {
-    auto rStatus = rocksutils::convertStatus(s);
-    LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing settings failed: " << rStatus.errorMessage();
-    rtrx->Rollback();
-    return rStatus;
-  }
-
-  return Result();
-}
-
-Result RocksDBSettingsManager::writeIndexEstimatorAndKeyGenerator(
-    rocksdb::Transaction* rtrx, VPackBuilder& b,
-    std::pair<uint64_t, CMValue> const& pair) {
-  auto dbColPair = rocksutils::mapObjectToCollection(pair.first);
-  if (dbColPair.second == 0 && dbColPair.first == 0) {
-    // collection with this objectID not known.Skip.
-    return Result();
-  }
-  auto dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  TRI_ASSERT(dbfeature != nullptr);
-  auto vocbase = dbfeature->useDatabase(dbColPair.first);
-  if (vocbase == nullptr) {
-    // Bad state, we have references to a database that is not known
-    // anymore.
-    // However let's just skip in production. Not allowed to crash.
-    // If we cannot find this infos during recovery we can either recompute
-    // or start fresh.
-    return Result();
-  }
-  TRI_DEFER(vocbase->release());
-
-  auto collection = vocbase->lookupCollection(dbColPair.second);
-  if (collection == nullptr) {
-    // Bad state, we have references to a collection that is not known
-    // anymore.
-    // However let's just skip in production. Not allowed to crash.
-    // If we cannot find this infos during recovery we can either recompute
-    // or start fresh.
-    return Result();
-  }
-  auto rocksCollection =
-      static_cast<RocksDBCollection*>(collection->getPhysical());
-  TRI_ASSERT(rocksCollection != nullptr);
-  Result res = rocksCollection->serializeIndexEstimates(rtrx);
-  if (!res.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing index estimates failed: " << res.errorMessage();
-    return res;
-  }
-
-  res = rocksCollection->serializeKeyGenerator(rtrx);
-  if (!res.ok()) {
-    LOG_TOPIC(WARN, Logger::ENGINES)
-        << "writing key generators failed: " << res.errorMessage();
-    return res;
-  }
-
-  return Result();
-}
-
 /// Thread-Safe force sync
 Result RocksDBSettingsManager::sync(bool force) {
   TRI_IF_FAILURE("RocksDBSettingsManagerSync") { return Result(); }
@@ -338,21 +370,25 @@ Result RocksDBSettingsManager::sync(bool force) {
   }
 
   rocksdb::WriteOptions writeOptions;
+  // fetch the seq number prior to any writes; this guarantees that we save
+  // any subsequent updates in the WAL to replay if we crash in the middle
   auto seqNumber = _db->GetLatestSequenceNumber();
   std::unique_ptr<rocksdb::Transaction> rtrx(
       _db->BeginTransaction(writeOptions));
 
   VPackBuilder b;
   for (std::pair<uint64_t, CMValue> const& pair : copy) {
-    Result res = writeCounterValue(rtrx.get(), b, pair);
+    Result res = writeCounterValue(_syncedSeqNums, rtrx.get(), b, pair);
     if (res.fail()) {
       return res;
     }
 
-    res = writeIndexEstimatorAndKeyGenerator(rtrx.get(), b, pair);
-    if (res.fail()) {
-      return res;
+    auto writeResult =
+        writeIndexEstimatorsAndKeyGenerator(rtrx.get(), pair, seqNumber);
+    if (writeResult.first.fail()) {
+      return writeResult.first;
     }
+    seqNumber = std::min(seqNumber, writeResult.second);
   }
 
   Result res = writeSettings(rtrx.get(), b, seqNumber);
@@ -375,7 +411,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   return rocksutils::convertStatus(s);
 }
 
-void RocksDBSettingsManager::readSettings() {
+void RocksDBSettingsManager::loadSettings() {
+  WRITE_LOCKER(guard, _rwLock);
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
 
@@ -428,7 +465,7 @@ void RocksDBSettingsManager::readSettings() {
   }
 }
 
-void RocksDBSettingsManager::readIndexEstimates() {
+void RocksDBSettingsManager::loadIndexEstimates() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEstimateValues();
 
@@ -451,12 +488,16 @@ void RocksDBSettingsManager::readIndexEstimates() {
     try {
       if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(
               estimateSerialisation)) {
-        _estimators.emplace(
-            objectId,
-            std::make_pair(
-                lastSeqNumber,
-                std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
-                    estimateSerialisation)));
+        auto it = _estimators.emplace(
+            objectId, std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
+                          lastSeqNumber, estimateSerialisation));
+        if (it.second) {
+          auto estimator = it.first->second.get();
+          LOG_TOPIC(TRACE, Logger::ENGINES)
+              << "found index estimator for objectId '" << objectId
+              << "' last synced at " << lastSeqNumber << " with estimate "
+              << estimator->computeEstimate();
+        }
       }
     } catch (...) {
       // Nothing to do, if the estimator fails to create we let it be recreated.
@@ -466,7 +507,7 @@ void RocksDBSettingsManager::readIndexEstimates() {
   }
 }
 
-void RocksDBSettingsManager::readKeyGenerators() {
+void RocksDBSettingsManager::loadKeyGenerators() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
 
@@ -480,35 +521,40 @@ void RocksDBSettingsManager::readKeyGenerators() {
        iter->Next()) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
     auto properties = RocksDBValue::data(iter->value());
-    uint64_t lastValue = properties.get("lastValue").getUInt();
 
-    // If this hits we have two generators for the same collection
-    TRI_ASSERT(_generators.find(objectId) == _generators.end());
-    try {
-      _generators.emplace(objectId, lastValue);
-    } catch (...) {
-      // Nothing to do, just validate that no corrupted memory was produced.
+    VPackSlice s = properties.get(StaticStrings::LastValue);
+    if (!s.isNone()) { 
+      uint64_t lastValue = properties.get(StaticStrings::LastValue).getUInt();
+
+      // If this hits we have two generators for the same collection
       TRI_ASSERT(_generators.find(objectId) == _generators.end());
+      try {
+        _generators.emplace(objectId, lastValue);
+      } catch (...) {
+        // Nothing to do, just validate that no corrupted memory was produced.
+        TRI_ASSERT(_generators.find(objectId) == _generators.end());
+      }
     }
   }
 }
 
-std::pair<std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>, uint64_t>
+std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
 RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res(nullptr);
-  uint64_t seq = 0;
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res;
+
+  WRITE_LOCKER(guard, _rwLock);
   auto it = _estimators.find(objectId);
   if (it != _estimators.end()) {
     // We swap out the stored estimate in order to move it to the caller
-    res.swap(it->second.second);
-    seq = it->second.first;
+    res.swap(it->second);
     // Drop the now empty estimator
     _estimators.erase(objectId);
   }
-  return std::make_pair(std::move(res), seq);
+  return res;
 }
 
 uint64_t RocksDBSettingsManager::stealKeyGenerator(uint64_t objectId) {
+  WRITE_LOCKER(guard, _rwLock);
   uint64_t res = 0;
   auto it = _generators.find(objectId);
   if (it != _generators.end()) {
@@ -526,13 +572,17 @@ void RocksDBSettingsManager::clearIndexEstimators() {
   // by recovery.
 
   // TODO REMOVE RocksDB Keys of all not stolen values?
+  WRITE_LOCKER(guard, _rwLock);
   _estimators.clear();
 }
 
-void RocksDBSettingsManager::clearKeyGenerators() { _generators.clear(); }
+void RocksDBSettingsManager::clearKeyGenerators() {
+  WRITE_LOCKER(guard, _rwLock);
+  _generators.clear();
+}
 
 /// Parse counter values from rocksdb
-void RocksDBSettingsManager::readCounterValues() {
+void RocksDBSettingsManager::loadCounterValues() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
 
@@ -547,6 +597,10 @@ void RocksDBSettingsManager::readCounterValues() {
     auto const& it =
         _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
     _syncedSeqNums[objectId] = it.first->second._sequenceNum;
+    LOG_TOPIC(TRACE, Logger::ENGINES)
+        << "found count marker for objectId '" << objectId
+        << "' last synced at " << it.first->first << " with count "
+        << it.first->second._count;
 
     iter->Next();
   }
@@ -557,3 +611,5 @@ rocksdb::SequenceNumber RocksDBSettingsManager::earliestSeqNeeded() const {
   READ_LOCKER(guard, _rwLock);
   return _lastSync;
 }
+
+}  // namespace arangodb

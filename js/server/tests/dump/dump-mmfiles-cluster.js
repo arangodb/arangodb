@@ -28,8 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
+const fs = require('fs');
+const internal = require("internal");
+const jsunity = require("jsunity");
+const isEnterprise = internal.isEnterprise();
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -37,7 +40,6 @@ var jsunity = require("jsunity");
 
 function dumpTestSuite () {
   'use strict';
-  var db = internal.db;
 
   return {
 
@@ -231,7 +233,7 @@ function dumpTestSuite () {
         assertEqual("fulltext", c.getIndexes()[7].type);
         assertEqual([ "a_f" ], c.getIndexes()[7].fields);
         
-        assertEqual("geo2", c.getIndexes()[8].type);
+        assertEqual("geo", c.getIndexes()[8].type);
         assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
         assertFalse(c.getIndexes()[8].unique);
       }
@@ -315,16 +317,345 @@ function dumpTestSuite () {
         assertEqual(t, doc.value);
       });
 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test view restoring
+////////////////////////////////////////////////////////////////////////////////
+
+    testView : function () {
+      try {
+        db._createView("check", "arangosearch", {});
+      } catch (err) {}
+
+      let views = db._views();
+      if (views.length === 0) {
+        return; // arangosearch views are not supported
+      }
+
+      let view = db._view("UnitTestsDumpView");
+      assertTrue(view !== null);
+      let props = view.properties();
+      assertEqual(Object.keys(props.links).length, 1);
+      assertTrue(props.hasOwnProperty("links"));
+      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+
+      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 RETURN doc").toArray();
+      assertEqual(5000, res.length);
+
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+      assertEqual(2500, res.length);
+
+      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+      assertEqual(0, res.length);
+
+      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+      assertEqual(1, res.length);
     }
 
   };
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for the enterprise mode
+////////////////////////////////////////////////////////////////////////////////
+
+function dumpTestEnterpriseSuite () {
+  const smartGraphName = "UnitTestDumpSmartGraph";
+  const edges = "UnitTestDumpSmartEdges";
+  const vertices = "UnitTestDumpSmartVertices";
+  const orphans = "UnitTestDumpSmartOrphans";
+  const satellite = "UnitTestDumpSatelliteCollection";
+  const gm = require("@arangodb/smart-graph");
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+    },
+
+    testSatelliteCollections : function () {
+      let c = db._collection(satellite);
+      let p = c.properties();
+      assertEqual(2, c.type()); // Document
+      assertEqual(1, p.numberOfShards);
+      assertEqual("satellite", p.replicationFactor);
+      assertEqual(100, c.count());
+    },
+
+    testHiddenCollectionsOmitted : function () {
+      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+
+      const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
+      const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
+      const fromEdgeCollectionPath = fs.join(dumpDir, `_from_${edges}.structure.json`);
+      const toEdgeCollectionPath = fs.join(dumpDir, `_to_${edges}.structure.json`);
+
+      assertTrue(fs.exists(smartEdgeCollectionPath), 'Smart edge collection missing in dump!');
+      assertFalse(fs.exists(localEdgeCollectionPath), '_local edge collection should not have been dumped!');
+      assertFalse(fs.exists(fromEdgeCollectionPath), '_from edge collection should not have been dumped!');
+      assertFalse(fs.exists(toEdgeCollectionPath), '_to edge collection should not have been dumped!');
+    },
+
+    testShadowCollectionsOmitted : function () {
+      const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
+      if (encryption === '' || encryption === 'none') {
+        const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        const collStructure = JSON.parse(
+          fs.read(fs.join(dumpDir, `${edges}.structure.json`))
+        );
+
+        assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
+        const parameters = collStructure['parameters'];
+        assertFalse(parameters.hasOwnProperty('shadowCollections'),
+          `Property 'shadowCollections' should be hidden in collection ${edges}!`);
+      }
+    },
+
+    testVertices : function () {
+      let c = db._collection(vertices);
+      let p = c.properties();
+      assertEqual(2, c.type()); // Document
+      assertEqual(5, p.numberOfShards);
+      assertTrue(p.isSmart, p);
+      assertFalse(Object.hasOwnProperty(p, "distributeShardsLike"));
+      assertEqual(100, c.count());
+      assertEqual("value", p.smartGraphAttribute);
+    },
+
+    testVerticesAqlRead: function () {
+      let q1 = `FOR x IN ${vertices} SORT TO_NUMBER(x.value) RETURN x`;
+      let q2 = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x.value`;
+      // This query can be optimized to a single shard. Make sure that is still correct
+      let q3 = `FOR x IN ${vertices} FILTER x._key == @key RETURN x.value`;
+
+      let res1 = db._query(q1).toArray();
+      assertEqual(100, res1.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual(String(i), res1[i].value);
+      }
+
+      let res2 = db._query(q2).toArray();
+      assertEqual(1, res2.length);
+      assertEqual("10", res2[0]);
+
+      for (let x of res1) {
+        let res3 = db._query(q3, {key: x._key}).toArray();
+        assertEqual(1, res3.length);
+        assertEqual(x.value, res3[0]);
+      }
+    },
+
+    testVerticesAqlInsert: function () {
+      // Precondition
+      assertEqual(100, db[vertices].count());
+      let insert = `FOR i IN 0..99 INSERT {value: TO_STRING(i), needUpdate: true, needRemove: true} INTO ${vertices}`;
+      let update = `FOR x IN ${vertices} FILTER x.needUpdate UPDATE x WITH {needUpdate: false} INTO ${vertices}`;
+      let remove = `FOR x IN ${vertices} FILTER x.needRemove REMOVE x INTO ${vertices}`;
+      // Note: Order is important here, we first insert, than update those inserted docs, then remove them again
+      let resIns = db._query(insert);
+      assertEqual(100, resIns.getExtra().stats.writesExecuted);
+      assertEqual(0, resIns.getExtra().stats.writesIgnored);
+      assertEqual(200, db[vertices].count());
+
+      let resUp = db._query(update);
+      assertEqual(100, resUp.getExtra().stats.writesExecuted);
+      assertEqual(0, resUp.getExtra().stats.writesIgnored);
+      assertEqual(200, db[vertices].count());
+
+      let resRem = db._query(remove);
+      assertEqual(100, resRem.getExtra().stats.writesExecuted);
+      assertEqual(0, resRem.getExtra().stats.writesIgnored);
+      assertEqual(100, db[vertices].count());
+    },
+
+    testOrphans : function () {
+      let c = db._collection(orphans);
+      let p = c.properties();
+      assertEqual(2, c.type()); // Document
+      assertEqual(5, p.numberOfShards);
+      assertTrue(p.isSmart);
+      assertEqual(vertices, p.distributeShardsLike);
+      assertEqual(100, c.count());
+      assertEqual("value", p.smartGraphAttribute);
+    },
+
+    testOrphansAqlRead: function () {
+      let q1 = `FOR x IN ${orphans} SORT TO_NUMBER(x.value) RETURN x`;
+      let q2 = `FOR x IN ${orphans} FILTER x.value == "10" RETURN x.value`;
+      // This query can be optimized to a single shard. Make sure that is still correct
+      let q3 = `FOR x IN ${orphans} FILTER x._key == @key RETURN x.value`;
+
+      let res1 = db._query(q1).toArray();
+      assertEqual(100, res1.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual(String(i), res1[i].value);
+      }
+
+      let res2 = db._query(q2).toArray();
+      assertEqual(1, res2.length);
+      assertEqual("10", res2[0]);
+
+      for (let x of res1) {
+        let res3 = db._query(q3, {key: x._key}).toArray();
+        assertEqual(1, res3.length);
+        assertEqual(x.value, res3[0]);
+      }
+    },
+
+    testOrphansAqlInsert: function () {
+      // Precondition
+      let c = db[orphans];
+      assertEqual(100, c.count());
+      let insert = `FOR i IN 0..99 INSERT {value: TO_STRING(i), needUpdate: true, needRemove: true} INTO ${orphans}`;
+      let update = `FOR x IN ${orphans} FILTER x.needUpdate UPDATE x WITH {needUpdate: false} INTO ${orphans}`;
+      let remove = `FOR x IN ${orphans} FILTER x.needRemove REMOVE x INTO ${orphans}`;
+      // Note: Order is important here, we first insert, than update those inserted docs, then remoe them again
+      let resIns = db._query(insert);
+      assertEqual(100, resIns.getExtra().stats.writesExecuted);
+      assertEqual(0, resIns.getExtra().stats.writesIgnored);
+      assertEqual(200, c.count());
+
+      let resUp = db._query(update);
+      assertEqual(100, resUp.getExtra().stats.writesExecuted);
+      assertEqual(0, resUp.getExtra().stats.writesIgnored);
+      assertEqual(200, c.count());
+
+      let resRem = db._query(remove);
+      assertEqual(100, resRem.getExtra().stats.writesExecuted);
+      assertEqual(0, resRem.getExtra().stats.writesIgnored);
+      assertEqual(100, c.count());
+    },
+
+    testEdges : function () {
+      let c = db._collection(edges);
+      let p = c.properties();
+      assertEqual(3, c.type()); // Edges
+      //assertEqual(5, p.numberOfShards);
+      assertTrue(p.isSmart);
+      assertEqual(vertices, p.distributeShardsLike);
+      assertEqual(300, c.count());
+    },
+
+    testEdgesAqlRead: function () {
+      let q1 = `FOR x IN ${edges} SORT TO_NUMBER(x.value) RETURN x`;
+      let q2 = `FOR x IN ${edges} FILTER x.value == "10" RETURN x.value`;
+      // This query can be optimized to a single shard. Make sure that is still correct
+      let q3 = `FOR x IN ${edges} FILTER x._key == @key RETURN x.value`;
+
+      let res1 = db._query(q1).toArray();
+      assertEqual(300, res1.length);
+      for (let i = 0; i < 100; ++i) {
+        // We have three edges per value
+        assertEqual(String(i), res1[3*i].value);
+        assertEqual(String(i), res1[3*i+1].value);
+        assertEqual(String(i), res1[3*i+2].value);
+      }
+
+      let res2 = db._query(q2).toArray();
+      assertEqual(3, res2.length);
+      assertEqual("10", res2[0]);
+
+      for (let x of res1) {
+        let res3 = db._query(q3, {key: x._key}).toArray();
+        assertEqual(1, res3.length);
+        assertEqual(x.value, res3[0]);
+      }
+    },
+
+    testEdgesAqlInsert: function () {
+      // Precondition
+      let c = db[edges];
+      assertEqual(300, c.count());
+
+      // We first need the vertices
+      let vC = db[vertices];
+      assertEqual(100, vC.count());
+      let vQ = `FOR x IN ${vertices} SORT TO_NUMBER(x.value) RETURN x._id`;
+      let verticesList = db._query(vQ).toArray();
+      let insertSameValue = `LET vs = @vertices FOR i IN 0..99 INSERT {_from: vs[i], _to: vs[i], value: TO_STRING(i), needUpdate: true, needRemove: true} INTO ${edges}`;
+      let insertOtherValue = `LET vs = @vertices FOR i IN 0..99 INSERT {_from: vs[i], _to: vs[(i + 1) % 100], value: TO_STRING(i), needUpdate: true, needRemove: true} INTO ${edges}`;
+      let update = `FOR x IN ${edges} FILTER x.needUpdate UPDATE x WITH {needUpdate: false} INTO ${edges}`;
+      let remove = `FOR x IN ${edges} FILTER x.needRemove REMOVE x INTO ${edges}`;
+      // Note: Order is important here, we first insert, than update those inserted docs, then remoe them again
+      let resInsSame = db._query(insertSameValue, {vertices: verticesList});
+      assertEqual(100, resInsSame.getExtra().stats.writesExecuted);
+      assertEqual(0, resInsSame.getExtra().stats.writesIgnored);
+      assertEqual(400, c.count());
+
+      let resInsOther = db._query(insertOtherValue, {vertices: verticesList});
+      assertEqual(100, resInsOther.getExtra().stats.writesExecuted);
+      assertEqual(0, resInsOther.getExtra().stats.writesIgnored);
+      assertEqual(500, c.count());
+
+      let resUp = db._query(update);
+      assertEqual(200, resUp.getExtra().stats.writesExecuted);
+      assertEqual(0, resUp.getExtra().stats.writesIgnored);
+      assertEqual(500, c.count());
+
+      let resRem = db._query(remove);
+      assertEqual(200, resRem.getExtra().stats.writesExecuted);
+      assertEqual(0, resRem.getExtra().stats.writesIgnored);
+      assertEqual(300, c.count());
+    },
+
+    testAqlGraphQuery: function() {
+      // Precondition
+      let c = db[edges];
+      assertEqual(300, c.count());
+      // We first need the vertices
+      let vC = db[vertices];
+      assertEqual(100, vC.count());
+
+      let vertexQuery = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x._id`;
+      let vertex = db._query(vertexQuery).toArray();
+      assertEqual(1, vertex.length);
+
+      let q = `FOR v IN 1..2 ANY "${vertex[0]}" GRAPH "${smartGraphName}" OPTIONS {uniqueVertices: 'path'} SORT TO_NUMBER(v.value) RETURN v`;
+      /* We expect the following result:
+       * 10 <- 9 <- 8
+       * 10 <- 9
+       * 10 -> 11
+       * 10 -> 11 -> 12
+       */
+
+      //Validate that everything is wired to a smart graph correctly
+      let res = db._query(q).toArray();
+      assertEqual(4, res.length);
+      assertEqual("8", res[0].value);
+      assertEqual("9", res[1].value);
+      assertEqual("11", res[2].value);
+      assertEqual("12", res[3].value);
+    },
+
+  };
+
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(dumpTestSuite);
+if (isEnterprise) {
+  jsunity.run(dumpTestEnterpriseSuite);
+}
 
 return jsunity.done();
 

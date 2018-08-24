@@ -16,8 +16,8 @@ arangosh&gt; db._routing.save({
 ........&gt;  ]
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/9891"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9891"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WQya-sG--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_routing/102233"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102233"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJy35O--_"</span> 
 }
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"internal"</span>).reloadRouting()

@@ -41,10 +41,10 @@ TEST(scorers_tests, duplicate_register) {
     ASSERT_FALSE(irs::scorers::exists("dummy_scorer", irs::text_format::json));
     ASSERT_FALSE(irs::scorers::exists("dummy_scorer", irs::text_format::text));
     ASSERT_FALSE(irs::scorers::exists("dummy_scorer", irs::text_format::xml));
-    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::csv, irs::string_ref::nil));
-    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::json, irs::string_ref::nil));
-    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::text, irs::string_ref::nil));
-    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::xml, irs::string_ref::nil));
+    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::csv, irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::json, irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::text, irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::xml, irs::string_ref::NIL));
 
     irs::scorer_registrar initial0(dummy_scorer::type(), irs::text_format::csv, &dummy_scorer::make);
     irs::scorer_registrar initial1(dummy_scorer::type(), irs::text_format::json, &dummy_scorer::make);
@@ -70,10 +70,10 @@ TEST(scorers_tests, duplicate_register) {
   ASSERT_TRUE(irs::scorers::exists("dummy_scorer", irs::text_format::json));
   ASSERT_TRUE(irs::scorers::exists("dummy_scorer", irs::text_format::text));
   ASSERT_TRUE(irs::scorers::exists("dummy_scorer", irs::text_format::xml));
-  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::csv, irs::string_ref::nil));
-  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::json, irs::string_ref::nil));
-  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::text, irs::string_ref::nil));
-  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::xml, irs::string_ref::nil));
+  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::csv, irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::json, irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::text, irs::string_ref::NIL));
+  ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::xml, irs::string_ref::NIL));
 }
 
 // -----------------------------------------------------------------------------

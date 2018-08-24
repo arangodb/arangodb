@@ -131,7 +131,7 @@ void QueryList::remove(Query* query) {
       double loadTime = 0.0;
 
       if (profile != nullptr) {
-        loadTime = profile->timers[QueryExecutionState::toNumber(QueryExecutionState::ValueType::LOADING_COLLECTIONS)];
+        loadTime = profile->timer(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
       }
 
       std::string bindParameters;
@@ -183,7 +183,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   Query* query = (*it).second;
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << id << " '" << query->queryString() << "'";
 
-  query->killed(true);
+  query->kill();
   return TRI_ERROR_NO_ERROR;
 }
   
@@ -202,7 +202,7 @@ uint64_t QueryList::killAll(bool silent) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     }
     
-    query->killed(true);
+    query->kill();
     ++killed;
   }
 

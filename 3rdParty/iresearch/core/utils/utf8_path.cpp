@@ -21,58 +21,114 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-  #include <WinError.h>
-#endif
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-  #include <boost/filesystem/operations.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include <boost/locale/encoding.hpp>
 
 #include "file_utils.hpp"
 #include "locale_utils.hpp"
 #include "log.hpp"
+#include "error/error.hpp"
 #include "utf8_path.hpp"
 
 NS_LOCAL
 
 // in some situations codecvt returned from boost::filesystem::path seems to get corrupted
 // always use UTF-8 locale for reading/writing filesystem paths
-const boost::filesystem::path::codecvt_type& fs_codecvt() {
+const std::codecvt<wchar_t, char, std::mbstate_t>& fs_codecvt() {
   static auto default_locale = iresearch::locale_utils::locale("", true);
 
-  return std::use_facet<boost::filesystem::path::codecvt_type>(default_locale);
+  return std::use_facet<std::codecvt<wchar_t, char, std::mbstate_t>>(
+    default_locale
+  );
 }
 
-// check if the error code matches the system specific not-found errors
-// error code list taken from Boost
-bool fs_error_not_found(int err) {
-  #ifdef _WIN32
-    return err == ERROR_FILE_NOT_FOUND
-      || err == ERROR_PATH_NOT_FOUND
-      || err == ERROR_INVALID_NAME      // "tools/jam/src/:sys:stat.h", "//foo"
-      || err == ERROR_INVALID_DRIVE     // USB card reader with no card inserted
-      || err == ERROR_NOT_READY         // CD/DVD drive with no disc inserted
-      || err == ERROR_INVALID_PARAMETER // ":sys:stat.h"
-      || err == ERROR_BAD_PATHNAME      // "//nosuch" on Win64
-      || err == ERROR_BAD_NETPATH       // "//nosuch" on Win32
-      ;
-  #else // POSIX
-    return err == ENOENT || err == ENOTDIR;
-  #endif
+typedef irs::basic_string_ref<wchar_t> wstring_ref;
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const irs::string_ref& value) {
+  buf.append(value.c_str(), value.size());
+
+  return true;
 }
 
-static auto& fs_cvt = fs_codecvt();
+// use inline to avoid GCC warning
+inline bool append_path(std::string& buf, const wstring_ref& value) {
+  static auto& fs_cvt = fs_codecvt();
+  auto size = value.size() * 4; // same ratio as boost::filesystem
+  auto start = buf.size();
+
+  buf.resize(start + size); // allocate enough space for the converted value
+
+  std::mbstate_t state = std::mbstate_t(); // RHS required for MSVC
+  const wchar_t* from_next;
+  char* to_next;
+  auto result = fs_cvt.out(
+    state,
+    value.c_str(),
+    value.c_str() + value.size(),
+    from_next,
+    &buf[start],
+    &buf[buf.size()],
+    to_next
+  );
+
+  if (std::codecvt_base::ok != result) {
+    buf.resize(start); // resize to the original buffer size
+
+    return false;
+  }
+
+  buf.resize(to_next - &buf[0]); // resize to the appended value end
+
+  return true;
+}
+
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
+  static auto& fs_cvt = fs_codecvt();
+  auto size = value.size() * 3; // same ratio as boost::filesystem
+  auto start = buf.size();
+
+  buf.resize(start + size); // allocate enough space for the converted value
+
+  std::mbstate_t state = std::mbstate_t(); // RHS required for MSVC
+  const char* from_next;
+  wchar_t* to_next;
+  auto result = fs_cvt.in(
+    state,
+    value.c_str(),
+    value.c_str() + value.size(),
+    from_next,
+    &buf[start],
+    &buf[buf.size()],
+    to_next
+  );
+
+  if (std::codecvt_base::ok != result) {
+    buf.resize(start); // resize to the original buffer size
+
+    return false;
+  }
+
+  buf.resize(to_next - &buf[0]); // resize to the appended value end
+
+  return true;
+}
+
+// use inline to avoid GCC warning
+inline bool append_path(std::wstring& buf, const wstring_ref& value) {
+  buf.append(value.c_str(), value.size());
+
+  return true;
+}
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 NS_END
 
@@ -80,7 +136,12 @@ NS_ROOT
 
 utf8_path::utf8_path(bool current_working_path /*= false*/) {
   if (current_working_path) {
-    path_ = ::boost::filesystem::current_path();
+    std::basic_string<native_char_t> buf;
+
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    if (irs::file_utils::read_cwd(buf)) {
+      *this += buf;
+    }
   }
 }
 
@@ -89,33 +150,28 @@ utf8_path::utf8_path(const char* utf8_path)
 }
 
 utf8_path::utf8_path(const std::string& utf8_path) {
-  #ifdef _WIN32
-    auto native_path = boost::locale::conv::utf_to_utf<wchar_t>(
-      utf8_path.c_str(), utf8_path.c_str() + utf8_path.size()
-    );
-
-    path_.assign(std::move(native_path), fs_cvt);
-  #else
-    path_.assign(utf8_path.c_str(), utf8_path.c_str() + utf8_path.size(), fs_cvt);
-  #endif
+  if (!append_path(path_, string_ref(utf8_path))) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 }
 
 utf8_path::utf8_path(const irs::string_ref& utf8_path) {
   if (utf8_path.null()) {
-    path_ = ::boost::filesystem::current_path();
+    std::basic_string<native_char_t> buf;
+
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    if (irs::file_utils::read_cwd(buf)) {
+      *this += buf;
+    }
 
     return;
   }
 
-  #ifdef _WIN32
-    auto native_path = boost::locale::conv::utf_to_utf<wchar_t>(
-      utf8_path.c_str(), utf8_path.c_str() + utf8_path.size()
-    );
-
-    path_.assign(std::move(native_path), fs_cvt);
-  #else
-    path_.assign(utf8_path.c_str(), utf8_path.c_str() + utf8_path.size(), fs_cvt);
-  #endif
+  if (!append_path(path_, utf8_path)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 }
 
 utf8_path::utf8_path(const wchar_t* ucs2_path)
@@ -124,35 +180,27 @@ utf8_path::utf8_path(const wchar_t* ucs2_path)
 
 utf8_path::utf8_path(const irs::basic_string_ref<wchar_t>& ucs2_path) {
   if (ucs2_path.null()) {
-    path_ = ::boost::filesystem::current_path();
+    std::basic_string<native_char_t> buf;
+
+    // emulate boost::filesystem behaviour by leaving path_ unset in case of error
+    if (irs::file_utils::read_cwd(buf)) {
+      *this += buf;
+    }
 
     return;
   }
 
-  #ifdef _WIN32
-    path_.assign(ucs2_path.c_str(), ucs2_path.c_str() + ucs2_path.size() , fs_cvt);
-  #else
-    auto native_path = boost::locale::conv::utf_to_utf<char>(
-      ucs2_path.c_str(), ucs2_path.c_str() + ucs2_path.size()
-    );
-
-    path_.assign(std::move(native_path), fs_cvt);
-  #endif
+  if (!append_path(path_, ucs2_path)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 }
 
 utf8_path::utf8_path(const std::wstring& ucs2_path) {
-  #ifdef _WIN32
-    path_.assign(ucs2_path, fs_cvt);
-  #else
-    auto native_path = boost::locale::conv::utf_to_utf<char>(
-      ucs2_path.c_str(), ucs2_path.c_str() + ucs2_path.size()
-    );
-
-    path_.assign(std::move(native_path), fs_cvt);
-  #endif
-}
-
-utf8_path::utf8_path(const ::boost::filesystem::path& path): path_(path) {
+  if (!append_path(path_, wstring_ref(ucs2_path))) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 }
 
 utf8_path& utf8_path::operator+=(const char* utf8_name) {
@@ -160,29 +208,19 @@ utf8_path& utf8_path::operator+=(const char* utf8_name) {
 }
 
 utf8_path& utf8_path::operator+=(const std::string &utf8_name) {
-  #ifdef _WIN32
-    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
-      utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
-    );
-
-    path_.concat(std::move(native_name), fs_cvt);
-  #else
-    path_.concat(utf8_name.c_str(), utf8_name.c_str() + utf8_name.size(), fs_cvt);
-  #endif
+  if (!append_path(path_, string_ref(utf8_name))) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
 
 utf8_path& utf8_path::operator+=(const string_ref& utf8_name) {
-  #ifdef _WIN32
-    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
-      utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
-    );
-
-    path_.concat(std::move(native_name), fs_cvt);
-  #else
-    path_.concat(utf8_name.c_str(), utf8_name.c_str() + utf8_name.size(), fs_cvt);
-  #endif
+  if (!append_path(path_, utf8_name)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
@@ -192,29 +230,19 @@ utf8_path& utf8_path::operator+=(const wchar_t* ucs2_name) {
 }
 
 utf8_path& utf8_path::operator+=(const irs::basic_string_ref<wchar_t>& ucs2_name) {
-  #ifdef _WIN32
-    path_.concat(ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
-  #else
-    auto native_name = boost::locale::conv::utf_to_utf<char>(
-      ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
-    );
-
-    path_.concat(std::move(native_name), fs_cvt);
-  #endif
+  if (!append_path(path_, ucs2_name)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
 
 utf8_path& utf8_path::operator+=(const std::wstring &ucs2_name) {
-  #ifdef _WIN32
-    path_.concat(ucs2_name, fs_cvt);
-  #else
-    auto native_name = boost::locale::conv::utf_to_utf<char>(
-      ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
-    );
-
-    path_.concat(std::move(native_name), fs_cvt);
-  #endif
+  if (!append_path(path_, wstring_ref(ucs2_name))) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
@@ -224,29 +252,27 @@ utf8_path& utf8_path::operator/=(const char* utf8_name) {
 }
 
 utf8_path& utf8_path::operator/=(const std::string &utf8_name) {
-  #ifdef _WIN32
-    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
-      utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
-    );
+  if (!path_.empty()) {
+    path_.append(1, file_path_delimiter);
+  }
 
-    path_.append(std::move(native_name), fs_cvt);
-  #else
-    path_.append(utf8_name.c_str(), utf8_name.c_str() + utf8_name.size(), fs_cvt);
-  #endif
+  if (!append_path(path_, string_ref(utf8_name))) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
 
 utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
-  #ifdef _WIN32
-    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
-      utf8_name.c_str(), utf8_name.c_str() + utf8_name.size()
-    );
+  if (!path_.empty()) {
+    path_.append(1, file_path_delimiter);
+  }
 
-    path_.append(std::move(native_name), fs_cvt);
-  #else
-    path_.append(utf8_name.c_str(), utf8_name.c_str() + utf8_name.size(), fs_cvt);
-  #endif
+  if (!append_path(path_, utf8_name)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
@@ -256,158 +282,76 @@ utf8_path& utf8_path::operator/=(const wchar_t* ucs2_name) {
 }
 
 utf8_path& utf8_path::operator/=(const iresearch::basic_string_ref<wchar_t>& ucs2_name) {
-  #ifdef _WIN32
-    path_.append(ucs2_name.c_str(),ucs2_name.c_str() + ucs2_name.size() , fs_cvt);
-  #else
-    auto native_name = boost::locale::conv::utf_to_utf<char>(
-      ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
-    );
+  if (!path_.empty()) {
+    path_.append(1, file_path_delimiter);
+  }
 
-    path_.append(std::move(native_name), fs_cvt);
-  #endif
+  if (!append_path(path_, ucs2_name)) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
   return *this;
 }
 
 utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
-#ifdef _WIN32
-  path_.append(ucs2_name, fs_cvt);
-#else
-  auto native_name = boost::locale::conv::utf_to_utf<char>(
-    ucs2_name.c_str(), ucs2_name.c_str() + ucs2_name.size()
-  );
+  if (!path_.empty()) {
+    path_.append(1, file_path_delimiter);
+  }
 
-  path_.append(std::move(native_name), fs_cvt);
-#endif
+  if (!append_path(path_, wstring_ref(ucs2_name))) {
+    // emulate boost::filesystem behaviour by throwing an exception
+    throw detailed_io_error("Path conversion failure");
+  }
 
 return *this;
 }
 
+bool utf8_path::absolute(bool& result) const NOEXCEPT {
+  return irs::file_utils::absolute(result, c_str());
+}
+
 bool utf8_path::chdir() const NOEXCEPT {
-  boost::system::error_code code;
-
-  boost::filesystem::current_path(path_, code);
-
-  return boost::system::errc::success == code.value();
+  return irs::file_utils::set_cwd(c_str());
 }
 
 bool utf8_path::exists(bool& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  result = boost::filesystem::exists(path_, code);
-
-  return boost::system::errc::success == code.value()
-    || fs_error_not_found(code.value());
+  return irs::file_utils::exists(result, c_str());
 }
 
 bool utf8_path::exists_directory(bool& result) const NOEXCEPT {
-  result = irs::file_utils::is_directory(native().c_str());
-
-  if (!result) {
-    bool res;
-
-    return exists(res); // check for FS error
-  }
-
-  return true;
+  return irs::file_utils::exists_directory(result, c_str());
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  result = boost::filesystem::is_regular_file(path_, code);
-
-  return boost::system::errc::success == code.value()
-    || fs_error_not_found(code.value());
+  return irs::file_utils::exists_file(result, c_str());
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    result = boost::filesystem::file_size(path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::file_size(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::byte_size(result, c_str());
 }
 
-bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    result = boost::filesystem::last_write_time(path_, code);
-
-    return boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+bool utf8_path::mtime(time_t& result) const NOEXCEPT {
+  return irs::file_utils::mtime(result, c_str());
 }
 
 bool utf8_path::mkdir() const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    return !path_.empty() // at least Boost v1.62 cannot handle empty paths SIGSEGV
-           && boost::filesystem::create_directories(path_, code)
-           && boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::create_directories(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::mkdir(c_str());
 }
 
 bool utf8_path::remove() const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    return boost::filesystem::remove_all(path_, code) > 0
-           && boost::system::errc::success == code.value();
-  } catch(...) { // boost::filesystem::remove_all(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
-  }
-
-  return false;
+  return irs::file_utils::remove(c_str());
 }
 
 bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
-  boost::system::error_code code;
-
-  try {
-    boost::filesystem::rename(path_, destination.path_, code);
-
-    return true;
-  } catch (...) {
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__,code.value(), path_.c_str());
-  }
-
-  return false;
-}
-
-bool utf8_path::rmdir() const {
-  boost::system::error_code code;
-
-  boost::filesystem::remove_all(path_, code);
-
-  return boost::system::errc::success == code.value();
+  return irs::file_utils::move(c_str(), destination.c_str());
 }
 
 bool utf8_path::visit_directory(
     const directory_visitor& visitor,
     bool include_dot_dir /*= true*/
 ) {
-  if (!irs::file_utils::visit_directory(
-        native().c_str(),
-        visitor,
-        include_dot_dir
-      )
-  ) {
+  if (!irs::file_utils::visit_directory(c_str(), visitor, include_dot_dir)) {
     bool result;
 
     return !(!exists_directory(result) || !result); // check for FS error, treat non-directory as error
@@ -420,16 +364,41 @@ void utf8_path::clear() {
   path_.clear();
 }
 
-const boost::filesystem::path::value_type* utf8_path::c_str() const NOEXCEPT {
+const utf8_path::native_char_t* utf8_path::c_str() const NOEXCEPT {
   return path_.c_str();
 }
 
-const boost::filesystem::path::string_type& utf8_path::native() const NOEXCEPT {
-  return path_.native();
+const utf8_path::native_str_t& utf8_path::native() const NOEXCEPT {
+  return path_;
 }
 
 std::string utf8_path::utf8() const {
-  return path_.string(fs_cvt);
+  #ifdef _WIN32
+    std::string buf;
+
+    if (!append_path(buf, path_)) {
+      // emulate boost::filesystem behaviour by throwing an exception
+      throw detailed_io_error("Path conversion failure");
+    }
+
+    return buf;
+  #else
+    return path_;
+  #endif
+}
+
+std::string utf8_path::utf8_absolute() const {
+  bool abs;
+
+  if (absolute(abs) && abs) {
+    return utf8(); // already absolute (on failure assume relative path)
+  }
+
+  utf8_path path(true);
+
+  path /= path_;
+
+  return path.utf8();
 }
 
 NS_END

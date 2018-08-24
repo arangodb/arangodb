@@ -28,7 +28,9 @@ data retrieval and/or modification operations, and at the end automatically
 commit the transaction. If an error occurs during transaction execution, the
 transaction is automatically aborted, and all changes are rolled back.
 
-### Execute transaction
+Execute transaction
+-------------------
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -63,13 +65,9 @@ Additionally, *object* can have the following optional attributes:
 The following attributes can be used for transactions in the RocksDB storage engine:
 
 - *maxTransactionSize*: transaction size limit in bytes
-- *intermediateCommitSize*: maximum total size of operations after which an intermediate
-  commit is performed automatically
-- *intermediateCommitCount*: maximum number of operations after which an intermediate
-  commit is performed automatically
 
-
-### Declaration of collections
+Declaration of collections
+--------------------------
 
 All collections which are to participate in a transaction need to be declared
 beforehand. This is a necessity to ensure proper locking and isolation.
@@ -141,7 +139,8 @@ The default value for *allowImplicit* is *true*. Write-accessing collections tha
 have not been declared in the *collections* array is never possible, regardless of
 the value of *allowImplicit*.
 
-### Declaration of data modification and retrieval operations
+Declaration of data modification and retrieval operations
+---------------------------------------------------------
 
 All data modification and retrieval operations that are to be executed inside
 the transaction need to be specified in a Javascript function, using the *action*
@@ -231,7 +230,30 @@ db._executeTransaction({
 });
 ```
 
-### Custom exceptions
+Throwing Arango Exceptions
+--------------------------
+
+If you catch errors in your transaction, try to get them solved, but fail 
+you may want to mimic original arangodb error messages to ease the control flow
+of your invoking environment. This can be done like this:
+
+```js
+db._executeTransaction({
+  collections: {},
+  action: function () {
+    const arangodb = require('@arangodb');
+    var err = new arangodb.ArangoError();
+    err.errorNum = arangodb.ERROR_BAD_PARAMETER;
+    err.errorMessage = "who's bad?";
+    throw err;
+  }
+});
+```
+
+The documentation contains [a complete list of used arangodb errors in the appendix](../Appendix/ErrorCodes.md)
+
+Custom exceptions
+-----------------
 
 One may wish to define custom exceptions inside of a transaction. To have the
 exception propagate upwards properly, please throw an an instance of base
@@ -243,7 +265,7 @@ db._executeTransaction({
   collections: {},
   action: function () {
     var err = new Error('My error context');
-    err.errorNumber = 1234;
+    err.errorNum = 1234;
     throw err;
   }
 });
@@ -253,6 +275,9 @@ db._executeTransaction({
 `Error`-like form were simply converted to strings and exposed in the
 `exception` field of the returned error. This is no longer the case, as it had
 the potential to leak unwanted information if improperly used.
+
+**Note**: In some versions the above example wouldn't propagate the `errorNum` to the 
+invoking party, you may need to upgrade your ArangoDB.
 
 ### Examples
 
@@ -332,7 +357,8 @@ As required by the *consistency* principle, aborting or rolling back a
 transaction will also restore secondary indexes to the state at transaction
 start.
 
-### Cross-collection transactions
+Cross-collection transactions
+-----------------------------
 
 There's also the possibility to run a transaction across multiple collections.
 In this case, multiple collections need to be declared in the *collections*

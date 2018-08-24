@@ -26,6 +26,7 @@
 
 #include "error/error.hpp"
 #include "utils/memory.hpp"
+#include "utils/numeric_utils.hpp"
 #include "utils/std.hpp"
 
 #include <memory>
@@ -37,68 +38,6 @@ NS_ROOT
 * ------------------------------------------------------------------*/
 
 data_input::~data_input() { }
-
-int16_t data_input::read_short() {
-  uint16_t b = static_cast<uint16_t>(read_byte()) << 8U;
-  return b | static_cast<uint16_t>(read_byte());
-}
-
-int32_t data_input::read_int() {
-  uint32_t b = static_cast<uint32_t>(read_byte()) << 24U;
-  b |= static_cast<uint32_t>(read_byte()) << 16U;
-  b |= static_cast<uint32_t>(read_byte()) << 8U;
-  return b | static_cast<uint32_t>(read_byte());
-}
-
-uint32_t data_input::read_vint() {
-  uint32_t out = read_byte(); if (!(out & 0x80)) return out;
-
-  uint32_t b;
-  out -= 0x80;
-  b = read_byte(); out += b << 7; if (!(b & 0x80)) return out;
-  out -= 0x80 << 7;
-  b = read_byte(); out += b << 14; if (!(b & 0x80)) return out;
-  out -= 0x80 << 14;
-  b = read_byte(); out += b << 21; if (!(b & 0x80)) return out;
-  out -= 0x80 << 21;
-  b = read_byte(); out += b << 28;
-  // last byte always has MSB == 0, so we don't need to check and subtract 0x80
-
-  return out;
-}
-
-int64_t data_input::read_long() {
-  uint64_t i = static_cast< uint64_t >( read_int() ) << 32U;
-  return i | ( static_cast< uint64_t >( read_int() ) & 0xFFFFFFFFL );
-}
-
-uint64_t data_input::read_vlong() {
-  const uint64_t MASK = 0x80;
-  uint64_t out = read_byte(); if (!(out & MASK)) return out;
-
-  uint64_t b;
-  out -= MASK;
-  b = read_byte(); out += b << 7; if (!(b & MASK)) return out;
-  out -= MASK << 7;
-  b = read_byte(); out += b << 14; if (!(b & MASK)) return out;
-  out -= MASK << 14;
-  b = read_byte(); out += b << 21; if (!(b & MASK)) return out;
-  out -= MASK << 21;
-  b = read_byte(); out += b << 28; if (!(b & MASK)) return out;
-  out -= MASK << 28;
-  b = read_byte(); out += b << 35; if (!(b & MASK)) return out;
-  out -= MASK << 35;
-  b = read_byte(); out += b << 42; if (!(b & MASK)) return out;
-  out -= MASK << 42;
-  b = read_byte(); out += b << 49; if (!(b & MASK)) return out;
-  out -= MASK << 49;
-  b = read_byte(); out += b << 56; if (!(b & MASK)) return out;
-  out -= MASK << 56;
-  b = read_byte(); out += b << 63;
-  // last byte always has MSB == 0, so we don't need to check and subtract 0x80
-
-  return out;
-}
 
 /* -------------------------------------------------------------------
 * index_input
@@ -125,8 +64,15 @@ std::streamsize input_buf::xsgetn(input_buf::char_type* c, std::streamsize size)
   return size;
 }
 
+input_buf::int_type input_buf::underflow() {
+  // FIXME add 'peek()' function to 'index_input'
+  const auto ch = uflow();
+  in_->seek(in_->file_pointer() - 1);
+  return ch;
+}
+
 input_buf::int_type input_buf::uflow() {
-  return in_->read_int();
+  return traits_type::to_int_type(in_->read_byte());
 }
 
 std::streamsize input_buf::showmanyc() {
@@ -155,6 +101,30 @@ byte_type buffered_index_input::read_byte() {
   }
 
   return *begin_++;
+}
+
+int32_t buffered_index_input::read_int() {
+  return remain() < sizeof(uint32_t)
+    ? data_input::read_int()
+    : irs::read<uint32_t>(begin_);
+}
+
+int64_t buffered_index_input::read_long() {
+  return remain() < sizeof(uint64_t)
+    ? data_input::read_long()
+    : irs::read<uint64_t>(begin_);
+}
+
+uint32_t buffered_index_input::read_vint() {
+  return remain() < bytes_io<uint32_t>::const_max_vsize
+    ? data_input::read_vint()
+    : irs::vread<uint32_t>(begin_);
+}
+
+uint64_t buffered_index_input::read_vlong() {
+  return remain() < bytes_io<uint64_t>::const_max_vsize
+    ? data_input::read_vlong()
+    : irs::vread<uint64_t>(begin_);
 }
 
 size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {

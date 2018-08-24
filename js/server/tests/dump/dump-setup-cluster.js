@@ -27,9 +27,75 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+'use strict';
+const db = require("@arangodb").db;
+const isEnterprise = require("internal").isEnterprise();
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a smart graph sharded by `value`
+ *        That has 100 vertices (value 0 -> 99)
+ *        That has 100 orphans (value 0 -> 99)
+ *        That has 300 edges, for each value i:
+ *          Connect i -> i
+ *          Connect i - 1 -> i
+ *          Connect i -> i + 1
+ */
+const setupSmartGraph = function () {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const smartGraphName = "UnitTestDumpSmartGraph";
+  const edges = "UnitTestDumpSmartEdges";
+  const vertices = "UnitTestDumpSmartVertices";
+  const orphans = "UnitTestDumpSmartOrphans";
+  const gm = require("@arangodb/smart-graph");
+  if (gm._exists(smartGraphName)) {
+    gm._drop(smartGraphName, true);
+  }
+  db._drop(edges);
+  db._drop(vertices);
+
+  gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
+    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+
+  let vDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    vDocs.push({value: String(i)});
+  }
+  let saved = db[vertices].save(vDocs).map(v => v._id);
+  let eDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    eDocs.push({_from: saved[(i+1) % 100], _to: saved[i], value: String(i)});
+    eDocs.push({_from: saved[i], _to: saved[i], value: String(i)});
+    eDocs.push({_from: saved[i], _to: saved[(i+1) % 100], value: String(i)});
+  }
+  db[edges].save(eDocs);
+  db[orphans].save(vDocs);
+};
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a satellite collection with 100 documents
+ */
+function setupSatelliteCollections() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const satelliteCollectionName = "UnitTestDumpSatelliteCollection";
+  db._drop(satelliteCollectionName);
+  db._create(satelliteCollectionName, {"replicationFactor": "satellite"});
+
+  let vDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    vDocs.push({value: String(i)});
+  }
+  db[satelliteCollectionName].save(vDocs);
+}
+
 (function () {
-  'use strict';
-  var db = require("@arangodb").db;
   var i, c;
 
   try {
@@ -152,6 +218,29 @@
   texts.forEach(function (t, i) { 
     c.save({ _key: "text" + i, value: t });
   });
+
+  // setup a view
+  try {
+    c = db._create("UnitTestsDumpViewCollection");
+
+    let view = db._createView("UnitTestsDumpView", "arangosearch", {});
+    view.properties({ links: {
+      "UnitTestsDumpViewCollection": { 
+        includeAllFields: true,
+        fields: {
+          text: { analyzers: [ "text_en" ] }
+        }
+      }
+    } });
+
+    for (i = 0; i < 5000; ++i) {
+      c.save({ _key: "test" + i, value: i});
+    }
+    c.save({ value: -1, text: "the red foxx jumps over the pond" });
+  } catch (err) { }
+
+  setupSmartGraph();
+  setupSatelliteCollections();
 
 })();
 

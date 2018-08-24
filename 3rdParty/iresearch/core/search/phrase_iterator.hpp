@@ -43,7 +43,8 @@ class phrase_iterator final : public conjunction {
       positions_t&& pos)
     : conjunction(std::move(itrs), ord),
      pos_(std::move(pos)) {
-    assert(!pos_.empty());
+    assert(!pos_.empty()); // must not be empty
+    assert(0 == pos_.front().second); // lead offset is always 0
 
     // add phrase frequency
     conjunction::attrs_.emplace(phrase_freq_);
@@ -69,31 +70,42 @@ class phrase_iterator final : public conjunction {
  private:
   // returns frequency of the phrase
   frequency::value_t phrase_freq() const {
-    assert(!pos_.empty());
-
-    if (1 == conjunction::size()) {
-      // equal to term, do not to count it with postings
-      return 1;
-    }
-
     frequency::value_t freq = 0;
-    for (const position& lead = pos_.front().first; lead.next();) {
-      position::value_t base_offset = lead.value();
+    bool match;
 
-      frequency::value_t match = 1;
-      for (auto it = pos_.begin()+1, end = pos_.end(); it != end; ++it) {
-        const position &pos = it->first;
+    const position& lead = pos_.front().first;
+    lead.next();
+
+    const auto end = pos_.end();
+    while (position::NO_MORE != lead.value()) {
+      const position::value_t base_offset = lead.value();
+
+      match = true;
+      for (auto it = pos_.begin() + 1; it != end; ++it) {
+        const position& pos = it->first;
         const auto term_offset = base_offset + it->second;
         const auto seeked = pos.seek(term_offset);
+
         if (position::NO_MORE == seeked) {
-          // finished
+          // exhausted
           return freq;
         } else if (seeked != term_offset) {
-          match = 0;
+          // seeked too far from the lead
+          match = false;
+
+          lead.seek(seeked - it->second);
           break;
         }
       }
-      freq += match;
+
+      if (match) {
+        if (ord_->empty()) {
+          return 1;
+        }
+
+        ++freq;
+        lead.next();
+      }
     }
 
     return freq;

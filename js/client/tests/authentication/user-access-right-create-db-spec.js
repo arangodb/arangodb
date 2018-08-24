@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print */
+/* global describe, beforeEach, afterEach, before, after, it, require, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -50,21 +50,16 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user) => {
-  arango.reconnect(arango.getEndpoint(), '_system', user, '');
-};
-
 helper.removeAllUsers();
+helper.generateAllUsers();
 
 describe('User Rights Management', () => {
-  before(helper.generateAllUsers);
-  after(helper.removeAllUsers);
-
   it('should test rights for', () => {
+    expect(userSet.size).to.be.greaterThan(0); 
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name);
+        helper.switchUser(name);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -73,23 +68,23 @@ describe('User Rights Management', () => {
       if (canUse) {
         describe(`user ${name}`, () => {
           before(() => {
-            switchUser(name);
+            helper.switchUser(name);
           });
 
           describe('administrate on server level', () => {
             const rootTestDB = (switchBack = true) => {
-              switchUser('root');
+              helper.switchUser('root');
               const allDB = db._databases();
               for (let i of allDB) {
                 if (i === testDBName) {
                   if (switchBack) {
-                    switchUser(name);
+                    helper.switchUser(name);
                   }
                   return true;
                 }
               }
               if (switchBack) {
-                switchUser(name);
+                helper.switchUser(name);
               }
               return false;
             };
@@ -98,15 +93,15 @@ describe('User Rights Management', () => {
               if (rootTestDB(false)) {
                 db._dropDatabase(testDBName);
               }
-              switchUser(name);
+              helper.switchUser(name);
             };
 
-            before(() => {
+            beforeEach(() => {
               db._useDatabase('_system');
               rootDropDB();
             });
 
-            after(() => {
+            afterEach(() => {
               rootDropDB();
             });
 
@@ -119,7 +114,59 @@ describe('User Rights Management', () => {
                 try {
                   db._createDatabase(testDBName);
                 } catch (e) {
-                  print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+            it('create database with root user directly given', () => {
+              if (systemLevel['rw'].has(name)) {
+                // options empty, because there are not options at the moment
+                var options = {};
+                var users = [{username: 'root'}];
+                // User needs rw on _system
+                db._createDatabase(testDBName, options, users);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  //print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+            it('create database with user directly given', () => {
+              if (systemLevel['rw'].has(name)) {
+                let ldap = helper.isLdapEnabledExternal();
+                // options empty, because there are not options at the moment
+                var options = {};
+                var users = [{username: ldap ? ":role:" + name : name}];
+                // User needs rw on _system
+                db._createDatabase(testDBName, options, users);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  //print(e);
+                }
+                expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
+              }
+            });
+            it('create database with multiple users directly given', () => {
+              if (systemLevel['rw'].has(name)) {
+                let ldap = helper.isLdapEnabledExternal();
+                // options empty, because there are not options at the moment
+                var options = {};
+                var users = [{username: 'root'}, {username: ldap ? ":role:" + name : name}];
+                // User needs rw on _system
+                db._createDatabase(testDBName, options, users);
+                expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
+              } else {
+                try {
+                  db._createDatabase(testDBName);
+                } catch (e) {
+                  //print(e);
                 }
                 expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
               }

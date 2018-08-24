@@ -78,18 +78,19 @@ static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump,
   }
 
   // collection name not in cache yet
-  std::string name(dump->_vocbase->collectionName(cid));
+  auto collection = dump->_vocbase->lookupCollection(cid);
+  std::string name = collection ? collection->name() : std::string();
 
   if (!name.empty()) {
     // insert into cache
     try {
       dump->_collectionNames.emplace(cid, std::move(name));
+
       // and look it up again
       return nameFromCid(dump, cid);
     } catch (...) {
       // fall through to returning empty string
     }
-
   }
 
   return StaticStrings::Empty;
@@ -168,7 +169,6 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CREATE_VIEW:
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
-    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
@@ -261,7 +261,6 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CREATE_VIEW:
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
-    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
@@ -365,8 +364,9 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks, bool useVst = false) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping collection " << collection->cid() << ", tick range "
-             << dataMin << " - " << dataMax;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    << "dumping collection " << collection->id()
+    << ", tick range " << dataMin << " - " << dataMax;
 
   bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
@@ -460,8 +460,15 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
     MMFilesCompactionPreventer compactionPreventer(mmfiles);
 
     try {
-      res = DumpCollection(dump, collection, collection->vocbase()->id(),
-                           collection->cid(), dataMin, dataMax, withTicks);
+      res = DumpCollection(
+        dump,
+        collection,
+        collection->vocbase().id(),
+        collection->id(),
+        dataMin,
+        dataMax,
+        withTicks
+      );
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
@@ -494,6 +501,7 @@ int MMFilesDumpLogReplication(
   // setup some iteration state
   int res = TRI_ERROR_NO_ERROR;
   TRI_voc_tick_t lastFoundTick = 0;
+  TRI_voc_tick_t lastScannedTick = 0;
   TRI_voc_tick_t lastDatabaseId = 0;
   TRI_voc_cid_t lastCollectionId = 0;
   bool hasMore = true;
@@ -563,6 +571,10 @@ int MMFilesDumpLogReplication(
 
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t foundTick = marker->getTick();
+
+        if (foundTick <= tickMax) {
+          lastScannedTick = foundTick;
+        }
 
         if (foundTick <= tickMin) {
           // marker too old
@@ -649,6 +661,7 @@ int MMFilesDumpLogReplication(
   MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   dump->_fromTickIncluded = fromTickIncluded;
+  dump->_lastScannedTick = lastScannedTick;
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {

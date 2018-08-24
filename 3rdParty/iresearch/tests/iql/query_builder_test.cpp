@@ -181,24 +181,24 @@ namespace tests {
         const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<templates::string_field>(
-          ir::string_ref(name),
+          irs::string_ref(name),
           data.str
         ));
       } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(ir::null_token_stream::value_null());
+        field.value(irs::null_token_stream::value_null());
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(ir::boolean_token_stream::value_true());
+        field.value(irs::boolean_token_stream::value_true());
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(ir::boolean_token_stream::value_true());
+        field.value(irs::boolean_token_stream::value_true());
       } else if (data.is_number()) {
         const double dValue = data.as_number<double_t>();
 

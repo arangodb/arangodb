@@ -32,6 +32,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 namespace velocypack {
 class Builder;
 }
@@ -46,7 +47,7 @@ class CursorRepository {
   /// @brief create a cursors repository
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit CursorRepository(TRI_vocbase_t*);
+  explicit CursorRepository(TRI_vocbase_t& vocbase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy a cursors repository
@@ -54,25 +55,33 @@ class CursorRepository {
 
   ~CursorRepository();
 
- public:
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stores a cursor in the registry
   /// the repository will take ownership of the cursor
   ////////////////////////////////////////////////////////////////////////////////
 
   Cursor* addCursor(std::unique_ptr<Cursor> cursor);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
   /// returned later using release()
-  /// the cursor will retain a shared pointer of both json and extra
+  /// the cursor will take ownership and retain the entire QueryResult object
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createFromQueryResult(
-      aql::QueryResult&&, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
-      double, bool);
+  Cursor* createFromQueryResult(aql::QueryResult&&, size_t, double, bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a cursor and stores it in the registry
+  /// the cursor will be returned with the usage flag set to true. it must be
+  /// returned later using release()
+  /// the cursor will create a query internally and retain it until deleted
+  //////////////////////////////////////////////////////////////////////////////
+
+  Cursor* createQueryStream(std::string const& query,
+                            std::shared_ptr<velocypack::Builder> const& binds,
+                            std::shared_ptr<velocypack::Builder> const& opts,
+                            size_t batchSize, double ttl);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
@@ -111,7 +120,7 @@ class CursorRepository {
   /// @brief vocbase
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mutex for the cursors repository
@@ -123,7 +132,7 @@ class CursorRepository {
   /// @brief list of current cursors
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<CursorId, Cursor*> _cursors;
+  std::unordered_map<CursorId, std::pair<Cursor*, std::string>> _cursors;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of cursors to garbage-collect in one go
@@ -131,6 +140,7 @@ class CursorRepository {
 
   static size_t const MaxCollectCount;
 };
+
 }
 
 #endif

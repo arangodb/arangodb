@@ -19,7 +19,7 @@
             "frontend/js/lib/bootstrap-min.js",
             "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
-            "frontend/js/lib/dygraph-combined.min.js",
+            "frontend/js/lib/dygraph-combined.min.js"
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",
@@ -28,7 +28,6 @@
             "frontend/css/jquery.contextmenu.css",
             "frontend/css/select2.css",
             "frontend/css/jquery.dataTables.css",
-            "frontend/css/nv.d3.css",
             "frontend/css/swaggerView.css",
             "frontend/css/ansi.css",
             "frontend/css/highlightjs.css",
@@ -36,6 +35,8 @@
             "frontend/css/grids-responsive-min.css",
             "frontend/css/tippy.css",
             "frontend/css/dygraph.css",
+            "frontend/css/leaflet.css",
+            "frontend/css/nv.d3.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
@@ -56,6 +57,7 @@
             "frontend/js/lib/typeahead.bundle.min.js",
             "frontend/js/lib/numeral.min.js",
             "frontend/js/lib/moment.min.js",
+            "frontend/js/lib/randomColor.js",
             "frontend/js/lib/tippy.js",
             // START SIGMA LIBRARIES
             "frontend/js/lib/sigma.min.js",
@@ -79,21 +81,22 @@
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES
-            // START NEW
             "frontend/js/lib/wheelnav.slicePath.js",
             "frontend/js/lib/wheelnav.min.js",
             "frontend/js/lib/raphael.min.js",
             "frontend/js/lib/raphael.icons.min.js",
-            // END NEW LIBRARIES
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
             "frontend/js/lib/bootstrap-pagination.min.js",
             "frontend/js/lib/jqconsole.min.js",
-            "frontend/js/lib/highlight.7.3.pack.min.js",
+            "frontend/js/lib/highlight.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.min.js",
             "frontend/js/lib/pretty-bytes.js",
+            "frontend/js/lib/marked.min.js",
+            "frontend/js/lib/leaflet.js",
+            "frontend/js/lib/tile.stamen.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",

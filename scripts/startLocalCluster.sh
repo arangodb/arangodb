@@ -41,7 +41,7 @@ if [[ -f cluster/startup_parameters ]];then
 else
   #store parmeters
   if [[ -n "${params[@]}" ]]; then
-    echo "${params[@]}" > cluster/startup_parameters 
+    echo "${params[@]}" > cluster/startup_parameters
   fi
 fi
 
@@ -52,8 +52,13 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
-  STORAGE_ENGINE=""
-else
+  #default engine is RocksDB
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+elif [ "$USE_ROCKSDB" == "0" ]; then 
+  #explicitly disable RocksDB engine, so use MMFiles
+  STORAGE_ENGINE="--server.storage-engine=mmfiles"
+else 
+  #any value other than "0" means RocksDB engine
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
 fi
 DEFAULT_REPLICATION=""
@@ -75,8 +80,8 @@ if (( $NRAGENTS % 2 == 0)) ; then
 fi
 
 SFRE=1.0
-COMP=2000
-KEEP=1000
+COMP=500
+KEEP=2000
 if [ -z "$ONGOING_PORTS" ] ; then
   CO_BASE=$(( $PORT_OFFSET + 8530 ))
   DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -111,10 +116,10 @@ fi
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
     if [ "$INTERACTIVE_MODE" == "C" ] ; then
         ARANGOD="${BUILD}/bin/arangod "
-        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
+        CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console "
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
+        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod --console "
         CO_ARANGOD=$ARANGOD
         echo Running cluster in rr with --console.
     fi
@@ -123,8 +128,9 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-echo == Starting agency ... 
+echo == Starting agency ...
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
     $ARANGOD \
@@ -141,13 +147,9 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory cluster/data$port \
-        --javascript.app-path $SRC_DIR/js/apps \
-        --javascript.startup-directory $SRC_DIR/js \
-        --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.v8-contexts 1 \
+        --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
-        --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
@@ -158,9 +160,9 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
 done
 
 start() {
-    
+
     if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
+        ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
         ROLE="COORDINATOR"
     fi
@@ -173,8 +175,9 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir -p cluster/data$PORT cluster/apps$PORT 
+    mkdir -p cluster/data$PORT cluster/apps$PORT
     echo == Starting $TYPE on port $PORT
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \

@@ -65,6 +65,9 @@ function appendHeader() {
     '    <li>\n' +
     '      <a href="#" data-book="Cookbook">Cookbook</a>\n' +
     '    </li>\n' +
+    '    <li>\n' +
+    '      <a href="#" data-book="Drivers">Drivers</a>\n' +
+    '    </li>\n' +
     '    <li class="downloadIcon" title="Download">\n' +
     '      <a href="https://www.arangodb.com/download-arangodb-docs" target="_blank">\n' +
     '        <i class="fa fa-download"></i>\n' +
@@ -116,7 +119,7 @@ function appendHeader() {
   };
   addGoogleSrc();
 
-  $(".arangodb-navmenu a:lt(4)").on("click", function(e) {
+  $(".arangodb-navmenu a[data-book]").on("click", function(e) {
     e.preventDefault();
     var urlSplit = gitbook.state.root.split("/");
     urlSplit.pop(); // ""

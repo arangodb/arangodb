@@ -56,6 +56,38 @@
 
 #endif // _WIN32
 
+NS_LOCAL
+
+#ifdef _WIN32
+
+  // workaround for path MAX_PATH
+  const std::basic_string<wchar_t> path_prefix(L"\\\\?\\");
+
+#endif
+
+#ifdef _WIN32
+  const std::basic_string<wchar_t> path_separator(L"\\");
+#else
+  const std::basic_string<char> path_separator("/");
+#endif
+
+inline int path_stats(file_stat_t& info, const file_path_t path) {
+  // MSVC2013 _wstat64(...) reports ENOENT for '\' terminated paths
+  // MSVC2015/MSVC2017 treat '\' terminated paths properly
+  #if defined(_MSC_VER) && _MSC_VER == 1800
+    auto parts = irs::file_utils::path_parts(path);
+
+    return file_stat(
+      parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path,
+      &info
+    );
+  #else
+    return file_stat(path, &info);
+  #endif
+}
+
+NS_END
+
 NS_ROOT
 NS_BEGIN(file_utils)
 
@@ -114,14 +146,16 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, path.c_str());
     return true; // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, path.c_str());
     return true; // locked
   }
 
@@ -307,7 +341,7 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf); // hostname length 
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: %s", buf);
+    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, file);
     return true; // locked
   }
 
@@ -319,7 +353,7 @@ bool verify_lock_file(const file_path_t file) {
   // check pid
   const char* pid = buf+len+1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: %s", pid);
+    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid, file);
     return true; // locked
   }
 
@@ -387,50 +421,188 @@ bool file_sync(int fd) NOEXCEPT {
 
 #endif // _WIN32
 
-ptrdiff_t file_size(const file_path_t file) NOEXCEPT {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             stats
+// -----------------------------------------------------------------------------
+
+bool absolute(bool& result, const file_path_t path) NOEXCEPT {
+  if (!path) {
+    return false;
+  }
+
+  #ifdef _WIN32
+    if (MAX_PATH > wcslen(path)) {
+      result = !PathIsRelativeW(path);
+    } else {
+      // ensure that PathIsRelativeW(...) is given a value shorter than MAX_PATH
+      // still ok since to determine if absolute only need the start of the path
+      std::basic_string<wchar_t> buf(path, MAX_PATH - 1); // -1 for '\0'
+
+      result = !PathIsRelativeW(buf.c_str());
+    }
+  #else
+    result = path[0] == '/'; // a null terminated string is at least size 1
+  #endif
+
+  return true;
+}
+
+bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
-  file_stat_t info;
-  return 0 == file_stat(file, &info) ? info.st_size : -1;
-}
-
-ptrdiff_t file_size(int fd) NOEXCEPT {
-  file_stat_t info;
-  return 0 == file_fstat(fd, &info) ? info.st_size : -1;
-}
-
-ptrdiff_t block_size(int fd) NOEXCEPT {
 #ifdef _WIN32
-  // fixme
-  UNUSED(fd);
-  return 512;
+  // TODO FIXME find a workaround
+  UNUSED(file);
+  result = 512;
+
+  return true;
 #else
   file_stat_t info;
-  return 0 == file_fstat(fd, &info) ? info.st_blksize : -1;
+
+  if (0 != path_stats(info, file)) {
+    return false;
+  }
+
+  result = info.st_blksize;
+
+  return true;
 #endif // _WIN32
 }
 
-bool is_directory(const file_path_t name) NOEXCEPT {
+bool block_size(file_blksize_t& result, int fd) NOEXCEPT {
+#ifdef _WIN32
+  // TODO FIXME find a workaround
+  UNUSED(fd);
+  result = 512;
+
+  return true;
+#else
   file_stat_t info;
 
-  if (file_stat(name, &info) != 0) {
+  if (0 != file_fstat(fd, &info)) {
+    return false;
+  }
+
+  result = info.st_blksize;
+
+  return true;
+#endif // _WIN32
+}
+
+bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
+  assert(file != nullptr);
+  file_stat_t info;
+
+  if (0 != path_stats(info, file)) {
+    return false;
+  }
+
+  result = info.st_size;
+
+  return true;
+}
+
+bool byte_size(uint64_t& result, int fd) NOEXCEPT {
+  file_stat_t info;
+
+  if (0 != file_fstat(fd, &info)) {
+    return false;
+  }
+
+  result = info.st_size;
+
+  return true;
+}
+
+bool exists(bool& result, const file_path_t file) NOEXCEPT {
+  assert(file != nullptr);
+  file_stat_t info;
+
+  result = 0 == path_stats(info, file);
+
+  if (!result && ENOENT != errno) {
+    auto path = boost::locale::conv::utf_to_utf<char>(file);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+  }
+
+  return true;
+}
+
+bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
+  assert(name != nullptr);
+  file_stat_t info;
+
+  result = 0 == path_stats(info, name);
+
+  if (result) {
+    #ifdef _WIN32
+      result = (info.st_mode & _S_IFDIR) > 0;
+    #else
+      result = (info.st_mode & S_IFDIR) > 0;
+    #endif
+  } else if (ENOENT != errno) {
     auto path = boost::locale::conv::utf_to_utf<char>(name);
 
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
-
-    return false; 
   }
 
-#ifdef _WIN32
-  return (info.st_mode & _S_IFDIR) > 0;
-#else
-  return (info.st_mode & S_IFDIR) > 0;
-#endif
+  return true;
 }
+
+bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
+  assert(name != nullptr);
+  file_stat_t info;
+
+  result = 0 == path_stats(info, name);
+
+  if (result) {
+    #ifdef _WIN32
+      result = (info.st_mode & _S_IFREG) > 0;
+    #else
+      result = (info.st_mode & S_IFREG) > 0;
+    #endif
+  } else if (ENOENT != errno) {
+    auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
+  }
+
+  return true;
+}
+
+bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
+  assert(file != nullptr);
+  file_stat_t info;
+
+  if (0 != path_stats(info, file)) {
+    return false;
+  }
+
+  result = info.st_mtime;
+
+  return true;
+}
+
+bool mtime(time_t& result, int fd) NOEXCEPT {
+  file_stat_t info;
+
+  if (0 != file_fstat(fd, &info)) {
+    return false;
+  }
+
+  result = info.st_mtime;
+
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         open file
+// -----------------------------------------------------------------------------
 
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   #ifdef _WIN32
     #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    handle_t handle(::_wfopen(path ? path : _T("NUL:"), mode));
+    handle_t handle(::_wfopen(path ? path : IR_WSTR("NUL:"), mode));
     #pragma warning(default: 4996)
   #else
     handle_t handle(::fopen(path ? path : "/dev/null", mode));
@@ -439,7 +611,7 @@ handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   if (!handle) {
     // even win32 uses 'errno' for error codes in calls to _wfopen(...)
     IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 
   return handle;
@@ -523,6 +695,306 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
     return open(path, mode);
   #endif
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                        path utils
+// -----------------------------------------------------------------------------
+
+bool mkdir(const file_path_t path) NOEXCEPT {
+  bool result;
+
+  if (!exists_directory(result, path)) {
+    return false; // failure checking directory existence
+  }
+
+  if (result) {
+    return true; // already exists
+  }
+
+  if (!exists(result, path) || result) {
+    return false; // failure checking existence or something else exists with the same name
+  }
+
+  auto parts = path_parts(path);
+
+  if (!parts.dirname.empty()) {
+    // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
+    std::basic_string<std::remove_pointer<file_path_t>::type> parent(parts.dirname);
+
+    if (!mkdir(parent.c_str())) {
+      return false; // failed to create parent
+    }
+  }
+
+  #ifdef _WIN32
+    bool abs;
+
+    if (!absolute(abs, path)) {
+      return false;
+    }
+
+    // '\\?\' cannot be used with relative paths
+    if (!abs) {
+      return 0 != CreateDirectoryW(path, nullptr);
+    }
+
+    // workaround for path MAX_PATH
+    auto dirname = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter
+    );
+
+    return 0 != ::CreateDirectoryW(dirname.c_str(), nullptr);
+  #else
+    return 0 == ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO);
+  #endif
+}
+
+bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {
+  // FIXME TODO ensure both functions lead to the same result in all cases @see utf8_path_tests::rename() tests
+  #ifdef _WIN32
+    return 0 != ::MoveFileExW(src_path, dst_path, MOVEFILE_REPLACE_EXISTING|MOVEFILE_COPY_ALLOWED);
+  #else
+    return 0 == ::rename(src_path, dst_path);
+  #endif
+}
+
+path_parts_t path_parts(const file_path_t path) NOEXCEPT {
+  if (!path) {
+    return path_parts_t();
+  }
+
+  bool have_extension = false;
+  path_parts_t::ref_t dirname = path_parts_t::ref_t::NIL;
+  size_t stem_end = 0;
+
+  for(size_t i = 0;; ++i) {
+    switch (*(path + i)) {
+    #ifdef _WIN32
+     case L'\\': // fall through
+     case L'/':
+    #else
+     case '/':
+    #endif
+      have_extension = false;
+      dirname = path_parts_t::ref_t(path, i);
+      break;
+    #ifdef _WIN32
+     case L'.':
+    #else
+     case '.':
+    #endif
+      have_extension = true;
+      stem_end = i;
+      break;
+    #ifdef _WIN32
+     case L'\0': {
+    #else
+     case '\0': {
+    #endif
+      path_parts_t result;
+
+      if (have_extension) {
+        result.extension =
+          path_parts_t::ref_t(path + stem_end + 1, i - stem_end - 1); // +1/-1 for delimiter
+      } else {
+        stem_end = i;
+      }
+
+      if (dirname.null()) {
+        result.basename = path_parts_t::ref_t(path, i);
+        result.stem = path_parts_t::ref_t(path, stem_end);
+      } else {
+        auto stem_start = dirname.size() + 1; // +1 for delimiter
+
+        result.basename =
+          path_parts_t::ref_t(path + stem_start, i - stem_start);
+        result.stem =
+          path_parts_t::ref_t(path + stem_start, stem_end - stem_start);
+      }
+
+      result.dirname = std::move(dirname);
+
+      return result;
+     }
+     default: {} // NOOP
+    }
+  }
+}
+
+bool read_cwd(
+    std::basic_string<std::remove_pointer<file_path_t>::type>& result
+) NOEXCEPT {
+  try {
+    #ifdef _WIN32
+      auto size = GetCurrentDirectory(0, nullptr);
+
+      if (!size) {
+        IR_FRMT_ERROR("Failed to get length of the current working directory, error %d", GetLastError());
+
+        return false;
+      }
+
+      if (size >= result.size()) {
+        result.resize(size + 1); // allocate space for cwd, +1 for '\0'
+      }
+
+      size = GetCurrentDirectory(size, &result[0]);
+
+      // if error or more space required than available
+      if (!size || size >= result.size()) {
+        IR_FRMT_ERROR("Failed to get the current working directory, error %d", GetLastError());
+
+        return false;
+      }
+
+      if (result.size() >= path_prefix.size() &&
+          !result.compare(0, path_prefix.size(), path_prefix)) {
+        result = result.substr(path_prefix.size());
+        size -= uint32_t(path_prefix.size()); // path_prefix size <= DWORD max
+      }
+
+      result.resize(size); // truncate buffer to size of cwd
+    #else
+      result.resize(result.capacity()); // use up the entire buffer (noexcept)
+
+      if (result.empty()) {
+        // workaround for implementations of std::basic_string without a buffer
+        char buf[PATH_MAX];
+
+        if (nullptr != getcwd(buf, PATH_MAX)) {
+          result.assign(buf);
+
+          return true;
+        }
+      } else if (nullptr != getcwd(&result[0], result.size())) {
+        result.resize(std::strlen(&result[0])); // truncate buffer to size of cwd
+
+        return true;
+      }
+
+      if (ERANGE != errno) {
+        IR_FRMT_ERROR("Failed to get the current working directory, error %d", errno);
+
+        return false;
+      }
+
+      struct deleter_t {
+        void operator()(char* ptr) const { free(ptr); }
+      };
+      std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
+
+      if (!pcwd) {
+        IR_FRMT_ERROR("Failed to allocate the current working directory, error %d", errno);
+
+        return false;
+      }
+
+      result.assign(pcwd.get());
+    #endif
+
+    return true;
+  } catch (std::bad_alloc& e) {
+    IR_FRMT_ERROR("Memory allocation failure while getting the current working directory: %s", e.what());
+  } catch (std::exception& e) {
+    IR_FRMT_ERROR("Caught exception while getting the current working directory: %s", e.what());
+  }
+
+  return false;
+}
+
+bool remove(const file_path_t path) NOEXCEPT {
+  try {
+    // a reusable buffer for a full path used during recursive removal
+    std::basic_string<std::remove_pointer<file_path_t>::type> buf;
+
+    // must remove each directory entry recursively (ignore result, check final ::remove() instead)
+    visit_directory(
+      path,
+      [path, &buf](const file_path_t name)->bool {
+        buf.assign(path);
+        buf += path_separator;
+        buf += name;
+        remove(buf.c_str());
+
+        return true;
+      },
+      false
+    );
+  } catch(...) {
+    return false; // possibly a malloc error
+  }
+
+  #ifdef _WIN32
+    bool abs;
+
+    if (!absolute(abs, path)) {
+      return false;
+    }
+
+    // '\\?\' cannot be used with relative paths
+    if (!abs) {
+      bool result;
+      auto res = exists_directory(result, path) && result
+               ? ::RemoveDirectoryW(path)
+               : ::DeleteFileW(path)
+               ;
+
+      return 0 != res;
+    }
+
+    // workaround for path MAX_PATH
+    auto fullpath = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
+
+    bool result;
+    auto res = exists_directory(result, path) && result
+             ? ::RemoveDirectoryW(fullpath.c_str())
+             : ::DeleteFileW(fullpath.c_str())
+             ;
+
+    return 0 != res;
+  #else
+    return 0 == ::remove(path);
+  #endif
+}
+
+bool set_cwd(const file_path_t path) NOEXCEPT {
+  #ifdef _WIN32
+    bool abs;
+
+    if (!absolute(abs, path)) {
+      return false;
+    }
+
+    // '\\?\' cannot be used with relative paths
+    if (!abs) {
+      return 0 != SetCurrentDirectory(path);
+    }
+
+    // workaround for path MAX_PATH
+    auto fullpath = path_prefix + path;
+
+    // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
+    std::replace(
+      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
+    );
+
+    return 0 != SetCurrentDirectory(fullpath.c_str());
+  #else
+    return 0 == chdir(path);
+  #endif
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   directory utils
+// -----------------------------------------------------------------------------
 
 bool visit_directory(
   const file_path_t name,

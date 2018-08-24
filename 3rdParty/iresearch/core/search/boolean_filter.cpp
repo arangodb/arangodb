@@ -353,7 +353,7 @@ boolean_filter::boolean_filter(const type_id& type) NOEXCEPT
   : filter(type) {
 }
 
-size_t boolean_filter::hash() const {
+size_t boolean_filter::hash() const NOEXCEPT {
   size_t seed = 0; 
 
   ::boost::hash_combine(seed, filter::hash());
@@ -366,7 +366,7 @@ size_t boolean_filter::hash() const {
   return seed;
 }
 
-bool boolean_filter::equals(const filter& rhs) const {
+bool boolean_filter::equals(const filter& rhs) const NOEXCEPT {
   const boolean_filter& typed_rhs = static_cast< const boolean_filter& >( rhs );
 
   return filter::equals(rhs)
@@ -555,7 +555,7 @@ filter::prepared::ptr Not::prepare(
   return res.first->prepare(rdr, ord, boost, ctx);
 }
 
-size_t Not::hash() const {
+size_t Not::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   if (filter_) {
@@ -564,7 +564,7 @@ size_t Not::hash() const {
   return seed;
 }
 
-bool Not::equals(const irs::filter& rhs) const {
+bool Not::equals(const irs::filter& rhs) const NOEXCEPT {
   const Not& typed_rhs = static_cast<const Not&>(rhs);
   return filter::equals(rhs)
     && ((!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_)

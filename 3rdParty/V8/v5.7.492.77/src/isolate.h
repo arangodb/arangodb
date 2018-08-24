@@ -512,7 +512,7 @@ class Isolate {
     DCHECK(base::NoBarrier_Load(&isolate_key_created_) == 1);
     Isolate* isolate = reinterpret_cast<Isolate*>(
         base::Thread::GetExistingThreadLocal(isolate_key_));
-    DCHECK(isolate != NULL);
+    // DCHECK(isolate != NULL);
     return isolate;
   }
 

@@ -34,6 +34,12 @@ class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
 
+
+class Query;
+struct Collection;
+/// Helper
+Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
@@ -108,6 +114,12 @@ void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void interchangeAdjacentEnumerationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const*);
 
+
+/// @brief replace single document operations in cluster by special handling
+void substituteClusterSingleDocumentOperations(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
+                                               OptimizerRule const* rule);
+
 /// @brief optimize queries in the cluster so that the entire query gets pushed to a single server
 void optimizeClusterSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
@@ -129,7 +141,7 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const*);
 
 #ifdef USE_ENTERPRISE
-void distributeInClusterRuleSmartEdgeCollection(
+ExecutionNode* distributeInClusterRuleSmartEdgeCollection(
     ExecutionPlan*,
     SubqueryNode* snode,
     ExecutionNode* node,
@@ -139,6 +151,12 @@ void distributeInClusterRuleSmartEdgeCollection(
 /// @brief remove scatter/gather and remote nodes for satellite collections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 #endif
+
+/// @brief try to restrict fragments to a single shard if possible
+void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
+/// @brief move collect to the DB servers in cluster
+void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
 void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                         OptimizerRule const*);
@@ -223,8 +241,12 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerR
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const*);
 
-/// @brief replace FULLTEXT function
-void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql::OptimizerRule const*);
+/// @brief push LIMIT into subqueries, and simplify them
+void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
+/// @brief replace legacy JS functions in the plan.
+void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 
 }  // namespace aql
 }  // namespace arangodb

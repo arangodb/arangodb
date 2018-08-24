@@ -89,11 +89,5 @@ int32_t check_header(
   return ver;
 }
 
-int64_t read_checksum( index_input& in ) {
-  in.seek( in.length() - FOOTER_LEN );
-  validate_footer( in );
-  return in.read_long();
-}
-
 NS_END
 NS_END

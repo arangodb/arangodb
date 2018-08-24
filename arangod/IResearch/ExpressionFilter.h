@@ -129,7 +129,7 @@ class ByExpression final : public irs::filter {
     irs::attribute_view const& ctx
   ) const override;
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const noexcept override;
 
   ExpressionCompilationContext const& context() const noexcept {
     return _ctx;
@@ -140,7 +140,7 @@ class ByExpression final : public irs::filter {
   }
 
  protected:
-  virtual bool equals(irs::filter const& rhs) const override;
+  virtual bool equals(irs::filter const& rhs) const noexcept override;
 
  private:
   ExpressionCompilationContext _ctx;

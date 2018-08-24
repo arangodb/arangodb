@@ -172,7 +172,7 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER
 
     if (bMinValueNil && bMaxValueNil) {
       // exact equivalence optimization for nil value
-      root.proxy<iresearch::by_term>().field(field).term(iresearch::bytes_ref::nil);
+      root.proxy<iresearch::by_term>().field(field).term(iresearch::bytes_ref::NIL);
     }
     else if (!bMinValueNil && !bMaxValueNil && minValue == maxValue) {
       // exact equivalence optimization
@@ -211,7 +211,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       return false;
     }
 
-    const iresearch::string_ref value_ref(bValueNil ? iresearch::string_ref::nil : iresearch::ref_cast<char>(value));
+    const iresearch::string_ref value_ref(bValueNil ? iresearch::string_ref::NIL : iresearch::ref_cast<char>(value));
     auto tokens = irs::analysis::analyzers::get(
       "text", irs::text_format::text, irs::locale_utils::name(locale)
     );
@@ -242,7 +242,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         const iresearch::index_reader&,
         const iresearch::order::prepared&,
         boost_t,
-        const iresearch::attribute_view&) const {
+        const iresearch::attribute_view&) const override {
       iresearch::filter::prepared::ptr result; // null-ptr result
       return result;
     }
@@ -821,7 +821,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     args.reserve(2);
 
     if (query_node::NodeType::UNKNOWN == min_node.type) {
-      args.emplace_back(iresearch::bytes_ref::nil);
+      args.emplace_back(iresearch::bytes_ref::NIL);
     }
     else {
       auto errorNodeId = append_function_arg(args, min_node_id);
@@ -832,7 +832,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     }
 
     if (query_node::NodeType::UNKNOWN == max_node.type) {
-      args.emplace_back(iresearch::bytes_ref::nil);
+      args.emplace_back(iresearch::bytes_ref::NIL);
     }
     else {
       auto errorNodeId = append_function_arg(args, max_value_id);

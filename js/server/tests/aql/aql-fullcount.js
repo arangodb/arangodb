@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, AQL_EXECUTE */
+/*global assertUndefined, assertEqual, assertFalse, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for index usage
@@ -59,7 +59,29 @@ function optimizerFullcountTestSuite () {
     testNoFullcount : function () {
       var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 1 RETURN true) FILTER LENGTH(found) > 0 LIMIT 10 RETURN doc", null, { }); 
 
-      assertUndefined(result.stats.fullCount);
+      assertFalse(result.stats.hasOwnProperty('fullCount'));
+      assertEqual(2, result.json.length);
+    },
+    
+    testFullcount : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 1 RETURN true) FILTER LENGTH(found) > 0 LIMIT 10 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(2, result.json.length);
+    },
+
+    testNoFullcountUsingLimitOnlyInSubquery : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 1 RETURN true) FILTER LENGTH(found) > 0 RETURN doc", null, { }); 
+
+      assertFalse(result.stats.hasOwnProperty('fullCount'));
+      assertEqual(2, result.json.length);
+    },
+    
+    testFullcountUsingLimitOnlyInSubquery : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 1 RETURN true) FILTER LENGTH(found) > 0 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(2, result.json.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,9 +100,30 @@ function optimizerFullcountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithFullcountUsingLimit : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' RETURN true) FILTER LENGTH(found) > 0 LIMIT 1 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(1, result.json.length);
+    },
+    
+    testWithFullcountUsingLimitInSubquery : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 1 RETURN true) FILTER LENGTH(found) > 0 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(2, result.stats.fullCount);
+      assertEqual(2, result.json.length);
+    },
+    
+    testWithFullcountUsingLimitInSubqueryAndMain : function () {
       var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 1 RETURN true) FILTER LENGTH(found) > 0 LIMIT 1 RETURN doc", null, { fullCount: true }); 
 
       assertEqual(2, result.stats.fullCount);
+      assertEqual(1, result.json.length);
+    },
+    
+    testWithFullcountUsingLimitInLaterSubquery : function () {
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsCollection LIMIT 1 LET values = doc.values LET found = (FOR value IN values FILTER value == 'bar' || value == 'foo' LIMIT 0 RETURN true) FILTER LENGTH(found) >= 0 RETURN doc", null, { fullCount: true }); 
+
+      assertEqual(3, result.stats.fullCount);
       assertEqual(1, result.json.length);
     },
 
@@ -192,6 +235,20 @@ function optimizerFullcountTestSuite () {
 
       assertEqual(2, result.stats.fullCount);
       assertEqual(0, result.json.length);
+    },
+
+    testJoin1 : function () {
+      let result = AQL_EXECUTE("FOR doc1 IN UnitTestsCollection LIMIT 1 FOR doc2 IN UnitTestsCollection RETURN 1", null, { fullCount: true });
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(3, result.json.length);
+    },
+
+    testJoin2 : function () {
+      let result = AQL_EXECUTE("FOR doc1 IN UnitTestsCollection LIMIT 1 FOR doc2 IN UnitTestsCollection FILTER doc1._id == doc2._id RETURN 1", null, { fullCount: true });
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(1, result.json.length);
     }
 
   };

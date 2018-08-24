@@ -48,7 +48,7 @@ class AttributeScorer: public irs::sort {
   /// @brief for use with irs::order::add(...) (dynamic build)
   ///        or jSON args (static build)
   /// @param args: jSON [string enum, ...] precedence order of value types,
-  ///              (string_ref::nil == use ArangoDB defaults), any of:
+  ///              (string_ref::NIL == use ArangoDB defaults), any of:
   ///        array   - array attribute value in jSON document
   ///        boolean - boolean attribute value in jSON document
   ///        null    - null attribute value in jSON document

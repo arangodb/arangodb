@@ -62,7 +62,8 @@ Note that in the *UPDATE* case it is possible to refer to the previous version o
 document using the *OLD* pseudo-value.
 
 
-### Setting query options
+Setting query options
+---------------------
 
 As in several above examples, the *ignoreErrors* option can be used to suppress query 
 errors that may occur when trying to violate unique key constraints.
@@ -81,8 +82,25 @@ explicitly.
 To make sure data are durable when an update query returns, there is the *waitForSync* 
 query option.
 
+In order to not accidentially update documents that have been written and updated since 
+you last fetched them you can use the option *ignoreRevs* to either let ArangoDB compare 
+the `_rev` value and only succeed if they still match, or let ArangoDB ignore them (default):
 
-### Returning documents
+```
+FOR i IN 1..1000
+  UPSERT { _key: CONCAT('test', i)}
+    INSERT {foobar: false}
+    UPDATE {_rev: "1287623", foobar: true }
+  IN users OPTIONS { ignoreRevs: false }
+```
+
+*NOTE*: You need to add the `_rev` value in the updateExpression, it will not be used within 
+the searchExpression. Even worse, if you use an outdated `_rev` in the searchExpression
+UPSERT will trigger the INSERT path instead of the UPDATE path, because it has not found a document
+exactly matching the searchExpression.
+
+Returning documents
+-------------------
 
 `UPSERT` statements can optionally return data. To do so, they need to be followed
 by a `RETURN` statement (intermediate `LET` statements are allowed, too). These statements
@@ -104,4 +122,3 @@ INSERT { name: 'superuser', logins: 1, dateCreated: DATE_NOW() }
 UPDATE { logins: OLD.logins + 1 } IN users
 RETURN { doc: NEW, type: OLD ? 'update' : 'insert' }
 ```
-

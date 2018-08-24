@@ -747,7 +747,7 @@ function transactionCollectionsSuite () {
         TRANSACTION(obj);
         fail();
       } catch (err) {
-        assertEqual(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
 
@@ -769,7 +769,7 @@ function transactionCollectionsSuite () {
         TRANSACTION(obj);
         fail();
       } catch (err) {
-        assertEqual(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
 

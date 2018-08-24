@@ -1,0 +1,7 @@
+@Q:
+RETURN SHIFT( [ <span class="hljs-number">1</span> ] )
+
+@R
+[
+  []
+]

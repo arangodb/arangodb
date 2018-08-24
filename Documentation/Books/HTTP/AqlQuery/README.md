@@ -12,7 +12,7 @@ inspect it and return meta information about it.
 
 
 <!-- js/actions/api-explain.js -->
-@startDocuBlock JSF_post_api_explain
+@startDocuBlock post_api_explain
 
 @startDocuBlock PostApiQueryProperties
 

@@ -23,11 +23,11 @@
 
 #include "CalculationBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -102,7 +102,7 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
   DEBUG_BEGIN_BLOCK();
-  bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
+  bool const hasCondition = (ExecutionNode::castTo<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
   TRI_ASSERT(!hasCondition); // currently not implemented
 
@@ -117,14 +117,15 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->emplaceValue(i, _outReg, arangodb::basics::VelocyPackHelper::NullValue());
+        result->emplaceValue(i, _outReg, arangodb::velocypack::Slice::nullSlice());
         continue;
       }
     }
 
     // execute the expression
     bool mustDestroy;
-    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs, mustDestroy);
+    BaseExpressionContext ctx(i, result, _inVars, _inRegs);
+    AqlValue a = _expression->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -154,22 +155,23 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
 
   TRI_ASSERT(_expression != nullptr);
 
-  if (!_expression->isV8()) {
+  if (!_expression->willUseV8()) {
     // an expression that does not require V8
     executeExpression(result);
   } else {
-    // must have a V8 context here to protect Expression::execute()
-    arangodb::basics::ScopeGuard guard{
-        [&]() -> void { _engine->getQuery()->enterContext(); },
-        [&]() -> void {
-          if (_isRunningInCluster) {
-            // must invalidate the expression now as we might be called from
-            // different threads
-            _expression->invalidate();
+    auto cleanup = [this]() {
+      if (_isRunningInCluster) {
+        // must invalidate the expression now as we might be called from
+        // different threads
+        _expression->invalidate();
 
-            _engine->getQuery()->exitContext();
-          }
-        }};
+        _engine->getQuery()->exitContext();
+      }
+    };
+    
+    // must have a V8 context here to protect Expression::execute()
+    _engine->getQuery()->enterContext();
+    TRI_DEFER(cleanup());
 
     ISOLATE;
     v8::HandleScope scope(isolate);  // do not delete this!
@@ -183,22 +185,31 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
   DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+CalculationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
-  std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+  traceGetSomeBegin(atMost);
 
-  if (res.get() == nullptr) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+  if (_done) {
+    return {ExecutionState::DONE, nullptr};
   }
 
-  doEvaluation(res.get());
+  auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+    return res;
+  }
+  if (res.second == nullptr) {
+    TRI_ASSERT(res.first == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, res.first);
+    return res;
+  }
+
+  doEvaluation(res.second.get());
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
+  clearRegisters(res.second.get());
+  traceGetSomeEnd(res.second.get(), res.first);
+  return res;
 
   // cppcheck-suppress *
   DEBUG_END_BLOCK();

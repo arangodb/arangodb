@@ -50,7 +50,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 
@@ -283,6 +282,7 @@ void MMFilesCollectorThread::forceStop() {
 
 /// @brief main loop
 void MMFilesCollectorThread::run() {
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   int counter = 0;
 
   while (true) {
@@ -291,7 +291,7 @@ void MMFilesCollectorThread::run() {
 
     try {
       // step 1: collect a logfile if any qualifies
-      if (!isStopping()) {
+      if (!isStopping() && !engine->isCompactionDisabled()) {
         // don't collect additional logfiles in case we want to shut down
         bool worked;
         int res = this->collectLogfiles(worked);
@@ -442,10 +442,16 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
 /// @brief step 2: process all still-queued collection operations
 int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+
   // always init result variable
   worked = false;
 
   TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
+    return TRI_ERROR_NO_ERROR;
+  }
+            
+  if (engine->isCompactionDisabled()) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -500,7 +506,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(TRACE, Logger::COLLECTOR) << "queued operations applied successfully";
         } else if (res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
-                  res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+                  res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
           // these are expected errors
           LOG_TOPIC(TRACE, Logger::COLLECTOR)
               << "removing queued operations for already deleted collection";
@@ -597,11 +603,9 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       for (auto const& cache : operations) {
         {
           arangodb::DatabaseGuard dbGuard(cache->databaseId);
-          TRI_vocbase_t* vocbase = dbGuard.database();
-          TRI_ASSERT(vocbase != nullptr);
-
-          arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId,
-                                                    true);
+          arangodb::CollectionGuard collectionGuard(
+            &(dbGuard.database()), cache->collectionId, true
+          );
           arangodb::LogicalCollection* collection = collectionGuard.collection();
 
           TRI_ASSERT(collection != nullptr);
@@ -622,10 +626,13 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       it.second.clear();
     }
   } catch (...) {
-    // must clear the inuse flag here
-    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-    TRI_ASSERT(_operationsQueueInUse); // used by us
-    _operationsQueueInUse = false;
+    {
+      // must clear the inuse flag here
+      MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+      TRI_ASSERT(_operationsQueueInUse); // used by us
+      _operationsQueueInUse = false;
+    }
+
     throw;
   }
 
@@ -674,18 +681,14 @@ void MMFilesCollectorThread::processCollectionMarker(
     MMFilesSimpleIndexElement element = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (element) {
-      ManagedDocumentResult mmdr;
-      if (collection->readDocument(&trx, element.localDocumentId(), mmdr)) {
-        uint8_t const* vpack = mmdr.vpack();
-        if (vpack != nullptr) {
-          TRI_voc_rid_t currentRevision = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
-          if (revisionId == currentRevision) {
-            // make it point to datafile now
-            MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
-            wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false);
-          }
+      collection->readDocumentWithCallback(&trx, element.localDocumentId(), [&](LocalDocumentId const&, VPackSlice doc) {
+        TRI_voc_rid_t currentRevision = transaction::helpers::extractRevFromDocument(doc);
+        if (revisionId == currentRevision) {
+          // make it point to datafile now
+          MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
+          wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false);
         }
-      }
+      });
     }
 
     if (wasAdjusted) {
@@ -713,18 +716,14 @@ void MMFilesCollectorThread::processCollectionMarker(
     MMFilesSimpleIndexElement found = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found) {
-      ManagedDocumentResult mmdr;
-      if (collection->readDocument(&trx, found.localDocumentId(), mmdr)) {
-        uint8_t const* vpack = mmdr.vpack();
-        if (vpack != nullptr) {
-          TRI_voc_rid_t currentRevisionId = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
-          if (currentRevisionId > revisionId) {
-            // somebody re-created the document with a newer revision
-            dfi.numberDead++;
-            dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
-          }
+      collection->readDocumentWithCallback(&trx, found.localDocumentId(), [&](LocalDocumentId const&, VPackSlice doc) {
+        TRI_voc_rid_t currentRevisionId = transaction::helpers::extractRevFromDocument(doc);
+        if (currentRevisionId > revisionId) {
+          // somebody re-created the document with a newer revision
+          dfi.numberDead++;
+          dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
         }
-      }
+      });
     }
   }
 }
@@ -732,10 +731,10 @@ void MMFilesCollectorThread::processCollectionMarker(
 /// @brief process all operations for a single collection
 int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* cache) {
   arangodb::DatabaseGuard dbGuard(cache->databaseId);
-  TRI_vocbase_t* vocbase = dbGuard.database();
-  TRI_ASSERT(vocbase != nullptr);
-
-  arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
+  auto& vocbase = dbGuard.database();
+  arangodb::CollectionGuard collectionGuard(
+    &vocbase, cache->collectionId, true
+  );
   arangodb::LogicalCollection* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
@@ -753,8 +752,11 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-      collection->cid(), AccessMode::Type::WRITE);
+    arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+    *collection,
+    AccessMode::Type::WRITE
+  );
+
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
@@ -941,7 +943,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
 
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          res != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
         if (res != TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
           // other places already log this error, and making the logging
           // conditional here
@@ -958,7 +960,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   }
 
   // Error conditions TRI_ERROR_ARANGO_DATABASE_NOT_FOUND and
-  // TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND are intentionally ignored
+  // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND are intentionally ignored
   // here since this can actually happen if someone has dropped things
   // in between.
 
@@ -980,10 +982,9 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
 
   // prepare database and collection
   arangodb::DatabaseGuard dbGuard(databaseId);
-  TRI_vocbase_t* vocbase = dbGuard.database();
-  TRI_ASSERT(vocbase != nullptr);
-
-  arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
+  arangodb::CollectionGuard collectionGuard(
+    &(dbGuard.database()), collectionId, true
+  );
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
@@ -1002,14 +1003,14 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
 
-  uint64_t numBytesTransferred = 0;
   try {
+    uint64_t numBytesTransferred = 0;
     auto en = static_cast<MMFilesEngine*>(engine);
     res = en->transferMarkers(collection, cache.get(), operations, numBytesTransferred);
-  
+
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector transferred markers for '"
              << collection->name() << ", number of bytes transferred: " << numBytesTransferred;
-    
+
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);
     }

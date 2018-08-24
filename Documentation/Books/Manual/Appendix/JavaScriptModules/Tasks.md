@@ -4,7 +4,7 @@ Task Management
 `const tasks = require('@arangodb/tasks')`
 
 **Note**: If you are trying to schedule tasks in Foxx you should
-consider using the [Foxx queues module](../../Foxx/Scripts.md#queues) instead,
+consider using the [Foxx queues module](../../Foxx/Guides/Scripts.md#queues) instead,
 which provides a more high-level API that also persists tasks across reboots.
 
 ## Introduction to Task Management in ArangoDB
@@ -19,12 +19,12 @@ executed when the task is scheduled. A task can be a one-shot task
 that it is re-scheduled after each execution). Tasks can have optional
 parameters, which are defined at task setup time. The parameters
 specified at task setup time will be passed as arguments to the
-task whenever it gets executed. Periodic Tasks have an execution 
+task whenever it gets executed. Periodic Tasks have an execution
 frequency that needs to be specified when the task is set up. One-shot
 tasks have a configurable delay after which they'll get executed.
 
-Tasks will be executed on the server they have been set up on. 
-Tasks will not be shipped around in a cluster. A task will be 
+Tasks will be executed on the server they have been set up on.
+Tasks will not be shipped around in a cluster. A task will be
 executed in the context of the database it was created in. However,
 when dropping a database, any tasks that were created in the context
 of this database will remain active. It is therefore sensible to
@@ -32,8 +32,8 @@ first unregister all active tasks for a database before dropping the
 database.
 
 Tasks registered in ArangoDB will be executed until the server
-gets shut down or restarted. After a restart of the server, any 
-user-defined one-shot or periodic tasks will be lost. 
+gets shut down or restarted. After a restart of the server, any
+user-defined one-shot or periodic tasks will be lost.
 
 ## Commands for Working with Tasks
 
@@ -57,7 +57,7 @@ task later. Task names are informational only. They can be used to make
 a task distinguishable from other tasks also running on the server.
 
 The following server-side commands register a task. The command to be
-executed is a JavaScript string snippet which prints a message to the 
+executed is a JavaScript string snippet which prints a message to the
 server's logfile:
 
 
@@ -92,9 +92,9 @@ tasks.register({
 });
 ```
 
-It is important to note that the callback function is late bound and 
-will be executed in a different context than in the creation context. 
-The callback function must therefore not access any variables defined 
+It is important to note that the callback function is late bound and
+will be executed in a different context than in the creation context.
+The callback function must therefore not access any variables defined
 outside of its own scope. The callback function can still define and
 use its own variables.
 
@@ -119,7 +119,7 @@ tasks.register({
 });
 ```
 
-Registering a one-shot task works the same way, except that the 
+Registering a one-shot task works the same way, except that the
 *period* attribute must be omitted. If *period* is omitted, then the
 task will be executed just once. The task invocation delay can optionally
 be specified with the *offset* attribute:
@@ -137,7 +137,7 @@ tasks.register({
 });
 ```
 
-**Note**: When specifying an *offset* value of 0, ArangoDB will internally add 
+**Note**: When specifying an *offset* value of 0, ArangoDB will internally add
 a very small value to the offset so will be slightly greater than zero.
 
 ## Unregister a task
@@ -154,7 +154,7 @@ Note that unregistering a non-existing task will throw an exception.
 
 ## List all tasks
 
-To get an overview of which tasks are registered, there is the *get* 
+To get an overview of which tasks are registered, there is the *get*
 method. If the *get* method is called without any arguments, it will
 return an array of all tasks:
 
@@ -163,7 +163,7 @@ const tasks = require("@arangodb/tasks");
 tasks.get();
 ```
 
-If *get* is called with a task id argument, it will return information 
+If *get* is called with a task id argument, it will return information
 about this particular task:
 
 ```js
@@ -172,4 +172,4 @@ tasks.get("mytask-3");
 ```
 
 The *created* attribute of a task reveals when a task was created. It is
-returned as a Unix timestamp. 
+returned as a Unix timestamp.

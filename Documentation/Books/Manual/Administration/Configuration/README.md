@@ -13,6 +13,9 @@ General Options
 Prints a list of the most common options available and then exits. In order to
 see all options use *--help-all*.
 
+To receive the startup options in JSON format, pass the `--dump-options` flag. This will
+print out all options and exit.
+
 ### Version
 
 `--version`
@@ -20,6 +23,7 @@ see all options use *--help-all*.
 `-v`
 
 Prints the version of the server and exits.
+
 
 ### Configuration Files
 
@@ -78,22 +82,24 @@ So you see in general `--section.param value` translates to
 param=value 
 ```
 
-{% hint 'warning' %}
-Whitespace around `=` is ignored in the configuration file. Do not put spaces
-around additional `=` in the parameter value however. The following example
-shows the correct way to specify a log level of `trace` for the topic `startup`:
+{% hint 'tip' %}
+Whitespace around `=` is ignored in the configuration file.
+This includes whitespace around equals signs in the parameter value:
 
 ```js
-log.level = startup=trace
+log.level = startup = trace
 ```
 
-Note that there is no whitespace between `startup` and `=`, and also not `=`
-and `trace`.
+It is the same as without whitespace:
+
+```js
+log.level=startup=trace
+```
 {% endhint %}
 
-Where one section may occur multiple times, and the last occurance of `param`
+Where one section may occur multiple times, and the last occurrence of `param`
 will become the final value. In case of parameters being vectors, multiple
-occurance adds another item to the vector. Vectors can be identified by the
+occurrence adds another item to the vector. Vectors can be identified by the
 `...` in the `--help` output of the binaries.
 
 Comments can be placed in the configuration file, only if the line begins with

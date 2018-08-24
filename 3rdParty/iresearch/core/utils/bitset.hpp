@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_BITSET_H
 #define IRESEARCH_BITSET_H
 
+#include <cstring>
 #include <memory>
 
 #include "shared.hpp"
@@ -150,7 +151,10 @@ class bitset : util::noncopyable {
   }
 
   void clear() NOEXCEPT {
-    std::memset(data_.get(), 0, sizeof(word_t)*words_);
+    if (data_) {
+      // passing nullptr to `std::memset` is undefined behavior
+      std::memset(data_.get(), 0, sizeof(word_t)*words_);
+    }
   }
 
   // counts bits set

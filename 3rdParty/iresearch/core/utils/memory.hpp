@@ -38,12 +38,6 @@ NS_BEGIN(memory)
 // --SECTION--                                                    is_shared_ptr
 // ----------------------------------------------------------------------------
 
-template<typename T>
-struct is_shared_ptr : std::false_type {};
-
-template<typename T>
-struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////
@@ -142,7 +136,7 @@ struct allocator_deallocator : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::allocator_type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_deallocator(const allocator_type& alloc)
+  allocator_deallocator(const allocator_type& alloc) NOEXCEPT
     : allocator_ref_t(alloc) {
   }
 
@@ -162,7 +156,7 @@ struct allocator_deleter : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_deleter(allocator_type& alloc)
+  allocator_deleter(allocator_type& alloc) NOEXCEPT
     : allocator_ref_t(alloc) {
   }
 
@@ -186,17 +180,17 @@ class allocator_array_deallocator : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_array_deallocator(const allocator_type& alloc, size_t size)
+  allocator_array_deallocator(const allocator_type& alloc, size_t size) NOEXCEPT
     : allocator_ref_t(alloc), size_(size) {
   }
 
   void operator()(pointer p) const NOEXCEPT {
-    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+    typedef std::allocator_traits<allocator_type> traits_t;
+
+    auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
 
     // deallocate storage
-    std::allocator_traits<allocator_type>::deallocate(
-       alloc, p, size_
-    );
+    traits_t::deallocate(alloc, p, size_);
   }
 
  private:
@@ -210,18 +204,18 @@ class allocator_array_deleter : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_array_deleter(allocator_type& alloc, size_t size)
+  allocator_array_deleter(allocator_type& alloc, size_t size) NOEXCEPT
     : allocator_ref_t(alloc), size_(size) {
   }
 
   void operator()(pointer p) const NOEXCEPT {
     typedef std::allocator_traits<allocator_type> traits_t;
 
-    auto& alloc = const_cast<allocator_ref_t*>(this)->get();
+    auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
 
     // destroy objects
-    for (auto end = p + size_; p != end; ++p) {
-      traits_t::destroy(alloc, p);
+    for (auto begin = p, end = p + size_; begin != end; ++begin) {
+      traits_t::destroy(alloc, begin);
     }
 
     // deallocate storage
@@ -376,8 +370,10 @@ inline typename std::enable_if<
   );
 }
 
-template<typename T, typename Alloc>
-typename std::enable_if<
+template<
+  typename T,
+  typename Alloc
+> typename std::enable_if<
   std::is_array<T>::value && std::extent<T>::value == 0,
   std::unique_ptr<T, allocator_array_deleter<Alloc>>
 >::type allocate_unique(Alloc& alloc, size_t size) {
@@ -385,12 +381,14 @@ typename std::enable_if<
     typename std::remove_cv<Alloc>::type
   > traits_t;
   typedef typename traits_t::pointer pointer;
+  typedef allocator_array_deleter<Alloc> deleter_t;
+  typedef std::unique_ptr<T, deleter_t> unique_ptr_t;
+
+  pointer p = nullptr;
 
   if (!size) {
-    return nullptr;
+    return unique_ptr_t(p, deleter_t(alloc, size));
   }
-
-  pointer p;
 
   try {
     p = alloc.allocate(size); // allocate space for 'size' object
@@ -398,7 +396,7 @@ typename std::enable_if<
     fprintf(
       stderr,
       "Memory allocation failure while creating and initializing " IR_SIZE_T_SPECIFIER " object(s) of size " IR_SIZE_T_SPECIFIER " bytes\n",
-      size, sizeof(T)
+      size, sizeof(typename traits_t::value_type)
     );
     dump_mem_stats_trace();
     throw;
@@ -421,9 +419,46 @@ typename std::enable_if<
     throw;
   }
 
-  return std::unique_ptr<T[], allocator_array_deleter<Alloc>>(
-    p, allocator_array_deleter<Alloc>(alloc)
-  );
+  return unique_ptr_t(p, deleter_t(alloc, size));
+}
+
+// do not construct objects in a block
+struct allocate_only_tag { };
+static const auto allocate_only = allocate_only_tag();
+
+template<
+  typename T,
+  typename Alloc
+> typename std::enable_if<
+  std::is_array<T>::value && std::extent<T>::value == 0,
+  std::unique_ptr<T, allocator_array_deallocator<Alloc>>
+>::type allocate_unique(Alloc& alloc, size_t size, allocate_only_tag) {
+  typedef std::allocator_traits<
+    typename std::remove_cv<Alloc>::type
+  > traits_t;
+  typedef typename traits_t::pointer pointer;
+  typedef allocator_array_deallocator<Alloc> deleter_t;
+  typedef std::unique_ptr<T, deleter_t> unique_ptr_t;
+
+  pointer p = nullptr;
+
+  if (!size) {
+    return unique_ptr_t(p, deleter_t(alloc, size));
+  }
+
+  try {
+    p = alloc.allocate(size); // allocate space for 'size' object
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing " IR_SIZE_T_SPECIFIER " object(s) of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      size, sizeof(typename traits_t::value_type)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
+
+  return unique_ptr_t(p, deleter_t(alloc, size));
 }
 
 // Decline wrong syntax

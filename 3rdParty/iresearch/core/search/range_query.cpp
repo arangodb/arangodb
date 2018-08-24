@@ -82,7 +82,7 @@ void limited_sample_scorer::collect(
   // add all doc_ids from the doc_iterator to the unscored_docs
   if (state_term_itr
       && entry.cookie
-      && state_term_itr->seek(bytes_ref::nil, *(entry.cookie))) {
+      && state_term_itr->seek(bytes_ref::NIL, *(entry.cookie))) {
     assert(entry.state.unscored_docs.size() >= (type_limits<type_t::doc_id_t>::min)() + entry.sub_reader.docs_count()); // otherwise set will fail
     set_doc_ids(entry.state.unscored_docs, *state_term_itr);
   }
@@ -111,11 +111,11 @@ void limited_sample_scorer::score(
     auto term_itr = scored_state.state.reader->iterator();
 
     // find term attributes using cached state
-    // use bytes_ref::nil here since we just "jump" to cached state,
+    // use bytes_ref::blank here since we just "jump" to cached state,
     // and we are not interested in term value itself
     if (!term_itr
         || !scored_state.cookie
-        || !term_itr->seek(bytes_ref::nil, *(scored_state.cookie))) {
+        || !term_itr->seek(bytes_ref::NIL, *(scored_state.cookie))) {
       continue; // some internal error that caused the term to disapear
     }
 

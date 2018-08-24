@@ -29,12 +29,12 @@
 #include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
 struct OptimizerRule;
 class OptimizerRulesFeature;
+struct QueryOptions;
 
 class Optimizer {
  public:
@@ -44,15 +44,11 @@ class Optimizer {
     int64_t rulesSkipped = 0;
     int64_t plansCreated = 1;  // 1 for the initial plan
 
-    std::shared_ptr<VPackBuilder> toVelocyPack() const {
-      auto result = std::make_shared<VPackBuilder>();
-      {
-        VPackObjectBuilder b(result.get());
-        result->add("rulesExecuted", VPackValue(rulesExecuted));
-        result->add("rulesSkipped", VPackValue(rulesSkipped));
-        result->add("plansCreated", VPackValue(plansCreated));
-      }
-      return result;
+    void toVelocyPack(velocypack::Builder& b) const {
+      velocypack::ObjectBuilder guard(&b, true);
+      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+      b.add("plansCreated", velocypack::Value(plansCreated));
     }
   };
 
@@ -165,8 +161,7 @@ class Optimizer {
   /// newly created plans it recalls and will automatically delete them.
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
-  int createPlans(ExecutionPlan* p, std::vector<std::string> const& rulesSpecification, 
-                  bool inspectSimplePlans, bool estimateAllPlans);
+  int createPlans(ExecutionPlan* p, QueryOptions const& queryOptions, bool estimateAllPlans);
 
   size_t hasEnoughPlans(size_t extraPlans) const;
 

@@ -1,29 +1,14 @@
-// interval-set.h
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: riley@google.com (Michael Riley)
-//
-// \file
 // Class to represent and operate on sets of intervals.
 
-#ifndef FST_LIB_INTERVAL_SET_H_
-#define FST_LIB_INTERVAL_SET_H_
+#ifndef FST_INTERVAL_SET_H_
+#define FST_INTERVAL_SET_H_
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
-using std::vector;
 
 
 #include <fst/util.h>
@@ -31,252 +16,294 @@ using std::vector;
 
 namespace fst {
 
-// Stores and operates on a set of half-open integral intervals [a,b)
-// of signed integers of type T.
-template <typename T>
-class IntervalSet {
+// Half-open integral interval [a, b) of signed integers of type T.
+template <class T>
+struct IntInterval {
+  T begin;
+  T end;
+
+  IntInterval() : begin(-1), end(-1) {}
+
+  IntInterval(T begin, T end) : begin(begin), end(end) {}
+
+  bool operator<(const IntInterval<T> &i) const {
+    return begin < i.begin || (begin == i.begin && end > i.end);
+  }
+
+  bool operator==(const IntInterval<T> &i) const {
+    return begin == i.begin && end == i.end;
+  }
+
+  bool operator!=(const IntInterval<T> &i) const {
+    return begin != i.begin || end != i.end;
+  }
+
+  std::istream &Read(std::istream &strm) {
+    T n;
+    ReadType(strm, &n);
+    begin = n;
+    ReadType(strm, &n);
+    end = n;
+    return strm;
+  }
+
+  std::ostream &Write(std::ostream &strm) const {
+    T n = begin;
+    WriteType(strm, n);
+    n = end;
+    WriteType(strm, n);
+    return strm;
+  }
+};
+
+// Stores IntIntervals<T> in a vector. In addition, keeps the count of points in
+// all intervals.
+template <class T>
+class VectorIntervalStore {
  public:
-  struct Interval {
-    T begin;
-    T end;
+  using Interval = IntInterval<T>;
+  using Iterator = typename std::vector<Interval>::const_iterator;
 
-    Interval() : begin(-1), end(-1) {}
+  VectorIntervalStore() : count_(-1) {}
 
-    Interval(T b, T e) : begin(b), end(e) {}
+  std::vector<Interval> *MutableIntervals() { return &intervals_; }
 
-    bool operator<(const Interval &i) const {
-      return begin < i.begin || (begin == i.begin && end > i.end);
-    }
-
-    bool operator==(const Interval &i) const {
-      return begin == i.begin && end == i.end;
-    }
-
-    bool operator!=(const Interval &i) const {
-      return begin != i.begin || end != i.end;
-    }
-
-    istream &Read(istream &strm) {
-      T n;
-      ReadType(strm, &n);
-      begin = n;
-      ReadType(strm, &n);
-      end = n;
-      return strm;
-    }
-
-    ostream &Write(ostream &strm) const {
-      T n = begin;
-      WriteType(strm, n);
-      n = end;
-      WriteType(strm, n);
-      return strm;
-    }
-  };
-
-  IntervalSet() : count_(-1) {}
-
-  // Returns the interval set as a vector.
-  vector<Interval> *Intervals() { return &intervals_; }
-
-  const vector<Interval> *Intervals() const { return &intervals_; }
-
-  bool Empty() const { return intervals_.empty(); }
+  const Interval *Intervals() const { return intervals_.data(); }
 
   T Size() const { return intervals_.size(); }
 
-  // Number of points in the intervals (undefined if not normalized).
   T Count() const { return count_; }
+
+  void SetCount(T count) { count_ = count; }
 
   void Clear() {
     intervals_.clear();
     count_ = 0;
   }
 
-  // Adds an interval set to the set. The result may not be normalized.
-  void Union(const IntervalSet<T> &iset) {
-    const vector<Interval> *intervals = iset.Intervals();
-    for (typename vector<Interval>::const_iterator it = intervals->begin();
-         it != intervals->end(); ++it)
-      intervals_.push_back(*it);
-  }
+  Iterator begin() const { return intervals_.begin(); }
 
-  // Requires intervals be normalized.
-  bool Member(T value) const {
-    Interval interval(value, value);
-    typename vector<Interval>::const_iterator lb =
-        std::lower_bound(intervals_.begin(), intervals_.end(), interval);
-    if (lb == intervals_.begin())
-      return false;
-    return (--lb)->end > value;
-  }
+  Iterator end() const { return intervals_.end(); }
 
-  // Requires intervals be normalized.
-  bool operator==(const IntervalSet<T>& iset) const {
-    return *(iset.Intervals()) == intervals_;
-  }
-
-  // Requires intervals be normalized.
-  bool operator!=(const IntervalSet<T>& iset) const {
-    return *(iset.Intervals()) != intervals_;
-  }
-
-  bool Singleton() const {
-    return intervals_.size() == 1 &&
-        intervals_[0].begin + 1 == intervals_[0].end;
-  }
-
-
-  // Sorts; collapses overlapping and adjacent interals; sets count.
-  void Normalize();
-
-  // Intersects an interval set with the set. Requires intervals be
-  // normalized. The result is normalized.
-  void Intersect(const IntervalSet<T> &iset, IntervalSet<T> *oset) const;
-
-  // Complements the set w.r.t [0, maxval). Requires intervals be
-  // normalized. The result is normalized.
-  void Complement(T maxval, IntervalSet<T> *oset) const;
-
-  // Subtract an interval set from the set. Requires intervals be
-  // normalized. The result is normalized.
-  void Difference(const IntervalSet<T> &iset, IntervalSet<T> *oset) const;
-
-  // Determines if an interval set overlaps with the set. Requires
-  // intervals be normalized.
-  bool Overlaps(const IntervalSet<T> &iset) const;
-
-  // Determines if an interval set overlaps with the set but neither
-  // is contained in the other. Requires intervals be normalized.
-  bool StrictlyOverlaps(const IntervalSet<T> &iset) const;
-
-  // Determines if an interval set is contained within the set. Requires
-  // intervals be normalized.
-  bool Contains(const IntervalSet<T> &iset) const;
-
-  istream &Read(istream &strm) {
+  std::istream &Read(std::istream &strm) {
     ReadType(strm, &intervals_);
     return ReadType(strm, &count_);
   }
 
-  ostream &Write(ostream &strm) const {
+  std::ostream &Write(std::ostream &strm) const {
     WriteType(strm, intervals_);
     return WriteType(strm, count_);
   }
 
  private:
-  vector<Interval> intervals_;
+  std::vector<Interval> intervals_;
   T count_;
 };
 
-// Sorts; collapses overlapping and adjacent interavls; sets count.
-template <typename T>
-void IntervalSet<T>::Normalize() {
-  std::sort(intervals_.begin(), intervals_.end());
+// Stores and operates on a set of half-open integral intervals [a, b)
+// of signed integers of type T.
+template <class T, class Store = VectorIntervalStore<T>>
+class IntervalSet {
+ public:
+  using Interval = IntInterval<T>;
 
-  count_ = 0;
+  template <class... A>
+  explicit IntervalSet(A... args) : intervals_(args...) {}
+
+  // Returns the interval set as a vector.
+  std::vector<Interval> *MutableIntervals() {
+    return intervals_.MutableIntervals();
+  }
+
+  // Returns a pointer to an array of Size() elements.
+  const Interval *Intervals() const { return intervals_.Intervals(); }
+
+  bool Empty() const { return Size() == 0; }
+
+  T Size() const { return intervals_.Size(); }
+
+  // Number of points in the intervals (undefined if not normalized).
+  T Count() const { return intervals_.Count(); }
+
+  void Clear() { intervals_.Clear(); }
+
+  // Adds an interval set to the set. The result may not be normalized.
+  void Union(const IntervalSet<T, Store> &iset) {
+    intervals_.MutableIntervals()->insert(intervals_.MutableIntervals()->end(),
+                                          iset.intervals_.begin(),
+                                          iset.intervals_.end());
+  }
+
+  // Requires intervals be normalized.
+  bool Member(T value) const {
+    const Interval interval(value, value);
+    auto lb = std::lower_bound(intervals_.begin(), intervals_.end(), interval);
+    if (lb == intervals_.begin()) return false;
+    return (--lb)->end > value;
+  }
+
+  // Requires intervals be normalized.
+  bool operator==(const IntervalSet<T, Store> &iset) const {
+    return Size() == iset.Size() &&
+           std::equal(intervals_.begin(), intervals_.end(),
+                      iset.intervals_.begin());
+  }
+
+  // Requires intervals be normalized.
+  bool operator!=(const IntervalSet<T, Store> &iset) const {
+    return Size() != iset.Size() ||
+           !std::equal(intervals_.begin(), intervals_.end(),
+                       iset.intervals_.begin());
+  }
+
+  bool Singleton() const {
+    return Size() == 1 &&
+           intervals_.begin()->begin + 1 == intervals_.begin()->end;
+  }
+
+  // Sorts, collapses overlapping and adjacent interals, and sets count.
+  void Normalize();
+
+  // Intersects an interval set with the set. Requires intervals be normalized.
+  // The result is normalized.
+  void Intersect(const IntervalSet<T, Store> &iset,
+                 IntervalSet<T, Store> *oset) const;
+
+  // Complements the set w.r.t [0, maxval). Requires intervals be normalized.
+  // The result is normalized.
+  void Complement(T maxval, IntervalSet<T, Store> *oset) const;
+
+  // Subtract an interval set from the set. Requires intervals be normalized.
+  // The result is normalized.
+  void Difference(const IntervalSet<T, Store> &iset,
+                  IntervalSet<T, Store> *oset) const;
+
+  // Determines if an interval set overlaps with the set. Requires intervals be
+  // normalized.
+  bool Overlaps(const IntervalSet<T, Store> &iset) const;
+
+  // Determines if an interval set overlaps with the set but neither is
+  // contained in the other. Requires intervals be normalized.
+  bool StrictlyOverlaps(const IntervalSet<T, Store> &iset) const;
+
+  // Determines if an interval set is contained within the set. Requires
+  // intervals be normalized.
+  bool Contains(const IntervalSet<T, Store> &iset) const;
+
+  std::istream &Read(std::istream &strm) { return intervals_.Read(strm); }
+
+  std::ostream &Write(std::ostream &strm) const {
+    return intervals_.Write(strm);
+  }
+
+  typename Store::Iterator begin() const { return intervals_.begin(); }
+
+  typename Store::Iterator end() const { return intervals_.end(); }
+
+ private:
+  Store intervals_;
+};
+
+// Sorts, collapses overlapping and adjacent intervals, and sets count.
+template <typename T, class Store>
+void IntervalSet<T, Store>::Normalize() {
+  auto &intervals = *intervals_.MutableIntervals();
+  std::sort(intervals.begin(), intervals.end());
+  T count = 0;
   T size = 0;
-  for (T i = 0; i < intervals_.size(); ++i) {
-    Interval &inti = intervals_[i];
-    if (inti.begin == inti.end)
-      continue;
-    for (T j = i + 1; j < intervals_.size(); ++j) {
-      Interval &intj = intervals_[j];
-      if (intj.begin > inti.end)
-        break;
-      if (intj.end > inti.end)
-        inti.end = intj.end;
+  for (T i = 0; i < intervals.size(); ++i) {
+    auto &inti = intervals[i];
+    if (inti.begin == inti.end) continue;
+    for (T j = i + 1; j < intervals.size(); ++j) {
+      auto &intj = intervals[j];
+      if (intj.begin > inti.end) break;
+      if (intj.end > inti.end) inti.end = intj.end;
       ++i;
     }
-    count_ += inti.end - inti.begin;
-    intervals_[size++] = inti;
+    count += inti.end - inti.begin;
+    intervals[size++] = inti;
   }
-  intervals_.resize(size);
+  intervals.resize(size);
+  intervals_.SetCount(count);
 }
 
 // Intersects an interval set with the set. Requires intervals be normalized.
 // The result is normalized.
-template <typename T>
-void IntervalSet<T>::Intersect(const IntervalSet<T> &iset,
-                               IntervalSet<T> *oset) const {
-  const vector<Interval> *iintervals = iset.Intervals();
-  vector<Interval> *ointervals = oset->Intervals();
-  typename vector<Interval>::const_iterator it1 = intervals_.begin();
-  typename vector<Interval>::const_iterator it2 = iintervals->begin();
-
+template <typename T, class Store>
+void IntervalSet<T, Store>::Intersect(const IntervalSet<T, Store> &iset,
+                                      IntervalSet<T, Store> *oset) const {
+  auto *ointervals = oset->MutableIntervals();
+  auto it1 = intervals_.begin();
+  auto it2 = iset.intervals_.begin();
   ointervals->clear();
-  oset->count_ = 0;
-
-  while (it1 != intervals_.end() && it2 != iintervals->end()) {
+  T count = 0;
+  while (it1 != intervals_.end() && it2 != iset.intervals_.end()) {
     if (it1->end <= it2->begin) {
       ++it1;
     } else if (it2->end <= it1->begin) {
       ++it2;
     } else {
-      Interval interval;
-      interval.begin = max(it1->begin, it2->begin);
-      interval.end = min(it1->end, it2->end);
-      ointervals->push_back(interval);
-      oset->count_ += interval.end - interval.begin;
-      if ((it1->end) < (it2->end))
+      ointervals->emplace_back(std::max(it1->begin, it2->begin),
+                               std::min(it1->end, it2->end));
+      count += ointervals->back().end - ointervals->back().begin;
+      if (it1->end < it2->end) {
         ++it1;
-      else
+      } else {
         ++it2;
+      }
     }
   }
+  oset->intervals_.SetCount(count);
 }
 
 // Complements the set w.r.t [0, maxval). Requires intervals be normalized.
 // The result is normalized.
-template <typename T>
-void IntervalSet<T>::Complement(T maxval, IntervalSet<T> *oset) const {
-  vector<Interval> *ointervals = oset->Intervals();
+template <typename T, class Store>
+void IntervalSet<T, Store>::Complement(T maxval,
+                                       IntervalSet<T, Store> *oset) const {
+  auto *ointervals = oset->MutableIntervals();
   ointervals->clear();
-  oset->count_ = 0;
-
+  T count = 0;
   Interval interval;
   interval.begin = 0;
-  for (typename vector<Interval>::const_iterator it = intervals_.begin();
-       it != intervals_.end();
-       ++it) {
-    interval.end = min(it->begin, maxval);
+  for (auto it = intervals_.begin(); it != intervals_.end(); ++it) {
+    interval.end = std::min(it->begin, maxval);
     if ((interval.begin) < (interval.end)) {
       ointervals->push_back(interval);
-      oset->count_ += interval.end - interval.begin;
+      count += interval.end - interval.begin;
     }
     interval.begin = it->end;
   }
   interval.end = maxval;
   if ((interval.begin) < (interval.end)) {
     ointervals->push_back(interval);
-    oset->count_ += interval.end - interval.begin;
+    count += interval.end - interval.begin;
   }
+  oset->intervals_.SetCount(count);
 }
 
 // Subtract an interval set from the set. Requires intervals be normalized.
 // The result is normalized.
-template <typename T>
-void IntervalSet<T>::Difference(const IntervalSet<T> &iset,
-                                IntervalSet<T> *oset) const {
-  if (intervals_.empty()) {
-    oset->Intervals()->clear();
-    oset->count_ = 0;
+template <typename T, class Store>
+void IntervalSet<T, Store>::Difference(const IntervalSet<T, Store> &iset,
+                                       IntervalSet<T, Store> *oset) const {
+  if (Empty()) {
+    oset->MutableIntervals()->clear();
+    oset->intervals_.SetCount(0);
   } else {
-    IntervalSet<T> cset;
-    iset.Complement(intervals_.back().end, &cset);
+    IntervalSet<T, Store> cset;
+    iset.Complement(intervals_.Intervals()[intervals_.Size() - 1].end, &cset);
     Intersect(cset, oset);
   }
 }
 
-// Determines if an interval set overlaps with the set. Requires
-// intervals be normalized.
-template <typename T>
-bool IntervalSet<T>::Overlaps(const IntervalSet<T> &iset) const {
-  const vector<Interval> *intervals = iset.Intervals();
-  typename vector<Interval>::const_iterator it1 = intervals_.begin();
-  typename vector<Interval>::const_iterator it2 = intervals->begin();
-
-  while (it1 != intervals_.end() && it2 != intervals->end()) {
+// Determines if an interval set overlaps with the set. Requires intervals be
+// normalized.
+template <typename T, class Store>
+bool IntervalSet<T, Store>::Overlaps(const IntervalSet<T, Store> &iset) const {
+  auto it1 = intervals_.begin();
+  auto it2 = iset.intervals_.begin();
+  while (it1 != intervals_.end() && it2 != iset.intervals_.end()) {
     if (it1->end <= it2->begin) {
       ++it1;
     } else if (it2->end <= it1->begin) {
@@ -288,18 +315,17 @@ bool IntervalSet<T>::Overlaps(const IntervalSet<T> &iset) const {
   return false;
 }
 
-// Determines if an interval set overlaps with the set but neither
-// is contained in the other. Requires intervals be normalized.
-template <typename T>
-bool IntervalSet<T>::StrictlyOverlaps(const IntervalSet<T> &iset) const {
-  const vector<Interval> *intervals = iset.Intervals();
-  typename vector<Interval>::const_iterator it1 = intervals_.begin();
-  typename vector<Interval>::const_iterator it2 = intervals->begin();
-  bool only1 = false;   // point in intervals_ but not intervals
-  bool only2 = false;   // point in intervals but not intervals_
-  bool overlap = false; // point in both intervals_ and intervals
-
-  while (it1 != intervals_.end() && it2 != intervals->end()) {
+// Determines if an interval set overlaps with the set but neither is contained
+// in the other. Requires intervals be normalized.
+template <typename T, class Store>
+bool IntervalSet<T, Store>::StrictlyOverlaps(
+    const IntervalSet<T, Store> &iset) const {
+  auto it1 = intervals_.begin();
+  auto it2 = iset.intervals_.begin();
+  bool only1 = false;    // Point in intervals_ but not intervals.
+  bool only2 = false;    // Point in intervals but not intervals_.
+  bool overlap = false;  // Point in both intervals_ and intervals.
+  while (it1 != intervals_.end() && it2 != iset.intervals_.end()) {
     if (it1->end <= it2->begin) {  // no overlap - it1 first
       only1 = true;
       ++it1;
@@ -318,38 +344,30 @@ bool IntervalSet<T>::StrictlyOverlaps(const IntervalSet<T> &iset) const {
       only1 = true;
       overlap = true;
       ++it2;
-    } else {  // strict overlap
+    } else {  // Strict overlap.
       only1 = true;
       only2 = true;
       overlap = true;
     }
-    if (only1 == true && only2 == true && overlap == true)
-      return true;
+    if (only1 == true && only2 == true && overlap == true) return true;
   }
-  if (it1 != intervals_.end())
-    only1 = true;
-  if (it2 != intervals->end())
-    only2 = true;
-
+  if (it1 != intervals_.end()) only1 = true;
+  if (it2 != iset.intervals_.end()) only2 = true;
   return only1 == true && only2 == true && overlap == true;
 }
 
-// Determines if an interval set is contained within the set. Requires
-// intervals be normalized.
-template <typename T>
-bool IntervalSet<T>::Contains(const IntervalSet<T> &iset) const {
-  if (iset.Count() > Count())
-    return false;
-
-  const vector<Interval> *intervals = iset.Intervals();
-  typename vector<Interval>::const_iterator it1 = intervals_.begin();
-  typename vector<Interval>::const_iterator it2 = intervals->begin();
-
-  while (it1 != intervals_.end() && it2 != intervals->end()) {
-    if ((it1->end) <= (it2->begin)) {  // no overlap - it1 first
+// Determines if an interval set is contained within the set. Requires intervals
+// be normalized.
+template <typename T, class Store>
+bool IntervalSet<T, Store>::Contains(const IntervalSet<T, Store> &iset) const {
+  if (iset.Count() > Count()) return false;
+  auto it1 = intervals_.begin();
+  auto it2 = iset.intervals_.begin();
+  while (it1 != intervals_.end() && it2 != iset.intervals_.end()) {
+    if ((it1->end) <= (it2->begin)) {  // No overlap; it1 first.
       ++it1;
     } else if ((it2->begin) < (it1->begin) ||
-               (it2->end) > (it1->end)) {  // no C
+               (it2->end) > (it1->end)) {  // No C.
       return false;
     } else if (it2->end == it1->end) {
       ++it1;
@@ -358,20 +376,18 @@ bool IntervalSet<T>::Contains(const IntervalSet<T> &iset) const {
       ++it2;
     }
   }
-  return it2 == intervals->end();
+  return it2 == iset.intervals_.end();
 }
 
-template <typename T>
-ostream &operator<<(ostream &strm, const IntervalSet<T> &s)  {
-  typedef typename IntervalSet<T>::Interval Interval;
-  const vector<Interval> *intervals = s.Intervals();
+template <typename T, class Store>
+std::ostream &operator<<(std::ostream &strm, const IntervalSet<T, Store> &s) {
   strm << "{";
-  for (typename vector<Interval>::const_iterator it = intervals->begin();
-       it != intervals->end();
-       ++it) {
-    if (it != intervals->begin())
+  for (T i = 0; i < s.Size(); ++i) {
+    if (i > 0) {
       strm << ",";
-    strm << "[" << it->begin << "," << it->end << ")";
+    }
+    const auto &interval = s.Intervals()[i];
+    strm << "[" << interval.begin << "," << interval.end << ")";
   }
   strm << "}";
   return strm;
@@ -379,4 +395,4 @@ ostream &operator<<(ostream &strm, const IntervalSet<T> &s)  {
 
 }  // namespace fst
 
-#endif  // FST_LIB_INTERVAL_SET_H_
+#endif  // FST_INTERVAL_SET_H_

@@ -56,19 +56,14 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user, dbname) => {
-  arango.reconnect(arango.getEndpoint(), dbname, user, '');
-};
-
-switchUser('root', '_system');
+helper.switchUser('root', '_system');
 helper.removeAllUsers();
+helper.generateAllUsers();
 
 describe('User Rights Management', () => {
-  before(helper.generateAllUsers);
-  after(helper.removeAllUsers);
-
   it('should check if all users are created', () => {
-    switchUser('root', '_system');
+    helper.switchUser('root', '_system');
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -76,10 +71,11 @@ describe('User Rights Management', () => {
   });
 
   it('should test rights for', () => {
+    expect(userSet.size).to.be.greaterThan(0);
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name, dbName);
+        helper.switchUser(name, dbName);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -89,18 +85,18 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           const mount = `/${name}_mount`;
           before(() => {
-            switchUser(name, dbName);
+            helper.switchUser(name, dbName);
             db._useDatabase(dbName);
           });
 
           after(() => {
-            switchUser('root', dbName);
+            helper.switchUser('root', dbName);
             try {
               foxxManager.uninstall(mount, {force: true});
             } catch (e) {}
           });
 
-          it('register a foxx service', () => {
+          it('register a Foxx service', () => {
             if (dbLevel['rw'].has(name)) {
               try {
                 foxxManager.install(fs.join(basePath, 'minimal-working-service'), mount);
@@ -110,17 +106,20 @@ describe('User Rights Management', () => {
                   RETURN service.checksum
                 `).toArray().length;
                 expect(size).to.equal(1, `${name} could not register foxx service with sufficient rights`);
+                // The service should return the user we acces it as:
+                let res = arango.PUT(mount, '');
+                expect(res.hello._documents[0]).to.be.equal(name);
               } catch (e) {
                 if (e.errorNum === errors.ERROR_ARANGO_READ_ONLY.code ||
                     e.errorNum === errors.ERROR_FORBIDDEN.code) {
-                  expect(false).to.be.equal(true, `${name} could not register foxx service with sufficient rights`);
-                } // FIXME: workarkound ignore all other errors for now
+                  expect(false).to.be.equal(true, `${name} could not register Foxx service with sufficient rights`);
+                } // FIXME: workaround ignore all other errors for now
               }
             } else {
               try {
                 foxxManager.install(fs.join(basePath, 'minimal-working-service'), mount);
               } catch (e) {
-                //expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                // expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
                 // TODO should be forbidden rather than read only
                 // expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
               }
@@ -129,7 +128,7 @@ describe('User Rights Management', () => {
                 FILTER service.mount == ${mount}
                 RETURN service.checksum
               `).toArray().length;
-              expect(size).to.equal(0, `${name} could register foxx service with insufficient rights`);
+              expect(size).to.equal(0, `${name} could register Foxx service with insufficient rights`);
             }
           });
         });

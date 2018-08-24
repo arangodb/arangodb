@@ -131,20 +131,20 @@ class IRESEARCH_API filter {
   filter(const type_id& type) NOEXCEPT;
   virtual ~filter();
 
-  virtual size_t hash() const {
+  virtual size_t hash() const NOEXCEPT {
     return std::hash<const type_id*>()(type_);
   }
 
-  bool operator==(const filter& rhs) const {
-    return equals( rhs );
+  bool operator==(const filter& rhs) const NOEXCEPT {
+    return equals(rhs);
   }
 
-  bool operator!=( const filter& rhs ) const {
-    return !( *this == rhs );
+  bool operator!=(const filter& rhs) const NOEXCEPT {
+    return !(*this == rhs);
   }
 
   // boost::hash_combile support
-  friend size_t hash_value( const filter& q ) {
+  friend size_t hash_value(const filter& q) NOEXCEPT {
     return q.hash();
   }
 
@@ -180,17 +180,17 @@ class IRESEARCH_API filter {
     return prepare(rdr, order::prepared::unordered());
   }
 
-  boost_t boost() const { return boost_; }
+  boost_t boost() const NOEXCEPT { return boost_; }
 
-  filter& boost( boost_t boost ) {
+  filter& boost(boost_t boost) NOEXCEPT {
     boost_ = boost;
     return *this;
   }
 
-  const type_id& type() const { return *type_; }
+  const type_id& type() const NOEXCEPT { return *type_; }
 
  protected:
-  virtual bool equals( const filter& rhs ) const {
+  virtual bool equals(const filter& rhs) const NOEXCEPT {
     return type_ == rhs.type_;
   }
 

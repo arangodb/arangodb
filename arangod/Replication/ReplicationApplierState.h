@@ -36,10 +36,11 @@ namespace arangodb {
 
 /// @brief state information about replication application
 struct ReplicationApplierState {
-  enum class ActivityState {
-    INACTIVE,
-    RUNNING,
-    SHUTTING_DOWN
+  enum class ActivityPhase {
+    INACTIVE, /// sleeping
+    INITIAL, /// running initial syncer
+    TAILING, /// running tailing syncer
+    SHUTDOWN /// cleaning up
   };
 
   ReplicationApplierState();
@@ -59,20 +60,32 @@ struct ReplicationApplierState {
   TRI_voc_tick_t _lastAppliedContinuousTick;
   TRI_voc_tick_t _lastAvailableContinuousTick;
   TRI_voc_tick_t _safeResumeTick;
-  ActivityState _state;
+  ActivityPhase _phase;
   bool _preventStart;
   bool _stopInitialSynchronization;
   
   std::string _progressMsg;
   char _progressTime[24];
   TRI_server_id_t _serverId;
-    
-  bool isRunning() const {
-    return (_state == ActivityState::RUNNING);
+  
+  /// performs inital sync or running tailing syncer
+  bool isActive() const {
+    return (_phase == ActivityPhase::INITIAL ||
+            _phase == ActivityPhase::TAILING);
+  }
+  
+  /// performs inital sync or running tailing syncer
+  bool isInitializing() const {
+    return _phase == ActivityPhase::INITIAL;
+  }
+  
+  /// performs tailing sync
+  bool isTailing() const {
+    return (_phase == ActivityPhase::TAILING);
   }
 
   bool isShuttingDown() const {
-    return (_state == ActivityState::SHUTTING_DOWN);
+    return (_phase == ActivityPhase::SHUTDOWN);
   }
 
   void setError(int code, std::string const& msg) {
@@ -82,7 +95,7 @@ struct ReplicationApplierState {
   void clearError() {
     _lastError.reset();
   }
-
+  
   // last error that occurred during replication
   struct LastError {
     LastError() : code(TRI_ERROR_NO_ERROR), message() { 

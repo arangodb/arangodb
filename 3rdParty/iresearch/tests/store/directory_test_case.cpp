@@ -26,7 +26,6 @@
 #include "store/store_utils.hpp"
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "store/checksum_io.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -919,25 +918,26 @@ void directory_test_case::smoke_store() {
     uint64_t length;
     EXPECT_TRUE(dir_->length(length, name) && length == it->size());
 
-    auto in = dir_->open(name, irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!in);
-    checksum_index_input<boost::crc_32_type> file(std::move(in));
-    EXPECT_FALSE(file.eof());
-    EXPECT_EQ(0, file.file_pointer());
-    EXPECT_EQ(file.length(), it->size());
+    auto file = dir_->open(name, irs::IOAdvice::NORMAL);
+    ASSERT_FALSE(!file);
+    EXPECT_FALSE(file->eof());
+    EXPECT_EQ(0, file->file_pointer());
+    EXPECT_EQ(file->length(), it->size());
+
+    const auto checksum = file->checksum(file->length());
 
     buf.resize(it->size());
-    const auto read = file.read_bytes(&(buf[0]), it->size());
+    const auto read = file->read_bytes(&(buf[0]), it->size());
     ASSERT_EQ(read, it->size());
     ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
     
     crc.process_bytes(buf.c_str(), buf.size());
 
-    EXPECT_TRUE(file.eof());
+    EXPECT_TRUE(file->eof());
     // check checksum
-    EXPECT_EQ(crc.checksum(), file.checksum());
+    EXPECT_EQ(crc.checksum(), checksum);
     // check that this is the end of the file
-    EXPECT_EQ(file.length(), file.file_pointer());
+    EXPECT_EQ(file->length(), file->file_pointer());
   }
 
   for (const auto& name : names) {

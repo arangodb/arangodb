@@ -21,13 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchOrderFactory.h"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
+
+#include "search/scorers.hpp"
 
 #include "AqlHelper.h"
-#include "AttributeScorer.h"
 #include "IResearchAttributes.h"
+#include "IResearchFeature.h"
+#include "IResearchOrderFactory.h"
 #include "VelocyPackHelper.h"
-
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
@@ -88,7 +94,7 @@ bool makeScorer(
       break;
     case 1: {
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
-      scorer = irs::scorers::get(name, irs::text_format::json, irs::string_ref::nil);
+      scorer = irs::scorers::get(name, irs::text_format::json, irs::string_ref::NIL);
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via jSON
@@ -158,7 +164,9 @@ bool nameFromFCall(
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
   auto* fn = static_cast<arangodb::aql::Function*>(node.getData());
 
-  if (!fn || 1 != node.numMembers()) {
+  if (!fn
+      || 1 != node.numMembers()
+      || !arangodb::iresearch::isScorer(*fn)) {
     return false; // no function
   }
 
@@ -283,7 +291,7 @@ NS_BEGIN(iresearch)
 
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
-  *comparer = irs::scorers::get(scorerName, irs::text_format::json, irs::string_ref::nil);
+  *comparer = irs::scorers::get(scorerName, irs::text_format::json, irs::string_ref::NIL);
 
   return bool(*comparer);
 }

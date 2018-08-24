@@ -27,6 +27,7 @@
 // / @author Dr. Frank Celler
 // //////////////////////////////////////////////////////////////////////////////
 
+var internal = require('internal');
 var arangodb = require('@arangodb');
 var arangosh = require('@arangodb/arangosh');
 var errors = arangodb.errors;
@@ -127,26 +128,26 @@ var help = function () {
   /* jshint maxlen: 200 */
   var commands = {
     'available': 'lists all Foxx services available in the local repository',
-    'configuration': 'request the configuration information for the given mountpoint',
-    'configure': 'sets the configuration for the given mountpoint',
-    'updateDeps': 'links the dependencies in manifest to a mountpoint',
-    'dependencies': 'request the dependencies information for the given mountpoint',
-    'development': 'activates development mode for the given mountpoint',
+    'configuration': 'request the configuration information for the given mount point',
+    'configure': 'sets the configuration for the given mount point',
+    'updateDeps': 'links the dependencies in manifest to a mount point',
+    'dependencies': 'request the dependencies information for the given mount point',
+    'development': 'activates development mode for the given mount point',
     'help': 'shows this help',
     'info': 'displays information about a Foxx service',
-    'install': 'installs a foxx service identified by the given information to the given mountpoint',
+    'install': 'installs a Foxx service identified by the given information to the given mount point',
     'installed': "alias for the 'list' command",
     'list': 'lists all installed Foxx services',
-    'production': 'activates production mode for the given mountpoint',
+    'production': 'activates production mode for the given mount point',
     'replace': ['replaces an installed Foxx service',
       'WARNING: this action will remove service data if the service implements teardown!' ],
-    'run': 'runs the given script of a foxx service mounted at the given mountpoint',
+    'run': 'runs the given script of a Foxx service mounted at the given mount point',
     'search': 'searches the local foxx-apps repository',
-    'set-dependencies': 'sets the dependencies for the given mountpoint',
+    'set-dependencies': 'sets the dependencies for the given mount point',
     'setup': 'executes the setup script',
     'teardown': [ 'executes the teardown script',
       'WARNING: this action will remove service data if the service implements teardown!' ],
-    'tests': 'runs the tests of a foxx service mounted at the given mountpoint',
+    'tests': 'runs the tests of a Foxx service mounted at the given mount point',
     'uninstall': ['uninstalls a Foxx service and calls its teardown method',
       'WARNING: this will remove all data and code of the service!' ],
     'update': 'updates the local foxx-apps repository with data from the central foxx-apps repository',
@@ -210,7 +211,7 @@ var runScript = function (mount, name, options) {
     mount: mount,
     options: options
   };
-  res = arango.POST('/_admin/foxx/script', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/script', req);
   arangosh.checkRequestResult(res);
   return res;
 };
@@ -254,7 +255,7 @@ var moveAppToServer = function (serviceInfo) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Installs a new foxx service on the given mount point.
+// / @brief Installs a new Foxx service on the given mount point.
 // /
 // / TODO: Long Documentation!
 // //////////////////////////////////////////////////////////////////////////////
@@ -277,7 +278,7 @@ var install = function (serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST('/_admin/foxx/install', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/install', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -287,7 +288,7 @@ var install = function (serviceInfo, mount, options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Uninstalls the foxx service on the given mount point.
+// / @brief Uninstalls the Foxx service on the given mount point.
 // /
 // / TODO: Long Documentation!
 // //////////////////////////////////////////////////////////////////////////////
@@ -303,7 +304,7 @@ var uninstall = function (mount, options) {
     options: options || {}
   };
   utils.validateMount(mount);
-  res = arango.POST('/_admin/foxx/uninstall', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/uninstall', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -313,7 +314,7 @@ var uninstall = function (mount, options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Replaces a foxx service on the given mount point by an other one.
+// / @brief Replaces a Foxx service on the given mount point by an other one.
 // /
 // / TODO: Long Documentation!
 // //////////////////////////////////////////////////////////////////////////////
@@ -336,7 +337,7 @@ var replace = function (serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST('/_admin/foxx/replace', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/replace', req);
   arangodb.db._flushCache();
   arangosh.checkRequestResult(res);
   return {
@@ -369,7 +370,7 @@ var upgrade = function (serviceInfo, mount, options) {
     options: options
   };
 
-  res = arango.POST('/_admin/foxx/upgrade', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/upgrade', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -393,7 +394,7 @@ var development = function (mount) {
     mount: mount,
     activate: true
   };
-  res = arango.POST('/_admin/foxx/development', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/development', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -417,7 +418,7 @@ var production = function (mount) {
     mount: mount,
     activate: false
   };
-  res = arango.POST('/_admin/foxx/development', JSON.stringify(req));
+  res = arango.POST('/_admin/foxx/development', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -427,7 +428,7 @@ var production = function (mount) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Configure the service at the mountpoint
+// / @brief Configure the service at the mount point
 // //////////////////////////////////////////////////////////////////////////////
 
 var configure = function (mount, options) {
@@ -440,7 +441,7 @@ var configure = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/configure', JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/configure', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -450,7 +451,7 @@ var configure = function (mount, options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Get the configuration for the service at the given mountpoint
+// / @brief Get the configuration for the service at the given mount point
 // //////////////////////////////////////////////////////////////////////////////
 
 var configuration = function (mount) {
@@ -462,12 +463,12 @@ var configuration = function (mount) {
   var req = {
     mount: mount
   };
-  var res = arango.POST('/_admin/foxx/configuration', JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/configuration', req);
   arangosh.checkRequestResult(res);
   return res;
 };
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Link Dependencies to the installed mountpoint the service at the mountpoint
+// / @brief Link Dependencies to the installed mount point the service at the mount point
 // //////////////////////////////////////////////////////////////////////////////
 
 var updateDeps = function (mount, options) {
@@ -480,7 +481,7 @@ var updateDeps = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/updateDeps', JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/updateDeps', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -489,7 +490,7 @@ var updateDeps = function (mount, options) {
   };
 };
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Configure the dependencies of the service at the mountpoint
+// / @brief Configure the dependencies of the service at the mount point
 // //////////////////////////////////////////////////////////////////////////////
 
 var setDependencies = function (mount, options) {
@@ -502,7 +503,7 @@ var setDependencies = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/set-dependencies', JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/set-dependencies', req);
   arangosh.checkRequestResult(res);
   return {
     name: res.name,
@@ -512,7 +513,7 @@ var setDependencies = function (mount, options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Get the dependencies of the service at the given mountpoint
+// / @brief Get the dependencies of the service at the given mount point
 // //////////////////////////////////////////////////////////////////////////////
 
 var dependencies = function (mount) {
@@ -524,7 +525,7 @@ var dependencies = function (mount) {
   var req = {
     mount: mount
   };
-  var res = arango.POST('/_admin/foxx/dependencies', JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/dependencies', req);
   arangosh.checkRequestResult(res);
   return res;
 };
@@ -544,7 +545,7 @@ var tests = function (mount, options) {
     mount: mount,
     options: options
   };
-  var res = arango.POST('/_admin/foxx/tests', JSON.stringify(req));
+  var res = arango.POST('/_admin/foxx/tests', req);
   arangosh.checkRequestResult(res);
   return res;
 };
@@ -554,6 +555,10 @@ var tests = function (mount, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var run = function (args) {
+  var version = internal.version.split('.').slice(0, 2).join('.');
+  arangodb.print('NOTE: foxx-manager is deprecated and will be removed in ArangoDB 4.');
+  arangodb.print(`Please use foxx-cli instead: https://docs.arangodb.com/${version}/Manual/Foxx/Deployment/FoxxCLI/\n`);
+
   if (args === undefined || args.length === 0) {
     arangodb.print('Expecting a command, please try:\n');
     cmdUsage();
@@ -729,7 +734,7 @@ exports.run = run;
 exports.help = help;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Exports from foxx utils module.
+// / @brief Exports from Foxx utils module.
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.list = utils.list;
@@ -737,7 +742,7 @@ exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Exports from foxx store module.
+// / @brief Exports from Foxx store module.
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.available = store.available;

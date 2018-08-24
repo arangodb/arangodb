@@ -24,7 +24,7 @@
 #ifndef _MSC_VER
   #include <execinfo.h> // for backtrace(...)
 
-  #ifndef __APPLE__
+  #if !defined(__APPLE__) && defined(__GLIBC__)
     #include <malloc.h>
   #endif
 #endif
@@ -38,7 +38,9 @@ void dump_mem_stats_trace() NOEXCEPT {
   #ifndef _MSC_VER
 
   // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
-  #ifndef __APPLE__
+  // libmusl does no define mallinfo() or malloc_stats() in malloc.h
+  // enable mallinfo() and malloc_stats() for GLIBC only
+  #if !defined(__APPLE__) && defined(__GLIBC__)
     // ...........................................................................
     // output mallinfo()
     // ...........................................................................

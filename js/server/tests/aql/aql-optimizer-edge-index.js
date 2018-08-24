@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 500 */
-/* global assertEqual, AQL_EXECUTE */
+/* global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for index usage
@@ -125,6 +125,26 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.stats.scannedIndex);
       });
     },
+    
+    testFindFromNoDocuments: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from100" RETURN 1', 100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from200" RETURN 1', 200 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1000" RETURN 1', 1000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1100" RETURN 1', 1100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from1900" RETURN 1', 1900 ]
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(0, results.stats.scannedFull);
+        assertEqual(query[1], results.stats.scannedIndex);
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertFalse(nodes[0].producesResult);
+      });
+    },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test index usage
@@ -144,6 +164,26 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
         assertEqual(query[1], results.stats.scannedIndex);
+      });
+    },
+    
+    testFindToNoDocuments: function () {
+      var queries = [
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to100" RETURN 1', 100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to200" RETURN 1', 200 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to1000" RETURN 1', 1000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to1100" RETURN 1', 1100 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to1900" RETURN 1', 1900 ]
+      ];
+
+      queries.forEach(function (query) {
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query[0]);
+        assertEqual(0, results.stats.scannedFull);
+        assertEqual(query[1], results.stats.scannedIndex);
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertFalse(nodes[0].producesResult);
       });
     },
 
@@ -166,6 +206,110 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(0, results.stats.scannedFull);
         assertEqual(query[1], results.stats.scannedIndex);
       });
+    },
+
+    testLookupOnFromSortOnToAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT to = doc._to RETURN to";
+      let results = AQL_EXECUTE(query);
+      assertEqual(19, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(1, node.length);
+      node = node[0];
+      assertEqual(1, node.elements.length);
+      assertEqual("to", node.elements[0].inVariable.name);
+      assertTrue(node.elements[0].ascending);
+    },
+    
+    testLookupOnFromSortOnFromAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT from = doc._from RETURN from";
+      let results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, node.length);
+    },
+    
+    testLookupOnFromSortOnFromToAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT from = doc._from, to = doc._to RETURN { from, to }";
+      let results = AQL_EXECUTE(query);
+      assertEqual(19, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(1, node.length);
+      node = node[0];
+      assertEqual(2, node.elements.length);
+      assertEqual("from", node.elements[0].inVariable.name);
+      assertEqual("to", node.elements[1].inVariable.name);
+      assertTrue(node.elements[0].ascending);
+      assertTrue(node.elements[1].ascending);
+    },
+    
+    testLookupOnFromSortOnToFromAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT to = doc._to, from = doc._from RETURN { from, to }";
+      let results = AQL_EXECUTE(query);
+      assertEqual(19, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(1, node.length);
+      node = node[0];
+      assertEqual(2, node.elements.length);
+      assertEqual("to", node.elements[0].inVariable.name);
+      assertEqual("from", node.elements[1].inVariable.name);
+      assertTrue(node.elements[0].ascending);
+      assertTrue(node.elements[1].ascending);
+    },
+
+    testLookupOnToSortOnFromAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._to == 'UnitTestsCollection/nono' COLLECT from = doc._from RETURN from";
+      let results = AQL_EXECUTE(query);
+      assertEqual(19, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(1, node.length);
+      node = node[0];
+      assertEqual(1, node.elements.length);
+      assertEqual("from", node.elements[0].inVariable.name);
+      assertTrue(node.elements[0].ascending);
+    },
+
+    testLookupOnToSortOnToAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._to == 'UnitTestsCollection/nono' COLLECT to = doc._to RETURN to";
+      let results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, node.length);
+    },
+
+    testLookupOnToSortOnToFromAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._to == 'UnitTestsCollection/nono' COLLECT to = doc._to, from = doc._from RETURN { from, to }";
+      let results = AQL_EXECUTE(query);
+      assertEqual(19, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(1, node.length);
+      node = node[0];
+      assertEqual(2, node.elements.length);
+      assertEqual("to", node.elements[0].inVariable.name);
+      assertEqual("from", node.elements[1].inVariable.name);
+      assertTrue(node.elements[0].ascending);
+      assertTrue(node.elements[1].ascending);
+    },
+    
+    testLookupOnToSortOnFromToAttribute: function () {
+      let query = "FOR doc IN " + e.name() + " FILTER doc._to == 'UnitTestsCollection/nono' COLLECT from = doc._from, to = doc._to RETURN { from, to }";
+      let results = AQL_EXECUTE(query);
+      assertEqual(19, results.json.length);
+
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(1, node.length);
+      node = node[0];
+      assertEqual(2, node.elements.length);
+      assertEqual("from", node.elements[0].inVariable.name);
+      assertEqual("to", node.elements[1].inVariable.name);
+      assertTrue(node.elements[0].ascending);
+      assertTrue(node.elements[1].ascending);
     }
 
   };
@@ -174,4 +318,3 @@ function optimizerEdgeIndexTestSuite () {
 jsunity.run(optimizerEdgeIndexTestSuite);
 
 return jsunity.done();
-

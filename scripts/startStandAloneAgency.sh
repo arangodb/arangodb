@@ -185,8 +185,8 @@ else
 fi
 
 SFRE=2.5
-COMP=20000
-KEEP=10000
+COMP=1000
+KEEP=50000
 BASE=$(( $PORT_OFFSET + 5000 ))
 
 if [ "$GOSSIP_MODE" = "0" ]; then
@@ -239,9 +239,7 @@ for aid in "${aaid[@]}"; do
     --agency.supervision-frequency $SFRE \
     --agency.wait-for-sync $WAIT_FOR_SYNC \
     --database.directory agency/data$port \
-    --javascript.app-path ./js/apps \
-    --javascript.startup-directory ./js \
-    --javascript.v8-contexts 1 \
+    --javascript.enabled false \
     --log.file agency/$port.log \
     --log.force-direct false \
     $LOG_LEVEL \

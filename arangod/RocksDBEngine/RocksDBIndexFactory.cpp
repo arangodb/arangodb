@@ -27,11 +27,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-
-#ifdef USE_IRESEARCH
-  #include "IResearch/IResearchFeature.h"
-#endif
-
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
@@ -51,24 +46,27 @@
 #include <velocypack/velocypack-aliases.h>
 
 #ifdef USE_IRESEARCH
-  #include "IResearch/IResearchRocksDBLink.h"
+#include "IResearch/IResearchRocksDBLink.h"
 #endif
 
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
+/// @brief process the fields list deduplicate and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ProcessIndexFields(VPackSlice const definition,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
+                              VPackBuilder& builder, size_t minFields,
+                              size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
+  auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
 
-  VPackSlice fieldsSlice = definition.get("fields");
-  builder.add(VPackValue("fields"));
+  builder.add(
+    arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields)
+  );
   builder.openArray();
+
   if (fieldsSlice.isArray()) {
     // "fields" is a list of fields
     for (auto const& it : VPackArrayIterator(fieldsSlice)) {
@@ -93,7 +91,8 @@ static int ProcessIndexFields(VPackSlice const definition,
     }
   }
 
-  if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
+  size_t cc = fields.size();
+  if (cc == 0 || cc < minFields || cc > maxField) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -107,9 +106,14 @@ static int ProcessIndexFields(VPackSlice const definition,
 
 static void ProcessIndexUniqueFlag(VPackSlice const definition,
                                    VPackBuilder& builder) {
-  bool unique =
-      basics::VelocyPackHelper::getBooleanValue(definition, "unique", false);
-  builder.add("unique", VPackValue(unique));
+  bool unique = basics::VelocyPackHelper::getBooleanValue(
+    definition, arangodb::StaticStrings::IndexUnique.c_str(), false
+  );
+
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(unique)
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,13 +122,21 @@ static void ProcessIndexUniqueFlag(VPackSlice const definition,
 
 static void ProcessIndexSparseFlag(VPackSlice const definition,
                                    VPackBuilder& builder, bool create) {
-  if (definition.hasKey("sparse")) {
-    bool sparseBool =
-        basics::VelocyPackHelper::getBooleanValue(definition, "sparse", false);
-    builder.add("sparse", VPackValue(sparseBool));
+  if (definition.hasKey(arangodb::StaticStrings::IndexSparse)) {
+    bool sparseBool = basics::VelocyPackHelper::getBooleanValue(
+      definition, arangodb::StaticStrings::IndexSparse.c_str(), false
+    );
+
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(sparseBool)
+    );
   } else if (create) {
     // not set. now add a default value
-    builder.add("sparse", VPackValue(false));
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(false)
+    );
   }
 }
 
@@ -134,53 +146,25 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 
 static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
                                         VPackBuilder& builder) {
-  bool dup =
-      basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
+  bool dup = basics::VelocyPackHelper::getBooleanValue(definition,
+                                                       "deduplicate", true);
   builder.add("deduplicate", VPackValue(dup));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a hash index
+/// @brief enhances the json of a vpack index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexHash(VPackSlice const definition,
-                                VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+static int EnhanceJsonIndexVPack(VPackSlice const definition,
+                                 VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
+
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
     ProcessIndexDeduplicateFlag(definition, builder);
   }
-  return res;
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
-                                    VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
-  if (res == TRI_ERROR_NO_ERROR) {
-    ProcessIndexSparseFlag(definition, builder, create);
-    ProcessIndexUniqueFlag(definition, builder);
-    ProcessIndexDeduplicateFlag(definition, builder);
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a persistent index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexPersistent(VPackSlice const definition,
-                                      VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
-  if (res == TRI_ERROR_NO_ERROR) {
-    ProcessIndexSparseFlag(definition, builder, create);
-    ProcessIndexUniqueFlag(definition, builder);
-    ProcessIndexDeduplicateFlag(definition, builder);
-  }
   return res;
 }
 
@@ -190,12 +174,12 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 
 static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
-  VPackSlice fieldsSlice = definition.get("fields");
+  auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
+
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an
-    // array)
-    bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    // only add geoJson for indexes with a single field (with needs to be an array)
+    bool geoJson = basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+
     builder.add("geoJson", VPackValue(geoJson));
   }
 }
@@ -206,16 +190,20 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
+
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
-    builder.add("sparse", VPackValue(true));
-    builder.add("unique", VPackValue(false));
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(true)
+    );
+    builder.add(
+      arangodb::StaticStrings::IndexUnique,
+      arangodb::velocypack::Value(false)
+    );
     ProcessIndexGeoJsonFlag(definition, builder);
   }
+
   return res;
 }
 
@@ -225,16 +213,43 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 2, create);
+  int res = ProcessIndexFields(definition, builder, 2, 2, create);
+
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
-    builder.add("sparse", VPackValue(true));
-    builder.add("unique", VPackValue(false));
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(true)
+    );
+    builder.add(
+      arangodb::StaticStrings::IndexUnique,
+      arangodb::velocypack::Value(false)
+    );
     ProcessIndexGeoJsonFlag(definition, builder);
   }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a geo index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeo(VPackSlice const definition,
+                               VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 1, 2, create);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(true)
+    );
+    builder.add(
+      arangodb::StaticStrings::IndexUnique,
+      arangodb::velocypack::Value(false)
+    );
+    ProcessIndexGeoJsonFlag(definition, builder);
+  }
+
   return res;
 }
 
@@ -244,211 +259,490 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 
 static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
+
   if (res == TRI_ERROR_NO_ERROR) {
     // hard-coded defaults
-    builder.add("sparse", VPackValue(true));
-    builder.add("unique", VPackValue(false));
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(true)
+    );
+    builder.add(
+      arangodb::StaticStrings::IndexUnique,
+      arangodb::velocypack::Value(false)
+    );
 
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");
+
     if (minLength.isNumber()) {
       minWordLength = minLength.getNumericValue<int>();
     } else if (!minLength.isNull() && !minLength.isNone()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
+
     builder.add("minLength", VPackValue(minWordLength));
   }
-  return res;
-}
-
-int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
-                                                VPackBuilder& enhanced,
-                                                bool create,
-                                                bool isCoordinator) const {
-  // extract index type
-  Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
-  VPackSlice current = definition.get("type");
-  if (current.isString()) {
-    std::string t = current.copyString();
-
-    // rewrite type "geo" into either "geo1" or "geo2", depending on the number
-    // of fields
-    if (t == "geo") {
-      t = "geo1";
-      current = definition.get("fields");
-      if (current.isArray() && current.length() == 2) {
-        t = "geo2";
-      }
-    }
-    type = Index::type(t);
-  }
-
-  if (type == Index::TRI_IDX_TYPE_UNKNOWN) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  if (create) {
-    if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-        type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      // creating these indexes yourself is forbidden
-      return TRI_ERROR_FORBIDDEN;
-    }
-  }
-
-  TRI_ASSERT(enhanced.isEmpty());
-
-  VPackObjectBuilder b(&enhanced);
-  current = definition.get("id");
-  uint64_t id = 0;
-  if (current.isNumber()) {
-    id = current.getNumericValue<uint64_t>();
-  } else if (current.isString()) {
-    id = basics::StringUtils::uint64(current.copyString());
-  }
-  if (id > 0) {
-    enhanced.add("id", VPackValue(std::to_string(id)));
-  }
-
-  if (create && !isCoordinator) {
-    if (!definition.hasKey("objectId")) {
-      enhanced.add("objectId",
-                    VPackValue(std::to_string(TRI_NewTickServer())));
-    }
-  }
-
-  enhanced.add("type", VPackValue(Index::oldtypeName(type)));
-
-  int res = TRI_ERROR_INTERNAL;
-
-  switch (type) {
-    case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      break;
-    }
-
-    case Index::TRI_IDX_TYPE_GEO1_INDEX:
-      res = EnhanceJsonIndexGeo1(definition, enhanced, create);
-      break;
-
-    case Index::TRI_IDX_TYPE_GEO2_INDEX:
-      res = EnhanceJsonIndexGeo2(definition, enhanced, create);
-      break;
-
-    case Index::TRI_IDX_TYPE_HASH_INDEX:
-      res = EnhanceJsonIndexHash(definition, enhanced, create);
-      break;
-
-    case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-      res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
-      break;
-
-    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
-      res = EnhanceJsonIndexPersistent(definition, enhanced, create);
-      break;
-
-    case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-      res = EnhanceJsonIndexFulltext(definition, enhanced, create);
-      break;
-
-#ifdef USE_IRESEARCH
-    case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-      res = arangodb::iresearch::EnhanceJsonIResearchLink(definition, enhanced, create);
-      break;
-#endif
-
-    default: {
-      res = TRI_ERROR_BAD_PARAMETER;
-      break;
-    }
-  }
 
   return res;
 }
 
-std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
-    arangodb::velocypack::Slice info, bool generateKey, LogicalCollection* col,
-    bool isClusterConstructor) const {
+RocksDBIndexFactory::RocksDBIndexFactory() {
+  emplaceFactory("edge",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   if (!isClusterConstructor) {
+                     // this indexes cannot be created directly
+                     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                                    "cannot create edge index");
+                   }
 
-  TRI_idx_iid_t iid = IndexFactory::validateSlice(info, generateKey, isClusterConstructor);
+                   auto fields =
+                     definition.get(arangodb::StaticStrings::IndexFields);
+                   TRI_ASSERT(fields.isArray() && fields.length() == 1);
+                   auto direction = fields.at(0).copyString();
+                   TRI_ASSERT(direction == StaticStrings::FromString ||
+                              direction == StaticStrings::ToString);
 
-  // extract type
-  VPackSlice value = info.get("type");
+                   return std::make_shared<RocksDBEdgeIndex>(
+                       id, collection, definition, direction);
+                 });
 
-  if (!value.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid index type definition");
-  }
+  emplaceFactory("fulltext",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBFulltextIndex>(id, collection,
+                                                                 definition);
+                 });
 
-  std::string const typeString = value.copyString();
-  if (typeString == "primary") {
-    if (!isClusterConstructor) {
-      // this indexes cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                      "cannot create primary index");
-    }
-    return std::make_shared<RocksDBPrimaryIndex>(col, info);
-  }
-  if (typeString == "edge") {
-    if (!isClusterConstructor) {
-      // this indexes cannot be created directly
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                      "cannot create edge index");
-    }
-    VPackSlice fields = info.get("fields");
-    TRI_ASSERT(fields.isArray() && fields.length() == 1);
-    std::string direction = fields.at(0).copyString();
-    TRI_ASSERT(direction == StaticStrings::FromString ||
-                direction == StaticStrings::ToString);
-    return std::make_shared<RocksDBEdgeIndex>(iid, col, info, direction);
-  }
-  if (typeString == "hash") {
-    return std::make_shared<RocksDBHashIndex>(iid, col, info);
-  }
-  if (typeString == "skiplist") {
-    return std::make_shared<RocksDBSkiplistIndex>(iid, col, info);
-  }
-  if (typeString == "persistent") {
-    return std::make_shared<RocksDBPersistentIndex>(iid, col, info);
-  }
-  if (typeString == "geo1" || typeString == "geo2") {
-    return std::make_shared<RocksDBGeoIndex>(iid, col, info);
-  }
-  if (typeString == "fulltext") {
-    return std::make_shared<RocksDBFulltextIndex>(iid, col, info);
-  }
-#ifdef USE_IRESEARCH
-  if (arangodb::iresearch::IResearchFeature::type() == typeString) {
-    return arangodb::iresearch::IResearchRocksDBLink::make(iid, col, info);
-  }
-#endif
+  emplaceFactory("geo1",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBGeoIndex>(id, collection,
+                                                            definition, "geo1");
+                 });
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, std::string("invalid or unsupported index type '") + typeString + "'");
+  emplaceFactory("geo2",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBGeoIndex>(id, collection,
+                                                            definition, "geo2");
+                 });
+
+  emplaceFactory("geo",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBGeoIndex>(id, collection,
+                                                            definition, "geo");
+                 });
+
+  emplaceFactory("hash",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBHashIndex>(id, collection,
+                                                             definition);
+                 });
+
+  emplaceFactory("persistent",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBPersistentIndex>(
+                       id, collection, definition);
+                 });
+
+  emplaceFactory("primary",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   if (!isClusterConstructor) {
+                     // this indexes cannot be created directly
+                     THROW_ARANGO_EXCEPTION_MESSAGE(
+                         TRI_ERROR_INTERNAL, "cannot create primary index");
+                   }
+
+                   return std::make_shared<RocksDBPrimaryIndex>(collection,
+                                                                definition);
+                 });
+
+  emplaceFactory("skiplist",
+                 [](LogicalCollection& collection,
+                    velocypack::Slice const& definition, TRI_idx_iid_t id,
+                    bool isClusterConstructor) -> std::shared_ptr<Index> {
+                   return std::make_shared<RocksDBSkiplistIndex>(id, collection,
+                                                                 definition);
+                 });
+
+  emplaceNormalizer(
+      "edge",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        if (isCreation) {
+          // creating these indexes yourself is forbidden
+          return TRI_ERROR_FORBIDDEN;
+        }
+
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)
+          )
+        );
+
+        return TRI_ERROR_INTERNAL;
+      });
+
+  emplaceNormalizer(
+      "fulltext",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+            VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexFulltext(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer("geo", [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexGeo(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer(
+      "geo1",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer(
+      "geo2",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                                       std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer(
+      "hash",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexVPack(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer(
+      "primary",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        if (isCreation) {
+          // creating these indexes yourself is forbidden
+          return TRI_ERROR_FORBIDDEN;
+        }
+
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_PRIMARY_INDEX)
+          )
+        );
+
+        return TRI_ERROR_INTERNAL;
+      });
+
+  emplaceNormalizer(
+      "persistent",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexVPack(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer(
+      "rocksdb",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexVPack(definition, normalized, isCreation);
+      });
+
+  emplaceNormalizer(
+      "skiplist",
+      [](velocypack::Builder& normalized, velocypack::Slice definition,
+         bool isCreation) -> arangodb::Result {
+        TRI_ASSERT(normalized.isOpenObject());
+        normalized.add(
+          arangodb::StaticStrings::IndexType,
+          arangodb::velocypack::Value(
+            Index::oldtypeName(Index::TRI_IDX_TYPE_SKIPLIST_INDEX)
+          )
+        );
+
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                         std::to_string(TRI_NewTickServer())));
+        }
+
+        return EnhanceJsonIndexVPack(definition, normalized, isCreation);
+      });
 }
+
 
 void RocksDBIndexFactory::fillSystemIndexes(
-    arangodb::LogicalCollection* col,
-    std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
+    arangodb::LogicalCollection& col,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
   // create primary index
   VPackBuilder builder;
   builder.openObject();
   builder.close();
 
-  systemIndexes.emplace_back(
-      std::make_shared<arangodb::RocksDBPrimaryIndex>(col, builder.slice()));
+  indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, builder.slice()));
+
   // create edges indexes
-  if (col->type() == TRI_COL_TYPE_EDGE) {
-    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        1, col, builder.slice(), StaticStrings::FromString));
-    systemIndexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(
-        2, col, builder.slice(), StaticStrings::ToString));
+  if (TRI_COL_TYPE_EDGE == col.type()) {
+    indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, builder.slice(), StaticStrings::FromString));
+    indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, builder.slice(), StaticStrings::ToString));
   }
 }
 
-std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
-                                  "persistent", "geo",  "fulltext"};
+/// @brief create indexes from a list of index definitions
+void RocksDBIndexFactory::prepareIndexes(
+    LogicalCollection& col,
+    arangodb::velocypack::Slice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes
+) const {
+  TRI_ASSERT(indexesSlice.isArray());
+
+  bool splitEdgeIndex = false;
+  TRI_idx_iid_t last = 0;
+
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
+                                                            false)) {
+      // We have an error here.
+      // Do not add index.
+      // TODO Handle Properly
+      continue;
+    }
+
+    // check for combined edge index from MMFiles; must split!
+    auto value = v.get("type");
+
+    if (value.isString()) {
+      std::string tmp = value.copyString();
+      arangodb::Index::IndexType const type =
+      arangodb::Index::type(tmp.c_str());
+
+      if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+        VPackSlice fields = v.get("fields");
+
+        if (fields.isArray() && fields.length() == 2) {
+          VPackBuilder from;
+
+          from.openObject();
+
+          for (auto const& f : VPackObjectIterator(v)) {
+            if (arangodb::StringRef(f.key) == "fields") {
+              from.add(VPackValue("fields"));
+              from.openArray();
+              from.add(VPackValue(StaticStrings::FromString));
+              from.close();
+            } else {
+              from.add(f.key);
+              from.add(f.value);
+            }
+          }
+
+          from.close();
+
+          VPackBuilder to;
+
+          to.openObject();
+
+          for (auto const& f : VPackObjectIterator(v)) {
+            if (arangodb::StringRef(f.key) == "fields") {
+              to.add(VPackValue("fields"));
+              to.openArray();
+              to.add(VPackValue(StaticStrings::ToString));
+              to.close();
+            } else if (arangodb::StringRef(f.key) == "id") {
+              auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
+
+              last = iid;
+              to.add("id", VPackValue(std::to_string(iid)));
+            } else {
+              to.add(f.key);
+              to.add(f.value);
+            }
+          }
+
+          to.close();
+
+          auto idxFrom = prepareIndexFromSlice(from.slice(), false, col, true);
+
+          if (!idxFrom) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << from.slice().toString() << "'";
+
+            continue;
+          }
+
+          auto idxTo = prepareIndexFromSlice(to.slice(), false, col, true);
+
+          if (!idxTo) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << to.slice().toString() << "'";
+
+            continue;
+          }
+
+          indexes.emplace_back(std::move(idxFrom));
+          indexes.emplace_back(std::move(idxTo));
+          splitEdgeIndex = true;
+
+          continue;
+        }
+      } else if (splitEdgeIndex) {
+        VPackBuilder b;
+
+        b.openObject();
+
+        for (auto const& f : VPackObjectIterator(v)) {
+          if (arangodb::StringRef(f.key) == "id") {
+            last++;
+            b.add("id", VPackValue(std::to_string(last)));
+          } else {
+            b.add(f.key);
+            b.add(f.value);
+          }
+        }
+
+        b.close();
+
+        auto idx = prepareIndexFromSlice(b.slice(), false, col, true);
+
+        if (!idx) {
+          LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            << "error creating index from definition '" << b.slice().toString() << "'";
+
+          continue;
+        }
+
+        indexes.emplace_back(std::move(idx));
+
+        continue;
+      }
+    }
+
+    auto idx = prepareIndexFromSlice(v, false, col, true);
+
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "error creating index from definition '" << v.toString() << "'";
+
+      continue;
+    }
+
+    indexes.emplace_back(std::move(idx));
+  }
 }
 
 // -----------------------------------------------------------------------------

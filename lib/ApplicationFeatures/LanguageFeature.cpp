@@ -31,24 +31,33 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
+static LanguageFeature* Instance = nullptr;
+
 LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Language"),
-      _binaryPath(server->getBinaryPath()),
+      _locale(),
+      _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr) {
+  Instance = this;
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 LanguageFeature::~LanguageFeature() {
   if (_icuDataPtr != nullptr) {
     TRI_Free(_icuDataPtr);
   }
+}
+
+LanguageFeature* LanguageFeature::instance() {
+  return Instance;
 }
 
 void LanguageFeature::collectOptions(
@@ -148,10 +157,20 @@ void LanguageFeature::start() {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+    _locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
+                     /* 
+                        const   char * variant  = 0,
+                        const   char * keywordsAndValues = 0
+                     */
+                     );
   } else {
+    _locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "using default language '" << languageName << "'";
 }
+
+} // arangodb

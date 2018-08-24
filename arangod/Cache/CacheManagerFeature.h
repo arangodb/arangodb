@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 
@@ -37,11 +36,9 @@ class CacheManagerFeature final
  public:
   static cache::Manager* MANAGER;
 
- public:
-  explicit CacheManagerFeature(application_features::ApplicationServer* server);
+  explicit CacheManagerFeature(application_features::ApplicationServer& server);
   ~CacheManagerFeature();
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -57,6 +54,7 @@ class CacheManagerFeature final
   uint64_t _cacheSize;
   uint64_t _rebalancingInterval;
 };
+
 }
 
 #endif

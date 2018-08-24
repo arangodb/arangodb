@@ -30,9 +30,9 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/V8Context.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -40,7 +40,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -61,11 +60,29 @@ aql::QueryResultV8 AqlQuery(
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+  // If we execute an AQL query from V8 we need to unset the nolock headers
+  arangodb::aql::Query query(
+    true,
+    col->vocbase(),
+    arangodb::aql::QueryString(aql),
+    bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
-  auto queryResult = query.executeV8(
-      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+  ss->setContinueCallback(); 
+
+  aql::QueryResultV8 queryResult;
+  while (true) {
+    auto state = query.executeV8(isolate,
+        static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    ss->waitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -202,9 +219,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  AccessMode::Type::READ);
-
+  SingleCollectionTransaction trx(
+    transactionContext, *collection, AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -213,20 +230,11 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   if (opCursor->fail()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
-
-  OperationResult countResult = trx.count(collectionName, true);
-
-  if (countResult.fail()) {
-    TRI_V8_THROW_EXCEPTION(countResult.result);
-  }
-
-  VPackSlice count = countResult.slice();
-  TRI_ASSERT(count.isNumber());
 
   if (!opCursor->hasMore()) {
     // OUT OF MEMORY. initial hasMore should return true even if index is empty
@@ -237,17 +245,16 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
-  ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
   opCursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
-  });
+  }, 1000);
 
   resultBuilder.close();
   
-  res = trx.finish(countResult.result);
+  res = trx.finish(Result());
   
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -260,7 +267,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto documents = TRI_VPackToV8(isolate, docs, &resultOptions);
   result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), documents);
   result->Set(TRI_V8_ASCII_STRING(isolate, "total"),
-              v8::Number::New(isolate, count.getNumericValue<double>()));
+              v8::Number::New(isolate, static_cast<double>(docs.length())));
   result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
               v8::Number::New(isolate, static_cast<double>(docs.length())));
 
@@ -293,9 +300,9 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, col->cid(),
-                                  AccessMode::Type::READ);
-
+  SingleCollectionTransaction trx(
+    transactionContext, *col, AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -487,9 +494,8 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-
+  if (queryResult.extra) {
+    VPackSlice stats = queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       TRI_ASSERT(stats.isObject());
       VPackSlice found = stats.get("writesIgnored");

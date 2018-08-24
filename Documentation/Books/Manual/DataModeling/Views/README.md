@@ -40,4 +40,4 @@ method and is documented in detail in
 ### View Types
 
 The currently supported view implementation is: **arangosearch** as described in
-[ArangoSearch View](../Views/IResearch.md).
+[ArangoSearch View](../../Views/ArangoSearch/README.md).

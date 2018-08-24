@@ -74,7 +74,7 @@ const recoverySuite = function () {
     // Test that count of collection remains unmodified.
     // We crashed after all commits, before return
     testCollectionCount: () => {
-      assertEqual(c.count(), 0); 
+      assertEqual(c.count(), 0);
     },
 
     // Test that the HashIndex remains intact but empty.
@@ -114,6 +114,7 @@ const recoverySuite = function () {
     },
 
     testIndexEstimates: () => {
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {

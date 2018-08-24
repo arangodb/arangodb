@@ -1,5 +1,4 @@
 /* jshint strict: false, sub: true */
-/* global arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -26,6 +25,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
+  'replication_fuzz': 'replication randomized tests for all operations',
+  'replication_random': 'replication randomized tests for transactions',
+  'replication_aql': 'replication AQL tests',
   'replication_ongoing': 'replication ongoing tests',
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
@@ -38,12 +40,22 @@ const _ = require('lodash');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'shell_replication': ['js/common/tests/replication'],
+  'replication_aql': ['js/server/tests/replication/'],
+  'replication_fuzz': ['js/server/tests/replication/'],
+  'replication_random': ['js/server/tests/replication/'],
+  'replication_ongoing': ['js/server/tests/replication/'],
+  'replication_static': ['js/server/tests/replication/'],
+  'replication_sync': ['js/server/tests/replication/']
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_replication
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
-  let testCases = tu.scanTestPath('js/common/tests/replication');
+  let testCases = tu.scanTestPaths(testPaths.shell_replication);
 
   var opts = {
     'replication': true
@@ -54,11 +66,188 @@ function shellReplication (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: replication_fuzz
+// //////////////////////////////////////////////////////////////////////////////
+
+function replicationFuzz (options) {
+  let testCases = tu.scanTestPaths(testPaths.replication_fuzz);
+
+  options.replication = true;
+  options.test = 'replication-fuzz';
+  let startStopHandlers = {
+    postStart: function (options,
+                         serverOptions,
+                         instanceInfo,
+                         customInstanceInfos,
+                         startStopHandlers) {
+      let message;
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let state = (typeof slave === 'object');
+
+      if (state) {
+        message = 'failed to start slave instance!';
+      }
+
+      return {
+        instanceInfo: slave,
+        message: message,
+        state: state,
+        env: {
+          'flatCommands': slave.endpoint
+        }
+      };
+    },
+
+    preStop: function (options,
+                       serverOptions,
+                       instanceInfo,
+                       customInstanceInfos,
+                       startStopHandlers) {
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+
+      return {};
+    },
+
+    postStop: function (options,
+                        serverOptions,
+                        instanceInfo,
+                        customInstanceInfos,
+                        startStopHandlers) {
+      if (options.cleanup) {
+        pu.cleanupLastDirectory(options);
+      }
+      return { state: true };
+    }
+
+  };
+
+  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh, {}, startStopHandlers);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: replication_random
+// //////////////////////////////////////////////////////////////////////////////
+
+function replicationRandom (options) {
+  let testCases = tu.scanTestPaths(testPaths.replication_random);
+
+  options.replication = true;
+  options.test = 'replication-random';
+  let startStopHandlers = {
+    postStart: function (options,
+                         serverOptions,
+                         instanceInfo,
+                         customInstanceInfos,
+                         startStopHandlers) {
+      let message;
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let state = (typeof slave === 'object');
+
+      if (state) {
+        message = 'failed to start slave instance!';
+      }
+
+      return {
+        instanceInfo: slave,
+        message: message,
+        state: state,
+        env: {
+          'flatCommands': slave.endpoint
+        }
+      };
+    },
+
+    preStop: function (options,
+                       serverOptions,
+                       instanceInfo,
+                       customInstanceInfos,
+                       startStopHandlers) {
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+
+      return {};
+    },
+
+    postStop: function (options,
+                        serverOptions,
+                        instanceInfo,
+                        customInstanceInfos,
+                        startStopHandlers) {
+      if (options.cleanup) {
+        pu.cleanupLastDirectory(options);
+      }
+      return { state: true };
+    }
+
+  };
+
+  return tu.performTests(options, testCases, 'replication_random', tu.runInArangosh, {}, startStopHandlers);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: replication_aql
+// //////////////////////////////////////////////////////////////////////////////
+
+function replicationAql (options) {
+  let testCases = tu.scanTestPaths(testPaths.replication_aql);
+
+  options.replication = true;
+  options.test = 'replication-aql';
+  let startStopHandlers = {
+    postStart: function (options,
+                         serverOptions,
+                         instanceInfo,
+                         customInstanceInfos,
+                         startStopHandlers) {
+      let message;
+      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let state = (typeof slave === 'object');
+
+      if (state) {
+        message = 'failed to start slave instance!';
+      }
+
+      return {
+        instanceInfo: slave,
+        message: message,
+        state: state,
+        env: {
+          'flatCommands': slave.endpoint
+        }
+      };
+    },
+
+    preStop: function (options,
+                       serverOptions,
+                       instanceInfo,
+                       customInstanceInfos,
+                       startStopHandlers) {
+      pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+
+      return {};
+    },
+
+    postStop: function (options,
+                        serverOptions,
+                        instanceInfo,
+                        customInstanceInfos,
+                        startStopHandlers) {
+      if (options.cleanup) {
+        pu.cleanupLastDirectory(options);
+      }
+      return { state: true };
+    }
+
+  };
+
+  return tu.performTests(options, testCases, 'replication_aql', tu.runInArangosh, {}, startStopHandlers);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: replication_ongoing
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationOngoing (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_ongoing);
 
   options.replication = true;
   if (options.test === undefined) {
@@ -120,7 +309,7 @@ function replicationOngoing (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_static);
 
   options.replication = true;
   if (options.test === undefined) {
@@ -206,7 +395,7 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
-  let testCases = tu.scanTestPath('js/server/tests/replication/');
+  let testCases = tu.scanTestPaths(testPaths.replication_sync);
 
   options.replication = true;
   if (options.test === undefined) {
@@ -278,13 +467,15 @@ function replicationSync (options) {
   return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['shell_replication'] = shellReplication;
+  testFns['replication_aql'] = replicationAql;
+  testFns['replication_fuzz'] = replicationFuzz;
+  testFns['replication_random'] = replicationRandom;
   testFns['replication_ongoing'] = replicationOngoing;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

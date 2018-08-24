@@ -59,13 +59,13 @@ class AttributeTranslator {
   Builder* builder() const { return _builder; }
 
   // translate from string to id
-  uint8_t const* translate(std::string const& key) const;
+  uint8_t const* translate(std::string const& key) const noexcept;
 
   // translate from string to id
-  uint8_t const* translate(char const* key, ValueLength length) const;
+  uint8_t const* translate(char const* key, ValueLength length) const noexcept;
 
   // translate from id to string
-  uint8_t const* translate(uint64_t id) const;
+  uint8_t const* translate(uint64_t id) const noexcept;
 
  private:
   Builder* _builder;

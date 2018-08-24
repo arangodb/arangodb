@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -31,6 +31,7 @@
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
+const _ = require('lodash');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -98,13 +99,12 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    /* // this currently crashes the cluster...
-     * testRulesNoneSerial : function () {
+    testRulesNoneSerial : function () {
       var queries = [ 
-        "FOR d IN " + cn1 + " RETURN d",
-        "LET A=1 LET B=2 FOR d IN " + cn1 + " RETURN d",
-        "LET A=1 LET B=2 FOR d IN " + cn1 + " LIMIT 10 RETURN d",
-        "FOR e in " + cn1 + " FOR d IN " + cn1 + " LIMIT 10 RETURN d"
+        "FOR d IN " + cn1 + " SORT d.Hallo1 RETURN d",
+        "LET A=1 LET B=2 FOR d IN " + cn1 + " SORT d.Hallo1 RETURN d",
+        "LET A=1 LET B=2 FOR d IN " + cn1 + " SORT d.Hallo1 LIMIT 10 RETURN d",
+        "FOR e in " + cn1 + " SORT e.Hallo2 FOR d IN " + cn1 + " SORT d.Hallo1 LIMIT 10 RETURN d"
       ];
 
       var opts = _.clone(rulesNone);
@@ -112,13 +112,18 @@ function optimizerRuleTestSuite () {
       opts.verbosePlans = true;
 
       queries.forEach(function(query) {
+        var total = AQL_EXECUTE(query);
         var plans = AQL_EXPLAIN(query, { }, opts).plans;
         plans.forEach(function(plan) {
-          var result = AQL_EXECUTEJSON(plan, rulesNone).json;
-          assertEqual(query[1], result, query[0]);
+          var result = AQL_EXECUTEJSON(plan, rulesNone);
+          assertTrue(_.isEqual(total.json, result.json),
+                      query +'\n' +
+                      'result: ' + JSON.stringify(result.json) + '\n' +
+                      'reference: ' + JSON.stringify(total.json) + '\n' +
+                      'plan: ' + JSON.stringify(plan));
         });
       });
-    },*/
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test that rule does not fire when it is disabled but no other rule is

@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
@@ -72,13 +73,27 @@ class RocksDBSettingsManager {
     TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
 
+  struct CMValue {
+    /// ArangoDB transaction ID
+    rocksdb::SequenceNumber _sequenceNum;
+    /// used for number of documents
+    uint64_t _count;
+    /// used for revision id
+    TRI_voc_rid_t _revisionId;
+
+    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
+        : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
+    explicit CMValue(arangodb::velocypack::Slice const&);
+    void serialize(arangodb::velocypack::Builder&) const;
+  };
+
  public:
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
 
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
-  
+
   /// collections / views / indexes can call this method to update
   /// their total counts. Thread-Safe needs the snapshot so we know
   /// the sequence number used
@@ -99,13 +114,15 @@ class RocksDBSettingsManager {
 
   // Steal the index estimator that the recovery has built up to inject it into
   // an index.
-  // NOTE: If this returns nullptr the recovery was not ably to find any
+  // NOTE: If this returns nullptr the recovery was not able to find any
   // estimator
   // for this index.
-  std::pair<std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>, uint64_t>
-  stealIndexEstimator(uint64_t indexObjectId);
+  // SHOULD ONLY BE CALLED DURING STARTUP
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> stealIndexEstimator(
+      uint64_t indexObjectId);
 
   // Steal the key genenerator state that recovery has detected.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   uint64_t stealKeyGenerator(uint64_t indexObjectId);
 
   // Free up all index estimators that were not read by any index.
@@ -115,42 +132,23 @@ class RocksDBSettingsManager {
   // to reread it will be done.
   // So call it after ALL indexes for all databases
   // have been created in memory.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   void clearIndexEstimators();
 
   // Clear out key generator map for values not read by any collection.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   void clearKeyGenerators();
 
   // Earliest sequence number needed for recovery (don't throw out newer WALs)
   rocksdb::SequenceNumber earliestSeqNeeded() const;
 
- protected:
-  struct CMValue {
-    /// ArangoDB transaction ID
-    rocksdb::SequenceNumber _sequenceNum;
-    /// used for number of documents
-    uint64_t _count;
-    /// used for revision id
-    TRI_voc_rid_t _revisionId;
-
-    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
-        : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
-    explicit CMValue(arangodb::velocypack::Slice const&);
-    void serialize(arangodb::velocypack::Builder&) const;
-  };
-
-  void readCounterValues();
-  void readSettings();
-  void readIndexEstimates();
-  void readKeyGenerators();
+ private:
+  void loadCounterValues();
+  void loadSettings();
+  void loadIndexEstimates();
+  void loadKeyGenerators();
 
   bool lockForSync(bool force);
-  Result writeCounterValue(rocksdb::Transaction* rtrx, VPackBuilder& b,
-                           std::pair<uint64_t, CMValue> const& pair);
-  Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
-                       uint64_t seqNumber);
-  Result writeIndexEstimatorAndKeyGenerator(
-      rocksdb::Transaction* rtrx, VPackBuilder& b,
-      std::pair<uint64_t, CMValue> const& pair);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
@@ -167,10 +165,8 @@ class RocksDBSettingsManager {
   ///        Note the elements in this container will be moved into the
   ///        index classes and are only temporarily stored here during recovery.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<
-      uint64_t,
-      std::pair<uint64_t,
-                std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>>
+  std::unordered_map<uint64_t,
+                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>
       _estimators;
 
   //////////////////////////////////////////////////////////////////////////////

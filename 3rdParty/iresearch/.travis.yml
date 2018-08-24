@@ -1,14 +1,15 @@
 sudo: required
-dist: precise
+dist: trusty #precise
+group: deprecated-2017Q4
 language: cpp
 
-#cache:
-#  directories:
-#    - ${TRAVIS_BUILD_DIR}/deps/icu
-#    - ${TRAVIS_BUILD_DIR}/deps/gtest
-#    - ${TRAVIS_BUILD_DIR}/deps/snowball
-#    - ${TRAVIS_BUILD_DIR}/deps/lz4
-#    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
+cache:
+  directories:
+    - ${TRAVIS_BUILD_DIR}/deps/icu
+    - ${TRAVIS_BUILD_DIR}/deps/gtest
+    - ${TRAVIS_BUILD_DIR}/deps/snowball
+    - ${TRAVIS_BUILD_DIR}/deps/lz4
+    - ${TRAVIS_BUILD_DIR}/deps/boost-1.58.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.59.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.60.0
 #    - ${TRAVIS_BUILD_DIR}/deps/boost-1.61.0
@@ -34,76 +35,78 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.8
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -114,76 +117,78 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -194,73 +199,73 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # GCC 6
@@ -270,73 +275,73 @@ matrix:
     # Debug build, static library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # Debug build, shared library
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # GCC 7
@@ -347,76 +352,78 @@ matrix:
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # Debug build, shared library
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - valgrind
-            - cmake-data
-            - cmake
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # OSX
@@ -433,10 +440,11 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: osx
       osx_image: xcode9
@@ -446,7 +454,22 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # Debug build, shared library
@@ -459,10 +482,11 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: osx
       osx_image: xcode9
@@ -472,13 +496,28 @@ matrix:
           brew install bison || true;
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
-        - BUILD_TYPE="Release"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: osx
+      osx_image: xcode9
+      compiler: clang
+      before_install:
+        - brew update || true;
+          brew install bison || true;
+      env:
+        - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
+        - BOOST_B2_ARGS="boost.locale.iconv=off"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
 before_install:
   - eval "${SET_ENV}"
 
 install:
-  - set
+  - eval "${SET_ENV}"
   - which bison
   - bison --version
   - which cmake
@@ -508,9 +547,12 @@ install:
       tar -zxf icu4c-57_1-src.tgz
       cd icu/source
       ./configure --enable-static
+      mkdir -P ${ICU_DIR}/build
+      make install DESTDIR=${ICU_DIR}/build
     fi
-    sudo make install #DESTDIR=${ICU_DIR}
-    export ICU_ROOT=/usr/local  
+    # sudo make install DESTDIR=${ICU_DIR}
+    export ICU_ROOT=${ICU_DIR}/build/usr/local
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${ICU_ROOT}/lib" # required for MacOS
 
   ############################################################################
   # Install Boost
@@ -528,9 +570,10 @@ install:
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
-        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread,regex && ./b2 install --libdir=lib)
+        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=locale,system,thread,regex && ./b2 install -sICU_PATH=${ICU_ROOT} --libdir=lib ${BOOST_B2_ARGS})
       fi
       export BOOST_ROOT=${BOOST_DIR}
+      export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${BOOST_ROOT}/lib" # required for MacOS
     fi
 
   ############################################################################
@@ -546,6 +589,7 @@ install:
       make install DESTDIR=${LZ4_DIR}/build PREFIX=""
     fi
     export LZ4_ROOT=${LZ4_DIR}/build
+    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${LZ4_ROOT}/lib" # required for MacOS
 
   ############################################################################
   # Install snowball
@@ -603,6 +647,7 @@ script:
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
+      ulimit -n 1024 # required for MacOS
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi

@@ -34,10 +34,8 @@
 #include "utils/type_limits.hpp"
 #include "index/index_tests.hpp"
 
-namespace ir = iresearch;
-
-namespace tests {
-namespace sort {
+NS_BEGIN(tests)
+NS_BEGIN(sort)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class boost
@@ -336,7 +334,7 @@ struct frequency_sort: public iresearch::sort {
     }
 
     virtual void prepare_score(score_t& score) const override {
-      score.id = ir::type_limits<ir::type_t::doc_id_t>::invalid();
+      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
       score.prepared = true;
     }
@@ -367,20 +365,21 @@ struct frequency_sort: public iresearch::sort {
   }
 }; // sort::frequency_sort
 
-} // sort
+NS_END // sort
 
 class filter_test_case_base : public index_test_base {
  protected:
   typedef std::vector<iresearch::doc_id_t> docs_t;
-  typedef std::vector<ir::cost::cost_t> costs_t;
+  typedef std::vector<irs::cost::cost_t> costs_t;
 
   void check_query(
-      const ir::filter& filter,
+      const irs::filter& filter,
       const std::vector<iresearch::doc_id_t>& expected,
-      const std::vector<ir::cost::cost_t>& expected_costs, 
-      const ir::index_reader& rdr) {
-    std::vector<ir::doc_id_t> result;
-    std::vector<ir::cost::cost_t> result_costs;
+      const std::vector<irs::cost::cost_t>& expected_costs,
+      const irs::index_reader& rdr
+  ) {
+    std::vector<irs::doc_id_t> result;
+    std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, iresearch::order::prepared::unordered()),
       expected, rdr, 
@@ -390,11 +389,12 @@ class filter_test_case_base : public index_test_base {
   }
 
   void check_query(
-      const ir::filter& filter,
+      const irs::filter& filter,
       const std::vector<iresearch::doc_id_t>& expected,
-      const ir::index_reader& rdr) {
-    std::vector<ir::doc_id_t> result;
-    std::vector<ir::cost::cost_t> result_costs;
+      const irs::index_reader& rdr
+  ) {
+    std::vector<irs::doc_id_t> result;
+    std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, iresearch::order::prepared::unordered()),
       expected, rdr, 
@@ -403,10 +403,11 @@ class filter_test_case_base : public index_test_base {
   }
 
   void check_query(
-      const ir::filter& filter,
+      const irs::filter& filter,
       const iresearch::order& order,
       const std::vector<iresearch::doc_id_t>& expected,
-      const ir::index_reader& rdr) {
+      const irs::index_reader& rdr
+  ) {
     typedef std::pair<iresearch::string_ref, iresearch::doc_id_t> result_item_t;
     auto prepared_order = order.prepare();
     auto prepared_filter = filter.prepare(rdr, prepared_order);
@@ -419,7 +420,7 @@ class filter_test_case_base : public index_test_base {
 
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
-      auto& score = docs->attributes().get<ir::score>();
+      auto& score = docs->attributes().get<irs::score>();
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -444,14 +445,15 @@ class filter_test_case_base : public index_test_base {
   void get_query_result(
       const iresearch::filter::prepared::ptr& q,
       const std::vector<iresearch::doc_id_t>& expected,
-      const ir::index_reader& rdr,
-      std::vector<ir::doc_id_t>& result,
-      std::vector<ir::cost::cost_t>& result_costs) {
+      const irs::index_reader& rdr,
+      std::vector<irs::doc_id_t>& result,
+      std::vector<irs::cost::cost_t>& result_costs
+  ) {
     for (const auto& sub : rdr) {
       auto docs = q->execute(sub);
-      auto& score = docs->attributes().get<ir::score>();
+      auto& score = docs->attributes().get<irs::score>();
 
-      result_costs.push_back(ir::cost::extract(docs->attributes()));
+      result_costs.push_back(irs::cost::extract(docs->attributes()));
       for (;docs->next();) {
         if (score) {
           score->evaluate();
@@ -541,15 +543,15 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
 
   // less significant term
   virtual const iresearch::bytes_ref& (min)() const { 
-    return iresearch::bytes_ref::nil; 
+    return iresearch::bytes_ref::NIL; 
   }
 
   // most significant term
   virtual const iresearch::bytes_ref& (max)() const { 
-    return iresearch::bytes_ref::nil; 
+    return iresearch::bytes_ref::NIL; 
   }
 }; // empty_term_reader
 
-} // tests
+NS_END // tests
 
 #endif // IRESEARCH_FILTER_TEST_CASE_BASE

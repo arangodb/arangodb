@@ -58,10 +58,10 @@ altogether k copies of each shard are kept in the cluster on k different
 servers, and are kept in sync. That is, every write operation is automatically
 replicated on all copies.
 
-This is organised using a leader/follower model. At all times, one of the
+This is organized using a leader/follower model. At all times, one of the
 servers holding replicas for a shard is "the leader" and all others
 are "followers", this configuration is held in the Agency (see 
-[Scalability](../../Scalability/README.md) for details of the ArangoDB
+[Cluster](../../Architecture/DeploymentModes/Cluster/README.md) for details of the ArangoDB
 cluster architecture). Every write operation is sent to the leader
 by one of the coordinators, and then replicated to all followers
 before the operation is reported to have succeeded. The leader keeps

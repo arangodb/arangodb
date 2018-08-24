@@ -231,7 +231,14 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   }
   if (!fetch.empty()) {
     transaction::BuilderLeaser leased(trx());
-    fetchVerticesFromEngines(trx()->databaseName(), ch->engines(), fetch,
-                             cache, ch->datalake(), *(leased.get()));
+
+    fetchVerticesFromEngines(
+      trx()->vocbase().name(),
+      ch->engines(),
+      fetch,
+      cache,
+      ch->datalake(),
+      *(leased.get())
+    );
   }
 }

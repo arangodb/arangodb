@@ -127,35 +127,47 @@ class ProgramOptions {
 
   // sets a single old option and its replacement name
   void addOldOption(std::string const& old, std::string const& replacement) {
-    _oldOptions[old] = replacement;
+    _oldOptions[Option::stripPrefix(old)] = replacement;
   }
 
   // adds a section to the options
   void addSection(Section const& section) {
     checkIfSealed();
-    _sections.emplace(section.name, section);
+    
+    auto it = _sections.find(section.name);
+
+    if (it == _sections.end()) {
+      // section not present
+      _sections.emplace(section.name, section);
+    } else {
+      // section already present. check if we need to update it
+      if (!section.description.empty() && (*it).second.description.empty()) {
+        // copy over description
+        (*it).second.description = section.description;
+      }
+    }
   }
 
   // adds a (regular) section to the program options
   void addSection(std::string const& name, std::string const& description) {
     addSection(Section(name, description, "", false, false));
   }
-
-  // adds a hidden section to the program options
-  void addHiddenSection(std::string const& name,
-                        std::string const& description) {
-    addSection(Section(name, description, "", true, false));
-  }
-
-  // adds a hidden and obsolete section to the program options
-  void addObsoleteSection(std::string const& name) {
-    addSection(Section(name, "", "", true, true));
+  
+  // adds an enterprise-only section to the program options
+  void addEnterpriseSection(std::string const& name, std::string const& description) {
+    addSection(EnterpriseSection(name, description, "", false, false));
   }
 
   // adds an option to the program options
   void addOption(std::string const& name, std::string const& description,
                  Parameter* parameter) {
     addOption(Option(name, description, parameter, false, false));
+  }
+  
+  // adds an enterprise-only option to the program options
+  void addEnterpriseOption(std::string const& name, std::string const& description,
+                           Parameter* parameter) {
+    addOption(EnterpriseOption(name, description, parameter, false, false));
   }
 
   // adds a hidden option to the program options
@@ -184,9 +196,9 @@ class ProgramOptions {
   void printSectionsHelp() const;
   
   // returns a VPack representation of the option values
-  arangodb::velocypack::Builder toVPack(bool onlyTouched,
+  arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,
                        std::unordered_set<std::string> const& exclude) const;
-
+  
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;
   
@@ -225,7 +237,7 @@ class ProgramOptions {
 
     Option& option = (*it2).second;
 
-    return dynamic_cast<T>(option.parameter.get());
+    return dynamic_cast<T*>(option.parameter.get());
   }
 
   // returns an option description

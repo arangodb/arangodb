@@ -26,17 +26,30 @@
 
 #include "Aql/Query.h"
 #include "Aql/AstNode.h"
+#include "VocBase/vocbase.h"
 
 #include <string>
 #include <vector>
 
-struct TRI_vocbase_t;
+#include "search/filter.hpp"
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a TRI_vocbase_t that will call shutdown() on deallocation
+///        to force deallocation of dropped collections
+////////////////////////////////////////////////////////////////////////////////
+struct Vocbase: public TRI_vocbase_t {
+  template<typename... Args>
+  Vocbase(Args&&... args): TRI_vocbase_t(std::forward<Args>(args)...) {}
+  ~Vocbase() { shutdown(); }
+};
 
 namespace v8 {
 class Isolate; // forward declaration
 }
 
 namespace arangodb {
+
+class DatabasePathFeature; // forward declaration
 
 namespace aql {
 class ExpressionContext;
@@ -71,7 +84,76 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
+uint64_t getCurrentPlanVersion();
+
+void setDatabasePath(arangodb::DatabasePathFeature& feature);
+
 }
 }
+
+std::string mangleType(std::string name);
+std::string mangleAnalyzer(std::string name);
+std::string mangleBool(std::string name);
+std::string mangleNull(std::string name);
+std::string mangleNumeric(std::string name);
+std::string mangleString(std::string name, std::string suffix);
+std::string mangleStringIdentity(std::string name);
+
+inline arangodb::aql::AstNode* defaultExpressionExtractor(arangodb::aql::AstNode* root) {
+  return root->getMember(0);
+}
+
+inline arangodb::aql::AstNode* wrappedExpressionExtractor(arangodb::aql::AstNode* root) {
+  return defaultExpressionExtractor(root)->getMember(0)->getMember(0);
+}
+
+void assertExpressionFilter(
+  std::string const& queryString,
+  irs::boost::boost_t boost = irs::boost::no_boost(),
+  std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = &defaultExpressionExtractor,
+  std::string const& refName = "d"
+);
+
+void assertFilterBoost(
+  irs::filter const& expected,
+  irs::filter const& actual
+);
+
+void assertFilter(
+  bool parseOk,
+  bool execOk,
+  std::string const& queryString,
+  irs::filter const& expected,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& refName = "d"
+);
+
+void assertFilterSuccess(
+  std::string const& queryString,
+  irs::filter const& expected,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& refName = "d"
+);
+
+void assertFilterFail(
+  std::string const& queryString,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& refName = "d"
+);
+
+void assertFilterExecutionFail(
+  std::string const& queryString,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& refName = "d"
+);
+
+void assertFilterParseFail(
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+);
 
 #endif

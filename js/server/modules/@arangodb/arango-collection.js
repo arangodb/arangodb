@@ -195,26 +195,11 @@ ArangoCollection.prototype.index = function (id) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief returns connected edges
-// //////////////////////////////////////////////////////////////////////////////
-
-function getEdges (collection, vertex, direction) {
-  if (direction === 'in') {
-    return collection.INEDGES(vertex);
-  }
-  if (direction === 'out') {
-    return collection.OUTEDGES(vertex);
-  }
-
-  return collection.EDGES(vertex);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock collectionEdgesAll
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.edges = function (vertex) {
-  return getEdges(this, vertex, 'any');
+  return this.EDGES(vertex);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -222,7 +207,7 @@ ArangoCollection.prototype.edges = function (vertex) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.inEdges = function (vertex) {
-  return getEdges(this, vertex, 'in');
+  return this.INEDGES(vertex);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -230,7 +215,7 @@ ArangoCollection.prototype.inEdges = function (vertex) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.outEdges = function (vertex) {
-  return getEdges(this, vertex, 'out');
+  return this.OUTEDGES(vertex);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -338,7 +323,7 @@ ArangoCollection.prototype.removeByExample = function (example,
   var cluster = require('@arangodb/cluster');
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync: waitForSync };
+  var opts = { waitForSync };
   query.query += ' REMOVE doc IN @@collection OPTIONS ' + JSON.stringify(opts);
 
   return require('internal').db._query(query).getExtra().stats.writesExecuted;
@@ -384,7 +369,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync: waitForSync };
+  var opts = { waitForSync };
   query.query += ' REPLACE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 
@@ -440,7 +425,7 @@ ArangoCollection.prototype.updateByExample = function (example,
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync: waitForSync, keepNull: keepNull, mergeObjects: mergeObjects };
+  var opts = { waitForSync, keepNull, mergeObjects };
   query.query += ' UPDATE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 

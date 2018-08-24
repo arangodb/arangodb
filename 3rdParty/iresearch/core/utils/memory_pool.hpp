@@ -423,7 +423,7 @@ template<
       slot_size = freelist::MIN_SIZE;
     }
 
-    slot_size = (slot_size + freelist::MIN_ALIGN - 1) & (-freelist::MIN_ALIGN);
+    slot_size = (slot_size + freelist::MIN_ALIGN - 1) & (0 - freelist::MIN_ALIGN);
 
     assert(slot_size >= freelist::MIN_SIZE);
     assert(!(slot_size % freelist::MIN_ALIGN));

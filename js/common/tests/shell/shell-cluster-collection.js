@@ -458,38 +458,6 @@ function ClusterCollectionSuite () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-    testIndexEstimates : function () {
-      // index estimate only availalbe with rocksdb for skiplist
-      if (db._engine().name === 'rocksdb') {
-        var cn = "UnitTestsClusterCrudRepl";
-        // numer of shards is one so the estimages behave like in the single server
-        // if the shard number is higher we could just ensure theat the estimate
-        // should be between 0 and 1
-        var c = db._create(cn, { numberOfShards: 1, replicationFactor: 1});
-
-        c.ensureIndex({type:"skiplist", fields:["foo"]});
-
-        var i;
-        var indexes;
-
-        for(i=0; i < 10; ++i){
-          c.save({foo: i});
-        }
-        indexes = c.getIndexes(true);
-        assertEqual(indexes[1].selectivityEstimate, 1);
-
-        for(i=0; i < 10; ++i){
-          c.save({foo: i});
-        }
-        indexes = c.getIndexes(true);
-        assertEqual(indexes[1].selectivityEstimate, 0.5);
-
-        db._drop(cn);
-      }
-    }
-
-////////////////////////////////////////////////////////////////////////////////
   };
 }
 
@@ -500,4 +468,3 @@ function ClusterCollectionSuite () {
 jsunity.run(ClusterCollectionSuite);
 
 return jsunity.done();
-

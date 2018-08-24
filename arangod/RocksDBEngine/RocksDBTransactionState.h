@@ -39,21 +39,31 @@
 struct TRI_vocbase_t;
 
 namespace rocksdb {
+
 class Transaction;
 class Slice;
 class Iterator;
+
 }  // namespace rocksdb
 
 namespace arangodb {
+
 namespace cache {
+
 struct Transaction;
+
 }
+
 class LogicalCollection;
 struct RocksDBDocumentOperation;
+
 namespace transaction {
+
 class Methods;
 struct Options;
+
 }
+
 class TransactionCollection;
 class RocksDBMethods;
 
@@ -66,7 +76,11 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
+  RocksDBTransactionState(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+  );
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -79,35 +93,26 @@ class RocksDBTransactionState final : public TransactionState {
   Result abortTransaction(transaction::Methods* trx) override;
 
   uint64_t numCommits() const { return _numCommits; }
-  uint64_t numInternal() const { return _numInternal; }
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
 
-  /// @brief reset previous log state after a rollback to safepoint
-  void resetLogState() { _lastUsedCollection = 0; }
-
   inline bool hasOperations() const {
-    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0 || _numInternal > 0);
+    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
 
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void prepareOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-                        StringRef const& key,
+  void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                         TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
-  RocksDBOperationResult addOperation(
-      TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-      TRI_voc_document_operation_e operationType, uint64_t operationSize,
-      uint64_t keySize);
-  
-  /// @brief add an internal operation for a transaction
-  RocksDBOperationResult addInternalOperation(
-      uint64_t operationSize, uint64_t keySize);
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  Result addOperation(TRI_voc_cid_t collectionId,
+      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
+      bool& hasPerformedIntermediateCommit);
 
   RocksDBMethods* rocksdbMethods();
 
@@ -116,11 +121,11 @@ class RocksDBTransactionState final : public TransactionState {
   void donateSnapshot(rocksdb::Snapshot const* snap);
   /// @brief steal snapshot of this transaction.
   /// Does not work on a single operation
-  rocksdb::Snapshot const* stealSnapshot();
-  
+  rocksdb::Snapshot const* stealReadSnapshot();
+
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
-  uint64_t sequenceNumber() const;
+  rocksdb::SequenceNumber sequenceNumber() const;
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
@@ -145,11 +150,6 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object. Not thread safe
   void returnRocksDBKey(RocksDBKey* key);
-  /// @brief Trigger an intermediate commit.
-  /// Handle with care if failing after this commit it will only
-  /// be rolled back until this point of time.
-  /// Not thread safe
-  void triggerIntermediateCommit();
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
@@ -166,33 +166,41 @@ class RocksDBTransactionState final : public TransactionState {
   void cleanupTransaction() noexcept;
   /// @brief internally commit a transaction
   arangodb::Result internalCommit();
-  /// @brief check sizes and call internalCommit if too big
-  void checkIntermediateCommit(uint64_t newSize);
 
- private:
+  /// @brief Trigger an intermediate commit.
+  /// Handle with care if failing after this commit it will only
+  /// be rolled back until this point of time.
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  /// Not thread safe
+  Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
+  
+  /// @brief check sizes and call internalCommit if too big
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
+
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction;
-  /// @brief rocksdb snapshot, is null if _rocksTransaction is set
-  rocksdb::Snapshot const* _snapshot;
-  /// @brief write options used
+  /// @brief used for read-only trx and intermediate commits
+  /// For intermediate commits this MUST ONLY be used for iteratos
+  rocksdb::Snapshot const* _readSnapshot;
+  /// @brief shared write options used
   rocksdb::WriteOptions _rocksWriteOptions;
-  ///@brief read options which must be used to guarantee isolation
+  /// @brief shared read options which can be used by operations
+  /// For intermediate commits iterators MUST use the _readSnapshot
   rocksdb::ReadOptions _rocksReadOptions;
+  
   /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
   uint64_t _numCommits;
-  uint64_t _numInternal;
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-  /// @brief Last collection used for transaction. Used for WAL
-  TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;

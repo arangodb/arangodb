@@ -116,13 +116,13 @@ void ProgramOptions::printSectionsHelp() const {
 }
 
 // returns a VPack representation of the option values
-VPackBuilder ProgramOptions::toVPack(bool onlyTouched,
+VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
                       std::unordered_set<std::string> const& exclude) const {
   VPackBuilder builder;
   builder.openObject();
 
   walk(
-      [&builder, &exclude](Section const&, Option const& option) {
+      [&builder, &exclude, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
         if (exclude.find(full) != exclude.end()) {
           // excluded option
@@ -133,9 +133,25 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched,
         builder.add(VPackValue(full));
 
         // add value
-        option.toVPack(builder);
+        if (detailed) {
+          builder.openObject();
+          builder.add("section", VPackValue(option.section));
+          builder.add("description", VPackValue(option.description));
+          builder.add("hidden", VPackValue(option.hidden));
+          builder.add("type", VPackValue(option.parameter->name()));
+          builder.add("enterpriseOnly", VPackValue(section.enterpriseOnly || option.enterpriseOnly));
+          std::string values = option.parameter->description();
+          if (!values.empty()) {
+            builder.add("values", VPackValue(values));
+          }
+          builder.add(VPackValue("default"));
+          option.toVPack(builder);
+          builder.close();
+        } else {
+          option.toVPack(builder);
+        }
       },
-      onlyTouched);
+      onlyTouched, false);
 
   builder.close();
   return builder;
@@ -383,9 +399,9 @@ void ProgramOptions::addOption(Option const& option) {
   auto it = _sections.find(option.section);
 
   if (it == _sections.end()) {
-    throw std::logic_error(
-        std::string("no section defined for program option ") +
-        option.displayName());
+    // add an anonymous section now...
+    addSection(option.section, "");
+    it = _sections.find(option.section);
   }
 
   if (!option.shorthand.empty()) {

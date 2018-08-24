@@ -29,19 +29,20 @@
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 uint64_t const FileDescriptorsFeature::RECOMMENDED = 8192;
 
 FileDescriptorsFeature::FileDescriptorsFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "FileDescriptors"), _descriptorsMinimum(0) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void FileDescriptorsFeature::collectOptions(
@@ -174,3 +175,5 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   }
 #endif
 }
+
+} // arangodb

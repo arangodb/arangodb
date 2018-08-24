@@ -65,7 +65,7 @@ struct empty_doc_iterator : doc_iterator {
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_iterator : term_iterator {
-  virtual const bytes_ref& value() const override { return bytes_ref::nil; }
+  virtual const bytes_ref& value() const override { return bytes_ref::NIL; }
   virtual doc_iterator::ptr postings(const flags&) const override {
     return doc_iterator::empty();
   }
@@ -77,29 +77,29 @@ struct empty_term_iterator : term_iterator {
 };
 
 struct empty_term_reader : singleton<empty_term_reader>, term_reader {
-  virtual iresearch::seek_term_iterator::ptr iterator() const { return nullptr; }
-  virtual const iresearch::field_meta& meta() const { 
+  virtual iresearch::seek_term_iterator::ptr iterator() const override { return nullptr; }
+  virtual const iresearch::field_meta& meta() const override { 
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return irs::attribute_view::empty_instance();
   }
 
   // total number of terms
-  virtual size_t size() const { return 0; }
+  virtual size_t size() const override { return 0; }
 
   // total number of documents
-  virtual uint64_t docs_count() const { return 0; }
+  virtual uint64_t docs_count() const override { return 0; }
 
   // less significant term
-  virtual const iresearch::bytes_ref& (min)() const { 
-    return iresearch::bytes_ref::nil; 
+  virtual const iresearch::bytes_ref& (min)() const override { 
+    return iresearch::bytes_ref::NIL; 
   }
 
   // most significant term
-  virtual const iresearch::bytes_ref& (max)() const { 
-    return iresearch::bytes_ref::nil; 
+  virtual const iresearch::bytes_ref& (max)() const override { 
+    return iresearch::bytes_ref::NIL; 
   }
 }; // empty_term_reader
 
