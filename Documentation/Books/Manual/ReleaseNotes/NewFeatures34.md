@@ -508,6 +508,11 @@ COLLECT statement:
 * `SORTED_UNIQUE`
 * `COUNT_DISTINCT`
 
+The following function aliases have been created for existing AQL functions:
+
+* `CONTAINS_ARRAY` is an alias for `POSITION`
+* `KEYS` is an alias for `ATTRIBUTES`
+
 ### Distributed COLLECT
 
 In the general case, AQL COLLECT operations are expensive to execute in a cluster,
@@ -605,6 +610,25 @@ of V8 anymore, except for user-defined functions.
 If no user-defined functions are used in AQL, end users do not need to put aside
 dedicated V8 contexts for executing AQL queries with ArangoDB 3.4, making server
 configuration less complex and easier to understand.
+
+### AQL optimizer query planning improvements
+ 
+The AQL query optimizer will by default now create at most 128 different execution
+plans per AQL query. In previous versions the maximum number of plans was 192.
+
+Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+but there are some cases in which it creates multiple competing plans. More plans
+can lead to better optimized queries, however, plan creation has its costs. The
+more plans are created and shipped through the optimization pipeline, the more
+time will be spent in the optimizer.
+To make the optimizer better cope with some edge cases, the maximum number of plans
+created is now strictly enforced and was lowered compared to previous versions of
+ArangoDB. This helps a specific class of complex queries.
+
+Note that the default maximum value can be adjusted globally by setting the startup 
+option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+`maxNumberOfPlans` option.
+
 
 ### Single document optimizations
 

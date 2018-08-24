@@ -399,6 +399,22 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   `PASSTHRU` is intended to be used for internal testing only. Should end users use
   this AQL function in any query and need a wrapper to make query parts non-deterministic,
   the `NOOPT` AQL function can stand in as a non-deterministic variant of `PASSTHRU`
+
+- the AQL query optimizer will by default now create at most 128 different execution
+  plans per AQL query. In previous versions the maximum number of plans was 192.
+
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  but there are some cases in which it creates multiple competing plans. More plans
+  can lead to better optimized queries, however, plan creation has its costs. The
+  more plans are created and shipped through the optimization pipeline, the more
+  time will be spent in the optimizer.
+  To make the optimizer better cope with some edge cases, the maximum number of plans
+  to create is now strictly enforced and was lowered compared to previous versions of
+  ArangoDB.
+
+  Note that this default maximum value can be adjusted globally by setting the startup 
+  option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+  `maxNumberOfPlans` option.
   
 
 Usage of V8
