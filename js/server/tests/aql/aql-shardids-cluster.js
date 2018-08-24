@@ -36,6 +36,11 @@ const disableSingleDocOp = {
     rules: [ "-optimize-cluster-single-document-operations"]
   }
 };
+const disableSingleShard = {
+  optimizer: {
+    rules: [ "-restrict-to-single-shard"]
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -437,8 +442,8 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             FILTER doc.${shardKey} == ${i} || doc.${shardKey} == ${i+1}
             RETURN doc
         `;
-        // No restriction yet
-        //validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+        // Multi-shard not implemented yet
+        // validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
         let res = db._query(query).toArray();
         assertEqual(8, res.length);
@@ -447,6 +452,133 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         }
       }
     },
+
+
+    testInnerOuter1 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuter2 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i+1}
+              RETURN [doc1, doc2]
+        `;
+        // Multi-shard not implemented yet
+        // validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i + 1 === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuter3 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 16);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuter4 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              RETURN doc1
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+        db._explain(query, {}, disableSingleShard);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let doc of results) {
+          assertTrue(i === doc.value);
+        }
+      }
+    },
+
+    testInnerOuter5 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+        db._explain(query, {}, disableSingleShard);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+
 
   };
 };

@@ -4223,7 +4223,8 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         auto collection =
             ExecutionNode::castTo<ModificationNode const*>(en)->collection();
         std::string shardId = getSingleShardId(_plan, en, collection);
-        if (shardId.empty() && _shardsUsed[collection].empty()) {
+        if (shardId.empty()) {
+          _shardsUsed[collection].clear();
           _shardsUsed[collection].emplace("all");
         } else if (!shardId.empty()) {
           if (1 == _shardsUsed[collection].size() &&

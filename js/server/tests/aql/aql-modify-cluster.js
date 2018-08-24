@@ -1331,6 +1331,33 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test update and return
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateAndReturn : function () {
+      const expected = { writesExecuted: 100, writesIgnored: 0 };
+      const query = `
+        FOR d IN @@cn
+          UPDATE d WITH { updated: true } IN @@cn
+          FILTER NEW._key == "test0"
+          RETURN NEW`;
+
+      let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
+      assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
+
+      const actual = getModifyQueryResults(query, { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual));
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertTrue(doc.updated);
+      }
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
