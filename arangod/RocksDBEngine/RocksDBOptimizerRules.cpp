@@ -43,7 +43,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 void RocksDBOptimizerRules::registerResources() {
   OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
-               OptimizerRule::reduceExtractionToProjectionRule_pass10, false, true);
+               OptimizerRule::reduceExtractionToProjectionRule, false, true);
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document

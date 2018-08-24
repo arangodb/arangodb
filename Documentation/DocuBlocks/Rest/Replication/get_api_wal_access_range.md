@@ -2,7 +2,7 @@
 @startDocuBlock get_api_wal_access_range
 @brief returns the tick ranges available in the write-ahead-log
 
-@RESTHEADER{GET /_api/wal/range, Return tick ranges available in the operations log (WAL)}
+@RESTHEADER{GET /_api/wal/range, Return tick ranges available in the operations log}
 
 @RESTDESCRIPTION
 Returns the currently available ranges of tick values for all WAL files.
