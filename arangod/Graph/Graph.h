@@ -292,13 +292,6 @@ void setUnion(std::set<T>& set, C const& container) {
   }
 }
 
-template <class T, class C>
-void setMinus(std::set<T>& set, C const& container) {
-  for (auto const& it : container) {
-    set.erase(it);
-  }
-}
-
 }  // namespace graph
 }  // namespace arangodb
 
