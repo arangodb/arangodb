@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -3612,3 +3612,26 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   }
   return ret;
 }
+
+arangodb::Result ClusterInfo::getShardServers(
+  ShardID const& shardId, std::vector<ServerID>& servers) {
+
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _shardServers.find(shardId);
+  if (it != _shardServers.end()) {
+    servers = (*it).second;
+    return arangodb::Result();
+  } 
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Strange, did not find shard in _shardServers: " << shardId;
+  return arangodb::Result(TRI_ERROR_FAILED);
+  
+}
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+

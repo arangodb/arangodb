@@ -22,6 +22,9 @@ arangosh&gt; stmt.parse();
             { 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"datasource parameter"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"@collection"</span> 
+            }, 
+            { 
+              <span class="hljs-string">"type"</span> : <span class="hljs-string">"no-op"</span> 
             } 
           ] 
         }, 

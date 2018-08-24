@@ -283,6 +283,9 @@ SET(ARANGOD_SOURCES
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionManager.cpp
+  Cluster/ActionBase.cpp
+  Cluster/Action.cpp
+  Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp
@@ -294,17 +297,32 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/CreateCollection.cpp
+  Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
   Cluster/EngineEqualityCheckFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
+  Cluster/DropCollection.cpp
+  Cluster/DropDatabase.cpp
+  Cluster/DropIndex.cpp
+  Cluster/EnsureIndex.cpp
+  Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
+  Cluster/Maintenance.cpp
+  Cluster/MaintenanceFeature.cpp
+  Cluster/MaintenanceRestHandler.cpp
+  Cluster/MaintenanceWorker.cpp
+  Cluster/NonAction.cpp
   Cluster/ReplicationTimeoutFeature.cpp
+  Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
+  Cluster/SynchronizeShard.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
+  Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
@@ -479,6 +497,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/TransactionState.cpp
   StorageEngine/WalAccess.cpp
   Transaction/Context.cpp
+  Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp

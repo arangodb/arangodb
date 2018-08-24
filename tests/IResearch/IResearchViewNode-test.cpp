@@ -206,9 +206,8 @@ SECTION("construct") {
   CHECK(1 == setHere.size());
   CHECK(&outVariable == setHere[0]);
 
-  size_t nrItems{};
-  CHECK(0. == node.estimateCost(nrItems)); // no dependencies
-  CHECK(0 == nrItems);
+  CHECK(0. == node.getCost().estimatedCost); // no dependencies
+  CHECK(0 == node.getCost().estimatedNrItems); // no dependencies
 }
 
 SECTION("constructFromVPackSingleServer") {
@@ -306,9 +305,8 @@ SECTION("constructFromVPackSingleServer") {
   CHECK(outVariable.id == setHere[0]->id);
   CHECK(outVariable.name == setHere[0]->name);
 
-  size_t nrItems{};
-  CHECK(0. == node.estimateCost(nrItems)); // no dependencies
-  CHECK(0 == nrItems);
+  CHECK(0. == node.getCost().estimatedCost); // no dependencies
+  CHECK(0 == node.getCost().estimatedNrItems); // no dependencies
 }
 
 // FIXME TODO
@@ -365,9 +363,7 @@ SECTION("clone") {
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatility() == cloned.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == cloned.getCost());
     }
 
     // clone with properties into another plan
@@ -395,9 +391,7 @@ SECTION("clone") {
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatility() == cloned.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == cloned.getCost());
     }
 
     // clone without properties into another plan
@@ -424,9 +418,7 @@ SECTION("clone") {
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatility() == cloned.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == cloned.getCost());
     }
   }
 
@@ -469,9 +461,7 @@ SECTION("clone") {
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatility() == cloned.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == cloned.getCost());
     }
 
     // clone with properties into another plan
@@ -502,9 +492,7 @@ SECTION("clone") {
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatility() == cloned.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == cloned.getCost());
     }
 
     // clone without properties into another plan
@@ -534,9 +522,7 @@ SECTION("clone") {
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatility() == cloned.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == cloned.getCost());
     }
   }
 }
@@ -606,9 +592,7 @@ SECTION("serialize") {
       CHECK(node.sortCondition() == deserialized.sortCondition());
       CHECK(node.volatility() == deserialized.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == deserialized.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == deserialized.getCost());
     }
 
     // factory method
@@ -631,9 +615,7 @@ SECTION("serialize") {
       CHECK(node.sortCondition() == deserialized.sortCondition());
       CHECK(node.volatility() == deserialized.volatility());
 
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == deserialized.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
+      CHECK(node.getCost() == deserialized.getCost());
     }
   }
 }

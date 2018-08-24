@@ -291,6 +291,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"LAST", ".", flags, &Functions::Last});
   add({"NTH", ".,.", flags, &Functions::Nth});
   add({"POSITION", ".,.|.", flags, &Functions::Position});
+  // CONTAINS_ARRAY is an alias for POSITION
+  addAlias("CONTAINS_ARRAY", "POSITION");
   add({"PUSH", ".,.|.", flags, &Functions::Push});
   add({"APPEND", ".,.|.", flags, &Functions::Append});
   add({"POP", ".", flags, &Functions::Pop});

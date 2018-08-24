@@ -104,8 +104,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
-  /// @brief the cost of an enumerate list node
-  double estimateCost(size_t&) const override final;
+  /// @brief the cost of an enumerate view node
+  aql::CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {

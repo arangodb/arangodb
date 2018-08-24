@@ -468,9 +468,14 @@ bool IResearchViewNode::empty() const noexcept {
 }
 
 /// @brief the cost of an enumerate view node
-double IResearchViewNode::estimateCost(size_t& nrItems) const {
+aql::CostEstimate IResearchViewNode::estimateCost() const {
+  if (_dependencies.empty()) {
+    return aql::CostEstimate::empty();
+  }
   // TODO: get a better guess from view
-  return _dependencies.empty() ? 0. : _dependencies[0]->getCost(nrItems);
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate; 
 }
 
 std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() const {

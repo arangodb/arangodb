@@ -38,7 +38,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -349,6 +348,20 @@ bool EdgeDefinition::operator==(EdgeDefinition const& other) const {
 bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
   return this->getName() != other.getName() ||
          this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
+}
+
+bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) const {
+  for (auto const& from : this->getFrom()) {
+    if (from == collectionName) {
+      return true;
+    }
+  }
+  for (auto const& to : this->getTo()) {
+    if (to == collectionName) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
