@@ -484,12 +484,7 @@ bool Graph::replaceEdgeDefinition(
   EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.get();
 
   if (this->removeEdgeDefinition(edgeDefinition.getName())) {
-    VPackBuilder builder;
-    builder.openObject();
-    edgeDefinition.toVelocyPack(builder);
-    builder.close();
-
-    this->addEdgeDefinition(builder.slice());
+    addEdgeDefinition(edgeDefinition);
 
     // rebuild orphans, because they might have changed.
     rebuildOrphans(oldEdgeDef, edgeDefinition);
@@ -499,23 +494,13 @@ bool Graph::replaceEdgeDefinition(
   return true;
 }
 
-
-ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
-  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
-
-  if (res.fail()) {
-    return res.copy_result();
-  }
-  TRI_ASSERT(res.ok());
-
-  EdgeDefinition const& edgeDefinition = res.get();
-
+ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   std::string const& collection = edgeDefinition.getName();
   if (hasEdgeCollection(collection)) {
     return {Result(
-        TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
-        collection + " " + std::string{TRI_errno_string(
-                                   TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)})};
+            TRI_ERROR_GRAPH_COLLECTION_MULTI_USE,
+            collection + " " + std::string{TRI_errno_string(
+                    TRI_ERROR_GRAPH_COLLECTION_MULTI_USE)})};
   }
 
   _edgeColls.emplace(collection);
@@ -529,6 +514,19 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDe
   }
 
   return &_edgeDefs.find(collection)->second;
+}
+
+ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+
+  if (res.fail()) {
+    return res.copy_result();
+  }
+  TRI_ASSERT(res.ok());
+
+  EdgeDefinition const& edgeDefinition = res.get();
+
+  return addEdgeDefinition(edgeDefinition);
 }
 
 std::ostream& Graph::operator<<(std::ostream& ostream) {

@@ -207,6 +207,11 @@ class Graph {
   ResultT<EdgeDefinition const*> addEdgeDefinition(
       velocypack::Slice const& edgeDefinitionSlice);
 
+  /// @brief adds one edge definition. Returns an error if the edgeDefinition
+  ///        is already added to this graph.
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+          EdgeDefinition const& edgeDefinition);
+
   /// @brief removes one edge definition. Returns an error if the edgeDefinition
   ///        is not included in this graph.
   bool removeEdgeDefinition(std::string const& edgeDefinitionName);
