@@ -442,7 +442,13 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       pid: res.pid,
       exitStatus: res
     };
-    crashUtils.analyzeCrash(cmd, instanceInfo, {exitStatus: {}}, 'execution of ' + cmd + ' - ' + res.signal);
+    crashUtils.analyzeCrash(cmd,
+                            instanceInfo,
+                            options,
+                            'execution of ' + cmd + ' - ' + res.signal);
+    if (options.coreCheck) {
+      print(instanceInfo.exitStatus.gdbHint);
+    }
     serverCrashed = true;
   }
 
