@@ -53,28 +53,17 @@ NS_BEGIN(iresearch)
 struct IResearchViewMeta {
   class ConsolidationPolicy {
    public:
-    struct Hash {
-      size_t operator()(ConsolidationPolicy const& value) const noexcept;
-    };
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief enum of possible consolidation policy thresholds
-    ////////////////////////////////////////////////////////////////////////////////
-    enum class Type {
-      BYTES, // {threshold} > segment_bytes / (all_segment_bytes / #segments)
-      BYTES_ACCUM, // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-      COUNT, // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
-      FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-    };
-
-    ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
+    ConsolidationPolicy(
+      std::string const& type,
+      size_t segmentThreshold,
+      float threshold
+    );
     ConsolidationPolicy(ConsolidationPolicy const& other);
     ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
     ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
     ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
     bool operator==(ConsolidationPolicy const& other) const noexcept;
     bool operator!=(ConsolidationPolicy const& other) const noexcept;
-    static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief initialize ConsolidationPolicy with values from a JSON definition
@@ -100,14 +89,13 @@ struct IResearchViewMeta {
 
     size_t segmentThreshold() const noexcept;
     float threshold() const noexcept;
-    Type type() const noexcept;
+    std::string const& type() const noexcept;
 
    private:
-    friend struct IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
     irs::index_writer::consolidation_policy_t _policy;
     size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
     float _threshold; // consolidation policy threshold
-    Type _type;
+    std::string _type; // consolidation policy type
   };
 
   struct Mask {

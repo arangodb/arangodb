@@ -718,7 +718,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize,
-                                       TRI_voc_tick_t barrierId,
+                                       TRI_voc_tick_t,
                                        Filter const& filter,
                                        MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way

@@ -70,7 +70,7 @@ SECTION("test_defaults") {
   CHECK((true == metaState._collections.empty()));
   CHECK(true == (10 == meta._cleanupIntervalStep));
   CHECK(true == (60 * 1000 == meta._consolidationIntervalMsec));
-  CHECK((ConsolidationPolicy::Type::BYTES_ACCUM == meta._consolidationPolicy.type()));
+  CHECK((std::string("bytes_accum") == meta._consolidationPolicy.type()));
   CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
   CHECK((false == !meta._consolidationPolicy.policy()));
   CHECK((0.85f == meta._consolidationPolicy.threshold()));
@@ -88,7 +88,7 @@ SECTION("test_inheritDefaults") {
   defaultsState._collections.insert(42);
   defaults._cleanupIntervalStep = 654;
   defaults._consolidationIntervalMsec = 456;
-  defaults._consolidationPolicy = ConsolidationPolicy(ConsolidationPolicy::Type::BYTES, 101, .11f);
+  defaults._consolidationPolicy = ConsolidationPolicy("bytes", 101, .11f);
   defaults._locale = irs::locale_utils::locale("C");
 
   {
@@ -99,7 +99,7 @@ SECTION("test_inheritDefaults") {
     CHECK((42 == *(metaState._collections.begin())));
     CHECK(654 == meta._cleanupIntervalStep);
     CHECK(456 == meta._consolidationIntervalMsec);
-    CHECK((ConsolidationPolicy::Type::BYTES == meta._consolidationPolicy.type()));
+    CHECK((std::string("bytes") == meta._consolidationPolicy.type()));
     CHECK((101 == meta._consolidationPolicy.segmentThreshold()));
     CHECK((false == !meta._consolidationPolicy.policy()));
     CHECK((.11f == meta._consolidationPolicy.threshold()));
@@ -120,7 +120,7 @@ SECTION("test_readDefaults") {
     CHECK((true == metaState._collections.empty()));
     CHECK(10 == meta._cleanupIntervalStep);
     CHECK(60 * 1000 == meta._consolidationIntervalMsec);
-    CHECK((ConsolidationPolicy::Type::BYTES_ACCUM == meta._consolidationPolicy.type()));
+    CHECK((std::string("bytes_accum") == meta._consolidationPolicy.type()));
     CHECK((300 == meta._consolidationPolicy.segmentThreshold()));
     CHECK((false == !meta._consolidationPolicy.policy()));
     CHECK((0.85f == meta._consolidationPolicy.threshold()));
@@ -233,7 +233,7 @@ SECTION("test_readCustomizedValues") {
   CHECK((42 == *(metaState._collections.begin())));
   CHECK(654 == meta._cleanupIntervalStep);
   CHECK(456 == meta._consolidationIntervalMsec);
-  CHECK((ConsolidationPolicy::Type::BYTES == meta._consolidationPolicy.type()));
+  CHECK((std::string("bytes") == meta._consolidationPolicy.type()));
   CHECK((1001 == meta._consolidationPolicy.segmentThreshold()));
   CHECK((false == !meta._consolidationPolicy.policy()));
   CHECK((.11f == meta._consolidationPolicy.threshold()));
@@ -277,7 +277,7 @@ SECTION("test_writeCustomizedValues") {
     arangodb::iresearch::IResearchViewMeta meta;
     arangodb::iresearch::IResearchViewMetaState metaState;
     meta._consolidationIntervalMsec = 0;
-    meta._consolidationPolicy = ConsolidationPolicy(ConsolidationPolicy::Type::FILL, 0, .2f);
+    meta._consolidationPolicy = ConsolidationPolicy("fill", 0, .2f);
 
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -308,7 +308,7 @@ SECTION("test_writeCustomizedValues") {
   metaState._collections.insert(62);
   meta._cleanupIntervalStep = 654;
   meta._consolidationIntervalMsec = 456;
-  meta._consolidationPolicy = ConsolidationPolicy(ConsolidationPolicy::Type::BYTES, 101, .11f);
+  meta._consolidationPolicy = ConsolidationPolicy("bytes", 101, .11f);
   meta._locale = iresearch::locale_utils::locale("en_UK.UTF-8");
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };

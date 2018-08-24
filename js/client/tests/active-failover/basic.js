@@ -146,12 +146,12 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      print("All followers are in sync");
+      print("All followers are in sync with: ", leader);
       return true;
     }
     wait(1.0);
   }
-  print("Timeout waiting for followers");
+  print("Timeout waiting for followers of: ", leader);
   return false;
 }
 
@@ -254,16 +254,18 @@ function ActiveFailoverSuite() {
   return {
     setUp: function () {
       let col = db._create(cname);
+      print("<setUp>");
       assertTrue(checkInSync(currentLead, servers));
-
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
+      print("</setUp>");
     },
 
     tearDown: function () {
       //db._collection(cname).drop();
       //serverTeardown();
+      print("<tearDown>");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);
@@ -282,6 +284,8 @@ function ActiveFailoverSuite() {
       let endpoints = getClusterEndpoints();
       assertTrue(endpoints.length === servers.length);
       assertTrue(endpoints[0] === currentLead);
+
+      print("</tearDown>");
     },
 
     // Basic test if followers get in sync

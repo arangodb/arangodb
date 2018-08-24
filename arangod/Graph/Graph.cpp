@@ -350,6 +350,20 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
          this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
 }
 
+bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) const {
+  for (auto const& from : this->getFrom()) {
+    if (from == collectionName) {
+      return true;
+    }
+  }
+  for (auto const& to : this->getTo()) {
+    if (to == collectionName) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collection", VPackValue(getName()));
