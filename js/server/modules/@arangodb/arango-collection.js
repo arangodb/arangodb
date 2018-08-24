@@ -197,7 +197,7 @@ ArangoCollection.prototype.any = function () {
   if (cluster.isCoordinator()) {
     const db = require('internal').db;
     let document = null;
-    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc"
+    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
     let cursor = db._query(query, {"@coll": this.name()});
     if (cursor.hasNext()) {
       document = cursor.next();
