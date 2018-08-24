@@ -34,7 +34,7 @@ Snappy is intended to be fast. On a single core of a Core i7 processor
 in 64-bit mode, it compresses at about 250 MB/sec or more and decompresses at
 about 500 MB/sec or more. (These numbers are for the slowest inputs in our
 benchmark suite; others are much faster.) In our tests, Snappy usually
-is faster than algorithms in the same class (e.g. LZO, LZF, FastLZ, QuickLZ,
+is faster than algorithms in the same class (e.g. LZO, LZF, QuickLZ,
 etc.) while achieving comparable compression ratios.
 
 Typical compression ratios (based on the benchmark suite) are about 1.5-1.7x
@@ -52,7 +52,7 @@ In particular:
  - Snappy uses 64-bit operations in several places to process more data at
    once than would otherwise be possible.
  - Snappy assumes unaligned 32- and 64-bit loads and stores are cheap.
-   On some platforms, these must be emulated with single-byte loads 
+   On some platforms, these must be emulated with single-byte loads
    and stores, which is much slower.
  - Snappy assumes little-endian throughout, and needs to byte-swap data in
    several places if running on a big-endian platform.
@@ -60,6 +60,16 @@ In particular:
 Experience has shown that even heavily tuned code can be improved.
 Performance optimizations, whether for 64-bit x86 or other platforms,
 are of course most welcome; see "Contact", below.
+
+
+Building
+========
+
+CMake is supported and autotools will soon be deprecated.
+You need CMake 3.4 or above to build:
+
+  mkdir build
+  cd build && cmake ../ && make
 
 
 Usage
@@ -116,7 +126,7 @@ before the unit tests, but you can disable them using the flag
 need to edit the source).
 
 Finally, snappy can benchmark Snappy against a few other compression libraries
-(zlib, LZO, LZF, FastLZ and QuickLZ), if they were detected at configure time.
+(zlib, LZO, LZF, and QuickLZ), if they were detected at configure time.
 To benchmark using a given file, give the compression algorithm you want to test
 Snappy against (e.g. --zlib) and then a list of one or more file names on the
 command line. The testdata/ directory contains the files used by the

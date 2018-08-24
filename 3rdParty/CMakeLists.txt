@@ -245,9 +245,9 @@ set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 ## SNAPPY
 ################################################################################
 
-set(SNAPPY_VERSION "d53de18")
-set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
-set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+set(SNAPPY_VERSION "1.1.7")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
