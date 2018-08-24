@@ -64,6 +64,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   friend class arangodb::aql::RedundantCalculationsReplacer;
 
  public:
+  /// @brief node options
+  struct Options {
+    /// @brief sync view before querying to get the latest index snapshot
+    bool forceSync{ false };
+  }; // Options
+
   IResearchViewNode(
     aql::ExecutionPlan& plan,
     size_t id,
@@ -71,7 +77,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     std::shared_ptr<const arangodb::LogicalView> const& view,
     aql::Variable const& outVariable,
     aql::AstNode* filterCondition,
-    aql::AstNode* options, /* may be nullptr */
+    aql::AstNode* options,
     std::vector<IResearchSort>&& sortCondition
   );
 
@@ -175,6 +181,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     std::unordered_set<aql::Variable const*>& vars
   ) const override final;
 
+  /// @brief returns IResearchViewNode options
+  Options const& options() const noexcept {
+    return _options;
+  }
+
   /// @brief node volatility, determines how often query has
   ///        to be rebuilt during the execution
   /// @note first - node has nondeterministic/dependent (inside a loop)
@@ -211,9 +222,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief filter node to pass to view
   aql::AstNode const* _filterCondition;
   
-  /// @brief view options. can be nullptr
-  aql::AstNode const* _options;
-
   /// @brief sortCondition to pass to the view
   std::vector<IResearchSort> _sortCondition;
 
@@ -222,6 +230,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief volatility mask
   mutable int _volatilityMask{ -1 };
+
+  /// @brief IResearchViewNode options
+  Options _options;
 }; // IResearchViewNode
 
 } // iresearch
