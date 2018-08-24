@@ -308,8 +308,8 @@ function hasIResearch (db) {
                 if (dbLevel['rw'].has(name)) {
                   tasks.register(task);
                   wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                  expect(rootTestView(testViewRename)).to.equal(true, 'View renaming reported success, but updated view was not found afterwards');
+                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(colLevel['ro'].has(name) || colLevel['rw'].has(name), `${name} could not update the view with sufficient rights`);
+                  expect(rootTestView(testViewRename)).to.equal(colLevel['ro'].has(name) || colLevel['rw'].has(name), 'View renaming reported success, but updated view was not found afterwards');
                 } else {
                   try {
                     tasks.register(task);

@@ -170,8 +170,8 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       if (found && StringUtils::boolean(val)) {
         break; // continue with auth check
       }
-      [[gnu::fallthrough]];
     }
+    // intentionally falls through
     case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&
           path.find("/_admin/cluster/health") == std::string::npos &&
