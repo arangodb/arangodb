@@ -7,7 +7,7 @@ filtering on multiple document attributes.
 
 ## View datasource
 
-The IResearch functionality is exposed to ArangoDB via the view API for views
+Search functionality is exposed to ArangoDB via the view API for views
 of type *arangosearch*. The ArangoSearch view is merely an identity
 transformation applied onto documents stored in linked collections of the same ArangoDB database.
 In plain terms an ArangoSearch view only allows filtering and sorting of documents
@@ -60,14 +60,14 @@ directives.
 
 During view creation the following directives apply:
 
-* **id** (_optional_): the desired view identifier
-* **name** (_required_): the view name
-* **type** (_required_): the value "arangosearch"<br/>
+* **id** (_optional_; type: `string`): the desired view identifier
+* **name** (_required_; type: `string`): the view name
+* **type** (_required_; type: `string`): the value "arangosearch"<br/>
 * any of the directives from the section [View properties](#view-properties)
 
 During view modification the following directives apply:
 
-* **links** (_optional_):
+* **links** (_optional_; type: `object`):
   a mapping of `collection-name/collection-identifier` to one of:
   * link creation - link definition as per the section [Link properties](#link-properties)
   * link removal - JSON keyword *null* (i.e. nullify a link if present)<br/>
@@ -84,7 +84,7 @@ of joining multiple index segments into a bigger one and removing garbage docume
 (e.g. deleted from a collection). **Cleanup** is meant to be treated as the
 procedure of removing unused segments after release of internal resources.
 
-* **cleanupIntervalStep** (_optional_; default: `10`; to disable use: `0`)<br/>
+* **cleanupIntervalStep** (_optional_; type: `integer`; default: `10`; to disable use: `0`)<br/>
   ArangoSearch waits at least this many commits between removing unused files in
   its data directory
   for the case where the consolidation policies merge segments often (i.e. a
@@ -98,7 +98,7 @@ procedure of removing unused segments after release of internal resources.
   remaining however, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-* **consoloidationIntervalMsec** (_optional_; default: `60000`; to disable use: `0`)<br/>
+* **consoloidationIntervalMsec** (_optional_; type: `integer`; default: `60000`; to disable use: `0`)<br/>
   ArangoSearch waits at least this many milliseconds between committing view data store
   changes and making documents visible to queries
   for the case where there are a lot of inserts/updates. A lower value will
@@ -118,7 +118,7 @@ procedure of removing unused segments after release of internal resources.
    subsequent ArangoDB transactions, in-progress ArangoDB transactions will
    still continue to return a repeatable-read state.
 
-* **consolidationPolicy** (_optional_; default: `{}`; to disable use: `null`)<br/>
+* **consolidationPolicy** (_optional_; type: `object`; default: `{}`; to disable use: `null`)<br/>
   the consolidation policy to apply for selecting data store segment merge
   candidates.
   >With each ArangoDB transaction that inserts documents one or more
@@ -132,7 +132,7 @@ procedure of removing unused segments after release of internal resources.
    search algorithm to perform more optimally and for extra file handles to be
    released once old segments are no longer used.
 
-  * **type** (_optional_; default `"bytes_accum"`)<br/>
+  * **type** (_optional_; type: `string`; default: `"bytes_accum"`)<br/>
     the segment candidates for the "consolidation" operation are selected based
     upon several possible configurable formulas as defined by their types
     the currently supported types are:
@@ -149,21 +149,21 @@ procedure of removing unused segments after release of internal resources.
       `{threshold} > #segment_docs{valid} / (#segment_docs{valid} + number_of_segment_docs{removed})`
       i.e. the candidate segment valid document count is less that the average segment total document count multiplied by the `{threshold}`
 
-  * **segmentThreshold** (_optional_, default: `300`)<br/>
+  * **segmentThreshold** (_optional_; type: `integer`; default: `300`)<br/>
     apply the "consolidation" operation if and only if `{segmentThreshold} < number_of_segments`
 
-  * **threshold** (_optional_; default: `0.85`)<br/>
+  * **threshold** (_optional_; type: `float`; default: `0.85`)<br/>
     select a given segment for "consolidation" if and only if the formula based
     on *type* (as defined above) evaluates to true, valid value range
     `[0.0, 1.0]`
 
 ## Link properties
 
-* **analyzers** (_optional_, default: `[ 'identity' ]`)<br/>
+* **analyzers** (_optional_; type: `array`; subtype: `string`; default: `[ 'identity' ]`)<br/>
   a list of analyzers, by name as defined via the [Analyzers](Analyzers.md), that
   should be applied to values of processed document attributes
 
-* **fields** (_optional_, default: `{}`)<br/>
+* **fields** (_optional_; type: `object`; default: `{}`)<br/>
   an object `{attribute-name: [Link properties]}` of fields that should be
   processed at each level of the document
   each key specifies the document attribute to be processed, the value of
@@ -172,12 +172,12 @@ procedure of removing unused segments after release of internal resources.
   processing the specified field, a Link properties value of `{}` denotes
   inheritance of all (except *fields*) directives from the current level
 
-* **includeAllFields** (_optional_, default: `false`)<br/>
+* **includeAllFields** (_optional_; type: `boolean`; default: `false`)<br/>
   if true then process all document attributes (if not explicitly specified
   then process the fields with default Link properties directives, i.e. `{}`),
   otherwise only consider attributes mentioned in *fields*
 
-* **trackListPositions** (_optional_, default: `false`)<br/>
+* **trackListPositions** (_optional_; type: `boolean`; default: `false`)<br/>
   if true then for array values track the value position in the array, e.g. when
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr[1] == 'valueY'`
@@ -185,7 +185,7 @@ procedure of removing unused segments after release of internal resources.
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
 
-* **storeValues** (_optional_, default: `"none"`)<br/>
+* **storeValues** (_optional_; type: `string`; default: `"none"`)<br/>
   how should the view track the attribute values, this setting allows for
   additional value retrieval optimizations, one of:
   * **none**: Do not store values by the view
