@@ -118,7 +118,7 @@ procedure of removing unused segments after release of internal resources.
    subsequent ArangoDB transactions, in-progress ArangoDB transactions will
    still continue to return a repeatable-read state.
 
-* **consolidationPolicy** (_optional_; type: `object`; default: `{}`; to disable use: `null`)<br/>
+* **consolidationPolicy** (_optional_; type: `object`; default: `{}`)<br/>
   the consolidation policy to apply for selecting data store segment merge
   candidates.
   >With each ArangoDB transaction that inserts documents one or more
