@@ -190,14 +190,6 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         leastDoneLevel = l;
       }
     }
-
-    // Stop if the result gets out of hand:
-    if (_plans.size() >= _maxNumberOfPlans) {
-      // must still iterate over all REQUIRED remaining transformation rules
-      // because there are some rules which are required to make the query
-      // work in cluster mode etc
-    //  _runOnlyRequiredRules = true;
-    }
   }
 
   _stats.plansCreated = _plans.size();
