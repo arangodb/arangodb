@@ -199,14 +199,14 @@ function checkManifest (filename, inputManifest, mount, complainAboutVersionMism
           and will run in legacy compatibility mode.
         `);
       }
-    } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
+    } /* else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
       if (complainAboutVersionMismatches) {
         console.warnLines(il`
           Service at "${mount}" expects version "${manifest.engines.arangodb}"
           which is likely incompatible with installed version "${serverVersion}".
         `);
       }
-    }
+    } */
   }
 
   for (const key of Object.keys(inputManifest)) {
