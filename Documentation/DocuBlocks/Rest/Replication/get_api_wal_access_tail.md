@@ -87,7 +87,7 @@ are:
 - *data*: the original document data
 
 A more detailed description of the individual replication event types and their
-data structures can be found in [Operation Types](#operation-types).
+data structures can be found in [Operation Types](WALAccess.md/#operation-types).
 
 The response will also contain the following HTTP headers:
 
