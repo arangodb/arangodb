@@ -69,14 +69,17 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(
 
   VPackBuilder builder;
   // remove old definition, insert the new one instead
-  if (graph.replaceEdgeDefinition(newEdgeDef)) {
-    builder.openObject();
-    graph.toPersistence(builder);
-    builder.close();
-  } else {
+  Result res = graph.replaceEdgeDefinition(newEdgeDef);
+  if (res.errorNumber() == TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST) {
     // Graph doesn't contain this edge definition, no need to do anything.
     return OperationResult{};
+  } else if (res.fail()) {
+    return OperationResult(res);
   }
+
+  builder.openObject();
+  graph.toPersistence(builder);
+  builder.close();
 
   GraphManager gmngr{_vocbase};
   std::set<std::string> newCollections;

@@ -219,7 +219,7 @@ class Graph {
   /// @brief replaces one edge definition. Returns an error if the
   /// edgeDefinition
   ///        is not included in this graph.
-  bool replaceEdgeDefinition(EdgeDefinition const& edgeDefinition);
+  Result replaceEdgeDefinition(EdgeDefinition const& edgeDefinition);
 
   /// @brief Rebuild orphan collections. Needs to be called after every
   /// removal or change of an existing an edgeDefinition.

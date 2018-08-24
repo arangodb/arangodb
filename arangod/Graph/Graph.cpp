@@ -215,11 +215,9 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
   for (auto potOrphan : potentialNewOrphans) {
     bool found = false;
     for (auto const& edgeDefinition : edgeDefinitions()) {
-      if (edgeDefinition.second.getFrom().find(potOrphan) !=
-              edgeDefinition.second.getFrom().end() &&
-          edgeDefinition.second.getTo().find(potOrphan) !=
-              edgeDefinition.second.getTo().end()) {
+      if (edgeDefinition.second.isVertexCollectionUsed(potOrphan)) {
         found = true;
+        break;
       }
     }
     if (!found) {
@@ -230,12 +228,14 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
 }
 
 Result Graph::removeOrphanCollection(std::string&& name) {
-  TRI_ASSERT(_orphanColls.find(name) != _orphanColls.end());
   TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
-
-  _orphanColls.erase(name);
-  _vertexColls.erase(name);
-  return TRI_ERROR_NO_ERROR;
+  if (_orphanColls.find(name) != _orphanColls.end()) {
+    _orphanColls.erase(name);
+    _vertexColls.erase(name);
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION;
+  }
 }
 
 Result Graph::addOrphanCollection(std::string&& name) {
@@ -400,16 +400,11 @@ bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
 
 bool EdgeDefinition::isVertexCollectionUsed(
     std::string const& collectionName) const {
-  for (auto const& from : getFrom()) {
-    if (from == collectionName) {
-      return true;
-    }
+  if (getFrom().find(collectionName) != getFrom().end() ||
+      getTo().find(collectionName) != getTo().end()) {
+    return true;
   }
-  for (auto const& to : getTo()) {
-    if (to == collectionName) {
-      return true;
-    }
-  }
+
   return false;
 }
 
@@ -465,13 +460,16 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
   return true;
 }
 
-bool Graph::replaceEdgeDefinition(EdgeDefinition const& edgeDefinition) {
+Result Graph::replaceEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   if (removeEdgeDefinition(edgeDefinition.getName())) {
-    addEdgeDefinition(edgeDefinition);
-  } else {
-    return false;
+    Result res = addEdgeDefinition(edgeDefinition);
+    if (res.fail()) {
+      return res;
+    }
+    return res;
   }
-  return true;
+  // Graph doesn't contain this edge definition, no need to do anything.
+  return TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST;
 }
 
 ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(
