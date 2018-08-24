@@ -147,12 +147,12 @@ function checkInSync(leader, servers, ignore) {
   let loop = 100;
   while (loop-- > 0) {
     if (servers.every(check)) {
-      print("All followers are in sync");
+      print("All followers are in sync with lead: ", leader);
       return true;
     }
     wait(1.0);
   }
-  print("Timeout waiting for followers");
+  print("Timeout waiting for followers of: ", leader);
   return false;
 }
 

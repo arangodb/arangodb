@@ -147,6 +147,13 @@ actions.defineHttp({
       return;
     }
 
+    let role = global.ArangoServerState.role();
+    if (role !== 'COORDINATOR' && role !== 'SINGLE') {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET requests are allowed and only to coordinators or singles');
+      return;
+    }
+
     var body = JSON.parse(req.requestBody);
     if (body === undefined) {
       res.responseCode = actions.HTTP_BAD;
@@ -222,9 +229,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.GET) {
+    if (req.requestType !== actions.GET ||
+      !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed');
+        'only GET requests are allowed and only on coordinator');
       return;
     }
 
@@ -280,9 +288,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.GET) {
+    if (req.requestType !== actions.GET ||
+      !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed');
+        'only GET requests are allowed and only on coordinator');
       return;
     }
 
@@ -338,9 +347,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.GET) {
+    if (req.requestType !== actions.GET ||
+      !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed');
+        'only GET requests are allowed and only on coordinator');
       return;
     }
 
@@ -529,103 +539,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief allows to query the historic statistics of a DBserver in the cluster
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/history',
-  prefix: false,
-
-  callback: function (req, res) {
-    if (req.requestType !== actions.POST) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only POST requests are allowed');
-      return;
-    }
-    var body = actions.getJsonBody(req, res);
-    if (body === undefined) {
-      return;
-    }
-    var DBserver = req.parameters.DBserver;
-
-    // build query
-    var figures = body.figures;
-    var filterString = ' filter u.time > @startDate';
-    var bind = {
-      startDate: (new Date().getTime() / 1000) - 20 * 60
-    };
-
-    if (cluster.isCoordinator() && !req.parameters.hasOwnProperty('DBserver')) {
-      filterString += ' filter u.clusterId == @serverId';
-      bind.serverId = cluster.coordinatorId();
-    }
-
-    var returnValue = ' return u';
-    if (figures) {
-      returnValue = ' return { time : u.time, server : {uptime : u.server.uptime} ';
-
-      var groups = {};
-      figures.forEach(function (f) {
-        var g = f.split('.')[0];
-        if (!groups[g]) {
-          groups[g] = [];
-        }
-        groups[g].push(f.split('.')[1] + ' : u.' + f);
-      });
-      Object.keys(groups).forEach(function (key) {
-        returnValue += ', ' + key + ' : {' + groups[key] + '}';
-      });
-      returnValue += '}';
-    }
-    // allow at most ((60 / 10) * 20) * 2 documents to prevent total chaos
-    var myQueryVal = 'FOR u in _statistics ' + filterString + ' LIMIT 240 SORT u.time' + returnValue;
-
-    if (!req.parameters.hasOwnProperty('DBserver')) {
-      // query the local statistics collection
-      var cursor = AQL_EXECUTE(myQueryVal, bind);
-      res.contentType = 'application/json; charset=utf-8';
-      if (cursor instanceof Error) {
-        res.responseCode = actions.HTTP_BAD;
-        res.body = JSON.stringify({
-          'error': true,
-          'errorMessage': 'an error occurred'
-        });
-      }
-      res.responseCode = actions.HTTP_OK;
-      res.body = JSON.stringify({result: cursor.docs});
-    } else {
-      // query a remote statistics collection
-      var options = { timeout: 10 };
-      var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, req.database,
-        '/_api/cursor', JSON.stringify({query: myQueryVal, bindVars: bind}), {}, options);
-      var r = ArangoClusterComm.wait(op);
-      res.contentType = 'application/json; charset=utf-8';
-      if (r.status === 'RECEIVED') {
-        res.responseCode = actions.HTTP_OK;
-        res.body = r.body;
-      } else if (r.status === 'TIMEOUT') {
-        res.responseCode = actions.HTTP_BAD;
-        res.body = JSON.stringify({
-          'error': true,
-          'errorMessage': 'operation timed out'
-        });
-      } else {
-        res.responseCode = actions.HTTP_BAD;
-        var bodyobj;
-        try {
-          bodyobj = JSON.parse(r.body);
-        } catch (err) {}
-        res.body = JSON.stringify({
-          'error': true,
-          'errorMessage': 'error from DBserver, possibly DBserver unknown',
-          'body': bodyobj
-        });
-      }
-    }
-  }
-});
-
 function reducePlanServers (reducer, data) {
   var databases = ArangoAgency.get('Plan/Collections');
   databases = databases.arango.Plan.Collections;
@@ -664,30 +577,6 @@ function reduceCurrentServers (reducer, data) {
       }, data);
     }, data);
   }, data);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief changes responsibility for all shards from oldServer to newServer.
-// / This needs to be done atomically!
-// //////////////////////////////////////////////////////////////////////////////
-
-function changeAllShardReponsibilities (oldServer, newServer) {
-  return reducePlanServers(function (data, key, servers) {
-    var oldServers = _.cloneDeep(servers);
-    servers = servers.map(function (server) {
-      if (server === oldServer) {
-        return newServer;
-      } else {
-        return server;
-      }
-    });
-    data.operations[key] = servers;
-    data.preconditions[key] = {'old': oldServers};
-    return data;
-  }, {
-    operations: {},
-    preconditions: {}
-  });
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -364,8 +364,23 @@ void LogicalCollection::invokeOnAllElements(
 }
 
 // @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
-  return getPhysical()->numberDocuments(trx);
+uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx, transaction::CountType type) {
+  // detailed results should have been handled in the levels above us
+  TRI_ASSERT(type != transaction::CountType::Detailed);
+
+  int64_t documents = transaction::CountCache::NotPopulated;
+  if (type == transaction::CountType::ForceCache) {
+    // always return from the cache, regardless what's in it
+    documents = _countCache.get();
+  } else if (type == transaction::CountType::TryCache) {
+    documents = _countCache.get(transaction::CountCache::Ttl);
+  }
+  if (documents == transaction::CountCache::NotPopulated) {
+    documents = static_cast<int64_t>(getPhysical()->numberDocuments(trx));
+    _countCache.store(documents);
+  }
+  TRI_ASSERT(documents >= 0);
+  return static_cast<uint64_t>(documents);
 }
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }

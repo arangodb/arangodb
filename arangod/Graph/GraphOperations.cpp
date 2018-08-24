@@ -53,8 +53,18 @@ std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
   return transaction::SmartContext::Create(_vocbase);
 };
 
+void GraphOperations::checkForUsedEdgeCollections(
+    const Graph& graph, const std::string& collectionName,
+    std::unordered_set<std::string>& possibleEdgeCollections) {
+  for (auto const& it : graph.edgeDefinitions()) {
+    if (it.second.isVertexCollectionUsed(collectionName)) {
+      possibleEdgeCollections.emplace(it.second.getName());
+    }
+  }
+}
+
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
-    Graph& graph, const EdgeDefinition& newEdgeDef, bool waitForSync,
+    Graph& graph, EdgeDefinition const& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
 
   VPackBuilder builder;
@@ -431,9 +441,9 @@ OperationResult GraphOperations::addEdgeDefinition(
   // ... in different graph
   GraphManager gmngr{_vocbase};
 
-  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()))};
+  OperationResult result{gmngr.checkForEdgeDefinitionConflicts(*(defRes.get()), _graph.name())};
   if (result.fail()) {
-    // If this fails we will not persists.
+    // If this fails we will not persist.
     return result;
   }
 
@@ -513,32 +523,7 @@ OperationResult GraphOperations::removeEdge(const std::string& definitionName,
                                             const std::string& key,
                                             boost::optional<TRI_voc_rid_t> rev,
                                             bool waitForSync, bool returnOld) {
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-  options.returnOld = returnOld;
-  options.ignoreRevs = !rev.is_initialized();
-
-  VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
-  VPackSlice search{searchBuffer->data()};
-
-  SingleCollectionTransaction trx{ctx(), definitionName,
-                                  AccessMode::Type::WRITE};
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    return OperationResult(res);
-  }
-
-  OperationResult result = trx.remove(definitionName, search, options);
-
-  res = trx.finish(result.result);
-
-  if (result.ok() && res.fail()) {
-    return OperationResult(res);
-  }
-  return result;
+  return removeEdgeOrVertex(definitionName, key, rev, waitForSync, returnOld);
 }
 
 OperationResult GraphOperations::modifyDocument(
@@ -773,9 +758,9 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
                         returnNew);
 }
 
-OperationResult GraphOperations::removeVertex(
-    const std::string& collectionName, const std::string& key,
-    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+OperationResult GraphOperations::removeEdgeOrVertex(
+        const std::string& collectionName, const std::string& key,
+        boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
   OperationOptions options;
   options.waitForSync = waitForSync;
   options.returnOld = returnOld;
@@ -784,7 +769,21 @@ OperationResult GraphOperations::removeVertex(
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
   VPackSlice search{searchBuffer->data()};
 
-  auto const& edgeCollections = _graph.edgeCollections();
+  // check for used edge definitions in ALL graphs
+  GraphManager gmngr{_vocbase};
+
+  std::unordered_set<std::string> possibleEdgeCollections;
+
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    checkForUsedEdgeCollections(*graph, collectionName, possibleEdgeCollections);
+    return Result{};
+  };
+  Result res = gmngr.applyOnAllGraphs(callback);
+  if (res.fail()) {
+    return OperationResult(res);
+  }
+
+  auto edgeCollections = _graph.edgeCollections();
   std::vector<std::string> trxCollections;
 
   trxCollections.emplace_back(collectionName);
@@ -792,13 +791,17 @@ OperationResult GraphOperations::removeVertex(
   for (auto const& it : edgeCollections) {
     trxCollections.emplace_back(it);
   }
+  for (auto const& it : possibleEdgeCollections) {
+    trxCollections.emplace_back(it); // add to trx collections
+    edgeCollections.emplace(it); // but also to edgeCollections for later iteration
+  }
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   auto context = ctx();
   UserTransaction trx{context, {}, trxCollections, {}, trxOptions};
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -809,18 +812,18 @@ OperationResult GraphOperations::removeVertex(
   {
     aql::QueryString const queryString = aql::QueryString{
         "FOR e IN @@collection "
-        "FILTER e._from == @vertexId "
-        "OR e._to == @vertexId "
+        "FILTER e._from == @toDeleteId "
+        "OR e._to == @toDeleteId "
         "REMOVE e IN @@collection"};
 
-    std::string const vertexId = collectionName + "/" + key;
+    std::string const toDeleteId = collectionName + "/" + key;
 
     for (auto const& edgeCollection : edgeCollections) {
       std::shared_ptr<VPackBuilder> bindVars{std::make_shared<VPackBuilder>()};
 
       bindVars->add(VPackValue(VPackValueType::Object));
       bindVars->add("@collection", VPackValue(edgeCollection));
-      bindVars->add("vertexId", VPackValue(vertexId));
+      bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
@@ -841,6 +844,12 @@ OperationResult GraphOperations::removeVertex(
     return OperationResult(res);
   }
   return result;
+}
+
+OperationResult GraphOperations::removeVertex(
+    const std::string& collectionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+  return removeEdgeOrVertex(collectionName, key, rev, waitForSync, returnOld);
 }
 
 bool GraphOperations::collectionExists(std::string const& collection) const {
