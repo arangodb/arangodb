@@ -11180,7 +11180,7 @@
                         "description": "is returned when this operation is called on a coordinator in a cluster.\n\n"
                     }
                 }, 
-                "summary": "Return tick ranges available in the operations log (WAL)", 
+                "summary": "Return tick ranges available in the operations of WAL", 
                 "tags": [
                     "Replication"
                 ], 
