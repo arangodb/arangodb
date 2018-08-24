@@ -137,20 +137,17 @@ bool FlushFeature::unregisterCallback(void* ptr) {
 void FlushFeature::executeCallbacks() {
   std::vector<FlushTransactionPtr> transactions;
 
-  {
-    READ_LOCKER(locker, _callbacksLock);
-    transactions.reserve(_callbacks.size());
+  READ_LOCKER(locker, _callbacksLock);
+  transactions.reserve(_callbacks.size());
 
-    // execute all callbacks. this will create as many transactions as
-    // there are callbacks
-    for (auto const& cb : _callbacks) {
-      // copy elision, std::move(..) not required
-      transactions.emplace_back(cb.second());
-    }
+  // execute all callbacks. this will create as many transactions as
+  // there are callbacks
+  for (auto const& cb : _callbacks) {
+    // copy elision, std::move(..) not required
+    transactions.emplace_back(cb.second());
   }
 
   // TODO: make sure all data is synced
-
 
   // commit all transactions
   for (auto const& trx : transactions) {
