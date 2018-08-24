@@ -141,12 +141,6 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                           RequestCallback cb) {
   static std::atomic<uint64_t> ticketId(1);
   
-  Connection::State state = _state.load(std::memory_order_acquire);
-  if (state == Connection::State::Failed) {
-    cb(errorToInt(ErrorCondition::Canceled), std::move(req), nullptr);
-    return 0;
-  }
-  
   // construct RequestItem
   std::unique_ptr<RequestItem> item(new RequestItem());
   // requestItem->_response later
@@ -163,44 +157,25 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   }
   item.release();
   _numQueued.fetch_add(1, std::memory_order_relaxed);
-
+  FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
+  
+  // _state.load() after queuing request, to prevent race with connect
+  Connection::State state = _state.load();
   if (state == Connection::State::Connected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading\n";
     startWriting();
   } else if (state == State::Disconnected) {
-    FUERTE_LOG_VSTTRACE << "sendRequest (http): not connected\n";
+    FUERTE_LOG_HTTPTRACE << "sendRequest: not connected\n";
     startConnection();
+  } else if (state == Connection::State::Failed) {
+    FUERTE_LOG_ERROR << "queued request on failed connection\n";
   }
   return id;
-}
-  
-// Activate this connection.
-template <SocketType ST>
-void HttpConnection<ST>::startConnection() {
-  // start connecting only if state is disconnected
-  Connection::State exp = Connection::State::Disconnected;
-  if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
-    FUERTE_LOG_ERROR << "already resolving endpoint\n";
-    return;
-  }
-  
-  auto self = shared_from_this();
-  _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
-    if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-      shutdownConnection(ErrorCondition::CouldNotConnect);
-      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                           "connecting failed: " + ec.message());
-    } else {
-      _state.store(Connection::State::Connected, std::memory_order_release);
-      startWriting();  // starts writing queue if non-empty
-    }
-  });
 }
   
 /// @brief cancel the connection, unusable afterwards
 template <SocketType ST>
 void HttpConnection<ST>::cancel() {
+  FUERTE_LOG_CALLBACKS << "cancel: this=" << this << "\n";
   std::weak_ptr<Connection> self = shared_from_this();
   asio_ns::post(*_io_context, [self, this] {
     auto s = self.lock();
@@ -210,12 +185,45 @@ void HttpConnection<ST>::cancel() {
     }
   });
 }
+  
+// Activate this connection.
+template <SocketType ST>
+void HttpConnection<ST>::startConnection() {
+  // start connecting only if state is disconnected
+  Connection::State exp = Connection::State::Disconnected;
+  if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
+    tryConnect(_config._maxConnectRetries);
+  }
+}
+  
+// Connect with a given number of retries
+template <SocketType ST>
+void HttpConnection<ST>::tryConnect(unsigned retries) {
+  assert(_state.load() == Connection::State::Connecting);
+  
+  auto self = shared_from_this();
+  _protocol.connect(_config, [self, this, retries](asio_ns::error_code const& ec) {
+    if (!ec) {
+      _state.store(Connection::State::Connected);
+      startWriting();  // starts writing queue if non-empty
+      return;
+    }
+    FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+    if (retries > 0) {
+      tryConnect(retries - 1);
+    } else {
+      shutdownConnection(ErrorCondition::CouldNotConnect);
+      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+                "connecting failed: " + ec.message());
+    }
+  });
+}
 
 // shutdown the connection and cancel all pending messages.
 template<SocketType ST>
 void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
-  FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
-  
+  FUERTE_LOG_CALLBACKS << "shutdownConnection: this=" << this << "\n";
+
   if (_state.load() != State::Failed) {
     _state.store(State::Disconnected);
   }
@@ -331,8 +339,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
 // Thread-Safe: activate the combined write-read loop
 template<SocketType ST>
 void HttpConnection<ST>::startWriting() {
-  assert(_state.load(std::memory_order_acquire) == State::Connected);
-  FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << "\n";
+  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   
   if (!_active) {
     auto self = shared_from_this();
@@ -347,13 +354,14 @@ void HttpConnection<ST>::startWriting() {
 // writes data from task queue to network using asio_ns::async_write
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
-  FUERTE_LOG_TRACE << "asyncWrite: preparing to send next\n";
+  FUERTE_LOG_TRACE << "asyncWriteNextRequest: this=" << this << "\n";
   assert(_active.load(std::memory_order_acquire));
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
     _active.store(false);
     if (!_queue.pop(ptr)) {
+      FUERTE_LOG_TRACE << "stopped writing: this=" << this << "\n";
       return;
     }
     // a request got queued in-between last minute

@@ -41,7 +41,6 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
     var response = logCurlRequest('POST', url, body);
 
-    console.log(response.code);
     assert(response.code === 201);
 
     logJsonResponse(response);

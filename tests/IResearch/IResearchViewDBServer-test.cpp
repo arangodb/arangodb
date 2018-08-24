@@ -145,13 +145,9 @@ struct IResearchViewDBServerSetup {
       }
     }
 
-    testFilesystemPath = (
-      (irs::utf8_path()/=
-      TRI_GetTempPath())/=
-      (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
-    ).utf8();
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature->directory();
 
     long systemError;
     std::string systemErrorStr;
@@ -823,7 +819,7 @@ SECTION("test_toVelocyPack") {
     wiew->toVelocyPack(builder, true, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((7U == slice.length()));
+    CHECK((6U == slice.length()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
@@ -857,7 +853,7 @@ SECTION("test_toVelocyPack") {
 
 SECTION("test_transaction_snapshot") {
   static std::vector<std::string> const EMPTY;
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"commitIntervalMsec\": 0 }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"consolidationIntervalMsec\": 0 }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -965,7 +961,7 @@ SECTION("test_updateProperties") {
   // update empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -987,14 +983,14 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 42 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"commitIntervalMsec\": 52, \"links\": { \"testCollection\": {} } }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"consolidationIntervalMsec\": 52, \"links\": { \"testCollection\": {} } }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1007,9 +1003,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
@@ -1028,9 +1024,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     }
 
@@ -1044,10 +1040,10 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((false == slice.hasKey("links")));
     }
   }
@@ -1055,7 +1051,7 @@ SECTION("test_updateProperties") {
   // update empty (full)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1077,14 +1073,14 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 42 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"commitIntervalMsec\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1097,9 +1093,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
@@ -1118,9 +1114,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     }
 
@@ -1134,10 +1130,10 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((false == slice.hasKey("links")));
     }
   }
@@ -1145,7 +1141,7 @@ SECTION("test_updateProperties") {
   // update non-empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1172,14 +1168,14 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 42 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commitIntervalMsec\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
       CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
     }
 
@@ -1192,9 +1188,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
@@ -1210,9 +1206,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     }
 
@@ -1226,10 +1222,10 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((false == slice.hasKey("links")));
     }
   }
@@ -1238,7 +1234,7 @@ SECTION("test_updateProperties") {
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": \"123\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"commitIntervalMsec\": 42 }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, \"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -1267,14 +1263,14 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 42 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
     {
-      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"commitIntervalMsec\": 52 }");
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"consolidationIntervalMsec\": 52 }");
       CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
     }
 
@@ -1287,9 +1283,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((7U == slice.length()));
+      CHECK((6U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((!slice.hasKey("links")));
     }
 
@@ -1305,9 +1301,9 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((8U == slice.length()));
+      CHECK((7U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
     }
 
@@ -1321,10 +1317,10 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((11U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
-      CHECK((slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber<size_t>() && 52 == slice.get("commitIntervalMsec").getNumber<size_t>()));
+      CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((false == slice.hasKey("links")));
     }
   }

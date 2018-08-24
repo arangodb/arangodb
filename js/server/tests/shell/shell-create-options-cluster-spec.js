@@ -39,7 +39,7 @@ describe('Cluster collection creation options', function() {
         db._drop('testi');
     });
     it('should wait for all followers to get in sync when waiting for replication', function() {
-        db._create("testi", {replicationFactor: 2, numberOfShards: 16}, {waitForSyncReplication: true});
+        db._create("testi", {replicationFactor: 2, numberOfShards: 32}, {waitForSyncReplication: true});
         let current = ArangoAgency.get('Current/Collections/_system');
         let plan = ArangoAgency.get('Plan/Collections/_system');
         let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
@@ -55,25 +55,6 @@ describe('Cluster collection creation options', function() {
         Object.values(current.arango.Current.Collections['_system'][collectionId]).forEach(entry => {
             expect(entry.servers).to.have.lengthOf(2);
         });
-    });
-    it('should not wait for all followers to get in sync when waiting for replication', function() {
-        db._create("testi", {replicationFactor: 2, numberOfShards: 16}, {waitForSyncReplication: false});
-        let current = ArangoAgency.get('Current/Collections/_system');
-        let plan = ArangoAgency.get('Plan/Collections/_system');
-        let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
-            if (result) {
-                return result;
-            }
-
-            if (collectionDef.name === 'testi') {
-                return collectionDef.id;
-            }
-        }, undefined);
-
-        let someNotInSync = Object.values(current.arango.Current.Collections['_system'][collectionId]).some(entry => {
-            return entry.servers.length < 2;
-        });
-        expect(someNotInSync).to.be.true;
     });
 
 });

@@ -620,17 +620,29 @@ AstNode* Ast::createNodeVariable(char const* name, size_t nameLength,
 AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resolver,
                                    char const* name,
                                    size_t nameLength,
-                                   AccessMode::Type accessType) {
-  std::string const nameString = validateDataSourceName(name, nameLength);
+                                   AccessMode::Type accessType,
+                                   bool validateName,
+                                   bool failIfDoesNotExist) {
+  std::string const nameString = validateDataSourceName(name, nameLength, validateName);
 
   auto const dataSource = resolver.getDataSource(nameString);
 
   if (!dataSource) {
     // datasource not found...
-    THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "name: %s",
-      nameString.c_str());
+    if (failIfDoesNotExist) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "name: %s",
+        nameString.c_str());
+    }
+
+    // still add datasource to query, simply because the AST will also be built
+    // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
+    // case it is ok that the datasource does not exist, but we need to track
+    // the names of datasources used in the query
+    _query->collections()->add(nameString, accessType);
+
+    return createNodeCollectionNoValidation(name, nameLength, nameString, accessType);
   }
             
   // query actual name from datasource... this may be different to the
@@ -662,7 +674,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
 AstNode* Ast::createNodeCollection(char const* name,
                                    size_t nameLength,
                                    AccessMode::Type accessType) {
-  std::string const nameString = validateDataSourceName(name, nameLength);
+  std::string const nameString = validateDataSourceName(name, nameLength, true);
 
   // add collection to query
   _query->collections()->add(nameString, accessType);
@@ -1400,8 +1412,10 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
     auto numExpectedArguments = func->numArguments();
 
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
+      std::string const fname(functionName, length);
+
       THROW_ARANGO_EXCEPTION_PARAMS(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, functionName,
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, fname.c_str(),
           static_cast<int>(numExpectedArguments.first),
           static_cast<int>(numExpectedArguments.second));
     }
@@ -1533,7 +1547,7 @@ void Ast::injectBindParameters(
         }
     
         node = createNodeDataSource(resolver, name, l,
-          isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ
+          isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ, false, true
         );
     
         if (isWriteCollection) {
@@ -3646,7 +3660,8 @@ AstNode* Ast::createNode(AstNodeType type) {
 
 /// @brief validate the name of the given datasource
 std::string Ast::validateDataSourceName(char const* name, 
-                                        size_t nameLength) {
+                                        size_t nameLength, 
+                                        bool validateStrict) {
   // common validation
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3655,7 +3670,7 @@ std::string Ast::validateDataSourceName(char const* name,
   std::string const nameString(name, nameLength);
 
   if (*name == '\0' || nameLength == 0 ||
-      !TRI_vocbase_t::IsAllowedNameForExistingCollection(arangodb::velocypack::StringRef(name, nameLength))) {
+      (validateStrict && !TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name, nameLength)))) {
     _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, nameString.c_str());
     return nullptr;
   }

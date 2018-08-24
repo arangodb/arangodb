@@ -430,7 +430,7 @@ bool syncStore(
     irs::directory_reader& reader,
     irs::index_writer& writer,
     std::atomic<size_t>& segmentCount,
-    arangodb::iresearch::IResearchViewMeta::ConsolidationPolicies const& policies,
+    arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& policy,
     bool forceCommit,
     bool runCleanupAfterCommit,
     std::string const& viewName,
@@ -439,37 +439,33 @@ bool syncStore(
   char runId = 0; // value not used
 
   // ...........................................................................
-  // apply consolidation policies
+  // apply consolidation policy
   // ...........................................................................
 
-  for (auto& entry: policies) {
-    if (!entry.segmentThreshold()
-        || entry.segmentThreshold() > segmentCount.load()) {
-      continue; // skip if interval not reached or no valid policy to execute
-    }
-
+  // skip if interval not reached or no valid policy to execute
+  if (policy.policy() && policy.segmentThreshold() < segmentCount.load()) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << entry.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
+      << "registering consolidation policy '" << policy.type().c_str() << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
     try {
-      writer.consolidate(entry.policy(), false);
+      writer.consolidate(policy.policy(), false);
       forceCommit = true; // a consolidation policy was found requiring commit
     } catch (arangodb::basics::Exception& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.code() << " " << e.what();
+        << "caught exception during registeration of consolidation policy '" << policy.type().c_str() << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.code() << " " << e.what();
       IR_LOG_EXCEPTION();
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.what();
+        << "caught exception during registeration of consolidation policy '" << policy.type().c_str() << "for store '" << storeName << "' with IResearch view '" << viewName << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "caught exception during registeration of consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "'";
+        << "caught exception during registeration of consolidation policy '" << policy.type().c_str() << "for store '" << storeName << "' with IResearch view '" << viewName << "'";
       IR_LOG_EXCEPTION();
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
-      << "finished registering consolidation policy '" << size_t(entry.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
+      << "finished registering consolidation policy '" << policy.type().c_str() << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << "'";
   }
 
   if (!forceCommit) {
@@ -821,7 +817,7 @@ IResearchView::IResearchView(
           }
         }
 
-        if (!state._commitIntervalMsec) {
+        if (!state._consolidationIntervalMsec) {
           timeoutMsec = 0; // task not enabled
 
           return true; // reschedule
@@ -831,14 +827,14 @@ IResearchView::IResearchView(
           std::chrono::system_clock::now() - state._last
         ).count();
 
-        if (usedMsec < state._commitIntervalMsec) {
-          timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
+        if (usedMsec < state._consolidationIntervalMsec) {
+          timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
 
           return true; // reschedule (with possibly updated '_commitIntervalMsec')
         }
 
         state._last = std::chrono::system_clock::now(); // remember last task start time
-        timeoutMsec = state._commitIntervalMsec;
+        timeoutMsec = state._consolidationIntervalMsec;
 
         auto const runCleanupAfterCommit =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
@@ -852,7 +848,7 @@ IResearchView::IResearchView(
                          store->_reader,
                          *(store->_writer),
                          store->_segmentCount,
-                         state._consolidationPolicies,
+                         state._consolidationPolicy,
                          true,
                          runCleanupAfterCommit,
                          name(),
@@ -1634,6 +1630,7 @@ int IResearchView::insert(
 
   if (!impl._meta->init(properties, error)
       || !impl._metaState.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to initialize iResearch view from definition, error: " << error;
 
@@ -1651,6 +1648,7 @@ int IResearchView::insert(
     auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
 
     if (!res.ok()) {
+      TRI_set_errno(res.errorNumber());
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
 

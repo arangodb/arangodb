@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -77,6 +78,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
+#include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -219,7 +221,7 @@ void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
-  
+
   _jobManager->deleteJobs();
 }
 
@@ -456,6 +458,9 @@ void GeneralServerFeature::defineHandlers() {
       traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
+  _handlerFactory->addHandler(
+      "/_admin/actions", RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                        AsyncJobManager*>,
@@ -535,6 +540,15 @@ void GeneralServerFeature::defineHandlers() {
       ::createNoData
     );
   }
+
+  // ...........................................................................
+  // test handler
+  // ...........................................................................
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _handlerFactory->addPrefixHandler(
+    "/_api/test",
+    RestHandlerCreator<RestTestHandler>::createNoData);
+#endif
 
   // ...........................................................................
   // actions defined in v8

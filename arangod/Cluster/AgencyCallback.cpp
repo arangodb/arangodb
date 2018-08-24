@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
 AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,

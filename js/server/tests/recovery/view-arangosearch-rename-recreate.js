@@ -43,12 +43,12 @@ function runSetup () {
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
   var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v.properties({ "commitIntervalMsec": 17 });
+  v.properties({ "consolidationIntervalMsec": 17 });
 
   v.rename('UnitTestsRecovery2');
 
   v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v.properties({ "commitIntervalMsec": 7 });
+  v.properties({ "consolidationIntervalMsec": 7 });
 
   db.UnitTestsDummy.save({ _key: 'foo' }, { waitForSync: true });
 
@@ -75,10 +75,10 @@ function recoverySuite () {
       var v, prop;
 
       v = db._view('UnitTestsRecovery1');
-      assertEqual(v.properties().commitIntervalMsec, 7);
+      assertEqual(v.properties().consolidationIntervalMsec, 7);
 
       v = db._view('UnitTestsRecovery2');
-      assertEqual(v.properties().commitIntervalMsec, 17);
+      assertEqual(v.properties().consolidationIntervalMsec, 17);
     }
 
   };

@@ -24,6 +24,7 @@
 #include "Optimizer.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/QueryOptions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 
@@ -74,8 +75,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan, OptimizerRule const
 
 // @brief the actual optimization
 int Optimizer::createPlans(ExecutionPlan* plan,
-                           std::vector<std::string> const& rulesSpecification,
-                           bool inspectSimplePlans,
+                           QueryOptions const& queryOptions,
                            bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   // _plans contains the previous optimization result
@@ -87,8 +87,8 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     delete plan;
     throw;
   }
-  
-  if (!inspectSimplePlans &&
+    
+  if (!queryOptions.inspectSimplePlans &&
       !arangodb::ServerState::instance()->isCoordinator() &&
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
@@ -96,7 +96,10 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     if (!plan->varUsageComputed()) {
       plan->findVarUsage();
     }
-    if (estimateAllPlans) {
+    if (estimateAllPlans || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+      // if profiling is turned on, we must do the cost estimation here
+      // because the cost estimation must be done while the transaction
+      // is still running
       plan->getCost();
     }
     return TRI_ERROR_NO_ERROR;
@@ -108,7 +111,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   int maxRuleLevel = OptimizerRulesFeature::_rules.rbegin()->first;
 
   // which optimizer rules are disabled?
-  _disabledIds = OptimizerRulesFeature::getDisabledRuleIds(rulesSpecification);
+  _disabledIds = OptimizerRulesFeature::getDisabledRuleIds(queryOptions.optimizerRules);
 
   _newPlans.clear();
         
@@ -213,8 +216,10 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   }
 
   // do cost estimation
-  if (estimateAllPlans || _plans.size() > 1) {
-    // only do estimatations is necessary
+  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+    // if profiling is turned on, we must do the cost estimation here
+    // because the cost estimation must be done while the transaction
+    // is still running
     for (auto& p : _plans.list) {
       p->getCost();
       // this value is cached in the plan, so formally this step is

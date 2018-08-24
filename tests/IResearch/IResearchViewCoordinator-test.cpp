@@ -202,13 +202,10 @@ struct IResearchViewCoordinatorSetup {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    testFilesystemPath = (
-      (irs::utf8_path()/=
-      TRI_GetTempPath())/=
-      (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
-    ).utf8();
+
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature->directory();
 
     long systemError;
     std::string systemErrorStr;
@@ -340,7 +337,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((11U == slice.length()));
+    CHECK((10U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
@@ -363,7 +360,7 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((8U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -641,7 +638,7 @@ SECTION("test_update_properties") {
 
     // update properties - full update
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 42, \"commitIntervalMsec\": 50 }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 }");
       CHECK(view->updateProperties(props->slice(), false, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -668,7 +665,7 @@ SECTION("test_update_properties") {
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
         expected._cleanupIntervalStep = 42;
-        expected._commitIntervalMsec = 50;
+        expected._consolidationIntervalMsec = 50;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());
@@ -692,7 +689,7 @@ SECTION("test_update_properties") {
 
     // partially update properties
     {
-      auto props = arangodb::velocypack::Parser::fromJson("{ \"commitIntervalMsec\": 42 }");
+      auto props = arangodb::velocypack::Parser::fromJson("{ \"consolidationIntervalMsec\": 42 }");
       CHECK(fullyUpdatedView->updateProperties(props->slice(), true, true).ok());
       CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
       planVersion = arangodb::tests::getCurrentPlanVersion();
@@ -719,7 +716,7 @@ SECTION("test_update_properties") {
         arangodb::iresearch::IResearchViewMeta meta;
         arangodb::iresearch::IResearchViewMeta expected;
         expected._cleanupIntervalStep = 42;
-        expected._commitIntervalMsec = 42;
+        expected._consolidationIntervalMsec = 42;
         error.clear(); // clear error
         CHECK(meta.init(builder.slice(), error));
         CHECK(error.empty());

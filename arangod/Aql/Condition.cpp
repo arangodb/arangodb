@@ -471,7 +471,7 @@ std::pair<bool, bool> Condition::findIndexes(
     // for statistics queries that do not need a fully accurate collection count
     itemsInIndex = 1024;
   } else {
-    // actually count number of items in index
+    // estimate for the number of documents in the index. may be outdated...
     itemsInIndex = node->collection()->count(trx);
   }
   if (_root == nullptr) {

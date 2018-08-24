@@ -748,7 +748,7 @@ def loadProgramOptionBlocks():
                 default = json.dumps(option["default"])
 
                 # Parse and re-format the optional field for possible values
-                # (not fully safe, but ', 'is unlikely to occur in strings)
+                # (not fully safe, but ', ' is unlikely to occur in strings)
                 try:
                     optionList = option["values"].partition('Possible values: ')[2].split(', ')
                     values = formatList(optionList, '<br/>Possible values:\n')
@@ -758,6 +758,11 @@ def loadProgramOptionBlocks():
                 # Expected data type for argument
                 valueType = option["type"]
 
+                # Enterprise Edition has EE only options marked
+                enterprise = ""
+                if option.setdefault("enterpriseOnly", False):
+                    enterprise = "<em>Enterprise Edition only</em><br/>"
+
                 # Upper-case first letter, period at the end, HTML entities
                 description = option["description"].strip()
                 description = description[0].upper() + description[1:]
@@ -766,7 +771,7 @@ def loadProgramOptionBlocks():
                 description = escape(description)
 
                 # Description, default value and possible values separated by line breaks
-                descriptionCombined = '\n'.join([description, '<br/>Default: <code>{}</code>'.format(default), values])
+                descriptionCombined = '\n'.join([enterprise, description, '<br/>Default: <code>{}</code>'.format(default), values])
 
                 output.append('<tr><td><code>{}</code></td><td>{}</td><td>{}</td></tr>'.format(optionName, valueType, descriptionCombined))
 
