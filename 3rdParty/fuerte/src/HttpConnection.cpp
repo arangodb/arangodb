@@ -160,7 +160,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
   
   // _state.load() after queuing request, to prevent race with connect
-  Connection::State state = _state.load(std::memory_order_acquire);
+  Connection::State state = _state.load();
   if (state == Connection::State::Connected) {
     startWriting();
   } else if (state == State::Disconnected) {
@@ -199,12 +199,12 @@ void HttpConnection<ST>::startConnection() {
 // Connect with a given number of retries
 template <SocketType ST>
 void HttpConnection<ST>::tryConnect(unsigned retries) {
-  assert(_state.load(std::memory_order_acquire) == Connection::State::Connecting);
+  assert(_state.load() == Connection::State::Connecting);
   
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this, retries](asio_ns::error_code const& ec) {
     if (!ec) {
-      _state.store(Connection::State::Connected, std::memory_order_release);
+      _state.store(Connection::State::Connected);
       startWriting();  // starts writing queue if non-empty
       return;
     }

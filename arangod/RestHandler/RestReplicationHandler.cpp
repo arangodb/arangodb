@@ -2114,7 +2114,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), false);
+      auto countRes = trx.count(col->name(), transaction::CountType::Normal);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2169,7 +2169,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
       // referenceChecksum is the stringified number of documents in the
       // collection
-      uint64_t num = col->numberDocuments(trx.get());
+      uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
       referenceChecksum = std::to_string(num);
     }
 
