@@ -249,6 +249,8 @@ function hasIResearch (db) {
                   //FIXME: remove try/catch block after renaming will work in cluster
                   if (e.code === 404 && (e.errorNum === 1203 || e.errorNum === 1470)) {
                     return;
+                  } else if (e.code === 403) {
+                    return; // not authorised is valid if a non-read collection is present in the view
                   } else {
                     throw e;
                   }
