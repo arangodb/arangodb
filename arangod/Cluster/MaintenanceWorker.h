@@ -39,18 +39,18 @@ class MaintenanceWorker : public Thread {
   MaintenanceWorker(
     MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
-  virtual ~MaintenanceWorker() {};
+  virtual ~MaintenanceWorker() {}
 
   //
   // MaintenanceWorker entry points
   //
 
   /// @brief Thread object entry point
-  virtual void run();
+  virtual void run() override;
 
   /// @brief Share internal result state, likely derived from most recent action
   /// @returns Result object
-  Result result() const {return _lastResult;};
+  Result result() const {return _lastResult;}
 
 protected:
   enum WorkerState {
