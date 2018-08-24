@@ -356,14 +356,14 @@ void EdgeDefinition::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
   builder.add("collection",
-                  VPackValue(this->getName()));
+                  VPackValue(getName()));
   builder.add("from", VPackValue(VPackValueType::Array));
-  for (auto const& from : this->getFrom()) {
+  for (auto const& from : getFrom()) {
     builder.add(VPackValue(from));
   }
   builder.close();  // array
   builder.add("to", VPackValue(VPackValueType::Array));
-  for (auto const& to : this->getTo()) {
+  for (auto const& to : getTo()) {
     builder.add(VPackValue(to));
   }
   builder.close();  // array
@@ -394,22 +394,22 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
 }
 
 bool EdgeDefinition::operator==(EdgeDefinition const& other) const {
-  return this->getName() == other.getName() &&
-         this->getFrom() == other.getFrom() && this->getTo() == other.getTo();
+  return getName() == other.getName() &&
+         getFrom() == other.getFrom() && getTo() == other.getTo();
 }
 
 bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
-  return this->getName() != other.getName() ||
-         this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
+  return getName() != other.getName() ||
+         getFrom() != other.getFrom() || getTo() != other.getTo();
 }
 
 bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) const {
-  for (auto const& from : this->getFrom()) {
+  for (auto const& from : getFrom()) {
     if (from == collectionName) {
       return true;
     }
   }
-  for (auto const& to : this->getTo()) {
+  for (auto const& to : getTo()) {
     if (to == collectionName) {
       return true;
     }
@@ -483,7 +483,7 @@ bool Graph::replaceEdgeDefinition(
   }
   EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.get();
 
-  if (this->removeEdgeDefinition(edgeDefinition.getName())) {
+  if (removeEdgeDefinition(edgeDefinition.getName())) {
     addEdgeDefinition(edgeDefinition);
 
     // rebuild orphans, because they might have changed.
