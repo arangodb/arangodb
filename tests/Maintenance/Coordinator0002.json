@@ -1,0 +1,242 @@
+R"=(
+{
+  "foo": {
+    "foobar": {
+      "id": "1010083",
+      "name": "foobar",
+      "type": 3,
+      "status": 3,
+      "planId": "1010083",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c1010083/",
+      "isSmart": false,
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "numberOfShards": 4,
+      "replicationFactor": 3,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "foobar/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "foobar/2",
+          "selectivityEstimate": 0.5,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        }
+      ]
+    },
+    "foobaz": {
+      "id": "1010088",
+      "name": "foobaz",
+      "type": 2,
+      "status": 3,
+      "planId": "1010088",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c1010088/",
+      "isSmart": false,
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "numberOfShards": 6,
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "foobaz/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    }
+  },
+  "_system": {
+    "bar": {
+      "id": "1010041",
+      "name": "bar",
+      "type": 3,
+      "status": 3,
+      "planId": "1010041",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c1010041/",
+      "isSmart": false,
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "numberOfShards": 9,
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "bar/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "fields": [
+            "_from",
+            "_to"
+          ],
+          "id": "bar/2",
+          "selectivityEstimate": 0.5,
+          "sparse": false,
+          "type": "edge",
+          "unique": false
+        },
+        {
+          "fields": [
+            "gi"
+          ],
+          "geoJson": false,
+          "id": "bar/1010051",
+          "sparse": true,
+          "type": "geo",
+          "unique": false
+        },
+        {
+          "fields": [
+            "gij"
+          ],
+          "geoJson": true,
+          "id": "bar/1010052",
+          "sparse": true,
+          "type": "geo",
+          "unique": false
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "hi",
+            "_key"
+          ],
+          "id": "bar/1010053",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        },
+        {
+          "deduplicate": false,
+          "fields": [
+            "pi"
+          ],
+          "id": "bar/1010054",
+          "selectivityEstimate": 1,
+          "sparse": true,
+          "type": "persistent",
+          "unique": false
+        },
+        {
+          "fields": [
+            "fi"
+          ],
+          "id": "bar/2010132",
+          "minLength": 3,
+          "sparse": true,
+          "type": "fulltext",
+          "unique": false
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "sli"
+          ],
+          "id": "bar/1010055",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "baz": {
+      "id": "1010056",
+      "name": "baz",
+      "type": 2,
+      "status": 3,
+      "planId": "1010056",
+      "theLeader": "",
+      "cacheEnabled": false,
+      "globallyUniqueId": "c1010056/",
+      "isSmart": false,
+      "isSystem": false,
+      "keyOptions": {
+        "allowUserKeys": true,
+        "type": "traditional",
+        "lastValue": 0
+      },
+      "numberOfShards": 1,
+      "replicationFactor": 2,
+      "shardKeys": [
+        "_key"
+      ],
+      "shardingStrategy": "hash",
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "baz/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    }
+  }
+}
+)="
