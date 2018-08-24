@@ -1324,7 +1324,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
-    af->userManager()->triggerReload();
+    af->userManager()->triggerLocalReload();
+    af->userManager()->triggerGlobalReload();
   }
 
   return Result{queryResult.code};
