@@ -173,7 +173,8 @@ void auth::UserManager::loadFromDB() {
     return;
   }
   MUTEX_LOCKER(guard, _loadFromDBLock);
-  if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
+  uint64_t tmp = globalVersion();
+  if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
   }
 
@@ -200,7 +201,7 @@ void auth::UserManager::loadFromDB() {
 #endif
         }
         
-        _internalVersion.store(_globalVersion.load());
+        _internalVersion.store(tmp);
       }
     }
   } catch (std::exception const& ex) {
@@ -295,7 +296,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 #endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
       _userCache.erase(entry.username());
-      increaseGlobalVersion();
+      triggerLocalReload();
       LOG_TOPIC(WARN, Logger::AUTHENTICATION)
           << "Cannot update user due to conflict";
     }
@@ -363,10 +364,10 @@ VPackBuilder auth::UserManager::allUsers() {
 }
 
 /// Trigger eventual reload, user facing API call
-void auth::UserManager::triggerReload() {
+void auth::UserManager::triggerGlobalReload() {
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
-    increaseGlobalVersion();
+    _globalVersion.fetch_add(1, std::memory_order_release);
     _internalVersion.fetch_add(1, std::memory_order_release);
     return;
   }
@@ -383,7 +384,7 @@ void auth::UserManager::triggerReload() {
     AgencyCommResult result =
         agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
-      increaseGlobalVersion();
+      _globalVersion.fetch_add(1, std::memory_order_release);
       _internalVersion.fetch_add(1, std::memory_order_release);
       return;
     }
@@ -435,7 +436,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
 
   Result r = storeUserInternal(user, replace);
   if (r.ok()) {
-    triggerReload();
+    triggerGlobalReload();
   }
   return r;
 }
@@ -471,7 +472,7 @@ Result auth::UserManager::enumerateUsers(
 
   // cannot hold _userCacheLock while  invalidating token cache
   if (!toUpdate.empty()) {
-    triggerReload();  // trigger auth reload in cluster
+    triggerGlobalReload();  // trigger auth reload in cluster
   }
   return res;
 }
@@ -508,7 +509,7 @@ Result auth::UserManager::updateUser(std::string const& name,
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
-    triggerReload();  // trigger auth reload in cluster
+    triggerGlobalReload();  // trigger auth reload in cluster
   }
   return r;
 }
@@ -609,7 +610,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
 
   // cannot hold _userCacheLock while  invalidating token cache
   writeGuard.unlock();
-  triggerReload();  // trigger auth reload in cluster
+  triggerGlobalReload();  // trigger auth reload in cluster
 
   return res;
 }
@@ -637,7 +638,7 @@ Result auth::UserManager::removeAllUsers() {
     }
   }
 
-  triggerReload();
+  triggerGlobalReload();
   return res;
 }
 
