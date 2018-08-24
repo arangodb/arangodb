@@ -173,6 +173,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Nonce.cpp
   Basics/OpenFilesTracker.cpp
   Basics/ReadWriteLock.cpp
+  Basics/Result.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp

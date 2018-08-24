@@ -611,6 +611,7 @@ function iterateTests(cases, options, jsonReply) {
     // grrr...normalize structure
     delete result.status;
     delete result.failed;
+    delete result.crashed;
 
     let status = Object.values(result).every(testCase => testCase.status === true);
     let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -650,6 +651,7 @@ function iterateTests(cases, options, jsonReply) {
       print(RED + require('internal').inspect(results) + RESET);
     }
   }
+
   return results;
 }
 
@@ -685,6 +687,7 @@ function unitTest (cases, options) {
   delete options.jsonReply;
 
   let results = iterateTests(cases, options, jsonReply);
+
   if (jsonReply === true) {
     return results;
   } else {
