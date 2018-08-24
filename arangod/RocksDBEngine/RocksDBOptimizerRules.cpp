@@ -214,7 +214,11 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::INDEX: {
+        case EN::INDEX:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
+        {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
@@ -251,25 +255,17 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       current = current->getFirstDependency();
     }
     
-    if (collectionNode == nullptr) {
+    if (collectionNode == nullptr || !node->hasParent()) {
       continue; // skip
     }
     
     current = node->getFirstParent();
     bool valid = false;
-    while (current != nullptr) {
-      if (current->getType() == EN::LIMIT) {
-        LimitNode* ln = ExecutionNode::castTo<LimitNode*>(current);
-        if (ln->limit() == 1) {
-          valid = true;
-          break;
-        }
+    if (current->getType() == EN::LIMIT) {
+      LimitNode* ln = ExecutionNode::castTo<LimitNode*>(current);
+      if (ln->limit() == 1 && ln->offset() == 0) {
+        valid = true;
       }
-      
-      if (!current->hasParent()) {
-        break;
-      }
-      current = node->getFirstParent();
     }
     
     if (valid) {
