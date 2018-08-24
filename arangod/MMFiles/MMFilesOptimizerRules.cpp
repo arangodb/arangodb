@@ -44,7 +44,7 @@ void MMFilesOptimizerRules::registerResources() {
   
   // remove SORT RAND() if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule, 
-               OptimizerRule::removeSortRandRule_pass5, false, true);
+               OptimizerRule::removeSortRandRule, false, true);
 }
 
 /// @brief remove SORT RAND() if appropriate

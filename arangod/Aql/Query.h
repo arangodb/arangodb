@@ -78,7 +78,6 @@ enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
 class Query {
-
  private:
   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
@@ -114,6 +113,7 @@ class Query {
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
+  constexpr static uint64_t DontCache = 0;
   
 /// @brief whether or not the query is killed
   bool killed() const;
@@ -340,9 +340,6 @@ class Query {
   /// @brief returns the next query id
   static TRI_voc_tick_t nextId();
 
- public:
-  constexpr static uint64_t DontCache = 0;
-  
  private:
   /// @brief query id
   TRI_voc_tick_t _id;

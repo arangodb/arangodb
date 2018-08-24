@@ -384,6 +384,21 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to get view");
   }
 
+  // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+  try {
+    arangodb::velocypack::Builder viewBuilder;
+
+    viewBuilder.openObject();
+
+    auto res = view->toVelocyPack(viewBuilder, true, false);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res); // skip view
+    }
+  } catch(...) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); // skip view
+  }
+
   v8::Handle<v8::Value> result = WrapView(isolate, view);
 
   if (result.IsEmpty()) {
@@ -425,6 +440,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
+  uint32_t entry = 0;
   size_t const n = views.size();
 
   for (size_t i = 0; i < n; ++i) {
@@ -435,6 +451,19 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       continue; // skip views that are not authorised to be read
     }
 
+    // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+    try {
+      arangodb::velocypack::Builder viewBuilder;
+
+      viewBuilder.openObject();
+
+      if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+        continue; // skip view
+      }
+    } catch(...) {
+      continue; // skip view
+    }
+
     v8::Handle<v8::Value> c = WrapView(isolate, view);
 
     if (c.IsEmpty()) {
@@ -442,7 +471,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       break;
     }
 
-    result->Set(static_cast<uint32_t>(i), c);
+    result->Set(entry++, c);
   }
 
   if (error) {
