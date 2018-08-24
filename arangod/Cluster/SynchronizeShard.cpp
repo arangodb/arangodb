@@ -227,7 +227,7 @@ arangodb::Result addShardFollower (
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
-    size_t c;
+    uint64_t c;
     count(collection, c);
     VPackBuilder body;
     { VPackObjectBuilder b(&body);
@@ -723,7 +723,7 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo->getServerEndpoint(leader);
-    size_t c;
+    uint64_t c;
     if (!count(collection, c).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << shard;
