@@ -2795,6 +2795,12 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
     return countCoordinator(collectionName, type);
   }
 
+  if (type == CountType::Detailed) {
+    // we are a single-server... we cannot provide detailed per-shard counts,
+    // so just downgrade the request to a normal request
+    type = CountType::Normal;
+  }
+
   return countLocal(collectionName, type);
 }
 
