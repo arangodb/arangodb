@@ -239,9 +239,12 @@ bool Inception::restartingActiveAgent() {
       auto comres = cc->syncRequest(
         clientId, 1, p, rest::RequestType::POST, path, greetstr,
         std::unordered_map<std::string, std::string>(), 2.0);
-      if (comres->status == CL_COMM_SENT) {
+      // FIXMEMAINTENANCE: handle case of result not 200
+      if (comres->status == CL_COMM_SENT) { // WARN: What if result not 200?
         auto const  theirConfigVP = comres->result->getBodyVelocyPack();
         auto const& theirConfig   = theirConfigVP->slice();
+        // FIXMEMAINTENANCE: handle the case that tcc is not an object such
+        // that the next command would throw.
         auto const& tcc           = theirConfig.get("configuration");
         auto const& theirId       = tcc.get("id").copyString();
 
