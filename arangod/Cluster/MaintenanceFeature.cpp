@@ -161,6 +161,10 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 } // MaintenanceFeature::deleteAction
 
 
+// FIXMEMAINTENANCE: None of the addAction() and createAction() routines
+// explicitly check to see if construction of action set FAILED.
+// Therefore it is possible for an "executeNow" action to start running
+// with known invalid parameters.
 
 /// @brief This is the  API for creating an Action and executing it.
 ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
@@ -632,7 +636,7 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
-  auto errors = kit->second; 
+  auto& errors = kit->second; 
 
   try {
     for (auto const& indexId : indexIds) {

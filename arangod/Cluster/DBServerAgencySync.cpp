@@ -139,6 +139,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
+    // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
+    // intended? I also notice that there is another Result object "tmp"
+    // that is going to eat bad results in few lines later. Again, is
+    // that the correct action? If so, how about supporting comments in
+    // the code for both.
     return result;
   }
 
@@ -155,6 +160,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
     glc = getLocalCollections(local);
+    // We intentionally refetch local collections here, such that phase 2
+    // can already see potential changes introduced by phase 1. The two
+    // phases are sufficiently independent that this is OK.
     LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
       return result;
@@ -174,6 +182,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   if (rb.isClosed()) {
+    // FIXMEMAINTENANCE: when would rb not be closed? and if "catch"
+    // just happened, would you want to be doing this anyway?
 
     auto report = rb.slice();
     if (report.isObject()) {
@@ -215,6 +225,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         }
       }
     
+      // FIXMEMAINTENANCE: If comm.sendTransactionWithFailover()
+      // fails, the result is ok() based upon phaseTwo()'s execution?
       result = DBServerAgencySyncResult(
         tmp.ok(),
         report.hasKey("Plan") ?

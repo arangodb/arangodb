@@ -27,7 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Utils/DatabaseGuard.h" 
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Databases.h"
@@ -35,13 +35,14 @@
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
+using namespace arangodb;
 
 DropIndex::DropIndex(
   MaintenanceFeature& feature, ActionDescription const& d) :
   ActionBase(feature, d) {
 
   std::stringstream error;
-  
+
   if (!d.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
@@ -80,7 +81,7 @@ bool DropIndex::first() {
 
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-  
+
     auto col = vocbase->lookupCollection(collection);
     if (col == nullptr) {
       std::stringstream error;
@@ -91,6 +92,7 @@ bool DropIndex::first() {
       return false;
     }
 
+    // FIXMEMAINTENANCE: Why doing the actual work in a callback?
     Result found = methods::Collections::lookup(
       vocbase, collection, [&](LogicalCollection& coll) {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -114,7 +116,7 @@ bool DropIndex::first() {
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
-  
+
   notify();
   return false;
 

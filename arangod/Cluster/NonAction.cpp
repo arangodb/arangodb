@@ -25,6 +25,7 @@
 #include "NonAction.h"
 #include "MaintenanceFeature.h"
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 

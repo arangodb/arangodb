@@ -1,20 +1,22 @@
 #!/bin/bash
+# FIXMEMAINTENANCE: please add a couple of lines about why this script exists
+
 header="R\"=("
 footer=")=\""
 
 outfile=Plan.json
 echo $header > $outfile
-curl -s [::]:4001/_api/agency/read -d'[["/arango/Plan"]]'|jq .[0].arango.Plan >> $outfile
+curl -s localhost:4001/_api/agency/read -d'[["/arango/Plan"]]'|jq .[0].arango.Plan >> $outfile
 echo $footer >> $outfile
 
 outfile=Current.json
 echo $header > $outfile
-curl -s [::]:4001/_api/agency/read -d'[["/arango/Current"]]'|jq .[0].arango.Current >> $outfile
+curl -s localhost:4001/_api/agency/read -d'[["/arango/Current"]]'|jq .[0].arango.Current >> $outfile
 echo $footer >> $outfile
 
 outfile=Supervision.json
 echo $header > $outfile
-supervision=$(curl -s [::]:4001/_api/agency/read -d'[["/arango/Supervision"]]'|jq .[0].arango.Supervision)
+supervision=$(curl -s localhost:4001/_api/agency/read -d'[["/arango/Supervision"]]'|jq .[0].arango.Supervision)
 echo $supervision | jq .>> $outfile
 echo $footer >> $outfile
 

@@ -41,9 +41,9 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -1023,7 +1023,7 @@ void MMFilesCompactorThread::run() {
 
 /// @brief determine the number of documents in the collection
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(
-    LogicalCollection const& collection
+    LogicalCollection& collection
 ) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),
@@ -1045,7 +1045,7 @@ uint64_t MMFilesCompactorThread::getNumberOfDocuments(
     return 16384; // assume some positive value 
   }
 
-  return collection.numberDocuments(&trx);
+  return collection.numberDocuments(&trx, transaction::CountType::Normal);
 }
 
 /// @brief write a copy of the marker into the datafile

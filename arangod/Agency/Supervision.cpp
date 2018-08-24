@@ -583,7 +583,7 @@ bool Supervision::earlyBird() const {
       << "No Sync/ServerStates key in transient store";
     return false;
   }
-  VPackBuilder serverStatesB = _snapshot(tpath).toBuilder();
+  VPackBuilder serverStatesB = _transient(tpath).toBuilder();
   VPackSlice serverStates = serverStatesB.slice();
 
   // every db server in plan accounted for in transient store?
@@ -746,7 +746,9 @@ void Supervision::run() {
               upgradeAgency();
             }
 
-            if (_agent->leaderFor() > 120 || earlyBird()) {
+            if (_agent->leaderFor() > 55 || earlyBird()) {
+              // 55 seconds is less than a minute, which fits to the
+              // 60 seconds timeout in /_admin/cluster/health
               try {
                 doChecks();
               } catch (std::exception const& e) {
@@ -757,7 +759,9 @@ void Supervision::run() {
                   "Supervision::doChecks() generated an uncaught exception.";
               }
             } else {
-              
+              LOG_TOPIC(INFO, Logger::SUPERVISION)
+                << "Postponing supervision for now, waiting for incoming "
+                   "heartbeats: " << _agent->leaderFor();
             }
 
             handleJobs();

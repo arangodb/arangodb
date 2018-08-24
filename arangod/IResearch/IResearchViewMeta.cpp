@@ -34,150 +34,6 @@
 
 NS_LOCAL
 
-bool equalConsolidationPolicy(
-  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& lhs,
-  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& rhs
-) noexcept {
-  return lhs == rhs;
-}
-
-bool initConsolidationPolicy(
-  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy& policy,
-  arangodb::velocypack::Slice const& slice,
-  std::string& errorField,
-  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& defaults
-) noexcept {
-  if (!slice.isObject()) {
-    return false;
-  }
-
-  typedef arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy Policy;
-  Policy::Type policyType;
-
-  {
-    // optional string enum
-    static const std::string fieldName("type");
-
-    if (!slice.hasKey(fieldName)) {
-      policyType = defaults.type();
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isString()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      static const std::unordered_map<std::string, Policy::Type> policies = {
-        { "bytes", Policy::Type::BYTES },
-        { "bytes_accum", Policy::Type::BYTES_ACCUM },
-        { "count", Policy::Type::COUNT },
-        { "fill", Policy::Type::FILL },
-      };
-
-      auto itr = policies.find(field.copyString());
-
-      if (itr == policies.end()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      policyType = itr->second;
-    }
-  }
-
-  size_t segmentThreshold = 0;
-
-  {
-    // optional size_t
-    static const std::string fieldName("segmentThreshold");
-
-    if (!slice.hasKey(fieldName)) {
-      segmentThreshold = defaults.segmentThreshold();
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isNumber<size_t>()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      segmentThreshold = field.getNumber<size_t>();
-
-      // arangodb::velocypack::Slice::isNumber<size_t>(...) incorrectly validates floating point numbers as fixed
-      if (segmentThreshold != field.getNumber<double>()) {
-        errorField = fieldName;
-
-        return false;
-      }
-    }
-  }
-
-  float threshold = std::numeric_limits<float>::infinity();
-
-  {
-    // optional float
-    static const std::string fieldName("threshold");
-
-    if (!slice.hasKey(fieldName)) {
-      threshold = defaults.threshold();
-    } else {
-      auto field = slice.get(fieldName);
-
-      if (!field.isNumber<float>()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      threshold = field.getNumber<float>();
-
-      if (threshold < 0. || threshold > 1.) {
-        errorField = fieldName;
-
-        return false;
-      }
-    }
-  }
-
-  policy = Policy(policyType, segmentThreshold, threshold);
-
-  return true;
-}
-
-bool jsonConsolidationPolicy(
-  arangodb::velocypack::Builder& builder,
-  arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy const& policy
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  typedef arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy Policy;
-  struct ConsolidationPolicyHash { size_t operator()(Policy::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
-  static const std::unordered_map<Policy::Type, std::string, ConsolidationPolicyHash> policies = {
-    { Policy::Type::BYTES, "bytes" },
-    { Policy::Type::BYTES_ACCUM, "bytes_accum" },
-    { Policy::Type::COUNT, "count" },
-    { Policy::Type::FILL, "fill" },
-  };
-
-  auto itr = policies.find(policy.type());
-
-  if (itr == policies.end()) {
-    return true; // ignore invalid policies
-  }
-
-  builder.add("segmentThreshold", arangodb::velocypack::Value(policy.segmentThreshold()));
-  builder.add("threshold", arangodb::velocypack::Value(policy.threshold()));
-  builder.add("type", arangodb::velocypack::Value(itr->second));
-
-  return true;
-}
-
 NS_END
 
 NS_BEGIN(arangodb)
@@ -262,10 +118,17 @@ IResearchViewMeta::ConsolidationPolicy& IResearchViewMeta::ConsolidationPolicy::
 bool IResearchViewMeta::ConsolidationPolicy::operator==(
     IResearchViewMeta::ConsolidationPolicy const& other
 ) const noexcept {
-  return _type == other._type
+  return _policy // null != null
     && _segmentThreshold == other._segmentThreshold
     && _threshold == other._threshold
+    && _type == other._type
     ;
+}
+
+bool IResearchViewMeta::ConsolidationPolicy::operator!=(
+  IResearchViewMeta::ConsolidationPolicy const& other
+  ) const noexcept {
+  return !(*this == other);
 }
 
 /*static*/ const IResearchViewMeta::ConsolidationPolicy& IResearchViewMeta::ConsolidationPolicy::DEFAULT(
@@ -299,12 +162,145 @@ bool IResearchViewMeta::ConsolidationPolicy::operator==(
   }
 }
 
-size_t IResearchViewMeta::ConsolidationPolicy::segmentThreshold() const noexcept {
-  return _segmentThreshold;
+bool IResearchViewMeta::ConsolidationPolicy::init(
+    arangodb::velocypack::Slice const& slice,
+    std::string& errorField,
+    ConsolidationPolicy const& defaults
+) noexcept {
+  if (!slice.isObject()) {
+    return false;
+  }
+
+  Type policyType;
+
+  {
+    // optional string enum
+    static const std::string fieldName("type");
+
+    if (!slice.hasKey(fieldName)) {
+      policyType = defaults.type();
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!field.isString()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      static const std::unordered_map<std::string, Type> policies = {
+        { "bytes", Type::BYTES },
+        { "bytes_accum", Type::BYTES_ACCUM },
+        { "count", Type::COUNT },
+        { "fill", Type::FILL },
+      };
+
+      auto itr = policies.find(field.copyString());
+
+      if (itr == policies.end()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      policyType = itr->second;
+    }
+  }
+
+  size_t segmentThreshold = 0;
+
+  {
+    // optional size_t
+    static const std::string fieldName("segmentThreshold");
+
+    if (!slice.hasKey(fieldName)) {
+      segmentThreshold = defaults.segmentThreshold();
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!field.isNumber<size_t>()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      segmentThreshold = field.getNumber<size_t>();
+
+      // arangodb::velocypack::Slice::isNumber<size_t>(...) incorrectly validates floating point numbers as fixed
+      if (segmentThreshold != field.getNumber<double>()) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  float threshold = std::numeric_limits<float>::infinity();
+
+  {
+    // optional float
+    static const std::string fieldName("threshold");
+
+    if (!slice.hasKey(fieldName)) {
+      threshold = defaults.threshold();
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!field.isNumber<float>()) {
+        errorField = fieldName;
+
+        return false;
+      }
+
+      threshold = field.getNumber<float>();
+
+      if (threshold < 0. || threshold > 1.) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  *this = ConsolidationPolicy(policyType, segmentThreshold, threshold);
+
+  return true;
+}
+
+bool IResearchViewMeta::ConsolidationPolicy::json(
+    arangodb::velocypack::Builder& builder
+) const {
+  if (!builder.isOpenObject()) {
+    return false;
+  }
+
+  struct ConsolidationPolicyHash { size_t operator()(Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
+  static const std::unordered_map<Type, std::string, ConsolidationPolicyHash> policies = {
+    { Type::BYTES, "bytes" },
+    { Type::BYTES_ACCUM, "bytes_accum" },
+    { Type::COUNT, "count" },
+    { Type::FILL, "fill" },
+  };
+
+  auto itr = policies.find(_type);
+
+  if (itr == policies.end()) {
+    return true; // ignore invalid policies
+  }
+
+  builder.add("segmentThreshold", arangodb::velocypack::Value(_segmentThreshold));
+  builder.add("threshold", arangodb::velocypack::Value(_threshold));
+  builder.add("type", arangodb::velocypack::Value(itr->second));
+
+  return true;
 }
 
 irs::index_writer::consolidation_policy_t const& IResearchViewMeta::ConsolidationPolicy::policy() const noexcept {
   return _policy;
+}
+
+size_t IResearchViewMeta::ConsolidationPolicy::segmentThreshold() const noexcept {
+  return _segmentThreshold;
 }
 
 float IResearchViewMeta::ConsolidationPolicy::threshold() const noexcept {
@@ -317,14 +313,14 @@ IResearchViewMeta::ConsolidationPolicy::Type IResearchViewMeta::ConsolidationPol
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _cleanupIntervalStep(mask),
-    _commitIntervalMsec(mask),
+    _consolidationIntervalMsec(mask),
     _consolidationPolicy(mask),
     _locale(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
   : _cleanupIntervalStep(10),
-    _commitIntervalMsec(60 * 1000),
+    _consolidationIntervalMsec(60 * 1000),
     _consolidationPolicy(ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::BYTES_ACCUM)),
     _locale(std::locale::classic()) {
 }
@@ -342,7 +338,7 @@ IResearchViewMeta::IResearchViewMeta(IResearchViewMeta&& other) noexcept
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexcept {
   if (this != &other) {
     _cleanupIntervalStep = std::move(other._cleanupIntervalStep);
-    _commitIntervalMsec = std::move(other._commitIntervalMsec);
+    _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
     _locale = std::move(other._locale);
   }
@@ -353,7 +349,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) {
   if (this != &other) {
     _cleanupIntervalStep = other._cleanupIntervalStep;
-    _commitIntervalMsec = other._commitIntervalMsec;
+    _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
     _locale = other._locale;
   }
@@ -366,11 +362,11 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false; // values do not match
   }
 
-  if (_commitIntervalMsec != other._commitIntervalMsec) {
+  if (_consolidationIntervalMsec != other._consolidationIntervalMsec) {
     return false; // values do not match
   }
 
-  if (!equalConsolidationPolicy(_consolidationPolicy, other._consolidationPolicy)) {
+  if (_consolidationPolicy != other._consolidationPolicy) {
     return false; // values do not match
   }
 
@@ -402,7 +398,6 @@ bool IResearchViewMeta::init(
   Mask* mask /*= nullptr*/
 ) noexcept {
   if (!slice.isObject()) {
-    errorField = "not an object";
     return false;
   }
 
@@ -433,16 +428,16 @@ bool IResearchViewMeta::init(
 
   {
     // optional size_t
-    static const std::string fieldName("commitIntervalMsec");
+    static const std::string fieldName("consolidationIntervalMsec");
 
-    mask->_commitIntervalMsec = slice.hasKey(fieldName);
+    mask->_consolidationIntervalMsec = slice.hasKey(fieldName);
 
-    if (!mask->_commitIntervalMsec) {
-      _commitIntervalMsec = defaults._commitIntervalMsec;
+    if (!mask->_consolidationIntervalMsec) {
+      _consolidationIntervalMsec = defaults._consolidationIntervalMsec;
     } else {
       auto field = slice.get(fieldName);
 
-      if (!getNumber(_commitIntervalMsec, field)) {
+      if (!getNumber(_consolidationIntervalMsec, field)) {
         errorField = fieldName;
 
         return false;
@@ -452,16 +447,14 @@ bool IResearchViewMeta::init(
 
   {
     // optional object
-    static const std::string fieldName("consolidate");
+    static const std::string fieldName("consolidationPolicy");
     std::string errorSubField;
 
     mask->_consolidationPolicy = slice.hasKey(fieldName);
 
     if (!mask->_consolidationPolicy) {
       _consolidationPolicy = defaults._consolidationPolicy;
-    } else if (slice.get(fieldName).isNull()) {
-      _consolidationPolicy._policy = irs::index_writer::consolidation_policy_t(); // disabled policy
-    } else if (!initConsolidationPolicy(_consolidationPolicy, slice.get(fieldName), errorSubField, defaults._consolidationPolicy)) {
+    } else if (!_consolidationPolicy.init(slice.get(fieldName), errorSubField, defaults._consolidationPolicy)) {
       if (errorSubField.empty()) {
         errorField = fieldName;
       } else {
@@ -471,7 +464,7 @@ bool IResearchViewMeta::init(
       return false;
     }
   }
-
+/* FIXME TODO temporarily disable, eventually used for ordering internal data structures
   {
     // optional locale name
     static const std::string fieldName("locale");
@@ -502,7 +495,7 @@ bool IResearchViewMeta::init(
       }
     }
   }
-
+*/
   return true;
 }
 
@@ -519,34 +512,27 @@ bool IResearchViewMeta::json(
     builder.add("cleanupIntervalStep", arangodb::velocypack::Value(_cleanupIntervalStep));
   }
 
-  if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) && (!mask || mask->_commitIntervalMsec)) {
-    builder.add("commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec));
+  if ((!ignoreEqual || _consolidationIntervalMsec != ignoreEqual->_consolidationIntervalMsec) && (!mask || mask->_consolidationIntervalMsec)) {
+    builder.add("consolidationIntervalMsec", arangodb::velocypack::Value(_consolidationIntervalMsec));
   }
 
-  if ((!ignoreEqual || !equalConsolidationPolicy(_consolidationPolicy, ignoreEqual->_consolidationPolicy)) && (!mask || mask->_consolidationPolicy)) {
-    if (!_consolidationPolicy._policy) {
-      builder.add(
-        "consolidate",
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-      );
-    } else {
-      arangodb::velocypack::Builder subBuilder;
+  if ((!ignoreEqual || _consolidationPolicy != ignoreEqual->_consolidationPolicy) && (!mask || mask->_consolidationPolicy)) {
+    builder.add(
+      "consolidationPolicy",
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+    );
 
-      subBuilder.openObject();
-
-      if (!jsonConsolidationPolicy(subBuilder, _consolidationPolicy)) {
-        return false;
-      }
-
-      subBuilder.close();
-      builder.add("consolidate", subBuilder.slice());
+    if (!_consolidationPolicy.json(builder)) {
+      return false;
     }
-  }
 
+    builder.close();
+  }
+/* FIXME TODO temporarily disable, eventually used for ordering internal data structures
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
-
+*/
   return true;
 }
 

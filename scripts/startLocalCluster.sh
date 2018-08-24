@@ -133,7 +133,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
-    build/bin/arangod \
+    $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \

@@ -443,7 +443,7 @@ bool syncStore(
   // ...........................................................................
 
   // skip if interval not reached or no valid policy to execute
-  if (policy.policy() && policy.segmentThreshold() > segmentCount.load()) {
+  if (policy.policy() && policy.segmentThreshold() < segmentCount.load()) {
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "registering consolidation policy '" << size_t(policy.type()) << "for store '" << storeName << "' with IResearch view '" << viewName << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
@@ -817,7 +817,7 @@ IResearchView::IResearchView(
           }
         }
 
-        if (!state._commitIntervalMsec) {
+        if (!state._consolidationIntervalMsec) {
           timeoutMsec = 0; // task not enabled
 
           return true; // reschedule
@@ -827,14 +827,14 @@ IResearchView::IResearchView(
           std::chrono::system_clock::now() - state._last
         ).count();
 
-        if (usedMsec < state._commitIntervalMsec) {
-          timeoutMsec = state._commitIntervalMsec - usedMsec; // still need to sleep
+        if (usedMsec < state._consolidationIntervalMsec) {
+          timeoutMsec = state._consolidationIntervalMsec - usedMsec; // still need to sleep
 
           return true; // reschedule (with possibly updated '_commitIntervalMsec')
         }
 
         state._last = std::chrono::system_clock::now(); // remember last task start time
-        timeoutMsec = state._commitIntervalMsec;
+        timeoutMsec = state._consolidationIntervalMsec;
 
         auto const runCleanupAfterCommit =
           state._cleanupIntervalCount > state._cleanupIntervalStep;
@@ -1630,6 +1630,7 @@ int IResearchView::insert(
 
   if (!impl._meta->init(properties, error)
       || !impl._metaState.init(properties, error)) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to initialize iResearch view from definition, error: " << error;
 
@@ -1647,6 +1648,7 @@ int IResearchView::insert(
     auto const res = create(static_cast<arangodb::LogicalViewStorageEngine&>(*view));
 
     if (!res.ok()) {
+      TRI_set_errno(res.errorNumber());
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
 

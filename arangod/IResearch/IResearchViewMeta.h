@@ -73,14 +73,37 @@ struct IResearchViewMeta {
     ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
     ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
     bool operator==(ConsolidationPolicy const& other) const noexcept;
+    bool operator!=(ConsolidationPolicy const& other) const noexcept;
     static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief initialize ConsolidationPolicy with values from a JSON definition
+    /// @return success or set 'errorField' to the specific field with the error
+    ///         on failure state is undefined
+    ////////////////////////////////////////////////////////////////////////////
+    bool init(
+      arangodb::velocypack::Slice const& slice,
+      std::string& errorField,
+      ConsolidationPolicy const& defaults
+    ) noexcept;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief fill and return a JSON definition of a ConsolidationPolicy object
+    /// @return success or set TRI_set_errno(...) and return false
+    ////////////////////////////////////////////////////////////////////////////
+    bool json(arangodb::velocypack::Builder& builder) const;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return the iresearch policy instance or false if not initialized
+    ////////////////////////////////////////////////////////////////////////////
     irs::index_writer::consolidation_policy_t const& policy() const noexcept;
+
     size_t segmentThreshold() const noexcept;
     float threshold() const noexcept;
     Type type() const noexcept;
 
    private:
-    friend class IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
+    friend struct IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
     irs::index_writer::consolidation_policy_t _policy;
     size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
     float _threshold; // consolidation policy threshold
@@ -89,14 +112,14 @@ struct IResearchViewMeta {
 
   struct Mask {
     bool _cleanupIntervalStep;
-    bool _commitIntervalMsec;
+    bool _consolidationIntervalMsec;
     bool _consolidationPolicy;
     bool _locale;
     explicit Mask(bool mask = false) noexcept;
   };
 
   size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-  size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
   ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
   std::locale _locale; // locale used for ordering processed attribute names
   // NOTE: if adding fields don't forget to modify the default constructor !!!

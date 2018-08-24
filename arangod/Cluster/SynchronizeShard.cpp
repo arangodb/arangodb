@@ -88,7 +88,7 @@ SynchronizeShard::SynchronizeShard(
   ActionBase(feature, desc) {
 
   std::stringstream error;
-  
+
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified";
   }
@@ -114,7 +114,7 @@ SynchronizeShard::SynchronizeShard(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-  
+
 }
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
@@ -182,7 +182,8 @@ arangodb::Result count(
     return res;
   }
 
-  OperationResult opResult = trx.count(collectionName, false);
+  OperationResult opResult = trx.count(collectionName,
+      arangodb::transaction::CountType::Normal);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
@@ -251,7 +252,7 @@ arangodb::Result addShardFollower (
         LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
       } else {
         errorMessage += "with shortcut.";
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMessage;
+        LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
       }
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
@@ -842,7 +843,7 @@ bool SynchronizeShard::first() {
               << "synchronizeOneShard: long sync, after cancelBarrier"
               << timepointToString(system_clock::now());
           }
-          
+
           std::stringstream error;
           error << "shard " << shard << " seems to be gone from leader!";
           LOG_TOPIC(ERR,  Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
@@ -898,8 +899,9 @@ bool SynchronizeShard::first() {
               result = Result(TRI_ERROR_INTERNAL, errorMessage);
             }
 
-            result = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
-            if (!result.ok()) {
+            // This result is unused, only in logs
+            Result lockResult = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+            if (!lockResult.ok()) {
               LOG_TOPIC(ERR, Logger::MAINTENANCE)
                 << "synchronizeOneShard: read lock has timed out for shard " << shard;
             }
@@ -911,9 +913,14 @@ bool SynchronizeShard::first() {
           if (result.ok()) {
             LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
               << "synchronizeOneShard: synchronization worked for shard " << shard;
+            _result.reset(TRI_ERROR_NO_ERROR);
           } else {
             LOG_TOPIC(ERR, Logger::MAINTENANCE)
               << "synchronizeOneShard: synchronization failed for shard " << shard;
+            std::string errorMessage(
+              "synchronizeOneShard: synchronization failed for shard "
+              + shard + ":" + result.errorMessage());
+            _result = Result(TRI_ERROR_INTERNAL, errorMessage);;
           }
         }
       }
@@ -933,7 +940,7 @@ bool SynchronizeShard::first() {
     _result.reset(TRI_ERROR_INTERNAL, e.what());
     return false;
   }
-  
+
   // Tell others that we are done:
   auto const endTime = system_clock::now();
   LOG_TOPIC(INFO, Logger::MAINTENANCE)

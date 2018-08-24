@@ -1633,11 +1633,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       );
     }
 
+    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
     view = LogicalView::create(*this, parameters, true);
 
     if (!view) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+        TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno(),
         std::string("failed to instantiate view in agency'")
       );
     }
@@ -1667,9 +1668,13 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     READ_LOCKER(readLocker, _inventoryLock);
 
     // Try to create a new view. This is not registered yet
+    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
     view = LogicalView::create(*this, parameters, true, 0, callback);
 
     if (!view) {
+      auto errorNumber = TRI_ERROR_NO_ERROR == TRI_errno()
+                       ? TRI_ERROR_INTERNAL : TRI_errno();
+
       if (registeredView) {
         unregisterView(*registeredView);
       }
@@ -1679,7 +1684,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       );
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+        errorNumber,
         std::string("failed to instantiate view '") + name + "'"
       );
     }
@@ -1855,69 +1860,35 @@ bool TRI_vocbase_t::IsAllowedName(
     bool allowSystem,
     arangodb::velocypack::StringRef const& name
 ) noexcept {
-  size_t const length = name.size();
-  
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
+  size_t length = 0;
 
-  char const* s = name.data();
-  char const* e = name.data() + length;
-
-  // check allowed characters: must start with letter or underscore if system is
+  // check allow characters: must start with letter or underscore if system is
   // allowed
-  char const* p = s;
-
-  while (p < e) {
+  for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
     bool ok;
-    if (s == p) {
-      // first byte of name
+    if (length == 0) {
       if (allowSystem) {
-        ok = (*p == '_') || ('a' <= *p && *p <= 'z') ||
-             ('A' <= *p && *p <= 'Z');
+        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
+             ('A' <= *ptr && *ptr <= 'Z');
       } else {
-        ok = ('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z');
+        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
       }
     } else {
-      ok = (*p == '_') || (*p == '-') || ('0' <= *p && *p <= '9') ||
-           ('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z');
+      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
+           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
     }
 
     if (!ok) {
       return false;
     }
+  }
 
-    ++p;
+  // invalid name length
+  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
+    return false;
   }
 
   return true;
-}
-
-/// @brief checks if collection name is valid when referring to an existing collection
-/// this is different to the above method because here we also allow accessing
-/// collections by their numeric ID
-bool TRI_vocbase_t::IsAllowedNameForExistingCollection(
-    arangodb::velocypack::StringRef const& name
-) noexcept {
-  if (!name.empty()) {
-    char const* p = name.data();
-    char const* e = p + name.size();
-
-    // check if the name is just a numeric collection ID
-    while (p < e && *p >= '0' && *p <= '9') {
-      ++p;
-    }
-
-    if (p == e) {
-      // name consisted of only numeric digits
-      return true;
-    }
-    // not only numeric digits
-  }
-
-  // fall back to regular check method  
-  return IsAllowedName(true, name);
 }
 
 /// @brief determine whether a collection name is a system collection name

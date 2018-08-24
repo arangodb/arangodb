@@ -457,7 +457,7 @@ void HeartbeatThread::runDBServer() {
         }
 
         if (!wasNotified) {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Heart beating...";
           planAgencyCallback->refetchAndUpdate(true, false);
           currentAgencyCallback->refetchAndUpdate(true, false);
         } else {
@@ -1033,28 +1033,15 @@ void HeartbeatThread::beginShutdown() {
 
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
-  bool doSleep = false;
-  {
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    if (result.success) {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
-          << "Sync request successful. Now have Plan " << result.planVersion
-          << ", Current " << result.currentVersion;
-      _currentVersions = AgencyVersions(result);
-    } else {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed!";
-      // mop: we will retry immediately so wait at least a LITTLE bit
-      doSleep = true;
-    }
+  MUTEX_LOCKER(mutexLocker, *_statusLock);
+  if (result.success) {
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
+        << "Sync request successful. Now have Plan " << result.planVersion
+        << ", Current " << result.currentVersion;
+    _currentVersions = AgencyVersions(result);
+  } else {
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed!";
   }
-  if (doSleep) {
-    // Sleep a little longer, since this might be due to some synchronization
-    // of shards going on in the background
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  //CONDITION_LOCKER(guard, _condition);
-  //_wasNotified = true;
-  //_condition.signal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

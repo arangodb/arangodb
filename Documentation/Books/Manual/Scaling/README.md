@@ -1,5 +1,5 @@
-Scalability
-===========
+Scaling ArangoDB
+================
 
 ArangoDB is a distributed database supporting multiple data models,
 and can thus be scaled horizontally, that is, by using many servers,
@@ -22,10 +22,10 @@ in this way.
 Options
 -------
 
-Several options are available to scale ArangoDB, each of them has its own pros and
-cons:
+Several options are available to scale ArangoDB, each of them has its own pros
+and cons:
 
-- [Master/Slave](MasterSlave/README.md)
-- [Active Failover](ActiveFailover/README.md)
-- [Cluster](Cluster/README.md)
-- [Multiple Datacenters](DC2DC/README.md)
+- [Master/Slave](../Architecture/DeploymentModes/MasterSlave/README.md)
+- [Active Failover](../Architecture/DeploymentModes/ActiveFailover/README.md)
+- [Cluster](../Architecture/DeploymentModes/Cluster/README.md)
+- [Multiple Datacenters](../Architecture/DeploymentModes/DC2DC/README.md)

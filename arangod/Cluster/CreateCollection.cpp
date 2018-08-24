@@ -40,6 +40,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
@@ -132,7 +133,7 @@ bool CreateCollection::first() {
        props.get(ENF_REPL_FACT).isBool()) ?
       props.get(ENF_REPL_FACT).getBool() : true;
     
-    TRI_col_type_e type(props.get(TYPE).getNumber<TRI_col_type_e>());
+    TRI_col_type_e type = static_cast<TRI_col_type_e>(props.get(TYPE).getNumber<uint32_t>());
     
     VPackBuilder docket;
     { VPackObjectBuilder d(&docket);
@@ -184,6 +185,7 @@ bool CreateCollection::first() {
       _feature.storeShardError(database, collection, shard, eb.steal());
       
       _result.reset(TRI_ERROR_FAILED, error.str());
+      // FIXMEMAINTENANCE: notify here?
       return false;
     }
     
@@ -192,6 +194,7 @@ bool CreateCollection::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+    // FIXMEMAINTENANCE: notify here?
     return false;
   }
 

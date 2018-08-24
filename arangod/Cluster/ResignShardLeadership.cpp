@@ -42,6 +42,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;

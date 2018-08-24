@@ -43,6 +43,8 @@ using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
+#ifndef _WIN32
+
 char const* planStr =
 #include "Plan.json"
 ;
@@ -750,8 +752,6 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     for (auto const& node : localNodes) {
       std::vector<ActionDescription> actions;
 
-      auto const& serverId = node.first;
-
       std::string shname;
 
       for (auto const& shard : shards) {
@@ -837,3 +837,4 @@ TEST_CASE("ActionPhaseTwo", "[cluster][maintenance]") {
 }
 
 
+#endif

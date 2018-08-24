@@ -1540,7 +1540,7 @@ reference:
       if (node == nullptr) {
         // variable not found. so it must have been a collection or view
         auto const& resolver = parser->query()->resolver();
-        node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ);
+        node = ast->createNodeDataSource(resolver, $1.value, $1.length, arangodb::AccessMode::Type::READ, true, false);
       }
 
       TRI_ASSERT(node != nullptr);

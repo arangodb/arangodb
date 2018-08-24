@@ -35,6 +35,7 @@ const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const internal = require('internal');
 const wait = internal.wait;
+const url = '/_api/gharial';
 
 describe('_api/gharial', () => {
 
@@ -43,7 +44,6 @@ describe('_api/gharial', () => {
   const eColName = 'UnitTestRelations';
   const oColName = 'UnitTestOrphans';
   const oColName2 = 'UnitTestOrphansSecond';
-  const url = '/_api/gharial';
 
   const cleanup = () => {
     try {
@@ -520,10 +520,6 @@ describe('_api/gharial', () => {
       .to.have.members(['bob->charlie', 'dave->bob']);
   });
 
-  // TODO deleting a vertex via the graph api should probably delete all
-  // edges that are in any graph's edge collection, not only the "current"
-  // graph. Decide this and write a test.
-
   it('should check that edges can be replaced', () => {
     const examples = require('@arangodb/graph-examples/example-graph');
     const exampleGraphName = 'knows_graph';
@@ -606,6 +602,7 @@ describe('_api/gharial', () => {
       .that.does.not.have.property('new');
 
   });
+
 
   it('should check if the if-match header is working - positive', () => {
     const examples = require('@arangodb/graph-examples/example-graph');
@@ -718,5 +715,135 @@ describe('_api/gharial', () => {
       expect(req.json.edge).to.deep.equal(doc);
     });
   });
+});
 
+describe('_api/gharial testing cross-graph deletes', () => {
+  var graph = require("@arangodb/general-graph");
+
+  const cleanup = () => {
+    try {
+      graph._drop("firstGraph", true);
+    } catch (e) {
+    }
+    try {
+      graph._drop("secondGraph", true);
+    } catch (e) {
+    }
+  };
+
+  beforeEach(cleanup);
+
+  afterEach(cleanup);
+
+  it('should also remove an edge in a second graph if connection in first graph is removed', () => {
+    // G1 = X ---- e ----> Y
+    // G2 = A --^               // A points to e in G1
+    //      A ---- b ----> B    // A points to B in G2
+
+    // G1
+    var g1 = graph._create("firstGraph",
+      graph._edgeDefinitions(
+        graph._relation("firstEdge", ["firstFrom"], ["firstTo"])
+      )
+    );
+    var vertexFrom1 = db["firstFrom"].save({});
+    var vertexIDFrom1 = vertexFrom1._id;
+    var vertexTo1 = db["firstTo"].save({});
+    var vertexIDTo1 = vertexTo1._id;
+
+    var edge1 = db["firstEdge"].save(vertexIDTo1, vertexIDFrom1, {_key: "1"});
+    var edgeID1 = edge1._id;
+
+    // G2
+    var g2 = graph._create("secondGraph",
+      graph._edgeDefinitions(
+        graph._relation("secondEdge", ["secondFrom"], ["firstEdge"])
+      )
+    );
+    var vertexFrom2 = db["secondFrom"].save({});
+    var vertexIDFrom2 = vertexFrom2._id;
+
+    // create edge from G2 to G1 using HTTP API
+    const edgeDef = {
+      _from: vertexIDFrom2,
+      _to: edgeID1
+    };
+
+    // create edge pointing from g2 to g1 (edge)
+    let req = request.post(url + '/' + 'secondGraph' + '/edge/secondEdge', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(202);
+    let toBeRemovedEdgeID = req.json.edge._id;
+
+    // now delete the target edge of g1
+    let req2 = request.delete(url + '/' + 'firstGraph' + '/edge/' + edgeID1);
+    expect(req2.statusCode).to.equal(202);
+
+    var deleted = false;
+    try {
+      let deletedEdge = db._document(toBeRemovedEdgeID);
+    } catch (e) {
+      expect(e.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      deleted = true;
+    }
+
+    expect(deleted).to.equal(true);
+  });
+
+  it('should also remove an edge in a second graph if connected vertex in first graph is removed', () => {
+    // G1 = X ---- e ----> Y
+    // G2 = A -------------^    // A points to Y in G1
+    //      A ---- b ----> B    // A points to B in G2
+
+    // G1
+    var g1 = graph._create("firstGraph",
+      graph._edgeDefinitions(
+        graph._relation("firstEdge", ["firstFrom"], ["firstTo"])
+      )
+    );
+    var vertexFrom1 = db["firstFrom"].save({});
+    var vertexIDFrom1 = vertexFrom1._id;
+    var vertexTo1 = db["firstTo"].save({});
+    var vertexIDTo1 = vertexTo1._id;
+
+    var edge1 = db["firstEdge"].save(vertexIDTo1, vertexIDFrom1, {_key: "1"});
+    var edgeID1 = edge1._id;
+
+    // G2
+    var g2 = graph._create("secondGraph",
+      graph._edgeDefinitions(
+        graph._relation("secondEdge", ["secondFrom"], ["firstTo"])
+      )
+    );
+    var vertexFrom2 = db["secondFrom"].save({});
+    var vertexIDFrom2 = vertexFrom2._id;
+
+    // create edge from G2 to G1 using HTTP API
+    const edgeDef = {
+      _from: vertexIDFrom2,
+      _to: vertexIDTo1
+    };
+
+    // create edge pointing from g2 to g1 (edge)
+    let req = request.post(url + '/' + 'secondGraph' + '/edge/secondEdge', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(202);
+    let toBeRemovedEdgeID = req.json.edge._id;
+
+    // now delete the target edge of g1 (a vertex)
+    let req2 = request.delete(url + '/' + 'firstGraph' + '/vertex/' + vertexIDTo1);
+    expect(req2.statusCode).to.equal(202);
+
+    var deleted = false;
+    try {
+      let deletedEdge = db._document(toBeRemovedEdgeID);
+    } catch (e) {
+      expect(e.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      deleted = true;
+    }
+
+    expect(deleted).to.equal(true);
+  });
 });

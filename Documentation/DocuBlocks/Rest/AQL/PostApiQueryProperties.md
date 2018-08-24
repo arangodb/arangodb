@@ -33,11 +33,11 @@ contain the error details embedded in a JSON object.
 
 @EXAMPLES
 
-a Valid query
+a valid query
 
     @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
     var url = "/_api/query";
-    var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
+    var body = '{ "query" : "FOR i IN 1..100 FILTER i > 10 LIMIT 2 RETURN i * 3" }';
 
     var response = logCurlRequest('POST', url, body);
 
@@ -46,11 +46,11 @@ a Valid query
     logJsonResponse(response);
     @END_EXAMPLE_ARANGOSH_RUN
 
-an Invalid query
+an invalid query
 
     @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
     var url = "/_api/query";
-    var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
+    var body = '{ "query" : "FOR i IN 1..100 FILTER i = 1 LIMIT 2 RETURN i * 3" }';
 
     var response = logCurlRequest('POST', url, body);
 

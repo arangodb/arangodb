@@ -35,6 +35,7 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Indexes.h"
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
@@ -143,8 +144,14 @@ bool EnsureIndex::first() {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Reporting error " << eb.toJson();
 
+      // FIXMEMAINTENANCE: If this action is refused due to missing
+      // components in description, no IndexError gets produced. But
+      // then, if you are missing components, such as database name, will
+      // you be able to produce an IndexError?
+ 
       _feature.storeIndexError(database, collection, shard, id, eb.steal());
       _result.reset(TRI_ERROR_INTERNAL, error.str());
+      notify();
       return false;
     }
     

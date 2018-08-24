@@ -34,6 +34,7 @@ namespace arangodb {
 namespace aql {
 struct OptimizerRule;
 class OptimizerRulesFeature;
+struct QueryOptions;
 
 class Optimizer {
  public:
@@ -160,8 +161,7 @@ class Optimizer {
   /// newly created plans it recalls and will automatically delete them.
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
-  int createPlans(ExecutionPlan* p, std::vector<std::string> const& rulesSpecification, 
-                  bool inspectSimplePlans, bool estimateAllPlans);
+  int createPlans(ExecutionPlan* p, QueryOptions const& queryOptions, bool estimateAllPlans);
 
   size_t hasEnoughPlans(size_t extraPlans) const;
 

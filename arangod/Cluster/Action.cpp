@@ -37,6 +37,7 @@
 
 #include "Logger/Logger.h"
 
+using namespace arangodb;
 using namespace arangodb::maintenance;
 
 Action::Action(

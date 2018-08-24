@@ -33,7 +33,7 @@ Rule of thumb is, the closer the UDF is to your final `RETURN` statement
 (or maybe even inside it), the better. 
 
 When used in clusters, UDFs are always executed on the
-[coordinator](../../Manual/Scalability/Cluster/Architecture.html).
+[coordinator](../../Manual/Architecture/DeploymentModes/Cluster/Architecture.html).
 
 As UDFs are written in JavaScript, each query that executes a UDF will acquire
 one V8 context to execute the UDFs in it. V8 contexts can be re-used across subsequent
