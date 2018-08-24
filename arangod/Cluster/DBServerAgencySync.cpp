@@ -88,11 +88,14 @@ Result getLocalCollections(VPackBuilder& collections) {
       auto cols = vocbase->collections(false);
       
       for (auto const& collection : cols) {
-        collections.add(VPackValue(collection->name()));
-        VPackObjectBuilder col(&collections);
-        collection->toVelocyPack(collections,true,false);
-        collections.add(
-          "theLeader", VPackValue(collection->followers()->getLeader()));
+        std::string const colname = collection->name();
+        if (colname.front() != '_') {
+          collections.add(VPackValue(collection->name()));
+          VPackObjectBuilder col(&collections);
+          collection->toVelocyPack(collections,true,false);
+          collections.add(
+            "theLeader", VPackValue(collection->followers()->getLeader()));
+        }
       }        
     } catch (std::exception const& e) {
       return Result(
