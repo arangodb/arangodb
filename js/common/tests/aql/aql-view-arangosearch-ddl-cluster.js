@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse*/
+/*global fail, assertUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -26,6 +26,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -161,62 +162,49 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(1, Object.keys(properties.links).length);
 
 
-      // commit
+      // consolidate
       db._dropView("TestView");
       view = db._createView("TestView", "arangosearch", {});
 
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(60000, properties.commitIntervalMsec);
-      assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes_accum", properties.consolidate.type);
-      assertEqual(300, properties.consolidate.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.threshold.toFixed(6));
+      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertTrue(Object === properties.consolidationPolicy.constructor);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
+      assertEqual(300, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       meta = {
-        commitIntervalMsec: 10000,
-        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
+        consolidationIntervalMsec: 10000,
+        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(10000, properties.commitIntervalMsec);
-      assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes", properties.consolidate.type);
-      assertEqual(20, properties.consolidate.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertTrue(Object === properties.consolidationPolicy.constructor);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       meta = {
         cleanupIntervalStep: 20,
-        consolidate: { segmentThreshold: 30, threshold: 0.75, type: "count" }
+        consolidationPolicy: { segmentThreshold: 30, threshold: 0.75, type: "count" }
       };
       view.properties(meta, false); // full update
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
-      assertEqual(60000, properties.commitIntervalMsec);
-      assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("count", properties.consolidate.type);
-      assertEqual(30, properties.consolidate.segmentThreshold);
-      assertEqual((0.75).toFixed(6), properties.consolidate.threshold.toFixed(6));
-
-
-      // locale
-      db._dropView("TestView");
-      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
-
-      properties = view.properties();
-      meta = { locale: "en_US.UTF-8" };
-      view.properties(meta);
-      properties = view.properties();
-      assertTrue(String === properties.locale.constructor);
-      assertTrue(properties.locale.length > 0);
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertTrue(Object === properties.consolidationPolicy.constructor);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("count", properties.consolidationPolicy.type);
+      assertEqual(30, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.75).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     },
 
     testLinkDDL: function() {
@@ -472,20 +460,31 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual("quarter", result[3].name);
     },
 
+    testViewCreateDuplicate: function() {
+      db._dropView("TestView");
+      var view = db._createView("TestView", "arangosearch", {});
+
+      try {
+        db._createView("TestView", "arangosearch", {});
+        fail();
+      } catch(e) {
+        assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, e.errorNum);
+      }
+    },
+
     testViewModify: function() {
       // 1 empty collection
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
-      var view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
+      var view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
       var meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
       meta = {
-        commitIntervalMsec: 10000,
-        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
-        locale: "en_US.UTF-8"
+        consolidationIntervalMsec: 10000,
+        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -493,13 +492,12 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(0, result.length);
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(10000, properties.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes", properties.consolidate.type);
-      assertEqual(20, properties.consolidate.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       col0.save({ name: "quarter", text: "quick over" });
       result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
@@ -510,7 +508,7 @@ function IResearchFeatureDDLTestSuite () {
       db._dropView("TestView");
       db._drop("TestCollection0");
       col0 = db._create("TestCollection0");
-      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
+      view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
       col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col0.save({ name: "half", text: "quick fox over lazy" });
@@ -521,9 +519,8 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commitIntervalMsec: 10000,
-        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
-        locale: "en_US.UTF-8"
+        consolidationIntervalMsec: 10000,
+        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -535,13 +532,12 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual("quarter", result[3].name);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(10000, properties.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes", properties.consolidate.type);
-      assertEqual(20, properties.consolidate.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       // 2 non-empty collections
       db._dropView("TestView");
@@ -549,7 +545,7 @@ function IResearchFeatureDDLTestSuite () {
       db._drop("TestCollection1");
       col0 = db._create("TestCollection0");
       var col1 = db._create("TestCollection1");
-      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
+      view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
       col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col0.save({ name: "half", text: "quick fox over lazy" });
@@ -563,9 +559,8 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commitIntervalMsec: 10000,
-        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
-        locale: "en_US.UTF-8"
+        consolidationIntervalMsec: 10000,
+        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -577,13 +572,12 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual("quarter", result[3].name);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(10000, properties.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes", properties.consolidate.type);
-      assertEqual(20, properties.consolidate.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       // 1 empty collection + 2 non-empty collections
       db._dropView("TestView");
@@ -593,7 +587,7 @@ function IResearchFeatureDDLTestSuite () {
       col0 = db._create("TestCollection0");
       col1 = db._create("TestCollection1");
       var col2 = db._create("TestCollection2");
-      view = db._createView("TestView", "arangosearch", { "locale": "de_DE.UTF-16" });
+      view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
       col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col2.save({ name: "half", text: "quick fox over lazy" });
@@ -608,9 +602,8 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
-        commitIntervalMsec: 10000,
-        consolidate: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
-        locale: "en_US.UTF-8"
+        consolidationIntervalMsec: 10000,
+        consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
       };
       view.properties(meta, true); // partial update
 
@@ -622,13 +615,12 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual("quarter", result[3].name);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
-      assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(10000, properties.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes", properties.consolidate.type);
-      assertEqual(20, properties.consolidate.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.consolidate.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       view.properties({}, false); // full update (reset to defaults)
       result = db._query("FOR doc IN  TestView SORT doc.name RETURN doc", null, { waitForSync: true }).toArray();
@@ -636,13 +628,12 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
-      assertEqual(60000, properties.commitIntervalMsec);
-      assertTrue(Object === properties.consolidate.constructor);
-      assertEqual(3, Object.keys(properties.consolidate).length);
-      assertEqual("bytes_accum", properties.consolidate.type);
-      assertEqual(300, properties.consolidate.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.consolidate.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertEqual(60000, properties.consolidationIntervalMsec);
+      assertTrue(Object === properties.consolidationPolicy.constructor);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes_accum", properties.consolidationPolicy.type);
+      assertEqual(300, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.85).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },

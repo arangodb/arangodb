@@ -1,8 +1,8 @@
 
-@startDocuBlock get_api_replication_logger_returns
-@brief Fetch log lines from the server
+@startDocuBlock get_api_wal_access_tail
+@brief Fetch recent operations
 
-@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
+@RESTHEADER{GET /_api/wal/tail, Tail recent server operations}
 
 @RESTQUERYPARAMETERS
 
@@ -12,26 +12,37 @@ Lower bound tick value for results.
 @RESTQUERYPARAM{to,number,optional}
 Upper bound tick value for results.
 
+@RESTQUERYPARAM{global,bool,optional}
+Whether operations for all databases should be included. When set to *false*
+only the operations for the current database are included. The value *true* is
+only valid on the *_system* database. The default is *false*.
+
 @RESTQUERYPARAM{chunkSize,number,optional}
 Approximate maximum size of the returned result.
 
-@RESTQUERYPARAM{includeSystem,boolean,optional}
-Include system collections in the result. The default value is *true*.
+@RESTQUERYPARAM{serverId,number,optional}
+Id of the client used to tail results. The server will use this to 
+keep operations until the client has fetched them. **Note** this is required
+to have a chance at fetching reading all operations with the rocksdb storage engine
+
+@RESTQUERYPARAM{barrierId,number,optional}
+Id of barrier used to keep WAL entries around. **Note** this is only required for the 
+MMFiles storage engine
 
 @RESTDESCRIPTION
-Returns data from the server's replication log. This method can be called
+Returns data from the server's write-ahead log (also named replication log). This method can be called
 by replication clients after an initial synchronization of data. The method
-will return all "recent" log entries from the logger server, and the clients
-can replay and apply these entries locally so they get to the same data
-state as the logger server.
+will return all "recent" logged operations from the server. Clients
+can replay and apply these operations locally so they get to the same data
+state as the server.
 
 Clients can call this method repeatedly to incrementally fetch all changes
-from the logger server. In this case, they should provide the *from* value so
+from the server. In this case, they should provide the *from* value so
 they will only get returned the log events since their last fetch.
 
-When the *from* query parameter is not used, the logger server will return log
+When the *from* query parameter is not used, the server will return log
 entries starting at the beginning of its replication log. When the *from*
-parameter is used, the logger server will only return log entries which have
+parameter is used, the server will only return log entries which have
 higher tick values than the specified *from* value (note: the log entry with a
 tick value equal to *from* will be excluded). Use the *from* value when
 incrementally fetching log data.
@@ -67,18 +78,16 @@ Individual log events will also have additional attributes, depending on the
 event type. A few common attributes which are used for multiple events types
 are:
 
-- *cid*: id of the collection the event was for
+- *cuid*: globally unique id of the view or collection the event was for
+
+- *db*: the database name the event was for
 
 - *tid*: id of the transaction the event was contained in
-
-- *key*: document key
-
-- *rev*: document revision id
 
 - *data*: the original document data
 
 A more detailed description of the individual replication event types and their
-data structures can be found in @ref RefManualReplicationEventTypes.
+data structures can be found in [Operation Types](#operation-types).
 
 The response will also contain the following HTTP headers:
 
@@ -95,10 +104,19 @@ The response will also contain the following HTTP headers:
   by clients in the next request (otherwise the server would return the log
   events from the start of the log again).
 
-- *x-arango-replication-lasttick*: the last tick value the logger server has
-  logged (not necessarily included in the result). By comparing the the last
+- *x-arango-replication-lastscanned*: the last tick the server scanned while
+  computing the operation log. This might include operations the server did not
+  returned to you due to various reasons (i.e. the value was filtered or skipped).
+
+- *x-arango-replication-lasttick*: the last tick value the server has
+  logged in its write ahead log (not necessarily included in the result). By comparing the the last
   tick and last included tick values, clients have an approximate indication of
   how many events there are still left to fetch.
+
+- *x-arango-replication-frompresent*: is set to _true_ if server returned
+  all tick values starting from the specified tick in the _from_ parameter.
+  Should this be set to false the server did not have these operations anymore
+  and the client might have missed operations.
 
 - *x-arango-replication-checkmore*: whether or not there already exists more
   log data which the client could fetch immediately. If there is more log data
@@ -138,11 +156,11 @@ is returned when this operation is called on a coordinator in a cluster.
 
 No log events available
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowEmpty}
+@EXAMPLE_ARANGOSH_RUN{RestWalAccessTailingEmpty}
     var re = require("@arangodb/replication");
     var lastTick = re.logger.state().state.lastLogTick;
 
-    var url = "/_api/replication/logger-follow?from=" + lastTick;
+    var url = "/_api/wal/tail?from=" + lastTick;
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 204);
@@ -152,7 +170,7 @@ No log events available
 
 A few log events *(One JSON document per line)*
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
+@EXAMPLE_ARANGOSH_RUN{RestWalAccessTailingSome}
     var re = require("@arangodb/replication");
     db._drop("products");
 
@@ -166,7 +184,7 @@ A few log events *(One JSON document per line)*
     db.products.drop();
 
     require("internal").wait(1);
-    var url = "/_api/replication/logger-follow?from=" + lastTick;
+    var url = "/_api/wal/tail?from=" + lastTick;
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
@@ -176,7 +194,7 @@ A few log events *(One JSON document per line)*
 
 More events than would fit into the response
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowBufferLimit}
+@EXAMPLE_ARANGOSH_RUN{RestWalAccessTailingBufferLimit}
     var re = require("@arangodb/replication");
     db._drop("products");
 
@@ -190,7 +208,7 @@ More events than would fit into the response
     db.products.drop();
 
     require("internal").wait(1);
-    var url = "/_api/replication/logger-follow?from=" + lastTick + "&chunkSize=400";
+    var url = "/_api/wal/tail?from=" + lastTick + "&chunkSize=400";
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);

@@ -479,6 +479,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/TransactionState.cpp
   StorageEngine/WalAccess.cpp
   Transaction/Context.cpp
+  Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
@@ -532,6 +533,10 @@ SET(ARANGOD_SOURCES
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
+
+if (USE_MAINTAINER_MODE)
+  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} RestHandler/RestTestHandler.cpp)
+endif()
 
 if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)

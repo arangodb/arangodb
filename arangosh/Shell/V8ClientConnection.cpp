@@ -74,16 +74,18 @@ V8ClientConnection::~V8ClientConnection() {
 
 void V8ClientConnection::createConnection() {
  
-  _connection = _builder.connect(_loop);
-  
+  auto newConnection = _builder.connect(_loop);
   fuerte::StringMap params{{"details","true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
   req->header.database = _databaseName;
+  req->timeout(std::chrono::seconds(30));
   try {
-    auto res = _connection->sendRequest(std::move(req));
+    auto res = newConnection->sendRequest(std::move(req));
     _lastHttpReturnCode = res->statusCode();
     
     if (_lastHttpReturnCode == 200) {
+      _connection = std::move(newConnection);
+      
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
       if (res->contentType() == fuerte::ContentType::VPack) {
@@ -138,7 +140,10 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
 }
 
 bool V8ClientConnection::isConnected() {
-  return _connection->state() == fuerte::Connection::State::Connected;
+  if (_connection) {
+    return _connection->state() == fuerte::Connection::State::Connected;
+  }
+  return false;
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
@@ -174,6 +179,11 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   } else if (!client->jwtSecret().empty()) {
     _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
     _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  }
+  
+  auto oldConnection = std::move(_connection);
+  if (oldConnection) {
+    oldConnection->cancel();
   }
   try {
     createConnection();

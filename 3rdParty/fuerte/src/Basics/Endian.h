@@ -32,6 +32,9 @@
   #include <machine/endian.h>
   #include <libkern/OSByteOrder.h>
 #elif _WIN32
+  #include <stdlib.h>
+  static_assert(sizeof(uint16_t) == sizeof(unsigned short), "wrong size for ushort");
+  static_assert(sizeof(uint32_t) == sizeof(unsigned long), "wrong size for ulong");
 #elif __linux__
   #include <endian.h>
 #else
@@ -58,16 +61,6 @@ static constexpr bool isLittleEndian() {return false;}
 #pragma messsage("unsupported os or compiler")
 #endif
  
-template<typename T> inline void ByteSwap(T& t) {
-  uint8_t* ptr = (uint8_t*)(&t);
-  size_t bytes = sizeof(T);
-  for(size_t i = 0; i < bytes / 2; i ++ ) {
-    uint8_t swap = ptr[i];
-    ptr[i] = ptr[bytes - i - 1];
-    ptr[bytes - i - 1] = swap;
-  }
-}
-
 template<typename T, size_t size> struct EndianTraits;
 
 template<typename T> struct EndianTraits<T, 2> {
@@ -79,7 +72,7 @@ template<typename T> struct EndianTraits<T, 2> {
     return htole16(in);
 #elif _WIN32
     if (!isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ushort(in);
     }
 #endif
     return in;
@@ -91,7 +84,7 @@ template<typename T> struct EndianTraits<T, 2> {
     return le16toh(in);
 #elif _WIN32
     if (!isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ushort(in);
     }
 #endif
     return in;
@@ -103,7 +96,7 @@ template<typename T> struct EndianTraits<T, 2> {
     return htobe16(in);
 #elif _WIN32
     if (isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ushort(in);
     }
 #endif
     return in;
@@ -115,7 +108,7 @@ template<typename T> struct EndianTraits<T, 2> {
     return be16toh(in);
 #elif _WIN32
     if (isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ushort(in);
     }
 #endif
     return in;
@@ -131,7 +124,7 @@ template<typename T> struct EndianTraits<T, 4> {
     return htole32(in);
 #elif _WIN32
     if (!isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ulong(in);
     }
 #endif
     return in;
@@ -143,7 +136,7 @@ template<typename T> struct EndianTraits<T, 4> {
     return le32toh(in);
 #elif _WIN32
     if (!isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ulong(in);
     }
 #endif
     return in;
@@ -154,9 +147,9 @@ template<typename T> struct EndianTraits<T, 4> {
 #elif __linux__
     return htobe32(in);
 #elif _WIN32
-  if(isLittleEndian()) {
-    ByteSwap(in);
-  }
+    if (isLittleEndian()) {
+      return _byteswap_ulong(in);
+    }
 #endif
     return in;
   }
@@ -167,7 +160,7 @@ template<typename T> struct EndianTraits<T, 4> {
     return be32toh(in);
 #elif _WIN32
     if (isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_ulong(in);
     }
 #endif
     return in;
@@ -183,7 +176,7 @@ template<typename T> struct EndianTraits<T, 8> {
     return htole64(in);
 #elif _WIN32
     if (!isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_uint64(in);
     }
 #endif
     return in;
@@ -195,7 +188,7 @@ template<typename T> struct EndianTraits<T, 8> {
     return le64toh(in);
 #elif _WIN32
     if (!isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_uint64(in);
     }
 #endif
     return in;
@@ -207,20 +200,20 @@ template<typename T> struct EndianTraits<T, 8> {
     return htobe64(in);
 #elif _WIN32
     if (isLittleEndian()) {
-      ByteSwap(in);
+      return _byteswap_uint64(in);
     }
 #endif
     return in;
   }
-  inline static type betoh (type in) {
+  inline static type betoh(type in) {
 #ifdef __APPLE__
     return OSSwapBigToHostInt64(in);
 #elif __linux__
     return be64toh(in);
 #elif _WIN32
-  if(isLittleEndian()) {
-    ByteSwap(in);
-  }
+    if (isLittleEndian()) {
+      return _byteswap_uint64(in);
+    }
 #endif
     return in;
   }

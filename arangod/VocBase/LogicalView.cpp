@@ -115,6 +115,7 @@ LogicalView::LogicalView(
   auto const& viewFactory = viewTypes->factory(dataSourceType);
 
   if (!viewFactory) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(ERR, Logger::VIEWS)
       << "Found view type for which there is no factory, type: "
       << viewType.toString();

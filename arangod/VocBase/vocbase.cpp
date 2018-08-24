@@ -1637,11 +1637,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       );
     }
 
+    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
     view = LogicalView::create(*this, parameters, true);
 
     if (!view) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+        TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno(),
         std::string("failed to instantiate view in agency'")
       );
     }
@@ -1671,9 +1672,13 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     READ_LOCKER(readLocker, _inventoryLock);
 
     // Try to create a new view. This is not registered yet
+    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
     view = LogicalView::create(*this, parameters, true, 0, callback);
 
     if (!view) {
+      auto errorNumber = TRI_ERROR_NO_ERROR == TRI_errno()
+                       ? TRI_ERROR_INTERNAL : TRI_errno();
+
       if (registeredView) {
         unregisterView(*registeredView);
       }
@@ -1683,7 +1688,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       );
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+        errorNumber,
         std::string("failed to instantiate view '") + name + "'"
       );
     }
