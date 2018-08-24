@@ -474,7 +474,7 @@ function optimizerCollectMethodsTestSuite () {
         g.push("q" + i);
       }
       q += "RETURN INTERSECTION(" + g.join(", ") + ")";
-      assertTrue(AQL_EXPLAIN(q, null).stats.plansCreated >= 256);
+      assertTrue(AQL_EXPLAIN(q, null).stats.plansCreated >= 128);
       var result = AQL_EXECUTE(q).json;
       assertEqual([3], result[0]);
     },
