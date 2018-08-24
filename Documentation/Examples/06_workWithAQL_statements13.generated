@@ -28,9 +28,6 @@ arangosh&gt; db._parse( <span class="hljs-string">"FOR i IN [ 1, 2 ] RETURN i"</
                   <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
                 } 
               ] 
-            }, 
-            { 
-              <span class="hljs-string">"type"</span> : <span class="hljs-string">"no-op"</span> 
             } 
           ] 
         }, 
