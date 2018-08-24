@@ -211,7 +211,7 @@ else
     echo "I'm on Branch: ${GITARGS}"
 fi
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
-
+git fetch --tags
 
 
 VERSION_MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
