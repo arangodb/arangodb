@@ -508,6 +508,11 @@ COLLECT statement:
 * `SORTED_UNIQUE`
 * `COUNT_DISTINCT`
 
+The following function aliases have been created for existing AQL functions:
+
+* `CONTAINS_ARRAY` is an alias for `POSITION`
+* `KEYS` is an alias for `ATTRIBUTES`
+
 ### Distributed COLLECT
 
 In the general case, AQL COLLECT operations are expensive to execute in a cluster,
