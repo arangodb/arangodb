@@ -148,11 +148,10 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t);
+  explicit Optimizer(size_t maxNumberOfPlans);
 
   ~Optimizer() {}
 
- public:
   /// @brief do the optimization, this does the optimization, the resulting
   /// plans are all estimated, sorted by that estimate and can then be got
   /// by getPlans, until the next initialize is called. Note that the optimizer
@@ -229,9 +228,6 @@ class Optimizer {
   
   /// @brief run only the required optimizer rules
   bool _runOnlyRequiredRules;
-
-  /// @brief default value for maximal number of plans to produce
-  static constexpr size_t defaultMaxNumberOfPlans = 128;
 };
 
 }  // namespace aql

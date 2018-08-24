@@ -74,17 +74,14 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.
-double ModificationNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-  if (_outVariableOld != nullptr || _outVariableNew != nullptr) {
-    // node produces output
-    nrItems = incoming;
-  } else {
+CostEstimate ModificationNode::estimateCost(CostEstimate const& parent) const {
+  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  if (_outVariableOld == nullptr && _outVariableNew == nullptr) {
     // node produces no output
-    nrItems = 0;
+    estimate.estimatedNrItems = 0;
   }
-  return depCost + incoming;
+  return estimate;
 }
 
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)

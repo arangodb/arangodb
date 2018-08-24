@@ -478,6 +478,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   _options->toVelocyPackIndexes(nodes);
 }
 
+CostEstimate GraphNode::estimateCost(CostEstimate const& parent) const {
+  CostEstimate estimate = CostEstimate::empty() + _dependencies.at(0)->getCost(parent);
+  size_t incoming = estimate.estimatedNrItems;
+  estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+  return estimate;
+}
+
 void GraphNode::addEngine(TraverserEngineID const& engine,
                           ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());

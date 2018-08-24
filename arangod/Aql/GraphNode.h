@@ -66,6 +66,9 @@ class GraphNode : public ExecutionNode {
 
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                           unsigned flags) const override;
+  
+  /// @brief the cost of a graph node
+  CostEstimate estimateCost(CostEstimate const& parent) const override;
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const { return _isSmart; }

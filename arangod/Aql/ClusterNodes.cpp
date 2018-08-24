@@ -115,17 +115,18 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 }
 
 /// @brief estimateCost
-double RemoteNode::estimateCost(size_t& nrItems) const {
+CostEstimate RemoteNode::estimateCost(CostEstimate const& parent) const {
   if (_dependencies.size() == 1) {
-    // This will usually be the case, however, in the context of the
-    // instantiation it is possible that there is no dependency...
-    double depCost = _dependencies[0]->estimateCost(nrItems);
-    return depCost + nrItems;  // we need to process them all
+    CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+    estimate.estimatedCost += estimate.estimatedNrItems;
+    return estimate;
   }
   // We really should not get here, but if so, do something bordering on
   // sensible:
-  nrItems = 1;
-  return 1.0;
+  CostEstimate estimate = CostEstimate::empty();
+  estimate.estimatedNrItems = 1;
+  estimate.estimatedCost = 1.0;
+  return estimate;
 }
 
 /// @brief construct a scatter node
@@ -191,9 +192,10 @@ void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief estimateCost
-double ScatterNode::estimateCost(size_t& nrItems) const {
-  double const depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems * _clients.size();
+CostEstimate ScatterNode::estimateCost(CostEstimate const& parent) const {
+  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+  estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
+  return estimate;
 }
 
 /// @brief construct a distribute node
@@ -272,9 +274,10 @@ void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& v
 }
 
 /// @brief estimateCost
-double DistributeNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems;
+CostEstimate DistributeNode::estimateCost(CostEstimate const& parent) const {
+  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }
 
 /*static*/ Collection const* GatherNode::findCollection(
@@ -374,9 +377,10 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 }
 
 /// @brief estimateCost
-double GatherNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems;
+CostEstimate GatherNode::estimateCost(CostEstimate const& parent) const {
+  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
@@ -485,15 +489,7 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 }
 
 /// @brief estimateCost
-double SingleRemoteOperationNode::estimateCost(size_t& nrItems) const {
-  if (_dependencies.size() == 1) {
-    // This will usually be the case, however, in the context of the
-    // instantiation it is possible that there is no dependency...
-    double depCost = _dependencies[0]->estimateCost(nrItems);
-    return depCost + nrItems;  // we need to process them all
-  }
-  // We really should not get here, but if so, do something bordering on
-  // sensible:
-  nrItems = 1;
-  return 1.0;
+CostEstimate SingleRemoteOperationNode::estimateCost(CostEstimate const& parent) const {
+  CostEstimate estimate = CostEstimate::empty() + _dependencies[0]->estimateCost(parent);
+  return estimate;
 }

@@ -471,10 +471,9 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       auto sub = ExecutionNode::castTo<SubqueryNode*>(setter);
 
       // estimate items in subquery
-      size_t nrItems = 0;
-      sub->getSubquery()->getCost(nrItems);
+      CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (nrItems < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
         continue;
       }
 

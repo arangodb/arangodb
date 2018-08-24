@@ -32,8 +32,7 @@ using namespace arangodb::aql;
 
 // @brief constructor, this will initialize the rules database
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans
-                                             : defaultMaxNumberOfPlans),
+    : _maxNumberOfPlans(maxNumberOfPlans),
       _runOnlyRequiredRules(false) {}
   
 void Optimizer::disableRule(int rule) {
@@ -97,9 +96,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
-    if (!plan->varUsageComputed()) {
-      plan->findVarUsage();
-    }
+    plan->findVarUsage();
     if (estimateAllPlans || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
       // if profiling is turned on, we must do the cost estimation here
       // because the cost estimation must be done while the transaction
@@ -166,9 +163,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        if (!p->varUsageComputed()) {
-          p->findVarUsage();
-        }
+        p->findVarUsage();
 
         // all optimizer rule functions must obey the following guidelines:
         // - the original plan passed to the rule function must be deleted if
@@ -176,15 +171,6 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         // - if the rule throws, then the original plan will be deleted by the optimizer.
         //   thus the rule must not have deleted the plan itself or add it
         //   back to the optimizer
-
-#if 0
-        double t0 = TRI_microtime();
-        rule.func(this, std::move(p), &rule);
-        t0 = TRI_microtime() - t0;
-        if (t0 >= 0.2) {
-          LOG_TOPIC(ERR, Logger::FIXME) << "RULE " << rule.name << " TOOK " << t0 << " s";
-        }
-#endif 
         rule.func(this, std::move(p), &rule);
 
         if (!rule.isHidden) {
@@ -219,10 +205,8 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   TRI_ASSERT(_plans.size() >= 1);
 
   // finalize plans  
-  for (auto& p : _plans.list) {
-    if (!p->varUsageComputed()) {
-      p->findVarUsage();
-    }
+  for (auto& plan : _plans.list) {
+    plan->findVarUsage();
   }
 
   // do cost estimation
@@ -230,19 +214,20 @@ int Optimizer::createPlans(ExecutionPlan* plan,
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running
-    for (auto& p : _plans.list) {
-      p->invalidateCost();
-      p->getCost();
+    for (auto& plan : _plans.list) {
+      plan->invalidateCost();
+      plan->getCost();
       // this value is cached in the plan, so formally this step is
       // unnecessary, but for the sake of cleanliness...
     }
+  
+    if (_plans.size() > 1) {
+      // only sort plans when necessary
+      std::sort(_plans.list.begin(), _plans.list.end(),
+                [](ExecutionPlan* const& a, ExecutionPlan* const& b)
+                    -> bool { return a->getCost().estimatedCost < b->getCost().estimatedCost; });
+    } 
   }
-  if (_plans.size() > 1) {
-    // only sort plans when necessary
-    std::sort(_plans.list.begin(), _plans.list.end(),
-              [](ExecutionPlan* const& a, ExecutionPlan* const& b)
-                  -> bool { return a->getCost() < b->getCost(); });
-  } 
 
   LOG_TOPIC(TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
 

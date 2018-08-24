@@ -402,9 +402,9 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 
-  size_t nrItems = 0;
-  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
-  builder.add("estimatedNrItems", VPackValue(nrItems));
+  CostEstimate estimate = _root->getCost();
+  builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
+  builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   builder.add("initialize", VPackValue(_isResponsibleForInitialize));
   builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
@@ -2162,7 +2162,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   void after(ExecutionNode* en) override final {
     // Add variables set here to _valid:
-    for (auto& v : en->getVariablesSetHere()) {
+    for (auto const& v : en->getVariablesSetHere()) {
       _valid.emplace(v);
       _varSetBy->emplace(v->id, en);
     }
@@ -2184,6 +2184,10 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
 void ExecutionPlan::findVarUsage() {
+  if (varUsageComputed()) {
+    return;
+  }
+
   // reset all counters
   for (auto& counter : _typeCounts) {
     counter = 0;

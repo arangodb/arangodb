@@ -124,10 +124,9 @@ class ExecutionPlan {
   }
 
   /// @brief get the estimated cost . . .
-  inline double getCost() {
+  CostEstimate getCost() {
     TRI_ASSERT(_root != nullptr);
-    size_t nrItems;
-    return _root->getCost(nrItems);
+    return _root->getCost();
   }
 
   /// @brief returns true if a plan is so simple that optimizations would

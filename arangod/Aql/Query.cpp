@@ -34,6 +34,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -43,6 +44,7 @@
 #include "Graph/GraphManager.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -419,9 +421,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
   }
 
   TRI_ASSERT(plan != nullptr);
-  if (!plan->varUsageComputed()) {
-    plan->findVarUsage();
-  }
+  plan->findVarUsage();
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
 
@@ -550,9 +550,7 @@ ExecutionPlan* Query::preparePlan() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
 
-    if (!plan->varUsageComputed()) {
-      plan->findVarUsage();
-    }
+    plan->findVarUsage();
   }
 
   TRI_ASSERT(plan != nullptr);
@@ -1464,7 +1462,7 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
 
   return graph;
 }
-
+    
 /// @brief returns the next query id
 TRI_voc_tick_t Query::nextId() {
   return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst);
