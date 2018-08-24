@@ -1667,8 +1667,11 @@ OperationResult transaction::Methods::insertLocal(
       res = collection->replace( this, value, documentResult, options
                                , resultMarkerTick, needsLock, previousRevisionId
                                , previousDocumentResult);
-      if(res.ok()){
-         revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
+      if(res.ok() && !options.silent){
+        // If we are silent, then revisionId will not be looked at further
+        // down. In the silent case, documentResult is empty, so nobody
+        // must actually look at it!
+        revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
       }
     }
 

@@ -346,7 +346,11 @@
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
     "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" },
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
-    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
+    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" },
+    "ERROR_ACTION_ALREADY_REGISTERED" : { "code" : 6001, "message" : "maintenance action already registered" },
+    "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
+    "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
+    "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" }
   };
 
   // For compatibility with <= 3.3
