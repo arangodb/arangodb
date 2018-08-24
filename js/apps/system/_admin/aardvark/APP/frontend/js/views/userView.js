@@ -16,6 +16,7 @@
       var self = this;
 
       this.collection.fetch({
+        fetchAllUsers: true,
         success: function () {
           self.continueRender();
         }

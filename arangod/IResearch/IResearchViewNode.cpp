@@ -36,9 +36,9 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "StorageEngine/TransactionState.h"
-#include "Basics/StringUtils.h"
 
 #include "velocypack/Iterator.h"
 
@@ -187,7 +187,7 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
 
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
-  if (!filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
+  if (!::filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
     irs::set_bit<0>(::hasDependecies(plan, filterCondition, outVariable, vars), mask);
   }
 
@@ -379,7 +379,7 @@ void IResearchViewNode::toVelocyPackHelper(
 
   // filter condition
   nodes.add(VPackValue("condition"));
-  if (!filterConditionIsEmpty(_filterCondition)) {
+  if (!::filterConditionIsEmpty(_filterCondition)) {
     _filterCondition->toVelocyPack(nodes, flags != 0);
   } else {
     nodes.openObject();
@@ -464,9 +464,14 @@ bool IResearchViewNode::empty() const noexcept {
 }
 
 /// @brief the cost of an enumerate view node
-double IResearchViewNode::estimateCost(size_t& nrItems) const {
+aql::CostEstimate IResearchViewNode::estimateCost() const {
+  if (_dependencies.empty()) {
+    return aql::CostEstimate::empty();
+  }
   // TODO: get a better guess from view
-  return _dependencies.empty() ? 0. : _dependencies[0]->getCost(nrItems);
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate; 
 }
 
 std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() const {
@@ -479,9 +484,17 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() cons
 void IResearchViewNode::getVariablesUsedHere(
     std::unordered_set<aql::Variable const*>& vars
 ) const {
-  if (!filterConditionIsEmpty(_filterCondition)) {
+  if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
+}
+
+void IResearchViewNode::filterCondition(aql::AstNode const* node) noexcept {
+  _filterCondition = !node ? &ALL : node;
+}
+
+bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
+  return ::filterConditionIsEmpty(_filterCondition);
 }
 
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(

@@ -307,12 +307,6 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-double ShortestPathNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-  return depCost + (incoming * _options->estimateCost(nrItems));
-}
-
 void ShortestPathNode::prepareOptions() {
   if (_optionsBuilt) {
     return;

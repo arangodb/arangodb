@@ -1072,7 +1072,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
   if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
@@ -1324,9 +1324,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
-    af->userManager()->outdate();
+    af->userManager()->triggerReload();
   }
-  af->tokenCache()->invalidateBasicCache();
 
   return Result{queryResult.code};
 }
@@ -1853,13 +1852,6 @@ void RestReplicationHandler::handleCommandSync() {
   // will throw if invalid
   config.validate();
 
-  double waitForSyncTimeout = VelocyPackHelper::getNumericValue(body, "waitForSyncTimeout", 5.0);
-
-  // wait until all data in current logfile got synced
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  engine->waitForSyncTimeout(waitForSyncTimeout);
-
   TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
 
@@ -2122,7 +2114,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), false);
+      auto countRes = trx.count(col->name(), transaction::CountType::Normal);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2177,7 +2169,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
       // referenceChecksum is the stringified number of documents in the
       // collection
-      uint64_t num = col->numberDocuments(trx.get());
+      uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
       referenceChecksum = std::to_string(num);
     }
 
@@ -2525,8 +2517,6 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 void RestReplicationHandler::handleCommandLoggerState() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
-
-  engine->waitForSyncTimeout(10.0); // only for mmfiles
 
   VPackBuilder builder;
   auto res = engine->createLoggerState(&_vocbase, builder);

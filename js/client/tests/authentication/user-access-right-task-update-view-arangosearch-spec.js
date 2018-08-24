@@ -308,8 +308,8 @@ function hasIResearch (db) {
                 if (dbLevel['rw'].has(name)) {
                   tasks.register(task);
                   wait(keySpaceId, name);
-                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                  expect(rootTestView(testViewRename)).to.equal(true, 'View renaming reported success, but updated view was not found afterwards');
+                  expect(getKey(keySpaceId, `${name}_status`)).to.equal(colLevel['ro'].has(name) || colLevel['rw'].has(name), `${name} could not update the view with sufficient rights`);
+                  expect(rootTestView(testViewRename)).to.equal(colLevel['ro'].has(name) || colLevel['rw'].has(name), 'View renaming reported success, but updated view was not found afterwards');
                 } else {
                   try {
                     tasks.register(task);
@@ -334,7 +334,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ commit : { "cleanupIntervalStep": 1 } }, true);
+                      db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, true);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -348,7 +348,7 @@ function hasIResearch (db) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                    expect(rootGetViewProps(testViewName)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
@@ -378,7 +378,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ commit : { "cleanupIntervalStep": 1 } }, false);
+                      db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, false);
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -392,7 +392,7 @@ function hasIResearch (db) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
-                    expect(rootGetViewProps(testViewName)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                    expect(rootGetViewProps(testViewName)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);

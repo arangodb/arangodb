@@ -38,7 +38,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -54,11 +53,17 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 #ifndef USE_ENTERPRISE
 // Factory methods
 std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
   std::unique_ptr<Graph> result{new Graph{document}};
   return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document, VPackSlice options) {
+  if (document.isExternal()) {
+    document = document.resolveExternal();
+  }
   std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
   return result;
 }
@@ -66,7 +71,6 @@ std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice docum
 
 std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name, VPackSlice document, VPackSlice options) {
   return Graph::fromUserInput(std::string{name}, document, options);
-
 }
 
 // From persistence
@@ -193,8 +197,6 @@ Result Graph::addOrphanCollection(std::string&& name) {
   _orphanColls.emplace(std::move(name));
   return TRI_ERROR_NO_ERROR;
 }
-
-void Graph::setSmartState(bool state) { _isSmart = state; }
 
 void Graph::setNumberOfShards(uint64_t numberOfShards) {
   _numberOfShards = numberOfShards;
@@ -346,6 +348,20 @@ bool EdgeDefinition::operator==(EdgeDefinition const& other) const {
 bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
   return this->getName() != other.getName() ||
          this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
+}
+
+bool EdgeDefinition::isVertexCollectionUsed(std::string const& collectionName) const {
+  for (auto const& from : this->getFrom()) {
+    if (from == collectionName) {
+      return true;
+    }
+  }
+  for (auto const& to : this->getTo()) {
+    if (to == collectionName) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void EdgeDefinition::addToBuilder(VPackBuilder& builder) const {

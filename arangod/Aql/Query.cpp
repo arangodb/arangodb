@@ -34,6 +34,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -43,10 +44,12 @@
 #include "Graph/GraphManager.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
@@ -63,7 +66,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-static std::atomic<TRI_voc_tick_t> NextQueryId(1);
+static std::atomic<TRI_voc_tick_t> nextQueryId(1);
 }
 
 /// @brief creates a query
@@ -147,9 +150,7 @@ Query::Query(
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   
-  AqlFeature* aql = AqlFeature::lease();
-
-  if (aql == nullptr) {
+  if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 }
@@ -205,9 +206,7 @@ Query::Query(
 
   _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
   
-  AqlFeature* aql = AqlFeature::lease();
-
-  if (aql == nullptr) {
+  if (!AqlFeature::lease()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 }
@@ -422,9 +421,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
   }
 
   TRI_ASSERT(plan != nullptr);
-  if (!plan->varUsageComputed()) {
-    plan->findVarUsage();
-  }
+  plan->findVarUsage();
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
 
@@ -521,8 +518,7 @@ ExecutionPlan* Query::preparePlan() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan.release(), _queryOptions.optimizerRules,
-                    _queryOptions.inspectSimplePlans, false);
+    opt.createPlans(plan.release(), _queryOptions, false);
     // Now plan and all derived plans belong to the optimizer
     plan.reset(opt.stealBest());  // Now we own the best one again
   } else {  // no queryString, we are instantiating from _queryBuilder
@@ -554,9 +550,7 @@ ExecutionPlan* Query::preparePlan() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
 
-    if (!plan->varUsageComputed()) {
-      plan->findVarUsage();
-    }
+    plan->findVarUsage();
   }
 
   TRI_ASSERT(plan != nullptr);
@@ -850,7 +844,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
         while (state != ExecutionState::DONE) {
           auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
-          // TODO MAX: We need to let the thread sleep here instead of while loop
           while (state == ExecutionState::WAITING) {
             ss->waitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
@@ -895,7 +888,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
         while (state != ExecutionState::DONE) {
           auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
-          // TODO MAX: We need to let the thread sleep here instead of while loop
           while (state == ExecutionState::WAITING) {
             ss->waitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
@@ -1089,7 +1081,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
-    opt.createPlans(plan, _queryOptions.optimizerRules, _queryOptions.inspectSimplePlans, true);
+    opt.createPlans(plan, _queryOptions, true);
 
     enterState(QueryExecutionState::ValueType::FINALIZATION);
 
@@ -1278,7 +1270,7 @@ void Query::init() {
     return;
   }
   TRI_ASSERT(_id == 0);
-  _id = Query::NextId();
+  _id = nextId();
   TRI_ASSERT(_id != 0);
 
   TRI_ASSERT(_profile == nullptr);
@@ -1430,15 +1422,23 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
-  if (_transactionContext) {
-    return _transactionContext;
-  }
-  if (_contextOwnedByExterior) {
-    // we must use v8
-    return transaction::V8Context::Create(_vocbase, true);
+  if (!_transactionContext) {
+    if (_contextOwnedByExterior) {
+      // we must use v8
+      _transactionContext = transaction::V8Context::Create(_vocbase, true);
+    } else {
+      _transactionContext = transaction::StandaloneContext::Create(_vocbase);
+    }
   }
 
-  return transaction::StandaloneContext::Create(_vocbase);
+  TRI_ASSERT(_transactionContext != nullptr);
+
+  return _transactionContext;
+}
+  
+/// @brief pass-thru a resolver object from the transaction context
+CollectionNameResolver const& Query::resolver() {
+  return createTransactionContext()->resolver();
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs
@@ -1462,8 +1462,8 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
 
   return graph;
 }
-
+    
 /// @brief returns the next query id
-TRI_voc_tick_t Query::NextId() {
-  return NextQueryId.fetch_add(1, std::memory_order_seq_cst);
+TRI_voc_tick_t Query::nextId() {
+  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst);
 }

@@ -43,7 +43,7 @@ class EdgeDefinition {
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
                  std::set<std::string>&& to_)
-      : _edgeCollection(std::move(edgeCollection_)), _from(from_), _to(to_) {}
+      : _edgeCollection(std::move(edgeCollection_)), _from(std::move(from_)), _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
   std::set<std::string> const& getFrom() const { return _from; }
@@ -70,6 +70,7 @@ class EdgeDefinition {
 
   bool operator==(EdgeDefinition const& other) const;
   bool operator!=(EdgeDefinition const& other) const;
+  bool isVertexCollectionUsed(std::string const& collectionName) const;
 
  private:
   std::string _edgeCollection;
@@ -226,9 +227,6 @@ class Graph {
   /// @brief Set replicationFactor to the graph definition
   void setReplicationFactor(uint64_t setReplicationFactor);
 
-  /// @brief Set isSmart to the graph definition
-  void setSmartState(bool state);
-
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
 
@@ -253,9 +251,6 @@ class Graph {
 
   /// @brief edge definitions of this graph
   std::map<std::string, EdgeDefinition> _edgeDefs;
-
-  /// @brief state if smart graph enabled
-  bool _isSmart;
 
   /// @brief number of shards of this graph
   uint64_t _numberOfShards;

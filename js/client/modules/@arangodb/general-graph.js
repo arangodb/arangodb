@@ -34,7 +34,7 @@ const _ = require('lodash');
 
 const db = internal.db;
 
-const GRAPH_PREFIX = '_api/gharial/';
+const GRAPH_PREFIX = '/_api/gharial/';
 
 // remove me later
 exports._exists = ggc._exists;
@@ -73,7 +73,7 @@ CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
 CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
   const data = edgeDefinition || {};
   const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
-  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, data));
   const graph = requestResult.graph;
   try {
     this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
@@ -84,7 +84,7 @@ CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
 CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition) {
   const data = edgeDefinition || {};
   const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
-  const requestResult = arangosh.checkRequestResult(db._connection.PUT(uri, JSON.stringify(data)));
+  const requestResult = arangosh.checkRequestResult(db._connection.PUT(uri, data));
   const graph = requestResult.graph;
   try {
     this.__updateDefinitions(graph.edgeDefinitions, graph.orphanCollections);
@@ -103,7 +103,7 @@ CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
   } else {
     uri += "?createCollection=false";
   }
-  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, data));
   const graph = requestResult.graph;
 
   try {
@@ -179,13 +179,12 @@ exports._create = function (name, edgeDefinitions, orphans, options) {
   }
 
   const uri = GRAPH_PREFIX;
-  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, JSON.stringify(data)));
+  const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, data));
   db._flushCache();
   return new CommonGraph(requestResult.graph);
 };
 
 exports._drop = function (graphName, dropCollections) {
-
   let uri = GRAPH_PREFIX + encodeURIComponent(graphName);
   if (dropCollections) {
     uri += "?dropCollections=true";

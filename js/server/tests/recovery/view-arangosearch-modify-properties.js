@@ -37,7 +37,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryView');
-  var view = db._createView('UnitTestsRecoveryView', 'arangosearch', { "locale": "de_DE.UTF-16" });
+  var view = db._createView('UnitTestsRecoveryView', 'arangosearch', { "cleanupIntervalStep": 42 });
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
 
@@ -48,15 +48,8 @@ function runSetup () {
   view.properties(meta);
 
   meta = {
-    commit: {
-      commitIntervalMsec: 10000,
-      consolidate: {
-        bytes: { segmentThreshold: 20, threshold: 0.5 },
-        bytes_accum: {},
-        count: {}
-      }
-    },
-    locale: "en_US.UTF-8"
+    consolidationIntervalMsec: 10000,
+    consolidationPolicy: { segmentThreshold: 20, threshold: 0.5, type: "bytes" },
   };
   view.properties(meta, true); // partial update
 
@@ -88,21 +81,18 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
       assertEqual(result[0], 10000);
 
       // validate state
       var properties = v.properties();
-      assertEqual(10, properties.commit.cleanupIntervalStep);
-      assertEqual(10000, properties.commit.commitIntervalMsec);
-      assertEqual(3, Object.keys(properties.commit.consolidate).length);
-      assertEqual(20, properties.commit.consolidate.bytes.segmentThreshold);
-      assertEqual((0.5).toFixed(6), properties.commit.consolidate.bytes.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.bytes_accum.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.bytes_accum.threshold.toFixed(6));
-      assertEqual(300, properties.commit.consolidate.count.segmentThreshold);
-      assertEqual((0.85).toFixed(6), properties.commit.consolidate.count.threshold.toFixed(6));
-      assertEqual("de_DE.UTF-16", properties.locale);
+      assertTrue(Object === properties.constructor);
+      assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(3, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("bytes", properties.consolidationPolicy.type);
+      assertEqual(20, properties.consolidationPolicy.segmentThreshold);
+      assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     }
 
   };

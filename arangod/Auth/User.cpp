@@ -98,7 +98,7 @@ static int HexHashFromData(std::string const& hashMethod,
 
 static void AddSource(VPackBuilder& builder, auth::Source source) {
   switch (source) {
-    case auth::Source::LOCAL: // used to be collection
+    case auth::Source::Local: // used to be collection
       builder.add("source", VPackValue("LOCAL"));
       break;
     case auth::Source::LDAP:
@@ -284,7 +284,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   auth::User entry(keySlice.copyString(), rev);
   entry._active = activeSlice.getBool();
-  entry._source = auth::Source::LOCAL;
+  entry._source = auth::Source::Local;
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -367,7 +367,7 @@ VPackBuilder auth::User::toVPackBuilder() const {
     {
       VPackObjectBuilder o2(&builder, "authData", true);
       builder.add("active", VPackValue(_active));
-      if (_source == auth::Source::LOCAL) {
+      if (_source == auth::Source::Local) {
         VPackObjectBuilder o3(&builder, "simple", true);
         builder.add("hash", VPackValue(_passwordHash));
         builder.add("salt", VPackValue(_passwordSalt));

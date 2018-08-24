@@ -1667,8 +1667,11 @@ OperationResult transaction::Methods::insertLocal(
       res = collection->replace( this, value, documentResult, options
                                , resultMarkerTick, needsLock, previousRevisionId
                                , previousDocumentResult);
-      if(res.ok()){
-         revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
+      if(res.ok() && !options.silent){
+        // If we are silent, then revisionId will not be looked at further
+        // down. In the silent case, documentResult is empty, so nobody
+        // must actually look at it!
+        revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
       }
     }
 
@@ -2788,35 +2791,90 @@ OperationResult transaction::Methods::rotateActiveJournalLocal(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::count(std::string const& collectionName,
-                                            bool details) {
+                                            transaction::CountType type) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, details);
+    return countCoordinator(collectionName, type);
   }
 
-  return countLocal(collectionName);
+  if (type == CountType::Detailed) {
+    // we are a single-server... we cannot provide detailed per-shard counts,
+    // so just downgrade the request to a normal request
+    type = CountType::Normal;
+  }
+
+  return countLocal(collectionName, type);
 }
 
-/// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
+/// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool details) {
-  std::vector<std::pair<std::string, uint64_t>> count;
-  auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, *this, count 
-  );
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
+    std::string const& collectionName, transaction::CountType type) {
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return OperationResult(TRI_ERROR_SHUTTING_DOWN);
   }
-  return buildCountResult(count, details);
+  
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(vocbase().name(), collectionName);
+  } catch (...) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  return countCoordinatorHelper(collinfo, collectionName, type);
 }
+
 #endif
+
+OperationResult transaction::Methods::countCoordinatorHelper(
+    std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, transaction::CountType type) { 
+  TRI_ASSERT(collinfo != nullptr);
+  auto& cache = collinfo->countCache();
+
+  int64_t documents = CountCache::NotPopulated;
+  if (type == transaction::CountType::ForceCache) {
+    // always return from the cache, regardless what's in it
+    documents = cache.get();
+  } else if (type == transaction::CountType::TryCache) {
+    documents = cache.get(CountCache::Ttl);
+  }
+
+  if (documents == CountCache::NotPopulated) {
+    // no cache hit, or detailed results requested
+    std::vector<std::pair<std::string, uint64_t>> count;
+    auto res = arangodb::countOnCoordinator(
+      vocbase().name(), collectionName, *this, count 
+    );
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+    
+    int64_t total = 0;
+    OperationResult opRes = buildCountResult(count, type, total);
+    cache.store(total);
+    return opRes;
+  } 
+
+  // cache hit!
+  TRI_ASSERT(documents >= 0);
+  TRI_ASSERT(type != transaction::CountType::Detailed);
+
+  // return number from cache  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(documents));
+  return OperationResult(Result(), resultBuilder.buffer(), nullptr);
+}
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName) {
+    std::string const& collectionName, transaction::CountType type) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -2828,7 +2886,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this);
+  uint64_t num = collection->numberDocuments(this, type);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);

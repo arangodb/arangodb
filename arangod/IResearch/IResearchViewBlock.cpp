@@ -263,11 +263,13 @@ IResearchViewBlockBase::getSome(size_t atMost) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
         auto upstreamRes = ExecutionBlock::getBlock(toFetch);
         if (upstreamRes.first == ExecutionState::WAITING) {
+          traceGetSomeEnd(nullptr, ExecutionState::WAITING);
           return {upstreamRes.first, nullptr};
         }
         _upstreamState = upstreamRes.first;
         if (!upstreamRes.second) {
           _done = true;
+          traceGetSomeEnd(nullptr, ExecutionState::DONE);
           return {ExecutionState::DONE, nullptr};
         }
         _pos = 0;  // this is in the first block

@@ -234,10 +234,6 @@ global.DEFINE_MODULE('buffer', (function () {
         this.offset = 0;
       }
 
-      this._PRINT = function(context) {
-        context.output += '[Buffer, length: ' + this.length + ']';
-      };
-
       // optimize by branching logic for new allocations
       if (typeof subject !== 'number') {
         if (type === 'string') {
@@ -263,6 +259,26 @@ global.DEFINE_MODULE('buffer', (function () {
     return new Proxy(this, handler);
   // SlowBuffer.makeFastBuffer(this.parent, this, this.offset, this.length)
   }
+
+  Buffer.prototype._PRINT = function (context) {
+    context.output += '<Buffer';
+    for (let i = 0; i < Math.min(this.length, 50); i++) {
+      context.output += ' ';
+      context.output += this.parent.hexSlice(i, i + 1);
+    }
+    if (this.length > 50) {
+      context.output += '... ';
+    }
+    context.output += '>';
+  };
+
+  Buffer.prototype.hexSlice = function (start, end) {
+    return this.parent.hexSlice(start, end);
+  };
+
+  Buffer.prototype.hexWrite = function (str, offset, maxLength) {
+    return this.parent.hexWrite(str, offset, maxLength);
+  };
 
   function isArrayIsh (subject) {
     return Array.isArray(subject) ||
@@ -931,6 +947,27 @@ global.DEFINE_MODULE('buffer', (function () {
     if (!noAssert)
       checkOffset(offset, 8, this.length);
     this.parent.writeDoubleBE(value, this.offset + offset, !!noAssert);
+  };
+
+  Buffer.from = function (value, encoding) {
+    if (typeof value === 'number') {
+      throw new TypeError('The "value" argument must not be of type number. Received type number');
+    }
+    return new Buffer(value, encoding);
+  };
+
+  Buffer.of = function (...values) {
+    return new Buffer(values);
+  };
+
+  Buffer.alloc = function (size) {
+    const buf = new Buffer(size);
+    buf.alloc(size);
+    return buf;
+  };
+
+  Buffer.allocUnsafe = Buffer.allocUnsafeSlow = function (size) {
+    return new Buffer(size);
   };
 
   return exports;

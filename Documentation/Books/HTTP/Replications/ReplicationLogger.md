@@ -20,7 +20,7 @@ This method should be used by replication clients to incrementally fetch updates
 from an ArangoDB database.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
-@startDocuBlock get_api_replication_logger_returns
+@startDocuBlock get_api_replication_logger_follow
 
 To check what range of changes is available (identified by tick values), the HTTP
 interface provides the methods `logger-first-tick` and `logger-tick-ranges`.

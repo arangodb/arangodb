@@ -249,6 +249,8 @@ function hasIResearch (db) {
                   //FIXME: remove try/catch block after renaming will work in cluster
                   if (e.code === 404 && (e.errorNum === 1203 || e.errorNum === 1470)) {
                     return;
+                  } else if (e.code === 403) {
+                    return; // not authorised is valid if a non-read collection is present in the view
                   } else {
                     throw e;
                   }
@@ -268,11 +270,11 @@ function hasIResearch (db) {
             it('view by property except links (partial)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
-                expect(rootGetViewProps(testViewName, true)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                db._view(testViewName).properties({ "cleanupIntervalStep": 1 }, true);
+                expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, true);
+                  db._view(testViewName).properties({ "cleanupIntervalStep": 1 }, true);
                 } catch (e) {
                   checkError(e);
                   return;
@@ -284,11 +286,11 @@ function hasIResearch (db) {
             it('view by property except links (full)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
               if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
-                expect(rootGetViewProps(testViewName, true)["commit"]["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
+                db._view(testViewName).properties({ "cleanupIntervalStep": 1 }, false);
+                expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
                 try {
-                  db._view(testViewName).properties({ commit : { "cleanupIntervalStep": 1 } }, false);
+                  db._view(testViewName).properties({ "cleanupIntervalStep": 1 }, false);
                 } catch (e) {
                   checkError(e);
                   return;

@@ -135,6 +135,9 @@ struct IResearchQueryValueSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryValueSetup() {
@@ -310,7 +313,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER [ ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH [ ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -370,7 +373,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER [ 'abc', 'def' ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH [ 'abc', 'def' ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -430,7 +433,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER [ 1 .. 42 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH [ 1 .. 42 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -452,7 +455,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER false SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH false SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -512,7 +515,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER true SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH true SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -534,7 +537,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER 0 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH 0 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -594,7 +597,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -616,7 +619,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER null SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH null SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -638,7 +641,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+      "FOR d IN testView SEARCH @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"param\" : null }")
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -661,7 +664,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER 1 - @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+      "FOR d IN testView SEARCH 1 - @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"param\" : 1 }")
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -722,7 +725,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER { } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH { } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -782,7 +785,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER { 'a': 123, 'b': 'cde' } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH { 'a': 123, 'b': 'cde' } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -804,7 +807,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER '' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH '' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -864,7 +867,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN testView SEARCH 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -891,7 +894,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
+      "FOR d IN testView SEARCH 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
     auto slice = queryResult.result->slice();
@@ -918,7 +921,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d",
+      "FOR d IN testView SEARCH @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"param\" : \"abc\" }")
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
@@ -979,7 +982,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+      "FOR d IN testView SEARCH @param SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"param\" : [] }")
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);

@@ -103,8 +103,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
-  /// @brief the cost of an enumerate list node
-  double estimateCost(size_t&) const override final;
+  /// @brief the cost of an enumerate view node
+  aql::CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesSetHere
   std::vector<arangodb::aql::Variable const*> getVariablesSetHere() const override final {
@@ -140,6 +140,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     return *_filterCondition;
   }
 
+  /// @brief set the filter condition to pass to the view
+  void filterCondition(aql::AstNode const* node) noexcept;
+
+  /// @brief return true if the filter condition is empty
+  bool filterConditionIsEmpty() const noexcept;
+
   /// @brief return list of shards related to the view (cluster only)
   std::vector<std::string> const& shards() const noexcept {
     return _shards;
@@ -153,6 +159,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief return the condition to pass to the view
   std::vector<IResearchSort> const& sortCondition() const noexcept {
     return _sortCondition;
+  }
+
+  /// @brief set the sort condition to pass to the view
+  void sortCondition(std::vector<IResearchSort>&& sortCondition) noexcept {
+    _sortCondition = std::move(sortCondition);
   }
 
   /// @brief getVariablesUsedHere, returning a vector
