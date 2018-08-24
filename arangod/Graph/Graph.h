@@ -222,15 +222,10 @@ class Graph {
   bool replaceEdgeDefinition(EdgeDefinition const& edgeDefinition);
 
   /// @brief Rebuild orphan collections. Needs to be called after every
-  /// removal of an existing an edgeDefinitions.
+  /// removal or change of an existing an edgeDefinition.
   void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition);
 
-  /// @brief Rebuild orphan collections. Needs to be called after every
-  /// replacement or change of existing an edgeDefinitions.
-  void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition,
-                      EdgeDefinition const& newEdgeDefinition);
-
-  /// @brief ARemoves an orphan vertex collection from the graphs definition
+  /// @brief Removes an orphan vertex collection from the graphs definition
   Result removeOrphanCollection(std::string&&);
 
   /// @brief Add an orphan vertex collection to this graphs definition
