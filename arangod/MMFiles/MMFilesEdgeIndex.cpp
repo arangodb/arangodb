@@ -58,7 +58,7 @@ MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     ManagedDocumentResult* mmdr, arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
     std::unique_ptr<VPackBuilder> keys)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(indexImpl),
       _context(trx, collection, mmdr, index->fields().size()),
       _keys(std::move(keys)),
@@ -448,14 +448,14 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
 
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index

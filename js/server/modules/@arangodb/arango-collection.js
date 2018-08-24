@@ -60,37 +60,6 @@ function buildExampleQuery (collection, example, limit) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief add options from arguments to index specification
-// //////////////////////////////////////////////////////////////////////////////
-
-function addIndexOptions (body, parameters) {
-  body.fields = [];
-
-  var setOption = function (k) {
-    if (! body.hasOwnProperty(k)) {
-      body[k] = parameters[i][k];
-    }
-  };
-
-  var i;
-  for (i = 0; i < parameters.length; ++i) {
-    if (typeof parameters[i] === 'string') {
-      // set fields
-      body.fields.push(parameters[i]);
-    }
-    else if (typeof parameters[i] === 'object' &&
-      ! Array.isArray(parameters[i]) &&
-      parameters[i] !== null) {
-      // set arbitrary options
-      Object.keys(parameters[i]).forEach(setOption);
-      break;
-    }
-  }
-
-  return body;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -226,32 +195,15 @@ ArangoCollection.prototype.any = function () {
   var cluster = require('@arangodb/cluster');
 
   if (cluster.isCoordinator()) {
-    var dbName = require('internal').db._name();
-    var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterComm.getId() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest('put',
-        'shard:' + shard,
-        dbName,
-        '/_api/simple/any',
-        JSON.stringify({
-          collection: shard
-        }),
-        { },
-        options);
-    });
-
-    var results = cluster.wait(coord, shards.length), i;
-    for (i = 0; i < results.length; ++i) {
-      var body = JSON.parse(results[i].body);
-      if (body.document !== null) {
-        return body.document;
-      }
+    const db = require('internal').db;
+    let document = null;
+    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc"
+    let cursor = db._query(query, {"@coll": this.name()});
+    if (cursor.hasNext()) {
+      document = cursor.next();
     }
 
-    return null;
+    return document;
   }
 
   return this.ANY();
