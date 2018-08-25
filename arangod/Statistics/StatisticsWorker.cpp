@@ -139,6 +139,8 @@ void StatisticsWorker::collectGarbage(std::string const& name,
     arangodb::aql::PART_MAIN
   );
 
+  query.queryOptions().cache = false;
+
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -266,6 +268,8 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     nullptr,
     arangodb::aql::PART_MAIN
   );
+  
+  query.queryOptions().cache = false;
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
@@ -303,6 +307,8 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
     nullptr,
     arangodb::aql::PART_MAIN
   );
+  
+  query.queryOptions().cache = false;
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 

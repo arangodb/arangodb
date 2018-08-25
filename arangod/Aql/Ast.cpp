@@ -236,7 +236,7 @@ AstNode* Ast::createNodeForView(Variable* variable,
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
+ 
   TRI_ASSERT(search != nullptr);
 
   if (options == nullptr) {
@@ -674,6 +674,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
     // it's a view!
     AstNode* node = createNode(NODE_TYPE_VIEW);
     node->setStringValue(name, dataSourceName.size());
+    _query->addView(dataSourceName);
 
     return node;
   }
@@ -1628,13 +1629,11 @@ void Ast::injectBindParameters(
         }
         TRI_ASSERT(graph != nullptr);
 
-        auto vColls = graph->vertexCollections();
-
-        for (const auto& n : vColls) {
+        for (const auto& n : graph->vertexCollections()) {
           _query->collections()->add(n, AccessMode::Type::READ);
         }
 
-        auto eColls = graph->edgeCollections();
+        auto const& eColls = graph->edgeCollections();
 
         for (const auto& n : eColls) {
           _query->collections()->add(n, AccessMode::Type::READ);
@@ -1667,13 +1666,12 @@ void Ast::injectBindParameters(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
         }
         TRI_ASSERT(graph != nullptr);
-        auto vColls = graph->vertexCollections();
-
-        for (const auto& n : vColls) {
+        
+        for (const auto& n : graph->vertexCollections()) {
           _query->collections()->add(n, AccessMode::Type::READ);
         }
 
-        auto eColls = graph->edgeCollections();
+        auto const& eColls = graph->edgeCollections();
 
         for (const auto& n : eColls) {
           _query->collections()->add(n, AccessMode::Type::READ);

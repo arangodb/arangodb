@@ -332,7 +332,7 @@ protected:
   arangodb::basics::ConditionVariable _actionRegistryCond;
 
   /// @brief list of background workers
-  std::vector<maintenance::MaintenanceWorker *> _activeWorkers;
+  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
 
   /// @brief condition variable to indicate thread completion
   arangodb::basics::ConditionVariable _workerCompletion;
