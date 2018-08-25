@@ -150,15 +150,15 @@ class IResearchView final
 
   /// @enum snapshot getting mode
   enum class Snapshot {
-    /// @brief retrieve existing snapshop from a transaction state
+    /// @brief lookup existing snapshot from a transaction
     Find,
 
-    /// @brief get existing snapshop from transaction state or create if doesn't exist,
-    ///        otherwise create
+    /// @brief lookup existing snapshop from a transaction
+    /// or create if it doesn't exist
     FindOrCreate,
 
-    /// @brief unconditionally retrieve the latest snapshot and store it
-    ///        in a trasaction state
+    /// @brief retrieve the latest view snapshot and cache
+    /// it in a transaction
     SyncAndCreate
   };
 
