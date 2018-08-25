@@ -97,6 +97,11 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
 
   virtual size_t size() const noexcept override { return _subReaders.size(); }
 
+  void clear() noexcept {
+    _subReaders.clear();
+    _readers.clear();
+  }
+
  private:
   typedef std::vector<
     std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
@@ -875,7 +880,7 @@ IResearchView::IResearchView(
       return; // NOOP
     }
 
-    viewPtr->snapshot(trx, true);
+    viewPtr->snapshot(trx, IResearchView::Snapshot::FindOrCreate);
   };
 
   // initialize transaction write callback
@@ -1833,7 +1838,7 @@ int IResearchView::remove(
 
 PrimaryKeyIndexReader* IResearchView::snapshot(
     transaction::Methods& trx,
-    bool force /*= false*/
+    IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
   auto* state = trx.state();
 
@@ -1846,21 +1851,36 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
 
   auto* cookie = ViewStateHelper::read(*state, *this);
 
-  if (cookie) {
-    return &(cookie->_snapshot);
+  switch (mode) {
+    case Snapshot::Find:
+      return cookie ? &cookie->_snapshot : nullptr;
+    case Snapshot::FindOrCreate:
+      if (cookie) {
+        return &cookie->_snapshot;
+      }
+      break;
+    case Snapshot::SyncAndCreate:
+      // ingore existing cookie, recreate snapshot
+      if (!const_cast<IResearchView*>(this)->sync()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
+      }
+      break;
   }
 
-  if (!force) {
-    return nullptr;
+  std::unique_ptr<ViewStateRead> cookiePtr;
+  CompoundReader* reader = nullptr;
+
+  if (!cookie) {
+    // will acquire read-lock to prevent data-store deallocation
+    cookiePtr = irs::memory::make_unique<ViewStateRead>(_asyncSelf->mutex());
+    reader = &cookiePtr->_snapshot;
+  } else {
+    reader = &cookie->_snapshot;
+    reader->clear();
   }
 
-  if (state->waitForSync() && !const_cast<IResearchView*>(this)->sync()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
-  }
-
-  auto cookiePtr = irs::memory::make_unique<ViewStateRead>(_asyncSelf->mutex()); // will acquire read-lock to prevent data-store deallocation
-  auto& reader = cookiePtr->_snapshot;
+  TRI_ASSERT(reader);
 
   if (!_asyncSelf->get()) {
     return nullptr; // the current view is no longer valid (checked after ReadLock aquisition)
@@ -1870,12 +1890,12 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     ReadMutex mutex(_mutex); // _memoryNodes/_storePersisted can be asynchronously updated
     SCOPED_LOCK(mutex);
 
-    reader.add(_memoryNode->_store._reader);
+    reader->add(_memoryNode->_store._reader);
     SCOPED_LOCK(_toFlush->_readMutex);
-    reader.add(_toFlush->_store._reader);
+    reader->add(_toFlush->_store._reader);
 
     if (_storePersisted) {
-      reader.add(_storePersisted._reader);
+      reader->add(_storePersisted._reader);
     }
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1900,15 +1920,15 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     return nullptr;
   }
 
-  if (!ViewStateHelper::read(*state, *this, std::move(cookiePtr))) {
+  if (cookiePtr && !ViewStateHelper::read(*state, *this, std::move(cookiePtr))) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to store state into a TransactionState for snapshot of IResearch view '" << name()
-      << "', tid '" << state->id() << "'";
+        << "failed to store state into a TransactionState for snapshot of IResearch view '" << name()
+        << "', tid '" << state->id() << "'";
 
     return nullptr;
   }
 
-  return &reader;
+  return reader;
 }
 
 IResearchView::AsyncSelf::ptr IResearchView::self() const {
@@ -2144,7 +2164,7 @@ void IResearchView::verifyKnownCollections() {
     std::shared_ptr<transaction::Context> dummy;  // intentionally empty
     DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
 
-    if (!appendKnownCollections(cids, *snapshot(trx, true))) {
+    if (!appendKnownCollections(cids, *snapshot(trx, Snapshot::FindOrCreate))) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to collect collection IDs for IResearch view '" << id() << "'";
 

@@ -666,9 +666,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, true);
+    // there are not cluster-wide transactions,
+    // no place to store snapshot
+    auto const mode = _options.forceSync
+      ? IResearchView::Snapshot::SyncAndCreate
+      : IResearchView::Snapshot::FindOrCreate;
+
+    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, mode);
   } else {
-    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx, false);
+    auto const mode = _options.forceSync
+      ? IResearchView::Snapshot::SyncAndCreate
+      : IResearchView::Snapshot::Find;
+
+    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx, mode);
   }
 
   if (!reader) {

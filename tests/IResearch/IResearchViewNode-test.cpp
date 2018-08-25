@@ -1148,9 +1148,21 @@ SECTION("createBlockSingleServer") {
 
     // start transaction (put snapshot into)
     REQUIRE(query.trx()->state());
-    arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), true
+    CHECK(nullptr == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
+      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::Find
+    ));
+    auto* snapshot = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
+      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::FindOrCreate
     );
+    CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
+      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::Find
+    ));
+    CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
+      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::FindOrCreate
+    ));
+    CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
+      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate
+    ));
 
     // after transaction has started
     {

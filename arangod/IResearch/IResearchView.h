@@ -136,7 +136,6 @@ class IResearchView final
   : public arangodb::LogicalViewStorageEngine,
     public arangodb::FlushTransaction {
  public:
-
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief AsyncValue holding the view itself, modifiable by IResearchView
   ///////////////////////////////////////////////////////////////////////////////
@@ -147,6 +146,20 @@ class IResearchView final
     IResearchView* get() const {
       return static_cast<IResearchView*>(ResourceMutex::get());
     }
+  };
+
+  /// @enum snapshot getting mode
+  enum class Snapshot {
+    /// @brief retrieve existing snapshop from a transaction state
+    Find,
+
+    /// @brief get existing snapshop from transaction state or create if doesn't exist,
+    ///        otherwise create
+    FindOrCreate,
+
+    /// @brief unconditionally retrieve the latest snapshot and store it
+    ///        in a trasaction state
+    SyncAndCreate
   };
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -261,7 +274,7 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
     transaction::Methods& trx,
-    bool force = false
+    Snapshot mode = Snapshot::Find
   ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
