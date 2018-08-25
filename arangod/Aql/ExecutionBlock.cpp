@@ -133,7 +133,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   }
 
   for (auto& it : _buffer) {
-    delete it;
+    returnBlock(it);
   }
   _buffer.clear();
 
