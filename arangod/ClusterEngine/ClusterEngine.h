@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
@@ -62,8 +63,8 @@ class ClusterEngine final : public StorageEngine {
   // storage engine overrides
   // ------------------------
 
-  char const* typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : nullptr;
+  std::string const& typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : StaticStrings::Empty;
   }
 
   // inherited from ApplicationFeature
@@ -195,6 +196,10 @@ class ClusterEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
+  
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override { return std::vector<std::string>(); }
+
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override {
     return TRI_ERROR_NO_ERROR;

@@ -177,7 +177,7 @@ bool UpgradeTasks::upgradeGeoIndexes(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& slice
 ) {
-  if (strcmp(EngineSelectorFeature::engineName(), "rocksdb") != 0) {
+  if (EngineSelectorFeature::engineName() != "rocksdb") {
     LOG_TOPIC(INFO, Logger::STARTUP) << "No need to upgrade geo indexes!";
     return true;
   }

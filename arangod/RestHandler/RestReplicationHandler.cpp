@@ -2315,7 +2315,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   AccessMode::Type access = AccessMode::Type::READ;
-  if (StringRef(EngineSelectorFeature::ENGINE->typeName()) == "rocksdb") {
+  if (EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
     // we need to lock in EXCLUSIVE mode here, because simply locking
     // in READ mode will not stop other writers in RocksDB. In order
     // to stop other writers, we need to fetch the EXCLUSIVE lock
