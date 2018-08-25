@@ -22,6 +22,7 @@
 
 #include "ProgramOptions.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/terminal-utils.h"
 #include "ProgramOptions/Option.h"
@@ -365,7 +366,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  std::cerr << "Error while processing " << _context << ":" << std::endl;
+  std::cerr << "Error while processing " << _context << " for " << TRI_Basename(_progname.c_str()) << ":" << std::endl;
   failNotice(message);
   std::cerr << std::endl;
 #ifdef _WIN32
@@ -433,7 +434,7 @@ void ProgramOptions::checkIfSealed() const {
 
 // get a list of similar options
 std::vector<std::string> ProgramOptions::similar(std::string const& value, int cutOff,
-                                  size_t maxResults) {
+                                                 size_t maxResults) {
   std::vector<std::string> result;
 
   if (_similarity != nullptr) {
@@ -465,6 +466,18 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
       }
       last = it.first;
     }
+  }
+
+  if (result.empty()) {
+    // still no good candidates found. now check if at least one of the existing
+    // options has the same prefix as the option entered
+    walk(
+        [this, &value, &result](Section const&, Option const& option) {
+          if (option.fullName().substr(0, value.size()) == value) {
+            result.emplace_back(option.displayName());
+          }
+        },
+        false);
   }
 
   return result;
