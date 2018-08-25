@@ -74,9 +74,6 @@ class ExecutionBlock {
     _dependencyPos = _dependencies.end();
   }
 
-  /// @brief get all dependencies
-  std::vector<ExecutionBlock*> getDependencies() const { return _dependencies; }
-
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
   bool removeDependency(ExecutionBlock* ep);
