@@ -666,7 +666,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    // there are not cluster-wide transactions,
+    // there are no cluster-wide transactions,
     // no place to store snapshot
     auto const mode = _options.forceSync
       ? IResearchView::Snapshot::SyncAndCreate
