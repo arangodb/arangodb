@@ -35,8 +35,7 @@
 
   try {
     db._dropDatabase("UnitTestsDumpSrc");
-  }
-  catch (err1) {
+  } catch (err1) {
   }
   db._createDatabase("UnitTestsDumpSrc");
 
@@ -53,14 +52,18 @@
 
   arango.reconnect(endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
 
-
   // this remains empty
   db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
 
   // create lots of documents
   c = db._create("UnitTestsDumpMany");
+  let docs = [];
   for (i = 0; i < 100000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+    docs.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+    if (docs.length === 10000) {
+      c.save(docs);
+      docs = [];
+    }
   }
 
   c = db._createEdgeCollection("UnitTestsDumpEdges");
