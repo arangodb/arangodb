@@ -237,7 +237,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   auto* query = ast->query();
   NearOrWithinParams params(funAstNode,isNear);
 
-  if(isNear && (!params.limit || params.limit->isNullValue())){
+  if (isNear && (!params.limit || params.limit->isNullValue())) {
     params.limit = ast->createNodeValueInt(100);
   }
 
