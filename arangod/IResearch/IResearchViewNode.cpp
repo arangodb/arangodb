@@ -668,17 +668,23 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   if (ServerState::instance()->isDBServer()) {
     // there are no cluster-wide transactions,
     // no place to store snapshot
-    auto const mode = _options.forceSync
-      ? IResearchView::Snapshot::SyncAndCreate
-      : IResearchView::Snapshot::FindOrCreate;
+    static IResearchView::Snapshot const SNAPSHOT[] {
+      IResearchView::Snapshot::FindOrCreate,
+      IResearchView::Snapshot::SyncAndCreate
+    };
 
-    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, mode);
+    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(
+      *trx, _shards, SNAPSHOT[size_t(_options.forceSync)]
+    );
   } else {
-    auto const mode = _options.forceSync
-      ? IResearchView::Snapshot::SyncAndCreate
-      : IResearchView::Snapshot::Find;
+    static IResearchView::Snapshot const SNAPSHOT[] {
+      IResearchView::Snapshot::Find,
+      IResearchView::Snapshot::SyncAndCreate
+    };
 
-    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx, mode);
+    reader = LogicalView::cast<IResearchView>(view).snapshot(
+      *trx, SNAPSHOT[size_t(_options.forceSync)]
+    );
   }
 
   if (!reader) {
