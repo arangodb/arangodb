@@ -496,6 +496,12 @@ for_statement:
       if (search != nullptr) {
         // we got a SEARCH clause. this is always a view.
         node = parser->ast()->createNodeForView(variable, $4, search, options);
+        
+        if ($4->type != NODE_TYPE_PARAMETER_DATASOURCE &&
+            $4->type != NODE_TYPE_VIEW && 
+            $4->type != NODE_TYPE_COLLECTION) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition used on non-view", yylloc.first_line, yylloc.first_column);
+        }
       } else {
         node = parser->ast()->createNodeFor(variable, $4, options);
       }
@@ -1564,7 +1570,7 @@ graph_direction_steps:
 
 reference:
     T_STRING {
-      // variable or collection
+      // variable or collection or view
       auto ast = parser->ast();
       AstNode* node = nullptr;
 

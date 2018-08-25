@@ -124,14 +124,14 @@ public:
 
 
   virtual arangodb::Result addAction(
-    std::shared_ptr<arangodb::maintenance::Action> action, bool executeNow=false) {
+    std::shared_ptr<arangodb::maintenance::Action> action, bool executeNow = false) override {
     _recentAction = action;
     return MaintenanceFeature::addAction(action, executeNow);
   }
 
   virtual arangodb::Result addAction(
     std::shared_ptr<arangodb::maintenance::ActionDescription> const & description,
-    bool executeNow=false) {
+    bool executeNow = false) override {
     return MaintenanceFeature::addAction(description, executeNow);
   }
 

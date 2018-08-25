@@ -216,7 +216,7 @@ MMFilesHashIndexIterator::MMFilesHashIndexIterator(
     MMFilesHashIndex const* index,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _lookups(trx, node, reference, index->fields()),
       _buffer(),
