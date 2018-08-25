@@ -520,28 +520,6 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
   }
 }
 
-/// @brief convert to a string, basically for debugging purposes
-void ExecutionNode::appendAsString(std::string& st, int indent) {
-  for (int i = 0; i < indent; i++) {
-    st.push_back(' ');
-  }
-
-  st.push_back('<');
-  st.append(getTypeString());
-  if (_dependencies.size() != 0) {
-    st.push_back('\n');
-    for (size_t i = 0; i < _dependencies.size(); i++) {
-      _dependencies[i]->appendAsString(st, indent + 2);
-      if (i != _dependencies.size() - 1) {
-        st.push_back(',');
-      } else {
-        st.push_back(' ');
-      }
-    }
-  }
-  st.push_back('>');
-}
-
 /// @brief invalidate the cost estimation for the node and its dependencies
 void ExecutionNode::invalidateCost() {
   _costEstimate.invalidate();
