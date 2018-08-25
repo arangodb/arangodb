@@ -34,6 +34,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryRegistry.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
@@ -118,6 +119,14 @@ struct DocIdScorer: public irs::sort {
 };
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
+
+template <typename T, typename U>
+std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
+  auto* location = &ptr;
+  auto* oldValue = ptr;
+  ptr = newValue;
+  return std::shared_ptr<T>(oldValue, [location](T* p)->void { *location = p; });
+}
 
 NS_END
 
@@ -206,6 +215,9 @@ struct IResearchViewSetup {
         f->start();
       }
     }
+
+    auto* dbFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
+    arangodb::DatabaseFeature::DATABASE = dbFeature; // arangodb::auth::UserManager::collectionAuthLevel(...) dereferences a nullptr
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -542,10 +554,44 @@ SECTION("test_drop_with_link") {
   CHECK(true == res.ok());
   CHECK((false == logicalCollection->getIndexes().empty()));
 
-  CHECK((true == vocbase.dropView(view->id(), false).ok()));
-  CHECK((true == logicalCollection->getIndexes().empty()));
-  CHECK((true == !vocbase.lookupView("testView")));
-  CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+  {
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // not authorised (NONE collection) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == vocbase.dropView(view->id(), false).errorNumber()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == !vocbase.lookupView("testView")));
+      CHECK((true == TRI_IsDirectory(dataPath.c_str())));
+    }
+
+    // authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((true == vocbase.dropView(view->id(), false).ok()));
+      CHECK((true == logicalCollection->getIndexes().empty()));
+      CHECK((true == !vocbase.lookupView("testView")));
+      CHECK((false == TRI_IsDirectory(dataPath.c_str())));
+    }
+  }
 }
 
 SECTION("test_drop_collection") {
@@ -3686,6 +3732,87 @@ SECTION("test_update_overwrite") {
     }
   }
 
+  // modify meta params with links (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      expectedMeta._cleanupIntervalStep = 10;
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string error;
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      expectedMeta._cleanupIntervalStep = 62;
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string error;
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+    }
+  }
+
   // add link (collection not authorized)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
@@ -3714,9 +3841,204 @@ SECTION("test_update_overwrite") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
     auto resetUserManager = irs::make_finally([userManager]()->void{ userManager->removeAllUsers(); });
 
-    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+    CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
     CHECK((true == logicalCollection->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+  }
+
+  // drop link (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((true == logicalCollection->getIndexes().empty()));
+      CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+  }
+
+  // add authorised link (existing collection not authorized)
+  {
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": 101 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    REQUIRE((nullptr != logicalCollection0));
+    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    REQUIRE((nullptr != logicalCollection1));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection0->getIndexes().empty()));
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+  }
+
+  // drop authorised link (existing collection not authorized)
+  {
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": 101 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    REQUIRE((nullptr != logicalCollection0));
+    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    REQUIRE((nullptr != logicalCollection1));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection0->getIndexes().empty()));
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), false, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
   }
 }
 
@@ -4905,6 +5227,87 @@ SECTION("test_update_partial") {
     }
   }
 
+  // modify meta params with links (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62 }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      expectedMeta._cleanupIntervalStep = 10;
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string error;
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::iresearch::IResearchViewMeta expectedMeta;
+      expectedMeta._cleanupIntervalStep = 62;
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->toVelocyPack(builder, true, true); // 'forPersistence' to avoid auth check
+      builder.close();
+
+      auto slice = builder.slice();
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string error;
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
+    }
+  }
+
   // add link (collection not authorized)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
@@ -4936,6 +5339,201 @@ SECTION("test_update_partial") {
     CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), false, false).errorNumber()));
     CHECK((true == logicalCollection->getIndexes().empty()));
     CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+  }
+
+  // drop link (collection not authorized)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((false == logicalCollection->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((true == logicalCollection->getIndexes().empty()));
+      CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+  }
+
+  // add authorised link (existing collection not authorized)
+  {
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": 101 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": {} } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    REQUIRE((nullptr != logicalCollection0));
+    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    REQUIRE((nullptr != logicalCollection1));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection0->getIndexes().empty()));
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+  }
+
+  // drop authorised link (existing collection not authorized)
+  {
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\", \"id\": 100 }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": 101 }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": null } }");
+
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    REQUIRE((nullptr != logicalCollection0));
+    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    REQUIRE((nullptr != logicalCollection1));
+    auto logicalView = vocbase.createView(viewCreateJson->slice());
+    REQUIRE((false == !logicalView));
+
+    CHECK((true == logicalCollection0->getIndexes().empty()));
+    CHECK((true == logicalCollection1->getIndexes().empty()));
+    CHECK((true == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+
+    // initial link creation
+    {
+      auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
+      CHECK((logicalView->updateProperties(updateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
+    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(userManager, [](arangodb::auth::UserManager* ptr)->void { ptr->removeAllUsers(); });
+
+    // subsequent update (overwrite) not authorised (NONE collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((TRI_ERROR_FORBIDDEN == logicalView->updateProperties(viewUpdateJson->slice(), true, false).errorNumber()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((false == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
+
+    // subsequent update (overwrite) authorised (RO collection)
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantCollection(vocbase.name(), "testCollection0", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testCollection1", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      CHECK((logicalView->updateProperties(viewUpdateJson->slice(), true, false).ok()));
+      CHECK((false == logicalCollection0->getIndexes().empty()));
+      CHECK((true == logicalCollection1->getIndexes().empty()));
+      CHECK((false == logicalView->visitCollections([](TRI_voc_cid_t)->bool { return false; })));
+    }
   }
 }
 

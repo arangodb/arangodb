@@ -48,6 +48,9 @@
 #include "RestServer/FlushFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
+#include "velocypack/Iterator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include "IResearchView.h"
@@ -1228,6 +1231,18 @@ arangodb::Result IResearchView::dropImpl() {
     stale = _metaState._collections;
   }
 
+  // check link auth as per https://github.com/arangodb/backlog/issues/459
+  if (arangodb::ExecContext::CURRENT) {
+    for (auto& entry: stale) {
+      auto collection = vocbase().lookupCollection(entry);
+
+      if (collection
+          && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+        return arangodb::Result(TRI_ERROR_FORBIDDEN);
+      }
+    }
+  }
+
   std::unordered_set<TRI_voc_cid_t> collections;
   auto res = IResearchLinkHelper::updateLinks(
     collections, vocbase(), *this, emptyObjectSlice(), stale
@@ -2037,6 +2052,35 @@ arangodb::Result IResearchView::updateProperties(
 
     if (arangodb::ServerState::instance()->isDBServer()) {
       viewMeta = std::make_shared<AsyncMeta>(); // create an instance not shared with cluster-view
+    }
+
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT) {
+      // check existing links
+      for (auto& entry: _metaState._collections) {
+        auto collection = vocbase().lookupCollection(entry);
+
+        if (collection
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+          return arangodb::Result(TRI_ERROR_FORBIDDEN);
+        }
+      }
+
+      // check new links
+      if (slice.hasKey(StaticStrings::LinksField)) {
+        for (arangodb::velocypack::ObjectIterator itr(slice.get(StaticStrings::LinksField)); itr.valid(); ++itr) {
+          if (!itr.key().isString()) {
+            continue; // not a resolvable collection (invalid jSON)
+          }
+
+          auto collection= vocbase().lookupCollection(itr.key().copyString());
+
+          if (collection
+              && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+            return arangodb::Result(TRI_ERROR_FORBIDDEN);
+          }
+        }
+      }
     }
 
     static_cast<IResearchViewMeta&>(*viewMeta) = std::move(meta);
