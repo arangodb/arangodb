@@ -400,7 +400,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 } // MaintenanceFeature::findReadyAction
 
 
-VPackBuilder  MaintenanceFeature::toVelocyPack() const {
+VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
   READ_LOCKER(rLock, _actionRegistryLock);
 

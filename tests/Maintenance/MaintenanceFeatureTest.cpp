@@ -139,7 +139,8 @@ public:
   bool verifyRegistryState(ExpectedVec_t & expected) {
     bool good(true);
 
-    VPackArrayIterator registry(toVelocyPack().slice());
+    VPackBuilder registryBuilder(toVelocyPack());
+    VPackArrayIterator registry(registryBuilder.slice());
 
     auto action = registry.begin();
     auto check = expected.begin();
@@ -186,8 +187,10 @@ public:
     do {
       again = false;
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      VPackArrayIterator registry(toVelocyPack().slice());
-      for (auto action : registry ) {
+    
+      VPackBuilder registryBuilder(toVelocyPack());
+      VPackArrayIterator registry(registryBuilder.slice());
+      for (auto action : registry) {
         VPackSlice state = action.get("state");
         again = again || (COMPLETE != state.getInt() && FAILED != state.getInt());
       } // for
