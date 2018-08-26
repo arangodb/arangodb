@@ -260,11 +260,11 @@ class ExecutionPlan {
   /// and adding plan specific options.
   ModificationOptions createModificationOptions(AstNode const*);
 
-public:
+ public:
   /// @brief parses modification options form an AST node
   static ModificationOptions parseModificationOptions(AstNode const*);
 
-private:
+ private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 
