@@ -283,6 +283,25 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return;
       }
 
+      // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+      try {
+        arangodb::velocypack::Builder viewBuilder;
+
+        viewBuilder.openObject();
+
+        auto res = view->toVelocyPack(viewBuilder, true, false);
+
+        if (!res.ok()) {
+          generateError(res);
+
+          return; // skip view
+        }
+      } catch(...) {
+        generateError(arangodb::Result(TRI_ERROR_INTERNAL));
+
+        return; // skip view
+      }
+
       auto newNameStr = newName.copyString();
       int res = _vocbase.renameView(view, newNameStr);
 
