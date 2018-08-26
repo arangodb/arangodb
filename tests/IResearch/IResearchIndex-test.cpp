@@ -274,7 +274,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc', 'test_A'), 'test_B') OPTIONS { forceSync: true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc', 'test_A'), 'test_B') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
@@ -297,7 +297,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_A') OPTIONS { forceSync: true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH PHRASE(d.X, 'abc', 'test_A') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
@@ -320,7 +320,7 @@ SECTION("test_analyzer") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc'), 'test_A') OPTIONS { forceSync: true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.X, 'abc'), 'test_A') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
@@ -594,7 +594,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_A'), 'test_B') OPTIONS { forceSync: true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz', 'test_A'), 'test_B') OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
@@ -622,7 +622,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_A') OPTIONS { forceSync : true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH PHRASE(d.same, 'xyz', 'test_A') OPTIONS { waitForSync : true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
@@ -650,7 +650,7 @@ SECTION("test_async_index") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_A') OPTIONS { forceSync : true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.same, 'xyz'), 'test_A') OPTIONS { waitForSync : true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
@@ -879,7 +879,7 @@ SECTION("test_fields") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH d.X == 'abc' OPTIONS { forceSync: true } SORT d.seq RETURN d",
+      "FOR d IN testView SEARCH d.X == 'abc' OPTIONS { waitForSync: true } SORT d.seq RETURN d",
       nullptr
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);

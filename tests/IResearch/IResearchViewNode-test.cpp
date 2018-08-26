@@ -221,7 +221,7 @@ SECTION("construct") {
     attributeValue.setBoolValue(true);
     arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
-    attributeName.setStringValue("forceSync", strlen("forceSync"));
+    attributeName.setStringValue("waitForSync", strlen("waitForSync"));
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
 
@@ -266,7 +266,7 @@ SECTION("construct") {
     attributeValue.setBoolValue(true);
     arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
-    attributeName.setStringValue("forceSync", strlen("forceSync"));
+    attributeName.setStringValue("waitForSync", strlen("waitForSync"));
     attributeName.addMember(&attributeName);
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
@@ -290,7 +290,7 @@ SECTION("construct") {
     attributeValue.setValueType(arangodb::aql::VALUE_TYPE_BOOL);
     attributeValue.setBoolValue(true);
     arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
-    attributeName.setStringValue("forceSync1", strlen("forceSync1"));
+    attributeName.setStringValue("waitForSync1", strlen("waitForSync1"));
     attributeName.addMember(&attributeValue);
     attributeName.addMember(&attributeName);
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
@@ -435,7 +435,7 @@ SECTION("constructFromVPackSingleServer") {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"forceSync\" : true }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : true }, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
     );
 
     arangodb::iresearch::IResearchViewNode node(
@@ -470,7 +470,7 @@ SECTION("constructFromVPackSingleServer") {
   // with invalid options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"forceSync\" : \"false\"}, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
+      "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], \"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], \"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { \"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : \"false\"}, \"viewId\": \"" + std::to_string(logicalView->id()) + "\" }"
     );
 
     arangodb::iresearch::IResearchViewNode node(
@@ -626,7 +626,7 @@ SECTION("clone") {
     attributeValue.setBoolValue(true);
     arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
-    attributeName.setStringValue("forceSync", strlen("forceSync"));
+    attributeName.setStringValue("waitForSync", strlen("waitForSync"));
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
 
@@ -933,7 +933,7 @@ SECTION("serialize") {
     attributeValue.setBoolValue(true);
     arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
-    attributeName.setStringValue("forceSync", strlen("forceSync"));
+    attributeName.setStringValue("waitForSync", strlen("waitForSync"));
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
 

@@ -140,7 +140,7 @@ void toVelocyPack(
     arangodb::iresearch::IResearchViewNode::Options const& options
 ) {
   VPackObjectBuilder objectScope(&builder);
-  builder.add("forceSync", VPackValue(options.forceSync));
+  builder.add("waitForSync", VPackValue(options.forceSync));
 }
 
 bool fromVelocyPack(
@@ -153,7 +153,7 @@ bool fromVelocyPack(
 
   // forceSync
   {
-    auto const optionSlice = optionsSlice.get("forceSync");
+    auto const optionSlice = optionsSlice.get("waitForSync");
 
     if (!optionSlice.isBool()) {
       return false;
@@ -178,13 +178,13 @@ bool parseOptions(
 
   static std::map<irs::string_ref, OptionHandler> const Handlers {
     {
-      "forceSync", [](
+      "waitForSync", [](
         aql::AstNode const& value,
         arangodb::iresearch::IResearchViewNode::Options& options,
         std::string& error
       ) {
         if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
-          error = "boolean value expected for 'forceSync'";
+          error = "boolean value expected for 'waitForSync'";
           return false;
         }
 
