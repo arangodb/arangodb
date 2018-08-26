@@ -82,7 +82,7 @@ By default, context contains `Identity` analyzer.
 `BOOST(search-expression, boost)`
 
 Override boost in a context of **search-expression** with a specified value,
-making it available for scorer funtions.
+making it available for scorer functions.
 
 - *search-expression* - any valid search expression
 - *boost* - numeric boost value
@@ -283,7 +283,7 @@ based on the creation-time search conditions and zero or more sorting functions.
 The sorting functions are meant to be user-defined.
 
 Note: Similar to other sorting functions on regular collections the first
-  argument to any sorting function is _always_ either the document emmited by 
+  argument to any sorting function is _always_ either the document emitted by
   the `FOR` statement, or some sub-attribute of it. 
 
 The sorting functions are meant to be user-defined. The following functions are already built in:

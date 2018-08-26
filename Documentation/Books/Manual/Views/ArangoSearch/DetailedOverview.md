@@ -7,9 +7,9 @@ filtering on multiple document attributes.
 
 ## View datasource
 
-The IResearch functionality is exposed to ArangoDB via the the ArangoSearch view
-API because the ArangoSearch view is merely an identity transformation applied
-onto documents stored in linked collections of the same ArangoDB database.
+Search functionality is exposed to ArangoDB via the view API for views
+of type *arangosearch*. The ArangoSearch view is merely an identity
+transformation applied onto documents stored in linked collections of the same ArangoDB database.
 In plain terms an ArangoSearch view only allows filtering and sorting of documents
 located in collections of the same database. The matching documents themselves
 are returned as-is from their corresponding collections.
@@ -37,6 +37,14 @@ ArangoDB collection a link definition must be added to the properties of the
 said ArangoSearch view defining the link parameters as per the section
 [View definition/modification](#view-definitionmodification).
 
+## Index
+
+Inverted Index is the heart of ArangoSearch. The index consists of several 
+independent segments and the index segment itself is meant to be treated as 
+a standalone index.
+
+
+
 ## Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of 
@@ -52,95 +60,110 @@ directives.
 
 During view creation the following directives apply:
 
-* id _(optional)_: the desired view identifier
-* name _(required)_: the view name
-* type _(required)_: the value "arangosearch"
-  any of the directives from the section [View properties](#view-properties-updatable)
+* **id** (_optional_; type: `string`): the desired view identifier
+* **name** (_required_; type: `string`): the view name
+* **type** (_required_; type: `string`): the value "arangosearch"<br/>
+* any of the directives from the section [View properties](#view-properties)
 
 During view modification the following directives apply:
 
-* links _(optional)_:
-  a mapping of collection-name/collection-identifier to one of:
+* **links** (_optional_; type: `object`):
+  a mapping of `collection-name/collection-identifier` to one of:
   * link creation - link definition as per the section [Link properties](#link-properties)
-  * link removal - JSON keyword *null* (i.e. nullify a link if present)
-    any of the directives from the section [modifiable view properties](#view-properties-updatable)
+  * link removal - JSON keyword *null* (i.e. nullify a link if present)<br/>
+* any of the directives from the section [View properties](#view-properties)
 
-## View properties (non-updatable)
+## View properties
+The following terminology from ArangoSearch architecture is used to understand
+view properties assignment of its type:<br/>
+The index consists of several independent segments and the index **segment** itself
+is meant to be treated as a standalone index. **Commit** is meant to be treated
+as the procedure of accumulating processed data
+creating new index segments. **Consolidation** is meant to be treated as the procedure
+of joining multiple index segments into a bigger one and removing garbage documents
+(e.g. deleted from a collection). **Cleanup** is meant to be treated as the
+procedure of removing unused segments after release of internal resources.
 
-* **locale** (_optional_, default: `C`)<br/>
-  the default locale used for ordering processed attribute names
+* **cleanupIntervalStep** (_optional_; type: `integer`; default: `10`; to disable use: `0`)<br/>
+  ArangoSearch waits at least this many commits between removing unused files in
+  its data directory
+  for the case where the consolidation policies merge segments often (i.e. a
+  lot of commit+consolidate). A lower value will cause a lot of disk space to
+  be wasted
+  for the case where the consolidation policies rarely merge segments (i.e.
+  few inserts/deletes). A higher value will impact performance without any
+  added benefits.
+  >With every "commit" or "consolidate" operation a new state of the view
+  internal data-structures is created on disk old states/snapshots are released once there are no longer any users
+  remaining however, the files for the released states/snapshots are left on disk, and
+  only removed by "cleanup" operation.
 
-## View properties (updatable)
+* **consoloidationIntervalMsec** (_optional_; type: `integer`; default: `60000`; to disable use: `0`)<br/>
+  ArangoSearch waits at least this many milliseconds between committing view data store
+  changes and making documents visible to queries
+  for the case where there are a lot of inserts/updates. A lower value will
+  cause the view not to account for them, (until commit), and memory usage
+  would continue to grow
+  for the case where there are a few inserts/updates. A higher value will
+  impact performance and waste disk space for each commit call without any
+  added benefits.
+  >For data retrieval ArangoSearch views follow the concept of
+   "eventually-consistent", i.e. eventually all the data in ArangoDB will be
+   matched by corresponding query expressions
+   the concept of ArangoSearch view "commit" operation is introduced to
+   control the upper-bound on the time until document addition/removals are
+   actually reflected by corresponding query expressions
+   once a "commit" operation is complete all documents added/removed prior to
+   the start of the "commit" operation will be reflected by queries invoked in
+   subsequent ArangoDB transactions, in-progress ArangoDB transactions will
+   still continue to return a repeatable-read state.
 
-* **commit** (_optional_, default: use defaults for all values)<br/>
-  configure ArangoSearch View commit policy for single-item inserts/removals,
-  e.g. when adding removing documents from a linked ArangoDB collection
+* **consolidationPolicy** (_optional_; type: `object`; default: `{}`)<br/>
+  the consolidation policy to apply for selecting data store segment merge
+  candidates.
+  >With each ArangoDB transaction that inserts documents one or more
+   ArangoSearch internal segments gets created
+   similarly for removed documents the segments that contain such documents
+   will have these documents marked as 'deleted'
+   over time this approach causes a lot of small and sparse segments to be
+   created
+   a "consolidation" operation selects one or more segments and copies all of
+   their valid documents into a single new segment, thereby allowing the
+   search algorithm to perform more optimally and for extra file handles to be
+   released once old segments are no longer used.
 
-  * **cleanupIntervalStep** (_optional_, default: `10`; to disable use: `0`)<br/>
-    wait at least this many commits between removing unused files in the
-    ArangoSearch data directory
-    for the case where the consolidation policies merge segments often (i.e. a
-    lot of commit+consolidate), a lower value will cause a lot of disk space to
-    be wasted
-    for the case where the consolidation policies rarely merge segments (i.e.
-    few inserts/deletes), a higher value will impact performance without any
-    added benefits
+  * **type** (_optional_; type: `string`; default: `"bytes_accum"`)<br/>
+    the segment candidates for the "consolidation" operation are selected based
+    upon several possible configurable formulas as defined by their types
+    the currently supported types are:
+    - **bytes**: consolidate if and only if
+      `{threshold} > segment_bytes / (all_segment_bytes / number_of_segments)`
+      i.e. the candidate segment byte size is less that the average segment byte size multiplied by the `{threshold}`
+    - **bytes_accum**: consolidate if and only if
+      `{threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
+      i.e. the sum of all candidate segment byte size is less than the total segment byte size multiplied by the `{threshold}`
+    - **count**: consolidate if and only if
+      `{threshold} > segment_docs{valid} / (all_segment_docs{valid} / number_of_segments)`
+      i.e. the candidate segment non-deleted document count is less that the average segment non-deleted document count size multiplied by the `{threshold}`
+    - **fill**: consolidate if and only if:
+      `{threshold} > #segment_docs{valid} / (#segment_docs{valid} + number_of_segment_docs{removed})`
+      i.e. the candidate segment valid document count is less that the average segment total document count multiplied by the `{threshold}`
 
-  * **commitIntervalMsec** (_optional_, default: `60000`; to disable use: `0`)<br/>
-    wait at least *count* milliseconds between committing view data store
-    changes and making documents visible to queries
-    for the case where there are a lot of inserts/updates, a lower value will
-    cause the view not to account for them, (unlit commit), and memory usage
-    would continue to grow
-    for the case where there are a few inserts/updates, a higher value will
-    impact performance and waste disk space for each commit call without any
-    added benefits
+  * **segmentThreshold** (_optional_; type: `integer`; default: `300`)<br/>
+    apply the "consolidation" operation if and only if `{segmentThreshold} < number_of_segments`
 
-  * **consolidate** (_optional_, default: `none`)<br/>
-    a per-policy mapping of thresholds in the range `[0.0, 1.0]` to determine data
-    store segment merge candidates, if specified then only the listed policies
-    are used, keys are any of:
-
-    * **bytes** (_optional_, for default values use an empty object: `{}`)
-
-      * **segmentThreshold** (_optional_, default: `300`; to disable use: `0`)<br/>
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * **threshold** (_optional_, default: `0.85`)<br/>
-        consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
-
-    * **bytes_accum** (_optional_, for default values use: `{}`)<br/>
-
-      * **segmentThreshold** (_optional_, default: `300`; to disable use: `0`)<br/>
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * **threshold** (_optional_, default: `0.85`)<br/>
-        consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
-
-    * **count** (_optional_, for default values use: `{}`)
-
-      * **segmentThreshold** (_optional_, default: `300`; to disable use: `0`)<br/>
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * **threshold** (_optional_, default: `0.85`)<br/>
-        consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
-
-    * fill: (optional)
-      if specified, use empty object for default values, i.e. `{}`
-
-      * **segmentThreshold** (_optional_, default: `300`; to disable use: `0`)<br/>
-        apply consolidation policy IFF {segmentThreshold} >= #segments
-
-      * **threshold** (_optional_, default: `0.85`)<br/>
-        consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
+  * **threshold** (_optional_; type: `float`; default: `0.85`)<br/>
+    select a given segment for "consolidation" if and only if the formula based
+    on *type* (as defined above) evaluates to true, valid value range
+    `[0.0, 1.0]`
 
 ## Link properties
 
-* **analyzers** (_optional_, default: `[ 'identity' ]`)<br/>
+* **analyzers** (_optional_; type: `array`; subtype: `string`; default: `[ 'identity' ]`)<br/>
   a list of analyzers, by name as defined via the [Analyzers](Analyzers.md), that
   should be applied to values of processed document attributes
 
-* **fields** (_optional_, default: `{}`)<br/>
+* **fields** (_optional_; type: `object`; default: `{}`)<br/>
   an object `{attribute-name: [Link properties]}` of fields that should be
   processed at each level of the document
   each key specifies the document attribute to be processed, the value of
@@ -149,12 +172,12 @@ During view modification the following directives apply:
   processing the specified field, a Link properties value of `{}` denotes
   inheritance of all (except *fields*) directives from the current level
 
-* **includeAllFields** (_optional_, default: `false`)<br/>
+* **includeAllFields** (_optional_; type: `boolean`; default: `false`)<br/>
   if true then process all document attributes (if not explicitly specified
   then process the fields with default Link properties directives, i.e. `{}`),
   otherwise only consider attributes mentioned in *fields*
 
-* **trackListPositions** (_optional_, default: `false`)<br/>
+* **trackListPositions** (_optional_; type: `boolean`; default: `false`)<br/>
   if true then for array values track the value position in the array, e.g. when
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr[1] == 'valueY'`
@@ -162,8 +185,8 @@ During view modification the following directives apply:
   querying for the input: `{ attr: [ 'valueX', 'valueY', 'valueZ' ] }`
   the user must specify: `doc.attr == 'valueY'`
 
-* **storeValues** (_optional_, default: `"none"`)<br/>
+* **storeValues** (_optional_; type: `string`; default: `"none"`)<br/>
   how should the view track the attribute values, this setting allows for
   additional value retrieval optimizations, one of:
-  * none: Do not store values by the view
-  * id: Store only information about value presence, to allow use of the EXISTS() function
+  * **none**: Do not store values by the view
+  * **id**: Store only information about value presence, to allow use of the `EXISTS()` function
