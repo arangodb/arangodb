@@ -45,7 +45,7 @@
 
 Name:           @CPACK_PACKAGE_NAME@
 Version:        @CPACK_PACKAGE_VERSION@
-Release:        @ARANGODB_PACKAGE_REVISION@
+Release:        @ARANGODB_RPM_REVISION@
 Summary:        The open-source, multi-model NoSQL database
 License:        Apache-2.0
 Group:          Productivity/Databases/Servers
