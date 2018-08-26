@@ -723,7 +723,7 @@ static VPackBuilder assembleLocalCollectionInfo(
     std::string errorMsg(
       "Maintenance::assembleLocalCollectionInfo: Failed to lookup database ");
     errorMsg += database;
-    errorMsg += " exception: ";
+    errorMsg += ", exception: ";
     errorMsg += e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
@@ -771,7 +771,7 @@ static VPackBuilder assembleLocalDatabaseInfo (std::string const& database,
     std::string errorMsg(
       "Maintenance::assembleLocalDatabaseInfo: Failed to lookup database ");
     errorMsg += database;
-    errorMsg += " exception: ";
+    errorMsg += ", exception: ";
     errorMsg += e.what();
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }

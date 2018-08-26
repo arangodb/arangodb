@@ -359,7 +359,7 @@ SECTION("test_create_drop") {
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -398,7 +398,7 @@ SECTION("test_create_drop") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -468,7 +468,7 @@ SECTION("test_create_drop") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -489,7 +489,7 @@ SECTION("test_create_drop") {
     // ensure jSON is still valid after unload()
     {
       index->unload();
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")

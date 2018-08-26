@@ -1006,7 +1006,7 @@ void TRI_vocbase_t::inventory(
       result.openObject();
 
       result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
+      collection->getIndexesVPack(result, Index::SERIALIZE_BASICS, [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&

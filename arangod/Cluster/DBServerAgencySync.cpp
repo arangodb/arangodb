@@ -237,7 +237,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
   }
   
-  auto took = duration<double>(clock::now()-start).count();
+  auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
       "took " << took << " s to execute handlePlanChange";
