@@ -32,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
 #include <iostream>
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
@@ -468,17 +469,21 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
     }
   }
 
-  if (result.empty()) {
-    // still no good candidates found. now check if at least one of the existing
-    // options has the same prefix as the option entered
+  if (value.size() >= 3) {
+    // additionally add all options that have the search string as part
+    // of their name
     walk(
         [this, &value, &result](Section const&, Option const& option) {
-          if (option.fullName().substr(0, value.size()) == value) {
+          if (option.fullName().find(value) != std::string::npos) {
             result.emplace_back(option.displayName());
           }
         },
         false);
   }
+    
+  // produce a unique result
+  std::sort(result.begin(), result.end());
+  result.erase(std::unique(result.begin(), result.end()), result.end());
 
   return result;
 }
