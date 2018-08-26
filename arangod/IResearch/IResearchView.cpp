@@ -1968,9 +1968,22 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   try {
     SCOPED_LOCK(mutex);
 
+    bool invalidateCache = false;
+
+    auto cacheInvalidator = irs::make_finally([&invalidateCache, this]() {
+      if (invalidateCache) {
+        // invalidate query cache if there were some data changes
+        arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
+      }
+    });
+
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "starting active memory-store sync for iResearch view '" << id() << "'";
-    _memoryNode->_store.sync();
+    {
+      auto const reader = _memoryNode->_store._reader;
+      _memoryNode->_store.sync();
+      invalidateCache = invalidateCache  || (reader != _memoryNode->_store._reader);
+    }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
       << "finished memory-store sync for iResearch view '" << id() << "'";
@@ -1984,10 +1997,13 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
     _toFlush->_store._segmentCount.store(0); // reset to zero to get count of new segments that appear during commit
     _toFlush->_store._writer->commit();
 
+
     {
       SCOPED_LOCK(_toFlush->_reopenMutex);
+      auto const reader = _toFlush->_store._reader;
       _toFlush->_store._reader = _toFlush->_store._reader.reopen(); // update reader
       _toFlush->_store._segmentCount += _toFlush->_store._reader.size(); // add commited segments
+      invalidateCache = invalidateCache  || (reader != _toFlush->_store._reader);
     }
 
     LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
@@ -2006,8 +2022,10 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 
       {
         SCOPED_LOCK(_toFlush->_reopenMutex);
+        auto const reader = _storePersisted._reader;
         _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
         _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
+        invalidateCache = invalidateCache  || (reader != _storePersisted._reader);
       }
 
       LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
