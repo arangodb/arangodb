@@ -141,9 +141,8 @@ class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, index),
+  : IndexIterator(collection, trx),
   _docs(std::move(docs)),
   _pos(_docs.begin()) {}
   

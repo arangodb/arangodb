@@ -45,26 +45,19 @@ MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& 
 //  startsBefore("StorageEngine");
 
   init();
-
 } // MaintenanceFeature::MaintenanceFeature
 
-
-
-
 void MaintenanceFeature::init() {
-  _isShuttingDown=false;
-  _nextActionId=1;
+  _isShuttingDown = false;
+  _nextActionId = 1;
 
   setOptional(true);
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
 
   // these parameters might be updated by config and/or command line options
-  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors()/4 +1);
+  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() / 4 + 1);
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
-
-  return;
-
 } // MaintenanceFeature::init
 
 
@@ -95,37 +88,28 @@ void MaintenanceFeature::prepare() {
 
 
 void MaintenanceFeature::start() {
-  int loop;
-  bool flag;
-
   // start threads
-  for (loop=0; loop<_maintenanceThreadsMax; ++loop) {
-    maintenance::MaintenanceWorker * newWorker = new maintenance::MaintenanceWorker(*this);
-    _activeWorkers.push_back(newWorker);
-    flag = newWorker->start(&_workerCompletion);
-
-    if (!flag) {
+  for (int32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
+    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
+    if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "MaintenanceFeature::start:  newWorker start failed";
-    } // if
+    } else {
+      _activeWorkers.push_back(std::move(newWorker));
+    }
   } // for
 } // MaintenanceFeature::start
 
 
 void MaintenanceFeature::beginShutdown() {
-
-    _isShuttingDown=true;
-    CONDITION_LOCKER(cLock, _actionRegistryCond);
-    _actionRegistryCond.broadcast();
-
-    return;
-
+  _isShuttingDown = true;
+  CONDITION_LOCKER(cLock, _actionRegistryCond);
+  _actionRegistryCond.broadcast();
 } // MaintenanceFeature
 
 
 void MaintenanceFeature::stop() {
-
-  for (auto itWorker : _activeWorkers ) {
+  for (auto const& itWorker : _activeWorkers ) {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
     // loop on each worker, retesting at 10ms just in case
@@ -133,8 +117,6 @@ void MaintenanceFeature::stop() {
       _workerCompletion.wait(10000);
     } // if
   } // for
-
-  return;
 
 } // MaintenanceFeature::stop
 
@@ -204,7 +186,7 @@ Result MaintenanceFeature::addAction(
       result = worker.result();
     } // if
   } catch (...) {
-    result.reset(TRI_ERROR_INTERNAL, "addAction experience an unexpected throw.");
+    result.reset(TRI_ERROR_INTERNAL, "addAction experienced an unexpected throw.");
   } // catch
 
   return result;
@@ -255,7 +237,7 @@ Result MaintenanceFeature::addAction(
       result = worker.result();
     } // if
   } catch (...) {
-    result.reset(TRI_ERROR_INTERNAL, "addAction experience an unexpected throw.");
+    result.reset(TRI_ERROR_INTERNAL, "addAction experienced an unexpected throw.");
   } // catch
 
   return result;
@@ -338,8 +320,7 @@ std::shared_ptr<Action> MaintenanceFeature::findAction(
 std::shared_ptr<Action> MaintenanceFeature::findActionHash(size_t hash) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
-  return(findActionHashNoLock(hash));
-
+  return findActionHashNoLock(hash);
 } // MaintenanceFeature::findActionHash
 
 
@@ -363,8 +344,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionHashNoLock(size_t hash) {
 std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
-  return(findActionIdNoLock(id));
-
+  return findActionIdNoLock(id);
 } // MaintenanceFeature::findActionId
 
 
@@ -420,7 +400,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 } // MaintenanceFeature::findReadyAction
 
 
-VPackBuilder  MaintenanceFeature::toVelocyPack() const {
+VPackBuilder MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
   READ_LOCKER(rLock, _actionRegistryLock);
 

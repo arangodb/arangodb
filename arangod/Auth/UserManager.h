@@ -77,7 +77,8 @@ class UserManager {
     _globalVersion.store(version, std::memory_order_release);
   }
   
-  void increaseGlobalVersion() {
+  /// @brief reload user cache and token caches
+  void triggerLocalReload() {
     _globalVersion.fetch_add(1, std::memory_order_release);
   }
   
@@ -86,8 +87,8 @@ class UserManager {
     return _globalVersion.load(std::memory_order_acquire);
   }
 
-  /// Trigger eventual reload, user facing API call
-  void triggerReload();
+  /// Trigger eventual reload on all other coordinators (and in TokenCache)
+  void triggerGlobalReload();
 
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
