@@ -67,14 +67,6 @@ struct TestView: public arangodb::LogicalView {
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 
-template <typename T, typename U>
-std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
-  auto* location = &ptr;
-  auto* oldValue = ptr;
-  ptr = newValue;
-  return std::shared_ptr<T>(oldValue, [location](T* p)->void { *location = p; });
-}
-
 }
 
 // -----------------------------------------------------------------------------
@@ -178,7 +170,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -256,7 +248,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -378,7 +370,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -537,7 +529,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -715,7 +707,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -830,7 +822,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -946,7 +938,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
