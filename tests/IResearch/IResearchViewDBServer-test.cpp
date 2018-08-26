@@ -81,8 +81,8 @@ struct IResearchViewDBServerSetup {
 
   IResearchViewDBServerSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true); // need 2 connections or Agency callbacks will fail
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_PRIMARY);

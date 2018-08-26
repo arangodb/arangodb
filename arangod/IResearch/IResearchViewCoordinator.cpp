@@ -121,6 +121,7 @@ arangodb::Result updateLinks(
   std::string error;
   VPackBuilder builder;
   IResearchLinkMeta linkMeta;
+  arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
 
   // process new links
   for (VPackObjectIterator linksItr(newLinks); linksItr.valid(); ++linksItr) {
@@ -429,6 +430,15 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     bool partialUpdate,
     bool /*doSync*/
 ) {
+  auto* engine = arangodb::ClusterInfo::instance();
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failure to get storage engine while updating IResearch View '") + name() + "'"
+    );
+  }
+
   try {
     IResearchViewMeta meta;
     std::string error;
@@ -444,16 +454,39 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     // reset non-updatable values to match current meta
     meta._locale = _meta._locale;
 
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT) {
+      // check existing links
+      for (auto& entry: _collections) {
+        auto collection =
+          engine->getCollection(vocbase().name(), std::to_string(entry.first));
+
+        if (collection
+            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+          return arangodb::Result(TRI_ERROR_FORBIDDEN);
+        }
+      }
+
+      // check new links
+      if (slice.hasKey(StaticStrings::LinksField)) {
+        for (arangodb::velocypack::ObjectIterator itr(slice.get(StaticStrings::LinksField)); itr.valid(); ++itr) {
+          if (!itr.key().isString()) {
+            continue; // not a resolvable collection (invalid jSON)
+          }
+
+          auto collection =
+            engine->getCollection(vocbase().name(), itr.key().copyString());
+
+          if (collection
+              && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase().name(), collection->name(), arangodb::auth::Level::RO)) {
+            return arangodb::Result(TRI_ERROR_FORBIDDEN);
+          }
+        }
+      }
+    }
+
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {
-      auto* engine = arangodb::ClusterInfo::instance();
-
-      if (!engine) {
-        return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("failure to get storage engine while updating IResearch View '") + name() + "'"
-        );
-      }
 
       arangodb::velocypack::Builder builder;
 
