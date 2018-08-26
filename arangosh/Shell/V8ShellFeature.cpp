@@ -875,16 +875,6 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void V8ShellFeature::initGlobals() {
   auto context = _isolate->GetCurrentContext();
 
-  // set pretty print default
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "PRETTY_PRINT"),
-      v8::Boolean::New(_isolate, _console->prettyPrint()));
-
-  // add colors for print.js
-  TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING(_isolate, "COLOR_OUTPUT"),
-                               v8::Boolean::New(_isolate, _console->colors()));
-
   // string functions
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
