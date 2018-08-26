@@ -1155,9 +1155,6 @@ function ahuacatlQueryCacheViewTestSuite () {
         internal.debugSetFailAt("FlushThreadDisableAll");
         internal.sleep(5); // give FlushThread some time
 
-        // invalidate view query cache
-        AQL_EXECUTE("FOR doc in @@view OPTIONS { waitForSync: true } COLLECT WITH COUNT INTO count RETURN count", { "@view": v.name() });
-
         // explicitly without waitForSync here
         AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection" : c1.name() });
 
@@ -1175,6 +1172,9 @@ function ahuacatlQueryCacheViewTestSuite () {
       }
         
       internal.sleep(5); // give FlushThread some time
+        
+      // invalidate view query cache
+      AQL_EXECUTE("FOR doc in @@view OPTIONS { waitForSync: true } COLLECT WITH COUNT INTO count RETURN count", { "@view": v.name() });
 
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result.cached);
