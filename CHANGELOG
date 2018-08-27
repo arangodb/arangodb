@@ -7,6 +7,8 @@ v3.4.0-preview.1
 devel
 -----
 
+* major revision of the maintenance feature
+
 * added `uuidv4` and `genRandomBytes` methods to crypto module
 
 * added `hexSlice` methods `hexWrite` to JS Buffer type
@@ -31,8 +33,8 @@ devel
 
 * fixed issue #6106: Arithmetic operator type casting documentation incorrect
 
-* The arangosh now supports the velocystream transport protocol via the schemas 
-  "vst+tcp://", "vst+ssl://", "vst+unix://" schemes. 
+* The arangosh now supports the velocystream transport protocol via the schemas
+  "vst+tcp://", "vst+ssl://", "vst+unix://" schemes.
 
 * The server will no longer lowercase the input in --server.endpoint. This means
   Unix domain socket paths will now  be treated as specified, previously they were lowercased
@@ -58,7 +60,7 @@ devel
 
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
 
-* intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
+* intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries
 
   (not within a JS transaction), standalone truncate as well as for the "import" API
 

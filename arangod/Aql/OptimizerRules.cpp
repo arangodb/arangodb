@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
@@ -471,10 +472,9 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       auto sub = ExecutionNode::castTo<SubqueryNode*>(setter);
 
       // estimate items in subquery
-      size_t nrItems = 0;
-      sub->getSubquery()->getCost(nrItems);
+      CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (nrItems < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
         continue;
       }
 
@@ -1248,7 +1248,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
-
+   
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -1267,7 +1267,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
 
-    if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
+    if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
       if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
         // user has explicitly asked for hash method
         // specialize existing the CollectNode so it will become a HashedCollectBlock
@@ -2580,12 +2580,14 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   std::vector<ExecutionNode*> nodesToPermute;
   std::vector<size_t> permTuple;
   std::vector<size_t> starts;
+  std::vector<ExecutionNode*> nn;
 
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
   for (auto const& n : nodes) {
     if (nodesSet.find(n) != nodesSet.end()) {
-      std::vector<ExecutionNode*> nn{n};
+      nn.clear();
+      nn.emplace_back(n);
       nodesSet.erase(n);
 
       // Now follow the dependencies as long as we see further such nodes:
@@ -2635,7 +2637,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
     do {
       // check if we already have enough plans (plus the one plan that we will
       // add at the end of this function)
-      if (opt->hasEnoughPlans(1)) {
+      if (opt->runOnlyRequiredRules(1)) {
         // have enough plans. stop permutations
         break;
       }
@@ -2646,6 +2648,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
       // Find the nodes in the new plan corresponding to the ones in the
       // old plan that we want to permute:
       std::vector<ExecutionNode*> newNodes;
+      newNodes.reserve(nodesToPermute.size());
       for (size_t j = 0; j < nodesToPermute.size(); j++) {
         newNodes.emplace_back(newPlan->getNodeById(nodesToPermute[j]->id()));
       }
@@ -2726,8 +2729,7 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
   // TODO: properly handle subqueries here
   SmallVector<ExecutionNode*>::allocator_type::arena_type s;
   SmallVector<ExecutionNode*> nodes{s};
-  // std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY};
-  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY};
+  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY};
   plan->findNodesOfType(nodes, types, true);
 
   bool hasIncompatibleNodes = !nodes.empty();
@@ -2738,16 +2740,16 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
 
   if (!nodes.empty() && !hasIncompatibleNodes) {
     // turn off all other cluster optimization rules now as they are superfluous
-    opt->disableRule(OptimizerRule::optimizeClusterJoinsRule_pass10);
-    opt->disableRule(OptimizerRule::distributeInClusterRule_pass10);
-    opt->disableRule(OptimizerRule::scatterInClusterRule_pass10);
-    opt->disableRule(OptimizerRule::distributeFilternCalcToClusterRule_pass10);
-    opt->disableRule(OptimizerRule::distributeSortToClusterRule_pass10);
-    opt->disableRule(OptimizerRule::removeUnnecessaryRemoteScatterRule_pass10);
+    opt->disableRule(OptimizerRule::optimizeClusterJoinsRule);
+    opt->disableRule(OptimizerRule::distributeInClusterRule);
+    opt->disableRule(OptimizerRule::scatterInClusterRule);
+    opt->disableRule(OptimizerRule::distributeFilternCalcToClusterRule);
+    opt->disableRule(OptimizerRule::distributeSortToClusterRule);
+    opt->disableRule(OptimizerRule::removeUnnecessaryRemoteScatterRule);
 #ifdef USE_ENTERPRISE
-    opt->disableRule(OptimizerRule::removeSatelliteJoinsRule_pass10);
+    opt->disableRule(OptimizerRule::removeSatelliteJoinsRule);
 #endif
-    opt->disableRule(OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10);
+    opt->disableRule(OptimizerRule::undistributeRemoveAfterEnumCollRule);
 
     // get first collection from query
     Collection const* c = ::getCollection(nodes[0]);
@@ -5155,11 +5157,7 @@ void arangodb::aql::patchUpdateStatementsRule(
       }
 
       if (type == EN::ENUMERATE_COLLECTION || type == EN::INDEX) {
-        if (::getCollection(dep) != collection) {
-          // different collection, not suitable
-          modified = false;
-          break;
-        } else {
+        if (::getCollection(dep) == collection) {
           if (modified) {
             // already saw the collection... that means we have seen the same
             // collection two times in two FOR loops
@@ -5590,7 +5588,6 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();
-          plan->invalidateCost();
           plan->findVarUsage();
 
           // abort optimization
@@ -5757,7 +5754,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
       VPackBuilder builder;
-      idx->toVelocyPack(builder,true,false);
+      idx->toVelocyPack(builder, Index::SERIALIZE_BASICS);
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
 
       fields1.back().name += geoJson ? "[1]" : "[0]";

@@ -167,14 +167,18 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere
-void AqlItemBlock::destroy() {
-  if (_valueCount.empty()) {
-    return;
-  }
+void AqlItemBlock::destroy() noexcept {
+  // none of the functions used here will throw in reality, but
+  // technically all the unordered_map functions are not noexcept for
+  // arbitrary types. so we put a global try...catch here to be on
+  // the safe side
+  try {
+    if (_valueCount.empty()) {
+      return;
+    }
 
-  for (auto& it : _data) {
-    if (it.requiresDestruction()) {
-      try {  // can find() really throw???
+    for (auto& it : _data) {
+      if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
           TRI_ASSERT((*it2).second > 0);
@@ -182,21 +186,18 @@ void AqlItemBlock::destroy() {
           if (--((*it2).second) == 0) {
             decreaseMemoryUsage(it.memoryUsage());
             it.destroy();
-            try {
-              _valueCount.erase(it2);
-            } catch (...) {
-            }
+            _valueCount.erase(it2);
           }
         }
-      } catch (...) {
+        // Note that if we do not know it the thing it has been stolen from us!
+      } else {
+        it.erase();
       }
-      // Note that if we do not know it the thing it has been stolen from us!
-    } else {
-      it.erase();
     }
-  }
 
-  _valueCount.clear();
+    _valueCount.clear();
+  } catch (...) {
+  }
 }
 
 /// @brief shrink the block to the specified number of rows

@@ -90,7 +90,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBEdgeIndex const* index,
     std::unique_ptr<VPackBuilder> keys, std::shared_ptr<cache::Cache> cache)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _keys(std::move(keys)),
       _keysIterator(_keys->slice()),
       _index(index),
@@ -558,11 +558,9 @@ double RocksDBEdgeIndex::selectivityEstimate(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                    bool forPersistence) const {
+void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  // add selectivity estimate hard-coded
+  RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)
@@ -717,13 +715,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index

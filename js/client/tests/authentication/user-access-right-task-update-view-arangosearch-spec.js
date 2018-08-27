@@ -305,7 +305,7 @@ function hasIResearch (db) {
                     }
                   })(params);`
                 };
-                if (dbLevel['rw'].has(name)) {
+                if (dbLevel['rw'].has(name) && (colLevel['ro'].has(name) || colLevel['rw'].has(name))) {
                   tasks.register(task);
                   wait(keySpaceId, name);
                   expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
@@ -320,7 +320,7 @@ function hasIResearch (db) {
                   } finally {
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
-                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  expect(false).to.equal(!dbLevel['rw'].has(name), `${name} managed to register a task with insufficient rights`);
                 }
               });
 
@@ -388,7 +388,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(colLevel['rw'].has(name)){
+                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
@@ -432,7 +432,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(colLevel['rw'].has(name)){
+                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
@@ -476,8 +476,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(colLevel['rw'].has(name))
-                  {
+                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);
@@ -521,7 +520,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(colLevel['rw'].has(name)) {
+                  if(colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not update the view with sufficient rights`);

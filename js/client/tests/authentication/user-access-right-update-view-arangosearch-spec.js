@@ -242,7 +242,7 @@ function hasIResearch (db) {
             it('view by name', () => {
               require('internal').sleep(2);
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
-              if (dbLevel['rw'].has(name)) {
+              if (dbLevel['rw'].has(name) && (colLevel['ro'].has(name) || colLevel['rw'].has(name))) {
                 try {
                   db._view(testViewName).rename(testViewRename);
                 } catch (e) {
@@ -283,7 +283,7 @@ function hasIResearch (db) {
 
             it('view by property except links (full)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+              if (dbLevel['rw'].has(name) && (colLevel['ro'].has(name) || colLevel['rw'].has(name))) {
                 db._view(testViewName).properties({ "cleanupIntervalStep": 1 }, false);
                 expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(1, 'View property update reported success, but property was not updated');
               } else {
@@ -299,7 +299,7 @@ function hasIResearch (db) {
 
             it('view by properties remove (full)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+              if (dbLevel['rw'].has(name) && (colLevel['ro'].has(name) || colLevel['rw'].has(name))) {
                 db._view(testViewName).properties({}, false);
                 expect(rootGetViewProps(testViewName, true)).to.deep.equal(rootGetDefaultViewProps(), 'View properties update reported success, but properties were not updated');
               } else {
@@ -315,7 +315,7 @@ function hasIResearch (db) {
 
             it('view by existing link update (partial)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+              if (dbLevel['rw'].has(name) && (colLevel['ro'].has(name) || colLevel['rw'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, true);
                 expect(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
               } else {
@@ -331,7 +331,7 @@ function hasIResearch (db) {
 
             it('view by existing link update (full)', () => {
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, view was not found');
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+              if (dbLevel['rw'].has(name) && (colLevel['ro'].has(name) || colLevel['rw'].has(name))) {
                 db._view(testViewName).properties({ links: { [testCol1Name]: { includeAllFields: true, analyzers: ["text_de","text_en"] } } }, false);
                 expect(rootGetViewProps(testViewName, true)["links"][testCol1Name]["analyzers"]).to.eql(["text_de","text_en"], 'View link update reported success, but property was not updated');
               } else {

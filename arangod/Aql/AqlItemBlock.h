@@ -75,13 +75,13 @@ class AqlItemBlock {
   }
 
  private:
-  void destroy();
+  void destroy() noexcept;
 
   inline void increaseMemoryUsage(size_t value) {
     _resourceMonitor->increaseMemoryUsage(value);
   }
   
-  inline void decreaseMemoryUsage(size_t value) {
+  inline void decreaseMemoryUsage(size_t value) noexcept {
     _resourceMonitor->decreaseMemoryUsage(value);
   }
 

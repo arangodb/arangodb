@@ -39,15 +39,10 @@ const uniqueCode = ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
 const invalidCode = ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
 const keyBadCode = ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code;
 
-let clreq =
-  request.get('/_api/cluster/endpoints', {auth:{username:"root",password:""}});
-var cluster = (clreq.statusCode === 200);
-var createOptions = { waitForSync: false };
-if (cluster) {
-  createOptions['replicationFactor'] = 2;
-  createOptions['numberOfShards'] = 2;
-  createOptions['waitForReplication'] = true;
-}
+var createOptions = { waitForSync: false,
+                      replicationFactor: 2,
+                      numberOfShards: 2 };
+// Note that the cluster options are ignored in single server
 
 let endpoint = {};
 
@@ -57,7 +52,8 @@ describe('babies collection document', function () {
 
   beforeEach(function () {
     db._drop(cn);
-    collection = db._create(cn, createOptions);
+    collection = db._create(cn, createOptions, "document",
+                            {waitForSyncReplication: true});
   });
 
   afterEach(function () {

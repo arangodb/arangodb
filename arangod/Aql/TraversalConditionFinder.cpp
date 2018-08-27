@@ -527,7 +527,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       return true;
 
     case EN::FILTER: {
-      std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
+      std::vector<Variable const*> invars = en->getVariablesUsedHere();
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
       _filterVariables.emplace(invars[0]->id);

@@ -508,6 +508,11 @@ COLLECT statement:
 * `SORTED_UNIQUE`
 * `COUNT_DISTINCT`
 
+The following function aliases have been created for existing AQL functions:
+
+* `CONTAINS_ARRAY` is an alias for `POSITION`
+* `KEYS` is an alias for `ATTRIBUTES`
+
 ### Distributed COLLECT
 
 In the general case, AQL COLLECT operations are expensive to execute in a cluster,
@@ -605,6 +610,25 @@ of V8 anymore, except for user-defined functions.
 If no user-defined functions are used in AQL, end users do not need to put aside
 dedicated V8 contexts for executing AQL queries with ArangoDB 3.4, making server
 configuration less complex and easier to understand.
+
+### AQL optimizer query planning improvements
+ 
+The AQL query optimizer will by default now create at most 128 different execution
+plans per AQL query. In previous versions the maximum number of plans was 192.
+
+Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+but there are some cases in which it creates multiple competing plans. More plans
+can lead to better optimized queries, however, plan creation has its costs. The
+more plans are created and shipped through the optimization pipeline, the more
+time will be spent in the optimizer.
+To make the optimizer better cope with some edge cases, the maximum number of plans
+created is now strictly enforced and was lowered compared to previous versions of
+ArangoDB. This helps a specific class of complex queries.
+
+Note that the default maximum value can be adjusted globally by setting the startup 
+option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+`maxNumberOfPlans` option.
+
 
 ### Single document optimizations
 
@@ -762,9 +786,21 @@ for such queries.
 
 ### Miscellaneous changes
 
-The `NEAR` AQL function now does not default to a limit of 100 documents any more
-when no limit value was specified. The previously used limit value of 100 was an
-arbitrary limit that acted contrary to user expectations.
+When creating query execution plans for a query, the query optimizer was fetching
+the number of documents of the underlying collections in case multiple query
+execution plans were generated. The optimizer used these counts as part of its 
+internal decisions and execution plan costs calculations. 
+
+Fetching the number of documents of a collection can have measurable overhead in a
+cluster, so ArangoDB 3.4 now caches the "number of documents" that are referred to
+when creating query execution plans. This may save a few roundtrips in case the
+same collections are frequently accessed using AQL queries. 
+
+The "number of documents" value was not and is not supposed to be 100% accurate 
+in this stage, as it is used for rough cost estimates only. It is possible however
+that when explaining an execution plan, the "number of documents" estimated for
+a collection is using a cached stale value, and that the estimates change slightly
+over time even if the underlying collection is not modified.
 
 
 Streaming AQL Cursors
@@ -840,10 +876,14 @@ implementations to C++-based implementations in ArangoDB 3.4:
     - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
+* all the DBserver internal maintenance tasks for shard creation, index
+  creation and the like in the cluster
 
 By making the listed functionality not use and depend on the V8 JavaScript engine,
 the respective functionality can now be invoked more efficiently, without requiring
-the conversion of data between ArangoDB's native format and V8's internal format.
+the conversion of data between ArangoDB's native format and V8's
+internal format. For the maintenance operations this will lead to
+improved stability in the cluster.
 
 As less functionality depends on the V8 JavaScript engine, an ArangoDB 3.4 server
 will not require as many V8 contexts as previous versions.

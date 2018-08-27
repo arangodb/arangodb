@@ -294,7 +294,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (colLevel['rw'].has(name)) {
+                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
