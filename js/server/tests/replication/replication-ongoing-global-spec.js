@@ -67,14 +67,12 @@ const compareIndexes = function(l, r, eq) {
   expect(r).to.be.an("array");
   for (let x of l) {
     delete x.id;
-    delete x.memory;
-    delete x.cacheUsage;
     delete x.selectivityEstimate;
+    delete x.figures;
   }
   for (let x of r) {
     delete x.id;
-    delete x.memory;
-    delete x.cacheUsage;
+    delete x.figures;
     delete x.selectivityEstimate;
   }
   if (eq) {
