@@ -228,8 +228,8 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
 }
 
 Result Graph::removeOrphanCollection(std::string&& name) {
-  TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
   if (_orphanColls.find(name) != _orphanColls.end()) {
+    TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
     _orphanColls.erase(name);
     _vertexColls.erase(name);
     return TRI_ERROR_NO_ERROR;
