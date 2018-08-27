@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/FairReadWriteLock.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexLookupContext.h"
@@ -318,7 +319,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int lockRead(bool useDeadlockDetector, double timeout = 0.0);
 
   int lockWrite(bool useDeadlockDetector, double timeout = 0.0);
-
+  
   int unlockRead(bool useDeadlockDetector);
 
   int unlockWrite(bool useDeadlockDetector);
@@ -413,6 +414,9 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
  private:
+  int lockWriteWithDeadlockDetection(double timeout);
+  int lockReadWithDeadlockDetection(double timeout);
+
   void createInitialIndexes();
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
@@ -540,7 +544,7 @@ class MMFilesCollection final : public PhysicalCollection {
   mutable arangodb::MMFilesDitches _ditches;
 
   // lock protecting the indexes and data
-  mutable basics::ReadWriteLock _dataLock;
+  mutable basics::FairReadWriteLock _dataLock;
 
   arangodb::basics::ReadWriteLock _filesLock;
   std::vector<MMFilesDatafile*> _datafiles;   // all datafiles
