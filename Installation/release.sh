@@ -130,8 +130,12 @@ if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     exit 1
 fi
 
-if echo "${VERSION}" | grep -q -- '-'; then
-    echo "${VERSION} mustn't contain minuses! "
+VERSION_RE='^[0-9]+.[0-9]+.[0-9]+(-((alpha|beta|milestone|preview|rc).)?[0-9]+)?$'
+
+if echo "${VERSION}" | egrep -q -- $VERSION_RE; then
+    echo "${VERSION} matches $VERSION_RE"
+else
+    echo "${VERSION} does not match $VERSION_RE"
     exit 1
 fi
 
