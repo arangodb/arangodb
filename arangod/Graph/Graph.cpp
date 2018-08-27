@@ -228,8 +228,8 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
 }
 
 Result Graph::removeOrphanCollection(std::string&& name) {
+  TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
   if (_orphanColls.find(name) != _orphanColls.end()) {
-    TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
     _orphanColls.erase(name);
     _vertexColls.erase(name);
     return TRI_ERROR_NO_ERROR;
@@ -462,11 +462,7 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
 
 Result Graph::replaceEdgeDefinition(EdgeDefinition const& edgeDefinition) {
   if (removeEdgeDefinition(edgeDefinition.getName())) {
-    Result res = addEdgeDefinition(edgeDefinition);
-    if (res.fail()) {
-      return res;
-    }
-    return res;
+    return addEdgeDefinition(edgeDefinition);
   }
   // Graph doesn't contain this edge definition, no need to do anything.
   return TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST;
