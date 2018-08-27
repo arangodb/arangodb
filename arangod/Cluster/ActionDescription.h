@@ -49,7 +49,7 @@ enum ActionState {
   COMPLETE = 7,  // task completed successfully
   FAILED = 8,    // task failed, no longer executing
 };
-  
+
 static std::string const KEY("key");
 static std::string const FIELDS("fields");
 static std::string const TYPE("type");
@@ -102,7 +102,7 @@ public:
    * @param  other  Other descriptor
    */
   std::size_t hash() const;
-  static std::size_t hash(std::map<std::string, std::string> desc);
+  static std::size_t hash(std::map<std::string, std::string> const &desc);
 
   /// @brief Name of action
   std::string const& name() const;

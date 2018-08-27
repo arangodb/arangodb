@@ -152,7 +152,7 @@ class ActionBase {
   std::shared_ptr<Action> getPostAction();
 
   /// @brief Save pointer to successor action
-  void setPostAction(std::shared_ptr<ActionDescription> post) {
+  void setPostAction(std::shared_ptr<ActionDescription> &post) {
     _postAction=post;
   }
 
