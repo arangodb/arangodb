@@ -194,9 +194,9 @@ public:
    */
   arangodb::Result removeIndexErrors (
     std::string const& database, std::string const& collection,
-    std::string const& shard, std::unordered_set<std::string> &indexIds);
+    std::string const& shard, std::unordered_set<std::string> const& indexIds);
   arangodb::Result removeIndexErrors (
-    std::string const& path, std::unordered_set<std::string> &indexIds);
+    std::string const& path, std::unordered_set<std::string> const& indexIds);
 
   /**
    * @brief add shard error to bucket

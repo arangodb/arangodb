@@ -168,7 +168,7 @@ arangodb::Result getReadLockId (
 
 
 arangodb::Result count(
-  std::shared_ptr<arangodb::LogicalCollection> const &col, uint64_t& c) {
+  std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
 
   std::string collectionName(col->name());
   auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());

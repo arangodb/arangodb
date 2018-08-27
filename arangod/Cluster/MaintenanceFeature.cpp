@@ -42,8 +42,10 @@ using namespace arangodb::maintenance;
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Maintenance") {
 
-//  startsAfter("EngineSelector");    // ??? what should this be
-//  startsBefore("StorageEngine");
+  // this feature has to know the role of this server in its `start`. The role
+  // is determined by `ClusterFeature::validateOptions`, hence the following line
+  // of code is not required. For philosophical reasons we added it to the
+  // ClusterPhase and let it start after `Cluster`.
   startsAfter("Cluster");
 
   init();
@@ -134,7 +136,7 @@ void MaintenanceFeature::stop() {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
     // loop on each worker, retesting at 10ms just in case
-    if (itWorker->isRunning()) {
+    while (itWorker->isRunning()) {
       _workerCompletion.wait(10000);
     } // if
   } // for
@@ -623,7 +625,7 @@ std::ostream& operator<<(std::ostream& os, std::set<T>const& st) {
 
 
 arangodb::Result MaintenanceFeature::removeIndexErrors (
-  std::string const& key, std::unordered_set<std::string> &indexIds) {
+  std::string const& key, std::unordered_set<std::string> const& indexIds) {
 
   MUTEX_LOCKER(guard, _ieLock);
 
@@ -656,7 +658,7 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
 
 arangodb::Result MaintenanceFeature::removeIndexErrors (
   std::string const& database, std::string const& collection,
-  std::string const& shard, std::unordered_set<std::string> &indexIds) {
+  std::string const& shard, std::unordered_set<std::string> const& indexIds) {
 
   return removeIndexErrors(
     database + SLASH + collection + SLASH + shard, indexIds);
