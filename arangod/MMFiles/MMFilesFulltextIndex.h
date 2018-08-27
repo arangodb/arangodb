@@ -62,9 +62,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures,
-                    bool forPersistence) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 

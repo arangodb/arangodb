@@ -53,9 +53,7 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
 
   void toVelocyPackFigures(arangodb::velocypack::Builder&) const override;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    bool withFigures,
-                    bool forPersistence) const override;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const override;
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths()

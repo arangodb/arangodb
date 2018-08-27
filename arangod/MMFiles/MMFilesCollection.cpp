@@ -2187,7 +2187,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
 
   std::shared_ptr<VPackBuilder> builder;
   try {
-    builder = idx->toVelocyPack(false, true);
+    builder = idx->toVelocyPack(Index::SERIALIZE_OBJECTID);
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
     return ex.code();
