@@ -234,7 +234,7 @@ function hasIResearch (db) {
               rootCreateCollection(testCol1Name);
               rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true } } });
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+              if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                 db._dropView(testViewName);
                 expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
               } else {
@@ -243,12 +243,15 @@ function hasIResearch (db) {
                 } catch (e) {
                   checkError(e);
                   return;
+                } finally {
+                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                 }
-                expect(rootTestView(testViewName)).to.equal(!(colLevel['ro'].has(name) || colLevel['rw'].has(name)), `${name} was able to delete a view with insufficent rights`);
               }
             });
 
-            it('view with links to multiple collections (switching 1 of them as RW during RO/NONE of a user collection level)', () => {
+            var itName = 'view with links to multiple collections (switching 1 of them as RW during RO/NONE of a user collection level)';
+            !(colLevel['ro'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
+            it(itName, () => {
               rootDropView(testViewName);
               rootDropCollection(testCol1Name);
 
@@ -256,30 +259,19 @@ function hasIResearch (db) {
               rootCreateCollection(testCol2Name);
               rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
               expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
-              if (dbLevel['rw'].has(name)) {
-                if(colLevel['rw'].has(name))
-                {
+
+              rootGrantCollection(testCol2Name, name, 'rw');
+              if (dbLevel['rw'].has(name) && colLevel['ro'].has(name)) {
                   db._dropView(testViewName);
                   expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
-                } else {
-                  rootGrantCollection(testCol2Name, name, 'rw');
-                  try {
-                    db._dropView(testViewName);
-                  } catch (e) {
-                    checkError(e);
-                    return;
-                  }
-                  expect(rootTestView(testViewName)).to.equal(!(colLevel['ro'].has(name) || colLevel['rw'].has(name)), `${name} was able to delete a view with insufficent rights`);
-                }
               } else {
                 try {
                   db._dropView(testViewName);
                 } catch (e) {
                   checkError(e);
                   return;
-                }
-                if(!dbLevel['rw'].has(name)) {
-                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                } finally {
+                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                 }
               }
             });

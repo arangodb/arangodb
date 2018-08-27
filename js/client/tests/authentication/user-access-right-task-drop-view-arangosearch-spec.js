@@ -343,7 +343,7 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
+                  if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
@@ -366,7 +366,9 @@ function hasIResearch (db) {
                 }
               });
 
-              it('view with links to multiple collections (switching 1 of them as RW during RO of a user collection level)', () => {
+              var itName = 'view with links to multiple collections (switching 1 of them as RW during RO/NONE of a user collection level)';
+              !(colLevel['ro'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
+              it(itName, () => {
                 rootDropView(testViewName);
                 rootDropCollection(testCol1Name);
 
@@ -374,6 +376,7 @@ function hasIResearch (db) {
                 rootCreateCollection(testCol2Name);
                 rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
                 expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
+                rootGrantCollection(testCol2Name, name, 'rw');
                 setKey(keySpaceId, name);
                 const taskId = 'task_drop_view_with_link_to_existing_diff_col' + name;
                 const task = {
@@ -392,16 +395,15 @@ function hasIResearch (db) {
                   })(params);`
                 };
                 if (dbLevel['rw'].has(name)) {
-                  if(colLevel['rw'].has(name))
+                  if(colLevel['ro'].has(name))
                   {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
                   } else {
-                    rootGrantCollection(testCol2Name, name, 'rw');
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(false, `${name} managed to drop the view with insufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                   }
                 } else {
                   try {
@@ -410,6 +412,8 @@ function hasIResearch (db) {
                   } catch (e) {
                     checkError(e);
                     return;
+                  } finally {
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                   }
                   expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }
