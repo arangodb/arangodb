@@ -972,7 +972,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     }
 
   } else {
-    // Create the search Values for the lookup
+    // Create the search values for the lookup
     VPackArrayBuilder guard(&searchValues);
 
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>

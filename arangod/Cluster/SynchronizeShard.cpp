@@ -119,7 +119,7 @@ SynchronizeShard::SynchronizeShard(
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
 public:
-  SynchronizeShardCallback(SynchronizeShard* callie) {};
+  explicit SynchronizeShardCallback(SynchronizeShard* callie) {};
   virtual bool operator()(arangodb::ClusterCommResult*) override final {
     return true;
   }
@@ -168,7 +168,7 @@ arangodb::Result getReadLockId (
 
 
 arangodb::Result count(
-  std::shared_ptr<arangodb::LogicalCollection> const col, uint64_t& c) {
+  std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
 
   std::string collectionName(col->name());
   auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
@@ -504,7 +504,7 @@ enum ApplierType {
 };
 
 arangodb::Result replicationSynchronize(
-  std::shared_ptr<arangodb::LogicalCollection> const col, VPackSlice const& config,
+  std::shared_ptr<arangodb::LogicalCollection> const &col, VPackSlice const& config,
   ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
 
   auto& vocbase = col->vocbase();
@@ -570,16 +570,16 @@ arangodb::Result replicationSynchronize(
   } catch (arangodb::basics::Exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
-    return Result(ex.code(), ex.what());
+    return Result(ex.code(), s);
   } catch (std::exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
-    return Result(TRI_ERROR_INTERNAL, ex.what());
+    return Result(TRI_ERROR_INTERNAL, s);
   } catch (...) {
     std::string s(
       "cannot sync from remote endpoint: unknown exception. last progress message was '");
       s+= syncer->progress() + "'";
-    return Result(TRI_ERROR_INTERNAL);
+    return Result(TRI_ERROR_INTERNAL, s);
   }
 
   return arangodb::Result();

@@ -71,8 +71,8 @@ static std::string const OP("op");
 static std::string const UNDERSCORE("_");
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
-  int counter = 0;
   if (slice.isArray()) {
+    int counter = 0;
     for (auto const& entry : VPackArrayIterator(slice)) {
       if (entry.isString()) {
         if (entry.copyString() == val) {
@@ -267,10 +267,9 @@ void handlePlanShard(
 void handleLocalShard(
   std::string const& dbname, std::string const& colname, VPackSlice const& cprops,
   VPackSlice const& shardMap, std::unordered_set<std::string>& commonShrds,
-  std::unordered_set<std::string>& indis, std::string serverId,
+  std::unordered_set<std::string>& indis, std::string const &serverId,
   std::vector<ActionDescription>& actions) {
 
-  bool drop = false;
   std::unordered_set<std::string>::const_iterator it;
 
   std::string plannedLeader;
@@ -283,7 +282,7 @@ void handleLocalShard(
       ActionDescription (
         {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
   } else {
-
+    bool drop = false;
     // check if shard is in plan, if not drop it
     if (commonShrds.empty()) {
       drop = true;
@@ -347,29 +346,6 @@ VPackBuilder getShardMap (VPackSlice const& plan) {
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
 };
-
-/*
-  Replaced by StringUtils::split
-inline static std::vector<std::string> split(std::string const& key) {
-
-  std::vector<std::string> result;
-  if (key.empty()) {
-    return result;
-  }
-
-  std::string::size_type p = 0;
-  std::string::size_type q;
-  while ((q = key.find('/', p)) != std::string::npos) {
-    result.emplace_back(key, p, q - p);
-    p = q + 1;
-  }
-  result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
-               result.end());
-  return result;
-}*/
-
-
 
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
@@ -710,14 +686,21 @@ static VPackBuilder assembleLocalCollectionInfo(
       ret.add(VPackValue(SERVERS));
       { VPackArrayBuilder a(&ret);
         ret.add(VPackValue(ourselves));
-        auto current = *(collection->followers()->get());
-        for (auto const& server : VPackArrayIterator(planServers)) {
-          if (std::find(current.begin(), current.end(), server.copyString())
-              != current.end()) {
-            ret.add(server);
+        // planServers may be `none` in the case that the shard is not contained
+        // in Plan, but in local.
+        if (planServers.isArray()) {
+          auto current = *(collection->followers()->get());
+          // This method is only called when we are the leader for that shard,
+          // hence we are not contained in `current`, i.e. followers.
+          for (auto const& server : VPackArrayIterator(planServers)) {
+            if (std::find(current.begin(), current.end(), server.copyString())
+                != current.end()) {
+              ret.add(server);
+            }
           }
-        }}}
-
+        }
+      }
+    }
     return ret;
   } catch (std::exception const& e) {
     std::string errorMsg(
@@ -833,9 +816,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
 
         auto inCurrent = cur.hasKey(cp);
-        if (!inCurrent ||
-            (inCurrent &&
-             !equivalent(localCollectionInfo.slice(), cur.get(cp)))) {
+        if (!inCurrent || !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
 
 
           report.add(
@@ -855,12 +836,13 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // update current and let supervision handle the rest
             VPackBuilder ns;
             { VPackArrayBuilder a(&ns);
-              bool front = true;
               if (s.isArray()) {
+                bool front = true;
                 for (auto const& i : VPackArrayIterator(s)) {
                   ns.add(VPackValue((!front) ? i.copyString() : UNDERSCORE + i.copyString()));
                   front = false;
-                }}}
+                }
+              }}
             report.add(
               VPackValue(
                 CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName
