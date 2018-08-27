@@ -896,6 +896,14 @@
     "section" : "query",
     "type" : "uint64"
   },
+  "query.optimizer-max-plans" : {
+    "default" : 128,
+    "description" : "maximum number of query plans to create for a query",
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "section" : "query",
+    "type" : "uint64"
+  },
   "query.registry-ttl" : {
     "default" : 600,
     "description" : "Default time-to-live of query snippets (in seconds)",
@@ -1378,6 +1386,30 @@
     "hidden" : false,
     "section" : "server",
     "type" : "boolean"
+  },
+  "server.maintenance-actions-block" : {
+    "default" : 2,
+    "description" : "minimum number of seconds finished Actions block duplicates",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "int32"
+  },
+  "server.maintenance-actions-linger" : {
+    "default" : 3600,
+    "description" : "minimum number of seconds finished Actions remain in deque",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "int32"
+  },
+  "server.maintenance-threads" : {
+    "default" : 9,
+    "description" : "maximum number of threads available for maintenance actions",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "server",
+    "type" : "uint32"
   },
   "server.maximal-queue-size" : {
     "default" : 4096,
