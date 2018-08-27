@@ -71,7 +71,7 @@ static std::string const OP("op");
 static std::string const UNDERSCORE("_");
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
-  size_t counter = 0;
+  int counter = 0;
   if (slice.isArray()) {
     for (auto const& entry : VPackArrayIterator(slice)) {
       if (entry.isString()) {

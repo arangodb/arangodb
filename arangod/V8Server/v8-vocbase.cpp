@@ -1919,7 +1919,7 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   std::sort(names.begin(), names.end());
 
   // already create an array of the correct size
-  uint32_t const n = names.size();
+  uint32_t const n = static_cast<uint32_t>(names.size());
   v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
   for (uint32_t i = 0; i < n; ++i) {

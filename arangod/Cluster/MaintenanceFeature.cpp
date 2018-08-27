@@ -458,9 +458,9 @@ arangodb::Result MaintenanceFeature::removeDBError (
   try {
     MUTEX_LOCKER(guard, _seLock);
     _shardErrors.erase(database);
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     std::stringstream error;
-    error << "erasing dataabse error for " << database << " failed";
+    error << "erasing database error for " << database << " failed";
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
@@ -512,7 +512,7 @@ arangodb::Result MaintenanceFeature::removeShardError (std::string const& key) {
   try {
     MUTEX_LOCKER(guard, _seLock);
     _shardErrors.erase(key);
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing shard error for " << key << " failed";
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
@@ -622,7 +622,7 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
     for (auto const& indexId : indexIds) {
       errors.erase(indexId);
     }
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing index errors " << indexIds << " for " << key << " failed";
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();

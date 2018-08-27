@@ -2508,7 +2508,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     c->getIndexesVPack(*(tmp.get()), Index::SERIALIZE_BASICS);
     {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      *numberOfShards = c->numberOfShards();
+      *numberOfShards = static_cast<int>(c->numberOfShards());
     }
     VPackSlice const indexes = tmp->slice();
 
@@ -2893,7 +2893,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     }
 
     MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    *numberOfShards = c->numberOfShards();
+    *numberOfShards = static_cast<int>(c->numberOfShards());
   }
 
   bool found = false;
