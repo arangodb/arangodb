@@ -4366,6 +4366,7 @@ SECTION("IResearchViewNode::createBlock") {
       view, // view
       outVariable,
       nullptr, // no filter condition
+      nullptr, // no options
       {} // no sort condition
     );
 

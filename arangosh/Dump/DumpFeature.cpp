@@ -41,6 +41,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -53,6 +54,10 @@
 
 namespace {
 
+/// @brief fake client id we will send to the server. the server keeps
+/// track of all connected clients
+static uint64_t clientId = 0;
+
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
 
@@ -60,8 +65,8 @@ constexpr auto FeatureName = "Dump";
 constexpr uint64_t MinChunkSize = 1024 * 128;
 
 /// @brief maximum amount of data to fetch from server in a single batch
-constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 // NB: larger value may cause tcp issues (check exact limits)
+constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 /// @brief generic error for if server returns bad/unexpected json
 const arangodb::Result ErrorMalformedJsonResponse = {
@@ -104,19 +109,19 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
 
 /// @brief start a batch via the replication API
 std::pair<arangodb::Result, uint64_t> startBatch(
-    arangodb::httpclient::SimpleHttpClient& client, std::string DBserver) {
+    arangodb::httpclient::SimpleHttpClient& client, std::string const& DBserver) {
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  static std::string const url = "/_api/replication/batch";
-  static std::string const body = "{\"ttl\":300}";
+  std::string url = "/_api/replication/batch?serverId=" + std::to_string(clientId);
+  std::string const body = "{\"ttl\":300}";
   std::string urlExt;
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url + urlExt,
+      client.request(arangodb::rest::RequestType::POST, url,
                      body.c_str(), body.size()));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
@@ -140,19 +145,18 @@ std::pair<arangodb::Result, uint64_t> startBatch(
 
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
-                 std::string DBserver, uint64_t batchId) {
+                 std::string const& DBserver, uint64_t batchId) {
   using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string const url = "/_api/replication/batch/" + itoa(batchId);
-  static std::string const body = "{\"ttl\":300}";
-  std::string urlExt;
+  std::string url = "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + std::to_string(clientId);
+  std::string const body = "{\"ttl\":300}";
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::PUT, url + urlExt,
+      client.request(arangodb::rest::RequestType::PUT, url,
                      body.c_str(), body.size()));
   // ignore any return value
 }
@@ -163,14 +167,13 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string const url = "/_api/replication/batch/" + itoa(batchId);
-  std::string urlExt;
+  std::string url = "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + std::to_string(clientId);
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::DELETE_REQ, url + urlExt,
+      client.request(arangodb::rest::RequestType::DELETE_REQ, url,
                      nullptr, 0));
   // ignore any return value
 
@@ -952,6 +955,9 @@ void DumpFeature::reportError(Result const& error) {
 /// @brief main method to run dump
 void DumpFeature::start() {
   _exitCode = EXIT_SUCCESS;
+
+  // generate a fake client id that we sent to the server
+  ::clientId = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
 
   double const start = TRI_microtime();
 

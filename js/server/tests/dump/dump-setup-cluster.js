@@ -100,15 +100,13 @@ function setupSatelliteCollections() {
 
   try {
     db._dropDatabase("UnitTestsDumpSrc");
-  }
-  catch (err1) {
+  } catch (err1) {
   }
   db._createDatabase("UnitTestsDumpSrc");
 
   try {
     db._dropDatabase("UnitTestsDumpDst");
-  }
-  catch (err2) {
+  } catch (err2) {
   }
   db._createDatabase("UnitTestsDumpDst");
 
@@ -134,8 +132,11 @@ function setupSatelliteCollections() {
   var l = [];
   for (i = 0; i < 100000; ++i) {
     l.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+    if (l.length === 10000) {
+      c.save(l);
+      l = [];
+    }
   }
-  c.save(l);
 
   c = db._createEdgeCollection("UnitTestsDumpEdges");
   for (i = 0; i < 10; ++i) {
