@@ -107,6 +107,8 @@ public:
 
   };
 
+  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {};
+
   void setSecondsActionsBlock(uint32_t seconds) {_secondsActionsBlock = seconds;};
 
 
@@ -187,7 +189,7 @@ public:
     do {
       again = false;
       std::this_thread::sleep_for(std::chrono::seconds(1));
-    
+
       VPackBuilder registryBuilder(toVelocyPack());
       VPackArrayIterator registry(registryBuilder.slice());
       for (auto action : registry) {
