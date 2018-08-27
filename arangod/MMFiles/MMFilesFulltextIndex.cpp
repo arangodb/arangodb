@@ -285,7 +285,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
       TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
 
   return new MMFilesFulltextIndexIterator(
-    &_collection, trx, this, std::move(results)
+    &_collection, trx, std::move(results)
   );
 }
 

@@ -78,7 +78,7 @@ RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     RocksDBPrimaryIndex* index,
     std::unique_ptr<VPackBuilder> keys,
     bool allowCoveringIndexOptimization)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _keys(std::move(keys)),
       _iterator(_keys->slice()),
@@ -391,14 +391,14 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
 
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index

@@ -15,7 +15,7 @@ as a user is not supported. This API replaces some of the APIs in `/_api/replica
 
 @startDocuBlock get_api_wal_access_tail
 
-Operations Types
+Operation Types
 ----------------
 
 There are several different operation types thar an ArangoDB server might print. 

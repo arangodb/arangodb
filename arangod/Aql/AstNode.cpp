@@ -1950,6 +1950,16 @@ bool AstNode::containsDynamicAttributeName() const {
 /// @brief clone a node, recursively
 AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 
+/// @brief validate that given node is an object with const-only values
+bool AstNode::isConstObject() const {
+  if (type != NODE_TYPE_OBJECT) {
+    return false;
+  }
+
+  return isConstant();
+}
+
+
 /// @brief append a string representation of the node to a string buffer
 /// the string representation does not need to be JavaScript-compatible
 /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT

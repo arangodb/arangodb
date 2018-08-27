@@ -193,30 +193,37 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
-  node->reserve(2);
+  node->reserve(3);
 
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
+  node->addMember(&NopNode);
 
   return node;
 }
 
 /// @brief create an AST for (non-view) node, using an existing output variable
-AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
+AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression, AstNode const* options) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  AstNode* node = createNode(NODE_TYPE_FOR);
-  node->reserve(2);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
 
   AstNode* v = createNode(NODE_TYPE_VARIABLE);
   v->setData(static_cast<void*>(variable));
+  
+  AstNode* node = createNode(NODE_TYPE_FOR);
+  node->reserve(3);
 
   node->addMember(v);
   node->addMember(expression);
+  node->addMember(options);
 
   return node;
 }
@@ -224,22 +231,29 @@ AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
 /// @brief create an AST for (view) node, using an existing output variable
 AstNode* Ast::createNodeForView(Variable* variable,
                                 AstNode const* expression,
-                                AstNode const* search) {
+                                AstNode const* search, 
+                                AstNode const* options) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
+ 
   TRI_ASSERT(search != nullptr);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
   
   AstNode* variableNode = createNode(NODE_TYPE_VARIABLE);
   variableNode->setData(static_cast<void*>(variable));
 
   AstNode* node = createNode(NODE_TYPE_FOR_VIEW);
-  node->reserve(3);
+  node->reserve(4);
 
   node->addMember(variableNode);
   node->addMember(expression);
   node->addMember(createNodeFilter(search));
+  node->addMember(options);
 
   return node;
 }
@@ -352,18 +366,15 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
 
-
-
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
   }
 
   bool overwrite = false;
-  if (options->type == NODE_TYPE_OBJECT){
-      auto ops = ExecutionPlan::parseModificationOptions(options);
-      overwrite = ops.overwrite;
-
+  if (options->type == NODE_TYPE_OBJECT) {
+    auto ops = ExecutionPlan::parseModificationOptions(options);
+    overwrite = ops.overwrite;
   }
 
   node->reserve(overwrite ? 5: 4);
@@ -663,6 +674,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
     // it's a view!
     AstNode* node = createNode(NODE_TYPE_VIEW);
     node->setStringValue(name, dataSourceName.size());
+    _query->addView(dataSourceName);
 
     return node;
   }
@@ -1617,13 +1629,11 @@ void Ast::injectBindParameters(
         }
         TRI_ASSERT(graph != nullptr);
 
-        auto vColls = graph->vertexCollections();
-
-        for (const auto& n : vColls) {
+        for (const auto& n : graph->vertexCollections()) {
           _query->collections()->add(n, AccessMode::Type::READ);
         }
 
-        auto eColls = graph->edgeCollections();
+        auto const& eColls = graph->edgeCollections();
 
         for (const auto& n : eColls) {
           _query->collections()->add(n, AccessMode::Type::READ);
@@ -1656,13 +1666,12 @@ void Ast::injectBindParameters(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
         }
         TRI_ASSERT(graph != nullptr);
-        auto vColls = graph->vertexCollections();
-
-        for (const auto& n : vColls) {
+        
+        for (const auto& n : graph->vertexCollections()) {
           _query->collections()->add(n, AccessMode::Type::READ);
         }
 
-        auto eColls = graph->edgeCollections();
+        auto const& eColls = graph->edgeCollections();
 
         for (const auto& n : eColls) {
           _query->collections()->add(n, AccessMode::Type::READ);
@@ -3330,7 +3339,7 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
 AstNode* Ast::optimizeFor(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 3);
 
   AstNode* expression = node->getMember(1);
 
