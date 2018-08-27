@@ -246,12 +246,11 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
   if (global) {
     // global inventory
     DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
-    return TRI_ERROR_NO_ERROR;
   } else {
     // database-specific inventory
     vocbase->inventory(result, tick, nameFilter);
-    return TRI_ERROR_NO_ERROR;
   }
+  return Result();
 }
 
 // iterates over at most 'limit' documents in the collection specified,
