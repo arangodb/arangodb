@@ -41,8 +41,8 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 
   // provided arguments
   var args = {
-    numberOfShards: numberOfShards, 
-    replicationFactor: replicationFactor 
+    numberOfShards: numberOfShards,
+    replicationFactor: replicationFactor
   };
   console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -57,8 +57,8 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
       var meta = {
-        links: { 
-          "UnitTestsCollection": { 
+        links: {
+          "UnitTestsCollection": {
             includeAllFields: true,
             storeValues: "id",
             fields: {
