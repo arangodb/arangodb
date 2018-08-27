@@ -1784,12 +1784,12 @@ global.DEFINE_MODULE('internal', (function () {
   
   let testsBasePath;
   exports.pathForTesting = function(path) {
+    let fs = require('fs');
     if (testsBasePath === undefined) {
       // first invocation
       testsBasePath = 'js';
       // build path with version number contained
       let versionString = exports.version.replace(/-.*$/, '');
-      let fs = require('fs');
       if (fs.isDirectory(fs.join(testsBasePath, versionString))) {
         testsBasePath = fs.join(testsBasePath, versionString);
       }
