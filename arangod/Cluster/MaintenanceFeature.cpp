@@ -40,7 +40,10 @@ using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Maintenance") {
+  : ApplicationFeature(server, "Maintenance"),
+    _forceActivation(false),
+    _maintenanceThreadsMax(2) { 
+  // the number of threads will be adjusted later. it's just that we want to initialize all members properly
 
   // this feature has to know the role of this server in its `start`. The role
   // is determined by `ClusterFeature::validateOptions`, hence the following line
@@ -102,15 +105,16 @@ void MaintenanceFeature::prepare() {
 
 
 void MaintenanceFeature::start() {
-
   auto serverState = ServerState::instance();
-
-  if (serverState->isAgent() || serverState->isSingleServer()) {
+  
+  // _forceActivation is set by the catch tests
+  if (!_forceActivation &&
+      (serverState->isAgent() || serverState->isSingleServer())) {
     LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "Disable maintenance-threads"
       << " for single-server or agents.";
     return ;
   }
-
+  
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
     auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
@@ -376,10 +380,12 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 
   std::shared_ptr<Action> ret_ptr;
 
-  for (auto action_it=_actionRegistry.begin();
+  for (auto action_it = _actionRegistry.begin();
        _actionRegistry.end() != action_it && !ret_ptr; ++action_it) {
     if ((*action_it)->id() == id) {
-      ret_ptr=*action_it;
+      // should we return the first match here or the last match?
+      // if first, we could simply add a break
+      ret_ptr = *action_it;
     } // if
   } // for
 

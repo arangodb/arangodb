@@ -98,19 +98,20 @@ public:
   TestMaintenanceFeature(arangodb::application_features::ApplicationServer& as)
     : arangodb::MaintenanceFeature(as) {
 
+    // force activation of the feature, even in agency/single-server mode
+    // (the catch tests use single-server mode)
+    _forceActivation = true;
+
     // begin with no threads to allow queue validation
     _maintenanceThreadsMax = 0;
     as.addReporter(_progressHandler);
-  };
+  }
 
-  virtual ~TestMaintenanceFeature() {
+  virtual ~TestMaintenanceFeature() {}
 
-  };
+  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {}
 
-  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) override {};
-
-  void setSecondsActionsBlock(uint32_t seconds) {_secondsActionsBlock = seconds;};
-
+  void setSecondsActionsBlock(uint32_t seconds) { _secondsActionsBlock = seconds; }
 
   /// @brief set thread count, then activate the threads via start().  One time usage only.
   ///   Code waits until background ApplicationServer known to have fully started.
@@ -196,7 +197,7 @@ public:
         VPackSlice state = action.get("state");
         again = again || (COMPLETE != state.getInt() && FAILED != state.getInt());
       } // for
-    } while(again);
+    } while (again);
   } // waitRegistryComplete
 
 public:

@@ -41,7 +41,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   MaintenanceFeature();
 
-  virtual ~MaintenanceFeature() {};
+  virtual ~MaintenanceFeature() {}
 
   struct errors_t {
     std::map<std::string,
@@ -299,7 +299,10 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
-protected:
+ protected:
+  /// @brief option for forcing this feature to always be enable - used by the catch tests
+  bool _forceActivation;
+
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
 
@@ -361,9 +364,6 @@ protected:
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
-
-
-
 };
 
 }
