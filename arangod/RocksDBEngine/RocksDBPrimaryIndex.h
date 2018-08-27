@@ -108,7 +108,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void load() override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;

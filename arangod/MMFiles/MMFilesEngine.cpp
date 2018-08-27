@@ -750,6 +750,17 @@ void MMFilesEngine::waitForSyncTimeout(double maxWait) {
   }
   MMFilesLogfileManager::instance()->waitForSync(maxWait);
 }
+  
+/// @brief return a list of the currently open WAL files
+std::vector<std::string> MMFilesEngine::currentWalFiles() const {
+  std::vector<std::string> result;
+
+  for (auto const& it : MMFilesLogfileManager::instance()->ranges()) {
+    result.push_back(it.filename);
+  }
+
+  return result;
+}
 
 Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool writeShutdownFile) {

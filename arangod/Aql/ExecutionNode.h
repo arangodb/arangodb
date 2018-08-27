@@ -324,9 +324,6 @@ class ExecutionNode {
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
                          bool withProperties) const;
 
-  /// @brief convert to a string, basically for debugging purposes
-  virtual void appendAsString(std::string& st, int indent = 0);
-
   /// @brief invalidate the cost estimate for the node and its dependencies
   virtual void invalidateCost();
   

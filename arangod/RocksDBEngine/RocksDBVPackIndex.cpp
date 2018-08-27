@@ -309,10 +309,9 @@ double RocksDBVPackIndex::selectivityEstimate(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                     bool forPersistence) const {
+void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(_unique)
@@ -973,7 +972,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     }
 
   } else {
-    // Create the search Values for the lookup
+    // Create the search values for the lookup
     VPackArrayBuilder guard(&searchValues);
 
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>

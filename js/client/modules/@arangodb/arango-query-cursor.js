@@ -68,14 +68,14 @@ exports.ArangoQueryCursor = ArangoQueryCursor;
 
 ArangoQueryCursor.prototype.toString = function () {
   const currentPos = this._pos, hasNext = this._hasNext;
-  var isCaptureModeActive = internal.isCaptureMode();
-  var rows = [], i = 0;
+  const isCaptureModeActive = internal.isCaptureMode();
+  let rows = [], i = 0;
   this._pos = this._printPos || currentPos;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
   }
 
-  var result = '[object ArangoQueryCursor';
+  let result = '[object ArangoQueryCursor';
 
   if (this.data.id) { // should always exist for streaming cursors
     result += ' ' + this.data.id;
@@ -88,9 +88,8 @@ ArangoQueryCursor.prototype.toString = function () {
     if (this._count !== null && this._count !== undefined) {
       result += ', count: ' + this._count;
     }
-    result += ', cached: ' + (this.data.cached ? 'true' : 'false');
   }
-
+  result += ', cached: ' + (this.data.cached ? 'true' : 'false');
   result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 
   if (this.data.hasOwnProperty('extra') &&
@@ -119,7 +118,7 @@ ArangoQueryCursor.prototype.toString = function () {
     if (!isCaptureModeActive) {
       var old = internal.startCaptureMode();
       internal.print(rows);
-      result += '\n\n' + internal.stopCaptureMode(old);
+      result += '\n' + internal.stopCaptureMode(old);
     } else {
       internal.print(rows);
     }

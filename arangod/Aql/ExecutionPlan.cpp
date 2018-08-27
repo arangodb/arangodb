@@ -489,7 +489,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
         // FOR part
         Variable* v = _ast->variables()->createTemporaryVariable();
-        AstNode* forNode = _ast->createNodeFor(v, node);
+        AstNode* forNode = _ast->createNodeFor(v, node, nullptr);
         // RETURN part
         AstNode* returnNode = _ast->createNodeReturn(_ast->createNodeReference(v));
 
@@ -766,11 +766,8 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string const name = member->getString();
-        auto value = member->getMember(0);
-
-        TRI_ASSERT(value->isConstant());
-
         if (name == "method") {
+          auto value = member->getMember(0);
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getString());
@@ -845,10 +842,11 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 3);
 
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
+  // TODO: process FOR options here if we want to use them later
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -893,9 +891,14 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
         "no view for EnumerateView"
       );
     }
+  
+    auto* options = node->getMemberUnchecked(2);
+    if (options->type == NODE_TYPE_NOP) {
+      options = nullptr;
+    }
 
     en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, view, *v, nullptr, {}
+      *this, nextId(), vocbase, view, *v, nullptr, options, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
@@ -920,7 +923,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR_VIEW);
-  TRI_ASSERT(node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() == 4);
 
   auto const* variable = node->getMember(0);
   auto const* expression = node->getMember(1);
@@ -978,8 +981,15 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   TRI_ASSERT(search->type == NODE_TYPE_FILTER);
   TRI_ASSERT(search->numMembers() == 1);
 
+  auto* options = node->getMemberUnchecked(3);
+  if (options->type == NODE_TYPE_NOP) {
+    options = nullptr;
+  } else if (!options->isConstObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
+  }
+  
   en = registerNode(new iresearch::IResearchViewNode(
-    *this, nextId(), vocbase, view, *v, search->getMember(0), {}
+    *this, nextId(), vocbase, view, *v, search->getMember(0), options, {}
   ));
 #else
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

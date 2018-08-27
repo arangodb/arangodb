@@ -335,7 +335,7 @@ namespace parser {
 std::size_t isChunkComplete(uint8_t const* const begin,
                             std::size_t const lengthAvailable) {
   // there is not enought to read the length of
-  if (lengthAvailable < sizeof(uint32_t)) {
+  if (lengthAvailable < sizeof(uint32_t)) { // first header field
     return 0;
   }
   // read chunk length
@@ -356,8 +356,7 @@ std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_0(uint8_t cons
   ChunkHeader header;
 
   auto hdr = bufferBegin;
-  header._chunkLength =
-      basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
+  header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
   header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
   header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
   size_t hdrLen = minChunkHeaderSize;
@@ -381,8 +380,7 @@ std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_1(uint8_t cons
   ChunkHeader header;
 
   auto hdr = bufferBegin;
-  header._chunkLength =
-      basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
+  header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
   header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
   header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
   header._messageLength = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);

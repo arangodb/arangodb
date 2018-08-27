@@ -876,10 +876,14 @@ implementations to C++-based implementations in ArangoDB 3.4:
     - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
+* all the DBserver internal maintenance tasks for shard creation, index
+  creation and the like in the cluster
 
 By making the listed functionality not use and depend on the V8 JavaScript engine,
 the respective functionality can now be invoked more efficiently, without requiring
-the conversion of data between ArangoDB's native format and V8's internal format.
+the conversion of data between ArangoDB's native format and V8's
+internal format. For the maintenance operations this will lead to
+improved stability in the cluster.
 
 As less functionality depends on the V8 JavaScript engine, an ArangoDB 3.4 server
 will not require as many V8 contexts as previous versions.
