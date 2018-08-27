@@ -45,9 +45,9 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  virtual asio::ssl::context createSslContext() const;
-
  protected:
+  virtual void createSslContext();
+
   std::string _cafile;
   std::string _keyfile;
   bool _sessionCache;
@@ -55,9 +55,13 @@ class SslServerFeature : public application_features::ApplicationFeature {
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
   std::string _ecdhCurve;
+  std::unique_ptr<asio::ssl::context> _context;
 
- private:
-  std::string stringifySslOptions(uint64_t opts) const;
+ public:
+  asio::ssl::context& getSslContext() {
+    TRI_ASSERT(_context);
+    return *_context.get();
+  }
 
   std::string _rctx;
 };

@@ -111,7 +111,7 @@ void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   TRI_ASSERT(!_peer);
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     _peer.reset(new SocketSslTcp(_scheduler,
-                                 SslServerFeature::SSL->createSslContext()));
+                                 SslServerFeature::SSL->getSslContext()));
     SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
     _acceptor->async_accept(peer->_socket, peer->_peerEndpoint, handler);
   } else {
