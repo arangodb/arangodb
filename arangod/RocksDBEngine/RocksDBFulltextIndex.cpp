@@ -508,6 +508,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
   }
 
   return new RocksDBFulltextIndexIterator(
-    &_collection, trx, this, std::move(results)
+    &_collection, trx, std::move(results)
   );
 }

@@ -193,30 +193,37 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
-  node->reserve(2);
+  node->reserve(3);
 
   AstNode* variable =
       createNodeVariable(variableName, nameLength, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
+  node->addMember(&NopNode);
 
   return node;
 }
 
 /// @brief create an AST for (non-view) node, using an existing output variable
-AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
+AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression, AstNode const* options) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  AstNode* node = createNode(NODE_TYPE_FOR);
-  node->reserve(2);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
 
   AstNode* v = createNode(NODE_TYPE_VARIABLE);
   v->setData(static_cast<void*>(variable));
+  
+  AstNode* node = createNode(NODE_TYPE_FOR);
+  node->reserve(3);
 
   node->addMember(v);
   node->addMember(expression);
+  node->addMember(options);
 
   return node;
 }
@@ -224,22 +231,29 @@ AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
 /// @brief create an AST for (view) node, using an existing output variable
 AstNode* Ast::createNodeForView(Variable* variable,
                                 AstNode const* expression,
-                                AstNode const* search) {
+                                AstNode const* search, 
+                                AstNode const* options) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
+ 
   TRI_ASSERT(search != nullptr);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
   
   AstNode* variableNode = createNode(NODE_TYPE_VARIABLE);
   variableNode->setData(static_cast<void*>(variable));
 
   AstNode* node = createNode(NODE_TYPE_FOR_VIEW);
-  node->reserve(3);
+  node->reserve(4);
 
   node->addMember(variableNode);
   node->addMember(expression);
   node->addMember(createNodeFilter(search));
+  node->addMember(options);
 
   return node;
 }
@@ -352,18 +366,15 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
 
-
-
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
   }
 
   bool overwrite = false;
-  if (options->type == NODE_TYPE_OBJECT){
-      auto ops = ExecutionPlan::parseModificationOptions(options);
-      overwrite = ops.overwrite;
-
+  if (options->type == NODE_TYPE_OBJECT) {
+    auto ops = ExecutionPlan::parseModificationOptions(options);
+    overwrite = ops.overwrite;
   }
 
   node->reserve(overwrite ? 5: 4);
@@ -663,6 +674,7 @@ AstNode* Ast::createNodeDataSource(arangodb::CollectionNameResolver const& resol
     // it's a view!
     AstNode* node = createNode(NODE_TYPE_VIEW);
     node->setStringValue(name, dataSourceName.size());
+    _query->addView(dataSourceName);
 
     return node;
   }
@@ -1617,13 +1629,11 @@ void Ast::injectBindParameters(
         }
         TRI_ASSERT(graph != nullptr);
 
-        auto vColls = graph->vertexCollections();
-
-        for (const auto& n : vColls) {
+        for (const auto& n : graph->vertexCollections()) {
           _query->collections()->add(n, AccessMode::Type::READ);
         }
 
-        auto eColls = graph->edgeCollections();
+        auto const& eColls = graph->edgeCollections();
 
         for (const auto& n : eColls) {
           _query->collections()->add(n, AccessMode::Type::READ);
@@ -1656,13 +1666,12 @@ void Ast::injectBindParameters(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
         }
         TRI_ASSERT(graph != nullptr);
-        auto vColls = graph->vertexCollections();
-
-        for (const auto& n : vColls) {
+        
+        for (const auto& n : graph->vertexCollections()) {
           _query->collections()->add(n, AccessMode::Type::READ);
         }
 
-        auto eColls = graph->edgeCollections();
+        auto const& eColls = graph->edgeCollections();
 
         for (const auto& n : eColls) {
           _query->collections()->add(n, AccessMode::Type::READ);
@@ -3183,6 +3192,75 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
       // replace IS_NULL(x) function call with `x == null`
       return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMemberUnchecked(0), createNodeValueNull());
     }
+#if 0
+  } else if (func->name == "LIKE") {
+    // optimize a LIKE(x, y) into a plain x == y or a range scan in case the 
+    // search is case-sensitive and the pattern is either a full match or a
+    // left-most prefix
+
+    // this is desirable in 99.999% of all cases, but would cause the following incompatibilities:
+    // - the AQL LIKE function will implicitly cast its operands to strings, whereas 
+    //   operator == in AQL will not do this. So LIKE(1, '1') would behave differently
+    //   when executed via the AQL LIKE function or via 1 == '1'
+    // - for left-most prefix searches (e.g. LIKE(text, 'abc%')) we need to determine
+    //   the upper bound for the range scan. This is trivial for ASCII search patterns
+    //   (e.g. 'abc\0xff0xff0xff...' should be big enough to include everything).
+    //   But it is unclear how to achieve the upper bound for an arbitrary multi-byte
+    //   character and, more grave, when using an arbitrary ICU collation where
+    //   characters may be sorted differently
+    // thus turned off for now, and let for future optimizations
+
+    bool caseInsensitive = false; // this is the default behavior of LIKE
+    auto args = node->getMember(0);
+    if (args->numMembers() >= 3) {
+      caseInsensitive = true; // we have 3 arguments, set case-sensitive to false now
+      auto caseArg = args->getMember(2);
+      if (caseArg->isConstant()) {
+        // ok, we can figure out at compile time if the parameter is true or false
+        caseInsensitive = caseArg->isTrue();
+      }
+    }
+      
+    auto patternArg = args->getMember(1);
+
+    if (!caseInsensitive && patternArg->isStringValue()) {
+      // optimization only possible for case-sensitive LIKE
+      std::string unescapedPattern;
+      bool wildcardFound;
+      bool wildcardIsLastChar;
+      std::tie(wildcardFound, wildcardIsLastChar) = RegexCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
+
+      if (!wildcardFound) {
+        TRI_ASSERT(!wildcardIsLastChar);
+
+        // can turn LIKE into ==
+        char const* p = _query->registerString(unescapedPattern.data(), unescapedPattern.size());
+        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
+
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, args->getMember(0), pattern);
+      } else if (!unescapedPattern.empty()) {
+        // can turn LIKE into >= && <=
+        char const* p = _query->registerString(unescapedPattern.data(), unescapedPattern.size());
+        AstNode* pattern = createNodeValueString(p, unescapedPattern.size());
+        AstNode* lhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_GE, args->getMember(0), pattern);
+
+        // add a new end character that is expected to sort "higher" than anything else
+        char const* v = "\xef\xbf\xbf";
+        unescapedPattern.append(&v[0], 3);
+        p = _query->registerString(unescapedPattern.data(), unescapedPattern.size());
+        pattern = createNodeValueString(p, unescapedPattern.size());
+        AstNode* rhs = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_LE, args->getMember(0), pattern);
+
+        AstNode* op = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, lhs, rhs);
+        if (wildcardIsLastChar) {
+          // replace LIKE with >= && <= 
+          return op;
+        }
+        // add >= && <=, but keep LIKE in place
+        return createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, op, node);
+      }
+    }
+#endif
   }
 
   if (!func->hasFlag(Function::Flags::Deterministic)) {
@@ -3330,7 +3408,7 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
 AstNode* Ast::optimizeFor(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 3);
 
   AstNode* expression = node->getMember(1);
 
