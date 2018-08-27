@@ -842,20 +842,20 @@ void IndexBlock::cleanupNonConstExpressions() {
 
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
-  AstNode const* conditionNode = nullptr;
-  if (_condition != nullptr) {
-    TRI_ASSERT(_indexes.size() == _condition->numMembers());
-    TRI_ASSERT(_condition->numMembers() > currentIndex);
-
-    conditionNode = _condition->getMember(currentIndex);
-  }
-
   TRI_ASSERT(_indexes.size() > currentIndex);
 
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
   // from _condition
   if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
+    AstNode const* conditionNode = nullptr;
+    if (_condition != nullptr) {
+      TRI_ASSERT(_indexes.size() == _condition->numMembers());
+      TRI_ASSERT(_condition->numMembers() > currentIndex);
+
+      conditionNode = _condition->getMember(currentIndex);
+    }
+
     // yet no cursor for index, so create it
     IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
