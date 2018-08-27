@@ -99,7 +99,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
     },
 
     testInTokensFilterSortTFIDF : function () {
-      var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { waitForSync: true }).toArray();
+      var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync: true } SORT TFIDF(doc) LIMIT 4 RETURN doc").toArray();
 
       assertEqual(result.length, 4);
       assertEqual(result[0].name, 'other half');
@@ -118,9 +118,8 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       var result = db._query(
         "FOR adoc IN AnotherUnitTestsCollection" +
         "  FOR doc IN UnitTestsView SEARCH adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) " +
-        "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
-        "RETURN doc"
-      , null, { waitForSync: true }).toArray();
+        "OPTIONS { waitForSync: true } SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
+        "RETURN doc").toArray();
 
       assertEqual(result.length, expected.length);
       var i = 0;
