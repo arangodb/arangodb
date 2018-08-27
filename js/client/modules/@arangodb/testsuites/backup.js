@@ -83,11 +83,12 @@ const generateDumpData = (options) => {
   if (dumpPath !== undefined) {
     return dumpPath;
   }
-  const auth = {
-    'server.authentication': 'false'
+  const conf = {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann'
   };
-
-  let instanceInfo = pu.startInstance('tcp', options, auth, 'backup');
+  
+  let instanceInfo = pu.startInstance('tcp', options, conf, 'backup');
 
   if (instanceInfo === false) {
     return failPreStartMessage('failed to start dataGenerator server!');
@@ -97,7 +98,7 @@ const generateDumpData = (options) => {
   let path = '';
 
   try {
-    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), auth);
+    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), {});
     if (!setup.status === true || !isAlive(instanceInfo, options)) {
       log('Setup failed');
       setup.failed = 1;
@@ -133,6 +134,7 @@ const generateDumpData = (options) => {
     log('Shutting down dump server');
 
     if (isAlive(instanceInfo, options)) {
+      options['server.jwt-secret'] = 'haxxmann';
       pu.shutdownInstance(instanceInfo, options);
     }
     log('done.');

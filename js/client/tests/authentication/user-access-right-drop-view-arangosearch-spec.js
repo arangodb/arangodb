@@ -244,7 +244,7 @@ function hasIResearch (db) {
                   checkError(e);
                   return;
                 }
-                expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                expect(rootTestView(testViewName)).to.equal(!(colLevel['ro'].has(name) || colLevel['rw'].has(name)), `${name} was able to delete a view with insufficent rights`);
               }
             });
 
@@ -269,7 +269,7 @@ function hasIResearch (db) {
                     checkError(e);
                     return;
                   }
-                  expect(rootTestView(testViewName)).to.equal(true, `${name} was able to delete a view with insufficent rights`);
+                  expect(rootTestView(testViewName)).to.equal(!(colLevel['ro'].has(name) || colLevel['rw'].has(name)), `${name} was able to delete a view with insufficent rights`);
                 }
               } else {
                 try {

@@ -158,10 +158,10 @@ class Ast {
   AstNode* createNodeFor(char const* variableName, size_t nameLength, AstNode const* expression, bool isUserDefinedVariable);
 
   /// @brief create an AST for (non-view) node, using an existing output variable
-  AstNode* createNodeFor(Variable* variable, AstNode const* expression);
+  AstNode* createNodeFor(Variable* variable, AstNode const* expression, AstNode const* options);
   
   /// @brief create an AST for (view) node, using an existing out variable
-  AstNode* createNodeForView(Variable* variable, AstNode const* expression, AstNode const* search);
+  AstNode* createNodeForView(Variable* variable, AstNode const* expression, AstNode const* search, AstNode const* options);
 
   /// @brief create an AST let node, without an IF condition
   AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
