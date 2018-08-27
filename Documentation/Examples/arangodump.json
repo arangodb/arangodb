@@ -255,7 +255,7 @@
     "type" : "boolean"
   },
   "output-directory" : {
-    "default" : "/home/fceller/ArangoDB-DEVEL/dump",
+    "default" : "/home/fceller/ArangoDB-3.4/dump",
     "description" : "output directory",
     "enterpriseOnly" : false,
     "hidden" : false,

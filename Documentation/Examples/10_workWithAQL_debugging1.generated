@@ -1,3 +1,2 @@
 arangosh&gt; <span class="hljs-keyword">var</span> query = <span class="hljs-string">"FOR doc IN mycollection FILTER doc.value &gt; 42 RETURN doc"</span>;
 arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/aql/explainer"</span>).debugDump(<span class="hljs-string">"/tmp/query-debug-info"</span>, query);
-[ArangoError <span class="hljs-number">2001</span>: Connection reset by peer]
