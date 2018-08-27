@@ -61,6 +61,291 @@
 
 namespace {
 
+std::string getSingleShardId(
+    arangodb::aql::ExecutionPlan const* plan,
+    arangodb::aql::ExecutionNode const* node,
+    arangodb::aql::Collection const* collection,
+    arangodb::aql::Variable const* collectionVariable = nullptr);
+
+struct PairHash {
+  template <class T1, class T2>
+  size_t operator()(std::pair<T1, T2> const& pair) const {
+    size_t first = std::hash<T1>()(pair.first);
+    size_t second = std::hash<T2>()(pair.second);
+
+    return first ^ second;
+  }
+};
+
+/// WalkerWorker to track collection variable dependencies
+class CollectionVariableTracker final
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode> {
+  using DependencyPair = std::pair<arangodb::aql::Variable const*,
+                                   arangodb::aql::Collection const*>;
+  using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
+  arangodb::aql::ExecutionPlan* _plan;
+  bool _stop;
+  std::unordered_map<arangodb::aql::Variable const*, DependencySet>
+      _dependencies;
+
+ private:
+  template <class NodeType>
+  void processSetter(NodeType const* node,
+                     arangodb::aql::Variable const* outVariable) {
+    try {
+      auto inputVariables = node->getVariablesUsedHere();
+      for (auto var : inputVariables) {
+        for (auto dep : _dependencies[var]) {
+          _dependencies[outVariable].emplace(dep);
+        }
+      }
+    } catch (...) {
+      // do nothing
+    }
+  }
+
+  template <class NodeType>
+  void processModificationNode(arangodb::aql::ExecutionNode const* en) {
+    auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
+    auto outVariable = node->getOutVariableOld();
+    if (nullptr == outVariable) {
+      return;  // nothing to actually track here
+    }
+    processSetter<NodeType>(node, outVariable);
+  }
+
+ public:
+  explicit CollectionVariableTracker(arangodb::aql::ExecutionPlan* plan)
+      : _plan{plan}, _stop{false} {}
+
+  bool isSafeForOptimization() const { return !_stop; }
+
+  DependencySet const& getDependencies(arangodb::aql::Variable const* var) {
+    return _dependencies[var];
+  }
+
+  void after(arangodb::aql::ExecutionNode* en) override final {
+    using EN = arangodb::aql::ExecutionNode;
+    using arangodb::aql::ExecutionNode;
+
+    switch (en->getType()) {
+      case EN::CALCULATION: {
+        auto node =
+            ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(en);
+        auto outVariable = node->outVariable();
+        processSetter<arangodb::aql::CalculationNode>(node, outVariable);
+        break;
+      }
+
+      case EN::INDEX:
+      case EN::ENUMERATE_COLLECTION: {
+        auto collection = ExecutionNode::castTo<
+                              arangodb::aql::CollectionAccessingNode const*>(en)
+                              ->collection();
+        auto variable =
+            ExecutionNode::castTo<arangodb::aql::DocumentProducingNode const*>(
+                en)
+                ->outVariable();
+
+        // originates the collection variable, direct dependence
+        try {
+          _dependencies[variable].emplace(variable, collection);
+        } catch (...) {
+          _stop = true;  // we won't be able to figure it out
+        }
+        break;
+      }
+
+      case EN::UPDATE: {
+        processModificationNode<arangodb::aql::UpdateNode>(en);
+        break;
+      }
+
+      case EN::UPSERT: {
+        processModificationNode<arangodb::aql::UpsertNode>(en);
+        break;
+      }
+
+      case EN::INSERT: {
+        processModificationNode<arangodb::aql::InsertNode>(en);
+        break;
+      }
+
+      case EN::REMOVE: {
+        processModificationNode<arangodb::aql::RemoveNode>(en);
+        break;
+      }
+
+      case EN::REPLACE: {
+        processModificationNode<arangodb::aql::ReplaceNode>(en);
+        break;
+      }
+
+      default: {
+        // we don't support other node types yet
+        break;
+      }
+    }
+  }
+};
+
+/// WalkerWorker for restrictToSingleShard
+class RestrictToSingleShardChecker final
+    : public arangodb::aql::WalkerWorker<arangodb::aql::ExecutionNode> {
+  arangodb::aql::ExecutionPlan* _plan;
+  CollectionVariableTracker& _tracker;
+  std::unordered_map<arangodb::aql::Variable const*,
+                     std::unordered_set<std::string>>
+      _shardsUsed;
+  bool _stop;
+
+ public:
+  explicit RestrictToSingleShardChecker(arangodb::aql::ExecutionPlan* plan,
+                                        CollectionVariableTracker& tracker)
+      : _plan{plan}, _tracker{tracker}, _stop{false} {}
+
+  bool isSafeForOptimization() const {
+    // we have found something in the execution plan that will
+    // render the optimization unsafe
+    return (!_stop && !_plan->getAst()->functionsMayAccessDocuments());
+  }
+
+  std::string getShard(arangodb::aql::Variable const* variable) const {
+    auto const& it = _shardsUsed.find(variable);
+    if (it == _shardsUsed.end()) {
+      return "";
+    }
+
+    auto set = it->second;
+    if (set.size() != 1 || *set.begin() == "all") {
+      return "";
+    }
+
+    return *set.begin();
+  }
+
+  bool isSafeForOptimization(arangodb::aql::Variable const* variable) const {
+    auto it = _shardsUsed.find(variable);
+    if (it == _shardsUsed.end()) {
+      return false;
+    }
+
+    if ((*it).second.size() != 1) {
+      // more than one shard
+      return false;
+    }
+
+    // check for "all" marker
+    auto it2 = (*it).second.find("all");
+    if (it2 != (*it).second.end()) {
+      // "all" included
+      return false;
+    }
+
+    // all good -> safe to optimize
+    return true;
+  }
+
+  bool enterSubquery(arangodb::aql::ExecutionNode*,
+                     arangodb::aql::ExecutionNode*) override final {
+    return true;
+  }
+
+  bool before(arangodb::aql::ExecutionNode* en) override final {
+    using EN = arangodb::aql::ExecutionNode;
+    using arangodb::aql::ExecutionNode;
+
+    switch (en->getType()) {
+      case EN::TRAVERSAL:
+      case EN::SHORTEST_PATH: {
+        _stop = true;
+        return true;  // abort enumerating, we are done already!
+      }
+
+      case EN::FILTER: {
+        auto node = ExecutionNode::castTo<arangodb::aql::FilterNode const*>(en);
+        auto v = node->getVariablesUsedHere();
+        TRI_ASSERT(v.size() == 1);
+        arangodb::aql::Variable const* inputVariable = v[0];
+        handleInputVariable(en, inputVariable, false);
+        break;
+      }
+
+      case EN::INDEX: {
+        handleSourceNode(en);
+        break;
+      }
+
+      case EN::INSERT:
+      case EN::REPLACE:
+      case EN::UPDATE:
+      case EN::REMOVE: {
+        auto node =
+            ExecutionNode::castTo<arangodb::aql::ModificationNode const*>(en);
+        auto v = node->getVariablesUsedHere();
+        for (auto inputVariable : v) {
+          handleInputVariable(en, inputVariable, true);
+        }
+        break;
+      }
+
+      default: {
+        // we don't care about other execution node types here
+        break;
+      }
+    }
+
+    return false;  // go on
+  }
+
+ private:
+  void handleInputVariable(arangodb::aql::ExecutionNode const* en,
+                           arangodb::aql::Variable const* inputVariable,
+                           bool isModificationNode) {
+    auto dependencies = _tracker.getDependencies(inputVariable);
+    for (auto dep : dependencies) {
+      auto variable = dep.first;
+      auto collection = dep.second;
+      auto shardId = ::getSingleShardId(_plan, en, collection, variable);
+      if (shardId.empty()) {
+        if (isModificationNode) {
+          _shardsUsed[variable].clear();
+        }
+        if (_shardsUsed[variable].empty()) {
+          _shardsUsed[variable].emplace("all");
+        }
+      } else {
+        if (1 == _shardsUsed[variable].size() &&
+            "all" == *_shardsUsed[variable].begin()) {
+          _shardsUsed[variable].clear();
+        }
+        _shardsUsed[variable].emplace(shardId);
+      }
+    }
+  }
+
+  void handleSourceNode(arangodb::aql::ExecutionNode const* en) {
+    auto collection = arangodb::aql::ExecutionNode::castTo<
+                          arangodb::aql::CollectionAccessingNode const*>(en)
+                          ->collection();
+    auto variable = arangodb::aql::ExecutionNode::castTo<
+                        arangodb::aql::DocumentProducingNode const*>(en)
+                        ->outVariable();
+    auto shardId = ::getSingleShardId(_plan, en, collection, variable);
+    if (shardId.empty()) {
+      if (_shardsUsed[variable].empty()) {
+        _shardsUsed[variable].emplace("all");
+      }
+    } else {
+      if (1 == _shardsUsed[variable].size() &&
+          "all" == *_shardsUsed[variable].begin()) {
+        _shardsUsed[variable].clear();
+      }
+      _shardsUsed[variable].emplace(shardId);
+    }
+  }
+};
+
 void findShardKeyInComparison(arangodb::aql::AstNode const* root,
                               arangodb::aql::Variable const* inputVariable,
                               std::unordered_set<std::string>& toFind,
@@ -133,6 +418,245 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
   }
 }
 
+// static node types used by some optimizer rules
+// having them statically available avoids having to build the vectors over and
+// over for each AQL query
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    removeUnnecessaryCalculationsNodeTypes{
+        arangodb::aql::ExecutionNode::CALCULATION,
+        arangodb::aql::ExecutionNode::SUBQUERY};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    interchangeAdjacentEnumerationsNodeTypes{
+        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+        arangodb::aql::ExecutionNode::ENUMERATE_LIST};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    scatterInClusterNodeTypes{
+        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+        arangodb::aql::ExecutionNode::INDEX,
+        arangodb::aql::ExecutionNode::INSERT,
+        arangodb::aql::ExecutionNode::UPDATE,
+        arangodb::aql::ExecutionNode::REPLACE,
+        arangodb::aql::ExecutionNode::REMOVE,
+        arangodb::aql::ExecutionNode::UPSERT};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    removeDataModificationOutVariablesNodeTypes{
+        arangodb::aql::ExecutionNode::REMOVE,
+        arangodb::aql::ExecutionNode::INSERT,
+        arangodb::aql::ExecutionNode::UPDATE,
+        arangodb::aql::ExecutionNode::REPLACE,
+        arangodb::aql::ExecutionNode::UPSERT};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const
+    patchUpdateStatementsNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
+                                   arangodb::aql::ExecutionNode::REPLACE};
+
+int indexOf(std::vector<std::string> const& haystack,
+            std::string const& needle) {
+  for (size_t i = 0; i < haystack.size(); ++i) {
+    if (haystack[i] == needle) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
+}
+
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  switch (node->getType()) {
+    case EN::ENUMERATE_COLLECTION:
+      return ExecutionNode::castTo<
+                 arangodb::aql::EnumerateCollectionNode const*>(node)
+          ->collection();
+    case EN::INDEX:
+      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
+          ->collection();
+    case EN::TRAVERSAL:
+    case EN::SHORTEST_PATH:
+      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
+          ->collection();
+    default:
+      // note: modification nodes are not covered here yet
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "node type does not have a collection");
+  }
+}
+
+arangodb::aql::Variable const* getOutVariable(
+    arangodb::aql::ExecutionNode const* node) {
+  auto const* n =
+      dynamic_cast<arangodb::aql::DocumentProducingNode const*>(node);
+  if (n != nullptr) {
+    return n->outVariable();
+  }
+  // note: modification nodes are not covered here yet
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "node type does not have an out variable");
+}
+
+/// @brief find the single shard id for the node to restrict an operation to
+/// this will check the conditions of an IndexNode or a data-modification node
+/// (excluding UPSERT) and check if all shard keys are used in it. If all shard
+/// keys are present and their values are fixed (constants), this function will
+/// try to figure out the target shard. If the operation cannot be restricted to
+/// a single shard, this function will return an empty string
+std::string getSingleShardId(
+    arangodb::aql::ExecutionPlan const* plan,
+    arangodb::aql::ExecutionNode const* node,
+    arangodb::aql::Collection const* collection,
+    arangodb::aql::Variable const* collectionVariable) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  if (collection->isSmart() &&
+      collection->getCollection()->type() == TRI_COL_TYPE_EDGE) {
+    // no support for smart edge collections
+    return std::string();
+  }
+
+  TRI_ASSERT(node->getType() == EN::INDEX || node->getType() == EN::FILTER ||
+             node->getType() == EN::INSERT || node->getType() == EN::UPDATE ||
+             node->getType() == EN::REPLACE || node->getType() == EN::REMOVE);
+
+  arangodb::aql::Variable const* inputVariable = nullptr;
+  if (node->getType() == EN::INDEX) {
+    inputVariable = node->getVariablesSetHere()[0];
+  } else {
+    std::vector<arangodb::aql::Variable const*> v =
+        node->getVariablesUsedHere();
+    if (v.size() > 1) {
+      // If there is a key variable:
+      inputVariable = v[1];
+    } else {
+      inputVariable = v[0];
+    }
+  }
+
+  // check if we can easily find out the setter of the input variable
+  // (and if we can find it, check if the data is constant so we can look
+  // up the shard key attribute values)
+  auto setter = plan->getVarSetBy(inputVariable->id);
+
+  if (setter == nullptr) {
+    // oops!
+    TRI_ASSERT(false);
+    return std::string();
+  }
+
+  // note for which shard keys we need to look for
+  auto shardKeys = collection->shardKeys();
+  std::unordered_set<std::string> toFind;
+  for (auto const& it : shardKeys) {
+    if (it.find('.') != std::string::npos) {
+      // shard key containing a "." (sub-attribute). this is not yet supported
+      return std::string();
+    }
+    toFind.emplace(it);
+  }
+
+  VPackBuilder builder;
+  builder.openObject();
+
+  if (setter->getType() == EN::CALCULATION) {
+    arangodb::aql::CalculationNode const* c =
+        ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter);
+    auto ex = c->expression();
+
+    if (ex == nullptr) {
+      return std::string();
+    }
+
+    auto n = ex->node();
+    if (n == nullptr) {
+      return std::string();
+    }
+
+    if (n->isStringValue()) {
+      if (!n->isConstant() || toFind.size() != 1 ||
+          toFind.find(arangodb::StaticStrings::KeyString) == toFind.end()) {
+        return std::string();
+      }
+
+      // the lookup value is a string, and the only shard key is _key: so we can
+      // use it
+      builder.add(VPackValue(arangodb::StaticStrings::KeyString));
+      n->toVelocyPackValue(builder);
+      toFind.clear();
+    } else if (n->isObject()) {
+      // go through the input object attribute by attribute
+      // and look for our shard keys
+      for (size_t i = 0; i < n->numMembers(); ++i) {
+        auto sub = n->getMember(i);
+
+        if (sub->type != arangodb::aql::AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+          continue;
+        }
+
+        auto it = toFind.find(sub->getString());
+
+        if (it != toFind.end()) {
+          // we found one of the shard keys!
+          auto v = sub->getMember(0);
+          if (v->isConstant()) {
+            // if the attribute value is a constant, we copy it into our
+            // builder
+            builder.add(VPackValue(sub->getString()));
+            v->toVelocyPackValue(builder);
+            // remove the attribute from our to-do list
+            toFind.erase(it);
+          }
+        }
+      }
+    } else {
+      if (nullptr != collectionVariable) {
+        ::findShardKeysInExpression(n, collectionVariable, toFind, builder);
+      } else {
+        ::findShardKeysInExpression(n, inputVariable, toFind, builder);
+      }
+    }
+  } else if (setter->getType() == ExecutionNode::INDEX) {
+    auto const* c =
+        ExecutionNode::castTo<arangodb::aql::IndexNode const*>(setter);
+
+    if (c->getIndexes().size() != 1) {
+      // we can only handle a single index here
+      return std::string();
+    }
+    auto const* condition = c->condition();
+
+    if (condition == nullptr) {
+      return std::string();
+    }
+
+    arangodb::aql::AstNode const* root = condition->root();
+    ::findShardKeysInExpression(root, inputVariable, toFind, builder);
+  }
+
+  builder.close();
+
+  if (!toFind.empty()) {
+    return std::string();
+  }
+
+  // all shard keys found!!
+
+  // find the responsible shard for the data
+  std::string shardId;
+
+  int res = collection->getCollection()->getResponsibleShard(builder.slice(),
+                                                             true, shardId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // some error occurred. better do not use the
+    // single shard optimization here
+    return std::string();
+  }
+
+  // we will only need a single shard!
+  return shardId;
+}
+
 }  // namespace
 
 using namespace arangodb;
@@ -170,223 +694,6 @@ Collection* addCollectionToQuery(Query* query, std::string const& cname,
 
 }  // namespace aql
 }  // namespace arangodb
-
-namespace {
-
-// static node types used by some optimizer rules
-// having them statically available avoids having to build the vectors over and
-// over for each AQL query
-std::vector<EN::NodeType> const removeUnnecessaryCalculationsNodeTypes{
-    EN::CALCULATION, EN::SUBQUERY};
-std::vector<EN::NodeType> const interchangeAdjacentEnumerationsNodeTypes{
-    EN::ENUMERATE_COLLECTION, EN::ENUMERATE_LIST};
-std::vector<EN::NodeType> const scatterInClusterNodeTypes{
-    EN::ENUMERATE_COLLECTION,
-    EN::INDEX,
-    EN::INSERT,
-    EN::UPDATE,
-    EN::REPLACE,
-    EN::REMOVE,
-    EN::UPSERT};
-std::vector<EN::NodeType> const removeDataModificationOutVariablesNodeTypes{
-    EN::REMOVE, EN::INSERT, EN::UPDATE, EN::REPLACE, EN::UPSERT};
-std::vector<EN::NodeType> const patchUpdateStatementsNodeTypes{EN::UPDATE,
-                                                               EN::REPLACE};
-
-static int indexOf(std::vector<std::string> const& haystack,
-                   std::string const& needle) {
-  for (size_t i = 0; i < haystack.size(); ++i) {
-    if (haystack[i] == needle) {
-      return static_cast<int>(i);
-    }
-  }
-  return -1;
-}
-
-static aql::Collection const* getCollection(ExecutionNode const* node) {
-  switch (node->getType()) {
-    case EN::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<EnumerateCollectionNode const*>(node)
-          ->collection();
-    case EN::INDEX:
-      return ExecutionNode::castTo<IndexNode const*>(node)->collection();
-    case EN::TRAVERSAL:
-    case EN::SHORTEST_PATH:
-      return ExecutionNode::castTo<GraphNode const*>(node)->collection();
-    default:
-      // note: modification nodes are not covered here yet
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "node type does not have a collection");
-  }
-}
-
-static aql::Variable const* getOutVariable(ExecutionNode const* node) {
-  auto const* n = dynamic_cast<DocumentProducingNode const*>(node);
-  if (n != nullptr) {
-    return n->outVariable();
-  }
-  // note: modification nodes are not covered here yet
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "node type does not have an out variable");
-}
-
-/// @brief find the single shard id for the node to restrict an operation to
-/// this will check the conditions of an IndexNode or a data-modification node
-/// (excluding UPSERT) and check if all shard keys are used in it. If all shard
-/// keys are present and their values are fixed (constants), this function will
-/// try to figure out the target shard. If the operation cannot be restricted to
-/// a single shard, this function will return an empty string
-std::string getSingleShardId(
-    ExecutionPlan const* plan, ExecutionNode const* node,
-    aql::Collection const* collection,
-    aql::Variable const* collectionVariable = nullptr) {
-  if (collection->isSmart() &&
-      collection->getCollection()->type() == TRI_COL_TYPE_EDGE) {
-    // no support for smart edge collections
-    return std::string();
-  }
-
-  TRI_ASSERT(node->getType() == EN::INDEX || node->getType() == EN::FILTER ||
-             node->getType() == EN::INSERT || node->getType() == EN::UPDATE ||
-             node->getType() == EN::REPLACE || node->getType() == EN::REMOVE);
-
-  Variable const* inputVariable = nullptr;
-  if (node->getType() == EN::INDEX) {
-    inputVariable = node->getVariablesSetHere()[0];
-  } else {
-    std::vector<Variable const*> v = node->getVariablesUsedHere();
-    if (v.size() > 1) {
-      // If there is a key variable:
-      inputVariable = v[1];
-    } else {
-      inputVariable = v[0];
-    }
-  }
-
-  // check if we can easily find out the setter of the input variable
-  // (and if we can find it, check if the data is constant so we can look
-  // up the shard key attribute values)
-  auto setter = plan->getVarSetBy(inputVariable->id);
-
-  if (setter == nullptr) {
-    // oops!
-    TRI_ASSERT(false);
-    return std::string();
-  }
-
-  // note for which shard keys we need to look for
-  auto shardKeys = collection->shardKeys();
-  std::unordered_set<std::string> toFind;
-  for (auto const& it : shardKeys) {
-    if (it.find('.') != std::string::npos) {
-      // shard key containing a "." (sub-attribute). this is not yet supported
-      return std::string();
-    }
-    toFind.emplace(it);
-  }
-
-  VPackBuilder builder;
-  builder.openObject();
-
-  if (setter->getType() == ExecutionNode::CALCULATION) {
-    CalculationNode const* c =
-        ExecutionNode::castTo<CalculationNode const*>(setter);
-    auto ex = c->expression();
-
-    if (ex == nullptr) {
-      return std::string();
-    }
-
-    auto n = ex->node();
-    if (n == nullptr) {
-      return std::string();
-    }
-
-    if (n->isStringValue()) {
-      if (!n->isConstant() || toFind.size() != 1 ||
-          toFind.find(StaticStrings::KeyString) == toFind.end()) {
-        return std::string();
-      }
-
-      // the lookup value is a string, and the only shard key is _key: so we can
-      // use it
-      builder.add(VPackValue(StaticStrings::KeyString));
-      n->toVelocyPackValue(builder);
-      toFind.clear();
-    } else if (n->isObject()) {
-      // go through the input object attribute by attribute
-      // and look for our shard keys
-      for (size_t i = 0; i < n->numMembers(); ++i) {
-        auto sub = n->getMember(i);
-
-        if (sub->type != NODE_TYPE_OBJECT_ELEMENT) {
-          continue;
-        }
-
-        auto it = toFind.find(sub->getString());
-
-        if (it != toFind.end()) {
-          // we found one of the shard keys!
-          auto v = sub->getMember(0);
-          if (v->isConstant()) {
-            // if the attribute value is a constant, we copy it into our
-            // builder
-            builder.add(VPackValue(sub->getString()));
-            v->toVelocyPackValue(builder);
-            // remove the attribute from our to-do list
-            toFind.erase(it);
-          }
-        }
-      }
-    } else {
-      if (nullptr != collectionVariable) {
-        ::findShardKeysInExpression(n, collectionVariable, toFind, builder);
-      } else {
-        ::findShardKeysInExpression(n, inputVariable, toFind, builder);
-      }
-    }
-  } else if (setter->getType() == ExecutionNode::INDEX) {
-    IndexNode const* c = ExecutionNode::castTo<IndexNode const*>(setter);
-
-    if (c->getIndexes().size() != 1) {
-      // we can only handle a single index here
-      return std::string();
-    }
-    auto const* condition = c->condition();
-
-    if (condition == nullptr) {
-      return std::string();
-    }
-
-    AstNode const* root = condition->root();
-    ::findShardKeysInExpression(root, inputVariable, toFind, builder);
-  }
-
-  builder.close();
-
-  if (!toFind.empty()) {
-    return std::string();
-  }
-
-  // all shard keys found!!
-
-  // find the responsible shard for the data
-  std::string shardId;
-
-  int res = collection->getCollection()->getResponsibleShard(builder.slice(),
-                                                             true, shardId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // some error occurred. better do not use the
-    // single shard optimization here
-    return std::string();
-  }
-
-  // we will only need a single shard!
-  return shardId;
-}
-
-}  // namespace
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void arangodb::aql::sortInValuesRule(Optimizer* opt,
@@ -4138,161 +4445,6 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
   opt->addPlan(std::move(plan), rule, !toUnlink.empty());
 }
 
-/// WalkerWorker for restrictToSingleShard
-class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
-  ExecutionPlan* _plan;
-  std::unordered_map<aql::Collection const*, std::unordered_set<std::string>>
-      _shardsUsed;
-  bool _stop;
-
- public:
-  explicit RestrictToSingleShardChecker(ExecutionPlan* plan)
-      : _plan(plan), _stop(false) {}
-
-  bool isSafeForOptimization() const {
-    // we have found something in the execution plan that will
-    // render the optimization unsafe
-    return (!_stop && !_plan->getAst()->functionsMayAccessDocuments());
-  }
-
-  std::string getShard(aql::Collection const* collection) const {
-    auto const& it = _shardsUsed.find(collection);
-    if (it == _shardsUsed.end()) {
-      return "";
-    }
-
-    auto set = it->second;
-    if (set.size() != 1 || *set.begin() == "all") {
-      return "";
-    }
-
-    return *set.begin();
-  }
-
-  bool isSafeForOptimization(aql::Collection const* collection) const {
-    auto it = _shardsUsed.find(collection);
-
-    if (it == _shardsUsed.end()) {
-      return false;
-    }
-
-    if ((*it).second.size() != 1) {
-      // more than one shard
-      return false;
-    }
-
-    // check for "all" marker
-    auto it2 = (*it).second.find("all");
-
-    if (it2 != (*it).second.end()) {
-      // "all" included
-      return false;
-    }
-
-    // all good -> safe to optimize
-    return true;
-  }
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return true;
-  }
-
-  bool before(ExecutionNode* en) override final {
-    switch (en->getType()) {
-      case EN::TRAVERSAL:
-      case EN::SHORTEST_PATH: {
-        _stop = true;
-        return true;  // abort enumerating, we are done already!
-      }
-
-      case EN::FILTER: {
-        auto collectionVariables =
-            ExecutionNode::castTo<FilterNode const*>(en)->collectionVariables();
-        for (auto pair : collectionVariables) {
-          aql::Collection const* collection = pair.second;
-          aql::Variable const* collectionVariable = pair.first;
-          std::string shardId =
-              getSingleShardId(_plan, en, collection, collectionVariable);
-          if (shardId.empty() && _shardsUsed[collection].empty()) {
-            _shardsUsed[collection].emplace("all");
-          } else if (!shardId.empty()) {
-            if (1 == _shardsUsed[collection].size() &&
-                "all" == *_shardsUsed[collection].begin()) {
-              _shardsUsed[collection].clear();
-            }
-            _shardsUsed[collection].emplace(shardId);
-          }
-        }
-        break;
-      }
-
-      case EN::INDEX: {
-        // track usage of the collection
-        auto collection =
-            ExecutionNode::castTo<IndexNode const*>(en)->collection();
-        std::string shardId = getSingleShardId(_plan, en, collection);
-        if (shardId.empty() && _shardsUsed[collection].empty()) {
-          _shardsUsed[collection].emplace("all");
-        } else if (!shardId.empty()) {
-          if (1 == _shardsUsed[collection].size() &&
-              "all" == *_shardsUsed[collection].begin()) {
-            _shardsUsed[collection].clear();
-          }
-          _shardsUsed[collection].emplace(shardId);
-        }
-        break;
-      }
-
-      case EN::ENUMERATE_COLLECTION: {
-        // track usage of the collection
-        auto collection =
-            ExecutionNode::castTo<EnumerateCollectionNode const*>(en)
-                ->collection();
-        if (_shardsUsed[collection].empty()) {
-          _shardsUsed[collection].emplace("all");
-        }
-        break;
-      }
-
-      case EN::UPSERT: {
-        // track usage of the collection
-        auto collection =
-            ExecutionNode::castTo<ModificationNode const*>(en)->collection();
-        _shardsUsed[collection].clear();
-        _shardsUsed[collection].emplace("all");
-        break;
-      }
-
-      case EN::INSERT:
-      case EN::REPLACE:
-      case EN::UPDATE:
-      case EN::REMOVE: {
-        auto collection =
-            ExecutionNode::castTo<ModificationNode const*>(en)->collection();
-        std::string shardId = getSingleShardId(_plan, en, collection);
-        if (shardId.empty()) {
-          _shardsUsed[collection].clear();
-          _shardsUsed[collection].emplace("all");
-        } else if (!shardId.empty()) {
-          if (1 == _shardsUsed[collection].size() &&
-              "all" == *_shardsUsed[collection].begin()) {
-            _shardsUsed[collection].clear();
-          }
-          _shardsUsed[collection].emplace(shardId);
-        }
-        break;
-      }
-
-      default: {
-        // we don't care about other execution node types here
-        break;
-      }
-    }
-
-    return false;  // go on
-  }
-};
-
 /// @brief try to restrict fragments to a single shard if possible
 void arangodb::aql::restrictToSingleShardRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -4300,9 +4452,16 @@ void arangodb::aql::restrictToSingleShardRule(
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
 
-  RestrictToSingleShardChecker finder(plan.get());
-  plan->root()->walk(finder);
+  CollectionVariableTracker tracker(plan.get());
+  plan->root()->walk(tracker);
+  if (!tracker.isSafeForOptimization()) {
+    // encountered errors while working on optimization, do not continue
+    opt->addPlan(std::move(plan), rule, wasModified);
+    return;
+  }
 
+  RestrictToSingleShardChecker finder(plan.get(), tracker);
+  plan->root()->walk(finder);
   if (!finder.isSafeForOptimization()) {
     // found something in the execution plan that renders the optimization
     // unsafe, so do not optimize
@@ -4329,9 +4488,22 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection =
             ExecutionNode::castTo<ModificationNode const*>(current)
                 ->collection();
-        std::string shardId = finder.getShard(collection);
+        Variable const* collectionVariable = nullptr;
+        auto v = current->getVariablesUsedHere();
+        for (auto inputVariable : v) {
+          auto dependencies = tracker.getDependencies(inputVariable);
+          for (auto dep : dependencies) {
+            if (dep.second == collection) {
+              TRI_ASSERT(collectionVariable == nullptr);
+              collectionVariable = dep.first;
+            }
+          }
+        }
+        TRI_ASSERT(collectionVariable != nullptr);
+        std::string shardId = finder.getShard(collectionVariable);
 
-        if (finder.isSafeForOptimization(collection) && !shardId.empty()) {
+        if (finder.isSafeForOptimization(collectionVariable) &&
+            !shardId.empty()) {
           wasModified = true;
           // we are on a single shard. we must not ignore not-found documents
           // now
@@ -4386,12 +4558,13 @@ void arangodb::aql::restrictToSingleShardRule(
         break;
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
-        auto collection =
-            ExecutionNode::castTo<CollectionAccessingNode const*>(current)
-                ->collection();
-        std::string shardId = finder.getShard(collection);
+        auto collectionVariable =
+            ExecutionNode::castTo<DocumentProducingNode const*>(current)
+                ->outVariable();
+        std::string shardId = finder.getShard(collectionVariable);
 
-        if (finder.isSafeForOptimization(collection) && !shardId.empty()) {
+        if (finder.isSafeForOptimization(collectionVariable) &&
+            !shardId.empty()) {
           wasModified = true;
           ExecutionNode::castTo<CollectionAccessingNode*>(current)
               ->restrictToShard(shardId);

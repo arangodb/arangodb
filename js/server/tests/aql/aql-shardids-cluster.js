@@ -538,8 +538,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             FOR doc2 IN ${cnKey}
               RETURN doc1
         `;
-        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
-        db._explain(query, {}, disableSingleShard);
 
         let raw = db._query(query);
         let results = raw.toArray();
@@ -563,7 +561,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
-        db._explain(query, {}, disableSingleShard);
+        db._explain(query);
 
         let raw = db._query(query);
         let stats = raw.getExtra().stats;
@@ -577,8 +575,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         }
       }
     },
-
-
 
   };
 };
