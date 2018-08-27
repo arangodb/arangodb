@@ -613,6 +613,7 @@ int MMFilesCollection::close() {
 
   {
     // We also have to unload the indexes.
+    READ_LOCKER(guard, _indexesLock);     /// TODO - DEADLOCK!?!?
     WRITE_LOCKER(writeLocker, _dataLock);
     for (auto& idx : _indexes) {
       idx->unload();
@@ -684,10 +685,13 @@ int MMFilesCollection::sealDatafile(MMFilesDatafile* datafile,
     std::string filename =
         arangodb::basics::FileUtils::buildFilename(path(), dname);
 
+    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing and renaming journal file '"
+                                                  << datafile->getName() << "'";
+
     res = datafile->rename(filename);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed file '"
+      LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closed and renamed journal file '"
                                                     << datafile->getName() << "'";
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES)
@@ -1549,6 +1553,7 @@ void MMFilesCollection::fillIndex(
 uint32_t MMFilesCollection::indexBuckets() const { return _indexBuckets; }
 
 int MMFilesCollection::fillAllIndexes(transaction::Methods* trx) {
+  READ_LOCKER(guard, _indexesLock);
   return fillIndexes(trx, _indexes);
 }
 
@@ -1590,7 +1595,7 @@ int MMFilesCollection::fillIndexes(
       " }, indexes: " + std::to_string(n - 1));
 
   auto poster = [](std::function<void()> fn) -> void {
-    SchedulerFeature::SCHEDULER->post(fn);
+    SchedulerFeature::SCHEDULER->post(fn, false);
   };
   auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
@@ -1826,12 +1831,12 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   if (!engine->inRecovery()) {
     // build the index structures, and fill the indexes
-    fillIndexes(&trx, _indexes);
+    fillAllIndexes(&trx);
   }
 
   // successfully opened collection. now adjust version number
-  if (LogicalCollection::VERSION_31 != _logicalCollection.version()) {
-    _logicalCollection.setVersion(LogicalCollection::VERSION_31);
+  if (LogicalCollection::VERSION_33 != _logicalCollection.version()) {
+    _logicalCollection.setVersion(LogicalCollection::VERSION_33);
 
     bool const doSync =
         application_features::ApplicationServer::getFeature<DatabaseFeature>(
@@ -1913,7 +1918,7 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
     }
   }
   TRI_DEFER(if (lock) { unlockRead(useDeadlockDetector, trx->state()); });
-  
+
   Result res = lookupDocument(trx, key, result);
   if (res.fail()) {
     return res;
@@ -1982,10 +1987,10 @@ bool MMFilesCollection::readDocumentConditional(
 
 void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
-  
+
   bool foundPrimary = false;
   bool foundEdge = false;
-  
+
   for (auto const& it : VPackArrayIterator(indexesSlice)) {
     auto const& s = it.get(arangodb::StaticStrings::IndexType);
 
@@ -1998,15 +2003,17 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     }
   }
 
-  for (auto const& idx : _indexes) {
-    if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      foundPrimary = true;
-    } else if (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-               idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-      foundEdge = true;
+  {READ_LOCKER(guard, _indexesLock);
+    for (auto const& idx : _indexes) {
+      if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        foundPrimary = true;
+      } else if (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
+                 idx->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+        foundEdge = true;
+      }
     }
   }
-  
+
   std::vector<std::shared_ptr<arangodb::Index>> indexes;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
@@ -2028,24 +2035,27 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     }
   }
 
-  TRI_ASSERT(!_indexes.empty());
-  if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
-       (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto const& it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
-    }
-#endif
-    std::string errorMsg("got invalid indexes for collection '");
+  {READ_LOCKER(guard, _indexesLock);
+    TRI_ASSERT(!_indexes.empty());
+    if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+        (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
+         (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      for (auto const& it : _indexes) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+      }
+  #endif
+      std::string errorMsg("got invalid indexes for collection '");
 
-    errorMsg.append(_logicalCollection.name());
-    errorMsg.push_back('\'');
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+      errorMsg.append(_logicalCollection.name());
+      errorMsg.push_back('\'');
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    }
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
+    READ_LOCKER(guard, _indexesLock);
     bool foundPrimary = false;
 
     for (auto const& it : _indexes) {
@@ -2082,12 +2092,14 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
   std::string tmp = value.copyString();
   arangodb::Index::IndexType const type = arangodb::Index::type(tmp.c_str());
 
-  for (auto const& idx : _indexes) {
-    if (idx->type() == type) {
-      // Only check relevant indices
-      if (idx->matchesDefinition(info)) {
-        // We found an index for this definition.
-        return idx;
+  {READ_LOCKER(guard, _indexesLock);
+    for (auto const& idx : _indexes) {
+      if (idx->type() == type) {
+        // Only check relevant indices
+        if (idx->matchesDefinition(info)) {
+          // We found an index for this definition.
+          return idx;
+        }
       }
     }
   }
@@ -2097,7 +2109,7 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
 std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
-  // TODO Get LOCK for the vocbase
+
   auto idx = lookupIndex(info);
   if (idx != nullptr) {
     created = false;
@@ -2222,6 +2234,9 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
 }
 
 bool MMFilesCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
+
+  WRITE_LOCKER(guard, _indexesLock);
+
   auto const id = idx->id();
   for (auto const& it : _indexes) {
     if (it->id() == id) {
@@ -2282,18 +2297,21 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
     return e.code();
   }
 
-  if (!newIdx) {
-    return TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
+  if (!newIdx) { // simon: probably something wrong with ArangoSearch Links
+    LOG_TOPIC(ERR, Logger::ENGINES) << "index creation failed while restoring";
+    return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
   }
 
   TRI_UpdateTickServer(newIdx->id());
 
-  auto const id = newIdx->id();
-  for (auto& it : _indexes) {
-    if (it->id() == id) {
-      // index already exists
-      idx = it;
-      return TRI_ERROR_NO_ERROR;
+  {READ_LOCKER(gurad, _indexesLock);
+    auto const id = newIdx->id();
+    for (auto& it : _indexes) {
+      if (it->id() == id) {
+        // index already exists
+        idx = it;
+        return TRI_ERROR_NO_ERROR;
+      }
     }
   }
 
@@ -2369,6 +2387,8 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
 
 /// @brief removes an index by id
 bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
+  WRITE_LOCKER(guard, _indexesLock);
+
   size_t const n = _indexes.size();
 
   for (size_t i = 0; i < n; ++i) {
@@ -2748,6 +2768,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
   };
   primaryIdx->invokeOnAllElementsForRemoval(callback);
 
+  READ_LOCKER(guard, _indexesLock);
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
@@ -3059,6 +3080,8 @@ Result MMFilesCollection::insertSecondaryIndexes(
 
   Result result;
 
+  READ_LOCKER(guard, _indexesLock);
+
   auto indexes = _indexes;
   size_t const n = indexes.size();
 
@@ -3104,8 +3127,8 @@ Result MMFilesCollection::deleteSecondaryIndexes(
 
   Result result;
 
-  // TODO FIXME
-  auto indexes = _logicalCollection.getIndexes();
+  READ_LOCKER(guard, _indexesLock);
+  auto indexes = _indexes;
   size_t const n = indexes.size();
 
   for (size_t i = 1; i < n; ++i) {
@@ -3276,7 +3299,7 @@ Result MMFilesCollection::update(
                                 options.mergeObjects, options.keepNull,
                                 *builder.get(), options.isRestore, revisionId);
 
-    if (res.fail()) { 
+    if (res.fail()) {
       return res;
     }
 
@@ -3337,7 +3360,7 @@ Result MMFilesCollection::update(
     operation.revert(trx);
   } else {
     result.setManaged(newDoc.begin(), documentId);
-    
+
     if (options.waitForSync) {
       // store the tick that was used for writing the new document
       resultMarkerTick = operation.tick();
@@ -3410,7 +3433,7 @@ Result MMFilesCollection::replace(
   transaction::BuilderLeaser builder(trx);
   res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder.get(),
                             options.isRestore, revisionId);
-  
+
   if (res.fail()) {
     return res;
   }

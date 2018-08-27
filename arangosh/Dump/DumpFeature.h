@@ -30,16 +30,17 @@
 #include "Utils/ClientTaskQueue.h"
 
 namespace arangodb {
+
 namespace httpclient {
 class SimpleHttpResult;
 }
+
 class ManagedDirectory;
 
 class DumpFeature : public application_features::ApplicationFeature {
  public:
-  DumpFeature(application_features::ApplicationServer* server, int& exitCode);
+  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
 
- public:
   // for documentation of virtual methods, see `ApplicationFeature`
   virtual void collectOptions(
       std::shared_ptr<options::ProgramOptions>) override final;
@@ -47,7 +48,6 @@ class DumpFeature : public application_features::ApplicationFeature {
       std::shared_ptr<options::ProgramOptions> options) override final;
   virtual void start() override final;
 
- public:
   /**
    * @brief Returns the feature name (for registration with `ApplicationServer`)
    * @return The name of the feature
@@ -60,7 +60,6 @@ class DumpFeature : public application_features::ApplicationFeature {
    */
   void reportError(Result const& error);
 
- public:
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
@@ -114,13 +113,12 @@ class DumpFeature : public application_features::ApplicationFeature {
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;
 
- private:
   Result runDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
   Result runClusterDump(httpclient::SimpleHttpClient& client, std::string const& dbName);
-  
   Result storeDumpJson(VPackSlice const& body, std::string const& dbName) const;
   Result storeViews(velocypack::Slice const&) const;
 };
+
 }  // namespace arangodb
 
 #endif

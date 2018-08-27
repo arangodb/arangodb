@@ -117,7 +117,7 @@ OperationResult GraphManager::findOrCreateVertexCollectionByName(
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-bool GraphManager::renameGraphCollection(std::string oldName, std::string newName) {
+bool GraphManager::renameGraphCollection(std::string const& oldName, std::string const& newName) {
   // todo: return a result, by now just used in the graph modules
   VPackBuilder graphsBuilder;
   readGraphs(graphsBuilder, aql::PART_DEPENDENT);
@@ -218,52 +218,32 @@ bool GraphManager::renameGraphCollection(std::string oldName, std::string newNam
 }
 
 Result GraphManager::checkForEdgeDefinitionConflicts(
-    std::map<std::string, EdgeDefinition> const& edgeDefinitions)
+    std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+    std::string const& graphName)
     const {
-  VPackBuilder graphsBuilder;
-  // TODO Maybe use the cache here
-  readGraphs(graphsBuilder, aql::PART_DEPENDENT);
-  VPackSlice graphs = graphsBuilder.slice();
-
-  TRI_ASSERT(graphs.get("graphs").isArray());
-  if (!graphs.get("graphs").isArray()) {
-    return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
-  }
-
-  for (auto graphSlice : VPackArrayIterator(graphs.get("graphs"))) {
-    graphSlice = graphSlice.resolveExternals();
-    TRI_ASSERT(graphSlice.isObject() && graphSlice.hasKey("_key"));
-    if (!graphSlice.isObject() || !graphSlice.hasKey("_key")) {
-      return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    if (graph->name() == graphName) {
+      // No need to check our graph
+      return {TRI_ERROR_NO_ERROR};
     }
-    std::unique_ptr<Graph> graph;
-    try {
-      graph = Graph::fromPersistence(graphSlice, _vocbase);
-    } catch (basics::Exception& e) {
-      return {e.code(), e.message()};
-    }
-    TRI_ASSERT(graph != nullptr);
-    if (graph == nullptr) {
-      return {TRI_ERROR_OUT_OF_MEMORY};
-    }
-
+    
     for (auto const& sGED : graph->edgeDefinitions()) {
-      std::string col = sGED.first;
-
+      std::string const& col = sGED.first;
       auto it = edgeDefinitions.find(col);
       if (it != edgeDefinitions.end()) {
         if (sGED.second != it->second) {
           // found an incompatible edge definition for the same collection
-          return Result(TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,
-                 sGED.first + " " +
-                     std::string{TRI_errno_string(
-                         TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS)});
+          return Result(
+              TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,
+              sGED.first + " " +
+                  std::string{TRI_errno_string(
+                      TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS)});
         }
       }
     }
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+    return {TRI_ERROR_NO_ERROR};
+  };
+  return applyOnAllGraphs(callback);
 }
 
 OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
@@ -441,7 +421,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   }
 
   // check edgeDefinitionConflicts
-  res = checkForEdgeDefinitionConflicts(graph->edgeDefinitions());
+  res = checkForEdgeDefinitionConflicts(graph->edgeDefinitions(), graph->name());
   if (res.fail()) {
     return OperationResult{res};
   }
@@ -493,6 +473,52 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
     return OperationResult{std::move(res)};
   }
   return result;
+}
+
+Result GraphManager::applyOnAllGraphs(
+    std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
+  std::string const queryStr{"FOR g IN _graphs RETURN g"};
+  arangodb::aql::Query query(false, _vocbase,
+                             arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"}, nullptr,
+                             nullptr, aql::PART_MAIN);
+  aql::QueryResult queryResult =
+      query.executeSync(QueryRegistryFeature::QUERY_REGISTRY);
+
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+      return {TRI_ERROR_REQUEST_CANCELED};
+    }
+    return {queryResult.code};
+  }
+
+  VPackSlice graphsSlice = queryResult.result->slice();
+  if (graphsSlice.isNone()) {
+    return {TRI_ERROR_OUT_OF_MEMORY};
+  } else if (!graphsSlice.isArray()) {
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+        << "cannot read graphs from _graphs collection";
+    return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT, "Cannot read graphs from _graphs collection"};
+  }
+  Result res;
+  for (auto const& it : VPackArrayIterator(graphsSlice)) {
+    std::unique_ptr<Graph> graph;
+    try {
+      graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);
+    } catch (basics::Exception& e) {
+      return {e.code(), e.message()};
+    }
+    TRI_ASSERT(graph != nullptr);
+    if (graph == nullptr) {
+      return {TRI_ERROR_OUT_OF_MEMORY};
+    }
+    res = callback(std::move(graph));
+    if (res.fail()) {
+      return res;
+    }
+  }
+  TRI_ASSERT(res.ok());
+  return res;
 }
 
 Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) const {
@@ -645,11 +671,12 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
 }
 
 Result GraphManager::checkForEdgeDefinitionConflicts(
-    arangodb::graph::EdgeDefinition const& edgeDefinition) const {
+    arangodb::graph::EdgeDefinition const& edgeDefinition,
+    std::string const& graphName) const {
   std::map<std::string, EdgeDefinition> edgeDefs{
       std::make_pair(edgeDefinition.getName(), edgeDefinition)};
 
-  return checkForEdgeDefinitionConflicts(edgeDefs);
+  return checkForEdgeDefinitionConflicts(edgeDefs, graphName);
 }
 
 Result GraphManager::checkCreateGraphPermissions(
@@ -998,6 +1025,4 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
   } catch (...) {
     return {TRI_ERROR_INTERNAL};
   }
-  TRI_ASSERT(false); // Catch all above!
-  return {TRI_ERROR_INTERNAL };
 }

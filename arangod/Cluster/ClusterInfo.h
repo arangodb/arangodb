@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -615,6 +615,14 @@ class ClusterInfo {
     return _currentVersion;
   }
 
+  /**
+   * @brief Get sorted list of DB server, which serve a shard
+   *
+   * @param shardId  The id of said shard
+   * @return         List of DB servers serving the shard
+   */
+  arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
+    
  private:
 
   void loadClusterId();

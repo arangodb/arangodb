@@ -132,7 +132,7 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
-  std::vector<std::string> collectionNames() const;
+  std::vector<std::string> collectionNames(std::unordered_set<std::string> const& initial = std::unordered_set<std::string>()) const;
 
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
@@ -214,14 +214,14 @@ class TransactionState {
    * @param lockedShards The list of locked shards.
    */
   void setLockedShards(std::unordered_set<std::string> const& lockedShards);
+  
+  /// @brief whether or not a transaction is an exclusive transaction on a single collection
+  bool isExclusiveTransactionOnSingleCollection() const;
 
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
                                         size_t& position) const;
-
-  /// @brief whether or not a transaction is an exclusive transaction on a single collection
-  bool isExclusiveTransactionOnSingleCollection() const;
 
   /// @brief check if current user can access this collection
   int checkCollectionPermission(TRI_voc_cid_t cid,

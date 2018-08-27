@@ -83,7 +83,7 @@ RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBVPackIndex const* index,
     VPackSlice const& indexValues)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _cmp(index->comparator()),
       _key(trx),
@@ -149,7 +149,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBVPackIndex const* index,
     bool reverse, RocksDBKeyBounds&& bounds)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
@@ -973,7 +973,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     }
 
   } else {
-    // Create the search Values for the lookup
+    // Create the search values for the lookup
     VPackArrayBuilder guard(&searchValues);
 
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>
@@ -1120,7 +1120,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
               TRI_ASSERT(false);
-              return new EmptyIndexIterator(&_collection, trx, this);
+              return new EmptyIndexIterator(&_collection, trx);
           }
 
           value->toVelocyPackValue(searchValues);
@@ -1189,7 +1189,8 @@ rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
 }
 
 bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
-  if (_unique || ServerState::instance()->isCoordinator()) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
     return true;
   }
   // We simply drop the current estimator and steal the one from recovery
@@ -1209,9 +1210,7 @@ bool RocksDBVPackIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
-  if (ServerState::instance()->isCoordinator()) {
-    return;
-  }
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (unique()) {
     return;
   }
@@ -1225,6 +1224,12 @@ void RocksDBVPackIndex::recalculateEstimates() {
                                   RocksDBVPackIndex::HashForKey(it->key());
                               _estimator->insert(hash);
                             });
+}
+
+void RocksDBVPackIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
+  RocksDBIndex::afterTruncate();
 }
 
 RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {

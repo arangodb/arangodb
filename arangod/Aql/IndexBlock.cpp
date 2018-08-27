@@ -629,7 +629,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
 
   if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
-    callback = [this,nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
+    callback = [this, nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
@@ -649,7 +649,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
     };
   } else {
     // No uniqueness checks
-    callback = [this,nrInRegs](LocalDocumentId const&, VPackSlice slice) {
+    callback = [this, nrInRegs](LocalDocumentId const&, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
       _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
@@ -842,20 +842,20 @@ void IndexBlock::cleanupNonConstExpressions() {
 
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
-  AstNode const* conditionNode = nullptr;
-  if (_condition != nullptr) {
-    TRI_ASSERT(_indexes.size() == _condition->numMembers());
-    TRI_ASSERT(_condition->numMembers() > currentIndex);
-
-    conditionNode = _condition->getMember(currentIndex);
-  }
-
   TRI_ASSERT(_indexes.size() > currentIndex);
 
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
   // from _condition
   if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
+    AstNode const* conditionNode = nullptr;
+    if (_condition != nullptr) {
+      TRI_ASSERT(_indexes.size() == _condition->numMembers());
+      TRI_ASSERT(_condition->numMembers() > currentIndex);
+
+      conditionNode = _condition->getMember(currentIndex);
+    }
+
     // yet no cursor for index, so create it
     IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(

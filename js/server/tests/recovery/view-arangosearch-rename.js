@@ -43,13 +43,13 @@ function runSetup () {
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
   v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v.properties({ "commit": { "commitIntervalMsec": 17 } });
+  v.properties({ "consolidationIntervalMsec": 17 });
   v.rename('UnitTestsRecovery2');
 
   db._dropView('UnitTestsRecovery3');
   db._dropView('UnitTestsRecovery4');
   v = db._createView('UnitTestsRecovery3', 'arangosearch', {});
-  v.properties({ "commit": { "commitIntervalMsec": 16 } });
+  v.properties({ "consolidationIntervalMsec": 16 });
   v.rename('UnitTestsRecovery4');
 
   db._dropView('UnitTestsRecovery5');
@@ -91,12 +91,12 @@ function recoverySuite () {
       assertNull(db._view('UnitTestsRecovery1'));
       v = db._view('UnitTestsRecovery2');
       prop = v.properties();
-      assertEqual(prop.commit.commitIntervalMsec, 17);
+      assertEqual(prop.consolidationIntervalMsec, 17);
 
       assertNull(db._view('UnitTestsRecovery3'));
       v = db._view('UnitTestsRecovery4');
       prop = v.properties();
-      assertEqual(prop.commit.commitIntervalMsec, 16);
+      assertEqual(prop.consolidationIntervalMsec, 16);
 
       assertNull(db._view('UnitTestsRecovery6'));
       assertNotNull(db._view('UnitTestsRecovery5'));

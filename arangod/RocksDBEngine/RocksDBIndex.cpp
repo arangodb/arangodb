@@ -28,6 +28,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -220,11 +221,14 @@ void RocksDBIndex::recalculateEstimates() {
 }
 
 int RocksDBIndex::drop() {
-  // edge index needs to be dropped with prefix_same_as_start = false
+  auto* coll = toRocksDBCollection(_collection);
+  // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
-  bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  arangodb::Result r = rocksutils::removeLargeRange(
-    rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
+  bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
+
+  arangodb::Result r = rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),
+                                                    prefixSameAsStart, useRangeDelete);
 
   // Try to drop the cache as well.
   if (_cachePresent) {
@@ -241,9 +245,8 @@ int RocksDBIndex::drop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
-                                             this->getBounds(), prefix_same_as_start);
+                                             this->getBounds(), prefixSameAsStart);
   if (numDocs > 0) {
-
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
@@ -253,14 +256,13 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
-int RocksDBIndex::afterTruncate() {
+void RocksDBIndex::afterTruncate() {
   // simply drop the cache and re-create it
   if (_cacheEnabled) {
     destroyCache();
     createCache();
     TRI_ASSERT(_cachePresent);
   }
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,

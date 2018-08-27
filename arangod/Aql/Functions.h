@@ -51,20 +51,12 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
 struct Functions {
 
  public:
-  /// @brief validate the number of parameters
-   static void ValidateParameters(VPackFunctionParameters const& parameters,
-                                  char const* function, int minParams,
-                                  int maxParams);
-
-   static void ValidateParameters(VPackFunctionParameters const& parameters,
-                                  char const* function, int minParams);
+   static void init();
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
        VPackFunctionParameters const& parameters, size_t position);
 
-  public:
-   static void init();
    /// @brief helper function. not callable as a "normal" AQL function
    static void Stringify(transaction::Methods* trx,
                          arangodb::basics::VPackStringBufferAdapter& buffer,
@@ -147,6 +139,8 @@ struct Functions {
                          VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
+    static AqlValue RegexMatches(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
    static AqlValue RegexReplace(arangodb::aql::Query*, transaction::Methods*,
@@ -159,7 +153,7 @@ struct Functions {
                           VPackFunctionParameters const&);
    static AqlValue EncodeURIComponent(arangodb::aql::Query*, transaction::Methods*,
                                        VPackFunctionParameters const&);
-   static AqlValue UUID(arangodb::aql::Query*, transaction::Methods*,
+   static AqlValue Uuid(arangodb::aql::Query*, transaction::Methods*,
                                        VPackFunctionParameters const&);
    static AqlValue Soundex(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
@@ -445,12 +439,6 @@ struct Functions {
                           VPackFunctionParameters const&);
     static AqlValue Position(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
-    static AqlValue CallApplyBackend(arangodb::aql::Query* query,
-                                     transaction::Methods* trx,
-                                     VPackFunctionParameters const& parameters,
-                                     char const* AFN,
-                                     AqlValue const& invokeFN,
-                                     VPackFunctionParameters const& invokeParams);
     static AqlValue Call(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
     static AqlValue Apply(arangodb::aql::Query*, transaction::Methods*,
@@ -472,13 +460,6 @@ struct Functions {
     /// @brief dummy function that will only throw an error when called
     static AqlValue NotImplemented(arangodb::aql::Query*, transaction::Methods*,
                                    VPackFunctionParameters const&);
-
-   private:
-    static AqlValue DateFromParameters(arangodb::aql::Query* query,
-                                       transaction::Methods* trx,
-                                       VPackFunctionParameters const& parameters,
-                                       char const* AFN,
-                                       bool asTimestamp);
 };
 
 }

@@ -31,6 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -368,6 +369,7 @@ void RestCollectionHandler::handleCommandPut() {
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::EXCLUSIVE);
         trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
 
         if (res.ok()) {
@@ -577,7 +579,7 @@ void RestCollectionHandler::collectionRepresentation(
   if (showCount) {
     auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
     TRI_ASSERT(trx != nullptr);
-    OperationResult opRes = trx->count(coll->name(), detailedCount);
+    OperationResult opRes = trx->count(coll->name(), detailedCount ? transaction::CountType::Detailed : transaction::CountType::Normal);
 
     if (opRes.fail()) {
       trx->finish(opRes.result);

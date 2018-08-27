@@ -50,7 +50,7 @@ class RDBNearIterator final : public IndexIterator {
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   RocksDBGeoIndex const* index,
                   geo::QueryParams&& params)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _index(index),
         _near(std::move(params)) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);

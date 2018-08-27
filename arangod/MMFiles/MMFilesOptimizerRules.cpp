@@ -44,7 +44,7 @@ void MMFilesOptimizerRules::registerResources() {
   
   // remove SORT RAND() if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule, 
-               OptimizerRule::removeSortRandRule_pass5, false, true);
+               OptimizerRule::removeSortRandRule, false, true);
 }
 
 /// @brief remove SORT RAND() if appropriate
@@ -104,12 +104,6 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
     ExecutionNode* collectionNode = nullptr;
 
     while (current != nullptr) {
-      if (current->canThrow()) {
-        // we shouldn't bypass a node that can throw
-        collectionNode = nullptr;
-        break;
-      }
-
       switch (current->getType()) {
         case EN::SORT:
         case EN::COLLECT:
@@ -118,7 +112,11 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::INDEX: {
+        case EN::INDEX:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
+        {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
@@ -161,12 +159,9 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
       // set the random iteration flag for the EnumerateCollectionNode
       ExecutionNode::castTo<EnumerateCollectionNode*>(collectionNode)->setRandom();
 
-      // remove the SortNode
-      // note: the CalculationNode will be removed by
-      // "remove-unnecessary-calculations"
-      // rule if not used
-
+      // remove the SortNode and the CalculationNode
       plan->unlinkNode(n);
+      plan->unlinkNode(setter);
       modified = true;
     }
   }

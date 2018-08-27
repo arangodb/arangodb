@@ -124,18 +124,20 @@ class GraphManager {
                                        bool waitForSync, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
-  bool renameGraphCollection(std::string oldName, std::string newName);
+  bool renameGraphCollection(std::string const& oldName, std::string const& newName);
 
   /// @brief check if the edge definitions conflicts with one in an existing
   /// graph
   Result checkForEdgeDefinitionConflicts(
-    std::map<std::string, arangodb::graph::EdgeDefinition> const&
-    edgeDefinitions) const;
+      std::map<std::string, arangodb::graph::EdgeDefinition> const&
+          edgeDefinitions,
+      std::string const& graphName) const;
 
   /// @brief check if the edge definition conflicts with one in an existing
   /// graph
   Result checkForEdgeDefinitionConflicts(
-    arangodb::graph::EdgeDefinition const& edgeDefinition) const;
+      arangodb::graph::EdgeDefinition const& edgeDefinition,
+      std::string const& graphName) const;
 
   /// @brief Remove a graph and optional all connected collections
   OperationResult removeGraph(Graph const& graph, bool waitForSync,
@@ -171,6 +173,20 @@ class GraphManager {
    * @return The result of the insrt transaction or Error.
    */
   OperationResult storeGraph(Graph const& graph, bool waitForSync, bool isUpdate) const;
+
+
+  /**
+   * @brief Apply callback on all graphs. The callback
+   * may take over ownership of the unique_ptr otherwise
+   * it will be deleted after the callback.
+   * If the callback returns an error the iteration will
+   * stop and return this error itself.
+   *
+   * @param callback The callback to be applied on all graphs
+   *
+   * @return The first failed callback, a general loading error or TRI_ERROR_NO_ERROR.
+   */
+  Result applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
  private:
 

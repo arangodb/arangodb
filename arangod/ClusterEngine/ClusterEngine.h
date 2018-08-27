@@ -50,7 +50,7 @@ struct Options;
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer*);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e) { _actualEngine = e; }
@@ -195,7 +195,6 @@ class ClusterEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override {
     return TRI_ERROR_NO_ERROR;
@@ -300,9 +299,6 @@ class ClusterEngine final : public StorageEngine {
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
-
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;

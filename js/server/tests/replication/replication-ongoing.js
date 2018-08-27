@@ -403,6 +403,66 @@ function BaseTestConfig() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test truncating a small collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateCollectionSmall: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          for (let i = 0; i < 1000; i++) {
+            c.insert({value:i});
+          }
+        },
+
+        function(state) {
+          db._collection(cn).truncate();
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).all().toArray().length, 0);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test truncating a bigger collection
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testTruncateCollectionBigger: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          for (let i = 0; i < (32 * 1024 + 1); i++) {
+            c.insert({value:i});
+          }
+        },
+
+        function(state) {
+          db._collection(cn).truncate(); // should hit range-delete in rocksdb
+        },
+
+        function(state) {
+          return true;
+        },
+
+        function(state) {
+          assertEqual(db._collection(cn).count(), 0);
+          assertEqual(db._collection(cn).all().toArray().length, 0);
+        }
+      );
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test long transaction, blocking
     ////////////////////////////////////////////////////////////////////////////////
 

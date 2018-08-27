@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -344,7 +344,7 @@ static int distributeBabyOnShards(
     temp.openObject();
     temp.add(StaticStrings::KeyString, value);
     temp.close();
-  
+
     error = collinfo->getResponsibleShard(temp.slice(), false, shardID, usesDefaultShardingAttributes);
   } else {
     error = collinfo->getResponsibleShard(value, false, shardID, usesDefaultShardingAttributes);
@@ -591,7 +591,7 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
 
   // We need to replace the distribute with the cid.
   col->distributeShardsLike(cidString, other->shardingInfo());
-  
+
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
   }
@@ -2468,7 +2468,7 @@ int modifyDocumentOnCoordinator(
           "shard:" + shard, reqType,
           baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
           ::CreateNoLockHeader(trx, shard));
-          
+
     }
   }
 

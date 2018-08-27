@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -43,6 +44,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
@@ -76,6 +78,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
+#include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -92,16 +95,18 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
-using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
 
 GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true) {
@@ -210,20 +215,13 @@ void GeneralServerFeature::start() {
   for (auto& server : _servers) {
     server->startListening();
   }
-
-  // initially populate the authentication cache. otherwise no one
-  // can access the new database
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um != nullptr) {
-    um->outdate();
-  }
 }
 
 void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
     server->stopListening();
   }
-  
+
   _jobManager->deleteJobs();
 }
 
@@ -460,6 +458,9 @@ void GeneralServerFeature::defineHandlers() {
       traverserEngineRegistry);
 
   // And now some handlers which are registered in both /_api and /_admin
+  _handlerFactory->addHandler(
+      "/_admin/actions", RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                        AsyncJobManager*>,
@@ -490,6 +491,10 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
+  _handlerFactory->addPrefixHandler(
+      "/_admin/database/target-version",
+      RestHandlerCreator<arangodb::RestAdminDatabaseHandler>::createNoData);
+
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
@@ -537,6 +542,15 @@ void GeneralServerFeature::defineHandlers() {
   }
 
   // ...........................................................................
+  // test handler
+  // ...........................................................................
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _handlerFactory->addPrefixHandler(
+    "/_api/test",
+    RestHandlerCreator<RestTestHandler>::createNoData);
+#endif
+
+  // ...........................................................................
   // actions defined in v8
   // ...........................................................................
 
@@ -548,3 +562,5 @@ void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
   engine->addRestHandlers(*_handlerFactory);
 }
+
+} // arangodb

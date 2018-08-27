@@ -186,7 +186,6 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OBJECT:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_REFERENCE:
-    case NODE_TYPE_PARAMETER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -210,7 +209,7 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
       return false;
     default:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal Optimizer encountered node: " << node->getTypeString();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Traversal optimizer encountered node: " << node->getTypeString();
 #endif
       return false;
   }
@@ -486,9 +485,9 @@ TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
       _planAltered(planAltered) {}
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
-  if (!_condition->isEmpty() && en->canThrow()) {
+  if (!_condition->isEmpty() && !en->isDeterministic()) {
     // we already found a FILTER and
-    // something that can throw is not safe to optimize
+    // something that is not deterministic is not safe to optimize
 
     _filterVariables.clear();
     // What about _condition?
@@ -528,7 +527,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       return true;
 
     case EN::FILTER: {
-      std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
+      std::vector<Variable const*> invars = en->getVariablesUsedHere();
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
       _filterVariables.emplace(invars[0]->id);

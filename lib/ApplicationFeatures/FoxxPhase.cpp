@@ -22,10 +22,10 @@
 
 #include "FoxxPhase.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+namespace arangodb {
+namespace application_features {
 
-FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer* server)
+FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer& server)
     : ApplicationFeaturePhase(server, "FoxxPhase") {
   setOptional(false);
   startsAfter("ServerPhase");
@@ -34,3 +34,6 @@ FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer* server)
   startsAfter("FoxxQueues");
   startsAfter("Frontend");
 }
+
+} // application_features
+} // arangodb

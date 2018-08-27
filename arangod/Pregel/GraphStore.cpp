@@ -101,7 +101,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   // Allocating some memory
   uint64_t vCount = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, false);
+    OperationResult opResult = countTrx->count(shard, transaction::CountType::Normal);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -112,7 +112,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   
   uint64_t eCount = 0;
   for (auto const& shard : _config->localEdgeShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, false);
+    OperationResult opResult = countTrx->count(shard, transaction::CountType::Normal);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -204,7 +204,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         scheduler->post([this, i, vertexShard, edgeLookups, vertexOffset] {
           TRI_DEFER(_runningThreads--);// exception safe
           _loadVertices(i, vertexShard, edgeLookups, vertexOffset);
-        });
+        }, false);
         // update to next offset
         vertexOffset += shardSizes[vertexShard];
       }
@@ -213,8 +213,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
       }
     }
-    scheduler->post(callback);
-  });
+    scheduler->post(callback, false);
+  }, false);
 }
 
 template <typename V, typename E>
@@ -371,7 +371,7 @@ void GraphStore<V, E>::_loadVertices(size_t i,
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* collection = cursor->collection();
-  uint64_t number = collection->numberDocuments(trx.get());
+  uint64_t number = collection->numberDocuments(trx.get(), transaction::CountType::Normal);
   _graphFormat->willLoadVertices(number);
 
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
@@ -609,7 +609,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
                                         << (TRI_microtime() - now) << "s";
         callback();
       }
-    });
+    }, false);
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest

@@ -179,7 +179,7 @@ the `SORT` clause of the query in the same order as they appear in the index def
 Skiplist indexes are always created in ascending order, but they can be used to access
 the indexed elements in both ascending or descending order. However, for a combined index
 (an index on multiple attributes) this requires that the sort orders in a single query
-as specified in the `SORT` clause must be either all ascending (optionally ommitted 
+as specified in the `SORT` clause must be either all ascending (optionally omitted 
 as ascending is the default) or all descending. 
 
 For example, if the skiplist index is created on attributes `value1` and `value2` 

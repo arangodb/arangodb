@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,15 +32,16 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/EndpointFeature.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+namespace arangodb {
+
 consensus::Agent* AgencyFeature::AGENT = nullptr;
 
-AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
+AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
       _size(1),
@@ -367,3 +368,4 @@ void AgencyFeature::unprepare() {
   _agent.reset();
 }
 
+} // arangodb

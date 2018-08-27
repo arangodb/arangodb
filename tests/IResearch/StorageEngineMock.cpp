@@ -88,7 +88,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       arangodb::Index const* index,
       Map const& map,
       std::unique_ptr<VPackBuilder>&& keys
-  ) : IndexIterator(collection, trx, index),
+  ) : IndexIterator(collection, trx),
       _map(map),
       _begin(_map.begin()),
       _end(_map.end()),
@@ -177,6 +177,10 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void load() override {}
   void unload() override {}
+  void afterTruncate() override {
+    _edgesFrom.clear();
+    _edgesTo.clear();
+  }
 
   void toVelocyPack(
       VPackBuilder& builder,
@@ -305,14 +309,14 @@ class EdgeIndexMock final : public arangodb::Index {
       // a.b IN values
       if (!valNode->isArray()) {
         // a.b IN non-array
-        return new arangodb::EmptyIndexIterator(&_collection, trx, this);
+        return new arangodb::EmptyIndexIterator(&_collection, trx);
       }
 
       return createInIterator(trx, mmdr, attrNode, valNode);
     }
 
     // operator type unsupported
-    return new arangodb::EmptyIndexIterator(&_collection, trx, this);
+    return new arangodb::EmptyIndexIterator(&_collection, trx);
   }
 
   arangodb::aql::AstNode* specializeCondition(
@@ -412,7 +416,7 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
       uint64_t size,
       arangodb::LogicalCollection* coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(coll, trx, nullptr),
+    : arangodb::IndexIterator(coll, trx),
       _end(size), _size(size) {
   }
 
@@ -444,7 +448,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
       uint64_t size,
       arangodb::LogicalCollection& coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(&coll, trx, nullptr),
+    : arangodb::IndexIterator(&coll, trx),
       _end(size) {
   }
 
@@ -946,9 +950,11 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 std::function<void()> StorageEngineMock::before = []()->void {};
 bool StorageEngineMock::inRecoveryResult = false;
 
-StorageEngineMock::StorageEngineMock()
+StorageEngineMock::StorageEngineMock(
+    arangodb::application_features::ApplicationServer& server
+)
   : StorageEngine(
-      nullptr,
+      server,
       "Mock",
       "",
       std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())
@@ -959,11 +965,6 @@ StorageEngineMock::StorageEngineMock()
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   TRI_ASSERT(false);
   return nullptr;
-}
-
-void StorageEngineMock::addAqlFunctions() {
-  before();
-  // NOOP
 }
 
 void StorageEngineMock::addOptimizerRules() {
@@ -1384,10 +1385,6 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  TRI_ASSERT(false);
-}
-
-void StorageEngineMock::waitForSyncTimeout(double timeout) {
   TRI_ASSERT(false);
 }
 

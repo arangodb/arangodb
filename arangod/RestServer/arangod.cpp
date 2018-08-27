@@ -60,6 +60,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/EngineEqualityCheckFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -149,101 +150,102 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     int ret = EXIT_FAILURE;
 
     // Adding the Phases
-    server.addFeature(new application_features::AgencyFeaturePhase(&server));
-    server.addFeature(new application_features::AQLFeaturePhase(&server));
-    server.addFeature(new application_features::BasicFeaturePhase(&server, false));
-    server.addFeature(new application_features::ClusterFeaturePhase(&server));
-    server.addFeature(new application_features::DatabaseFeaturePhase(&server));
-    server.addFeature(new application_features::FinalFeaturePhase(&server));
-    server.addFeature(new application_features::FoxxFeaturePhase(&server));
-    server.addFeature(new application_features::GreetingsFeaturePhase(&server, false));
-    server.addFeature(new application_features::ServerFeaturePhase(&server));
-    server.addFeature(new application_features::V8FeaturePhase(&server));
+    server.addFeature(new application_features::AgencyFeaturePhase(server));
+    server.addFeature(new application_features::AQLFeaturePhase(server));
+    server.addFeature(new application_features::BasicFeaturePhase(server, false));
+    server.addFeature(new application_features::ClusterFeaturePhase(server));
+    server.addFeature(new application_features::DatabaseFeaturePhase(server));
+    server.addFeature(new application_features::FinalFeaturePhase(server));
+    server.addFeature(new application_features::FoxxFeaturePhase(server));
+    server.addFeature(new application_features::GreetingsFeaturePhase(server, false));
+    server.addFeature(new application_features::ServerFeaturePhase(server));
+    server.addFeature(new application_features::V8FeaturePhase(server));
 
     // Adding the features
-    server.addFeature(new ActionFeature(&server));
-    server.addFeature(new AgencyFeature(&server));
-    server.addFeature(new AqlFeature(&server));
-    server.addFeature(new AuthenticationFeature(&server));
-    server.addFeature(new BootstrapFeature(&server));
-    server.addFeature(new CacheManagerFeature(&server));
-    server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
-    server.addFeature(new ClusterFeature(&server));
-    server.addFeature(new ConfigFeature(&server, name));
-    server.addFeature(new ConsoleFeature(&server));
-    server.addFeature(new DatabaseFeature(&server));
-    server.addFeature(new DatabasePathFeature(&server));
-    server.addFeature(new EndpointFeature(&server));
-    server.addFeature(new EngineEqualityCheckFeature(&server));
-    server.addFeature(new EngineSelectorFeature(&server));
-    server.addFeature(new EnvironmentFeature(&server));
-    server.addFeature(new FileDescriptorsFeature(&server));
-    server.addFeature(new FlushFeature(&server));
-    server.addFeature(new FoxxQueuesFeature(&server));
-    server.addFeature(new FrontendFeature(&server));
-    server.addFeature(new GeneralServerFeature(&server));
-    server.addFeature(new GreetingsFeature(&server));
-    server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
-    server.addFeature(new LanguageFeature(&server));
-    server.addFeature(new LockfileFeature(&server));
-    server.addFeature(new LoggerBufferFeature(&server));
-    server.addFeature(new LoggerFeature(&server, true));
-    server.addFeature(new MaxMapCountFeature(&server));
-    server.addFeature(new NonceFeature(&server));
-    server.addFeature(new PageSizeFeature(&server));
-    server.addFeature(new PrivilegeFeature(&server));
-    server.addFeature(new QueryRegistryFeature(&server));
-    server.addFeature(new RandomFeature(&server));
-    server.addFeature(new ReplicationFeature(&server));
-    server.addFeature(new ReplicationTimeoutFeature(&server));
-    server.addFeature(new RocksDBOptionFeature(&server));
-    server.addFeature(new SchedulerFeature(&server));
-    server.addFeature(new ScriptFeature(&server, &ret));
-    server.addFeature(new ServerFeature(&server, &ret));
-    server.addFeature(new ServerIdFeature(&server));
-    server.addFeature(new ShardingFeature(&server));
-    server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"Script"}));
-    server.addFeature(new SslFeature(&server));
-    server.addFeature(new StatisticsFeature(&server));
-    server.addFeature(new StorageEngineFeature(&server));
-    server.addFeature(new TempFeature(&server, name));
-    server.addFeature(new TransactionManagerFeature(&server));
-    server.addFeature(new TraverserEngineRegistryFeature(&server));
-    server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
-    server.addFeature(new V8DealerFeature(&server));
-    server.addFeature(new V8PlatformFeature(&server));
-    server.addFeature(new VersionFeature(&server));
-    server.addFeature(new ViewTypesFeature(&server));
-    server.addFeature(new aql::AqlFunctionFeature(&server));
-    server.addFeature(new aql::OptimizerRulesFeature(&server));
-    server.addFeature(new pregel::PregelFeature(&server));
+    server.addFeature(new ActionFeature(server));
+    server.addFeature(new AgencyFeature(server));
+    server.addFeature(new AqlFeature(server));
+    server.addFeature(new AuthenticationFeature(server));
+    server.addFeature(new BootstrapFeature(server));
+    server.addFeature(new CacheManagerFeature(server));
+    server.addFeature(new CheckVersionFeature(server, &ret, nonServerFeatures));
+    server.addFeature(new ClusterFeature(server));
+    server.addFeature(new ConfigFeature(server, name));
+    server.addFeature(new ConsoleFeature(server));
+    server.addFeature(new DatabaseFeature(server));
+    server.addFeature(new DatabasePathFeature(server));
+    server.addFeature(new EndpointFeature(server));
+    server.addFeature(new EngineEqualityCheckFeature(server));
+    server.addFeature(new EngineSelectorFeature(server));
+    server.addFeature(new EnvironmentFeature(server));
+    server.addFeature(new FileDescriptorsFeature(server));
+    server.addFeature(new FlushFeature(server));
+    server.addFeature(new FoxxQueuesFeature(server));
+    server.addFeature(new FrontendFeature(server));
+    server.addFeature(new GeneralServerFeature(server));
+    server.addFeature(new GreetingsFeature(server));
+    server.addFeature(new InitDatabaseFeature(server, nonServerFeatures));
+    server.addFeature(new LanguageFeature(server));
+    server.addFeature(new LockfileFeature(server));
+    server.addFeature(new LoggerBufferFeature(server));
+    server.addFeature(new LoggerFeature(server, true));
+    server.addFeature(new MaintenanceFeature(server));
+    server.addFeature(new MaxMapCountFeature(server));
+    server.addFeature(new NonceFeature(server));
+    server.addFeature(new PageSizeFeature(server));
+    server.addFeature(new PrivilegeFeature(server));
+    server.addFeature(new QueryRegistryFeature(server));
+    server.addFeature(new RandomFeature(server));
+    server.addFeature(new ReplicationFeature(server));
+    server.addFeature(new ReplicationTimeoutFeature(server));
+    server.addFeature(new RocksDBOptionFeature(server));
+    server.addFeature(new SchedulerFeature(server));
+    server.addFeature(new ScriptFeature(server, &ret));
+    server.addFeature(new ServerFeature(server, &ret));
+    server.addFeature(new ServerIdFeature(server));
+    server.addFeature(new ShardingFeature(server));
+    server.addFeature(new ShellColorsFeature(server));
+    server.addFeature(new ShutdownFeature(server, {"Script"}));
+    server.addFeature(new SslFeature(server));
+    server.addFeature(new StatisticsFeature(server));
+    server.addFeature(new StorageEngineFeature(server));
+    server.addFeature(new TempFeature(server, name));
+    server.addFeature(new TransactionManagerFeature(server));
+    server.addFeature(new TraverserEngineRegistryFeature(server));
+    server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
+    server.addFeature(new V8DealerFeature(server));
+    server.addFeature(new V8PlatformFeature(server));
+    server.addFeature(new VersionFeature(server));
+    server.addFeature(new ViewTypesFeature(server));
+    server.addFeature(new aql::AqlFunctionFeature(server));
+    server.addFeature(new aql::OptimizerRulesFeature(server));
+    server.addFeature(new pregel::PregelFeature(server));
 
 #ifdef ARANGODB_HAVE_FORK
-    server.addFeature(new DaemonFeature(&server));
-    server.addFeature(new SupervisorFeature(&server));
+    server.addFeature(new DaemonFeature(server));
+    server.addFeature(new SupervisorFeature(server));
 #endif
 
 #ifdef _WIN32
-    server.addFeature(new WindowsServiceFeature(&server));
+    server.addFeature(new WindowsServiceFeature(server));
 #endif
 
 #ifdef USE_ENTERPRISE
-    setupServerEE(&server);
+    setupServerEE(server);
 #else
-    server.addFeature(new SslServerFeature(&server));
+    server.addFeature(new SslServerFeature(server));
 #endif
 
 #ifdef USE_IRESEARCH
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(&server));
-    server.addFeature(new arangodb::iresearch::IResearchFeature(&server));
-    server.addFeature(new arangodb::iresearch::SystemDatabaseFeature(&server));
+    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
+    server.addFeature(new arangodb::iresearch::IResearchFeature(server));
+    server.addFeature(new arangodb::iresearch::SystemDatabaseFeature(server));
 #endif
 
     // storage engines
-    server.addFeature(new ClusterEngine(&server));
-    server.addFeature(new MMFilesEngine(&server));
-    server.addFeature(new RocksDBEngine(&server));
+    server.addFeature(new ClusterEngine(server));
+    server.addFeature(new MMFilesEngine(server));
+    server.addFeature(new RocksDBEngine(server));
 
     try {
       server.run(argc, argv);

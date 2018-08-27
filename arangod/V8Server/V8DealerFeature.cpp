@@ -90,7 +90,8 @@ class V8GcThread : public Thread {
 }
 
 V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -113,6 +114,7 @@ V8DealerFeature::V8DealerFeature(
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption(
@@ -170,6 +172,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
+  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY) {
+    _enableJS = false;
+  }
+  
   if (!_enableJS) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",

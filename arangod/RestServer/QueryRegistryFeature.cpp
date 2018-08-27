@@ -28,19 +28,23 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
 
-QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
+QueryRegistryFeature::QueryRegistryFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "QueryRegistry"),
       _trackSlowQueries(true),
       _trackBindVars(true),
       _failOnWarning(false),
       _queryMemoryLimit(0),
+      _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheEntries(128),
@@ -79,8 +83,23 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.cache-entries",
                      "maximum number of results in query result cache per database",
                      new UInt64Parameter(&_queryCacheEntries));
+  
+  options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
+                     new UInt64Parameter(&_maxQueryPlans));
+
   options->addHiddenOption("--query.registry-ttl", "Default time-to-live of query snippets (in seconds)",
                            new DoubleParameter(&_queryRegistryTTL));
+}
+
+void QueryRegistryFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  if (_maxQueryPlans == 0) {
+    LOG_TOPIC(FATAL, Logger::AQL) << "invalid value for `--query.optimizer-max-plans`. expecting at least 1";
+    FATAL_ERROR_EXIT();
+  }
+
+  // cap the value somehow. creating this many plans really does not make sense
+  _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
 }
 
 void QueryRegistryFeature::prepare() {
@@ -88,11 +107,11 @@ void QueryRegistryFeature::prepare() {
   std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
                                                  _queryCacheEntries};
   arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
-  
+
   if (_queryRegistryTTL <= 0) {
     _queryRegistryTTL = DefaultQueryTTL;
   }
-  
+
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY = _queryRegistry.get();
@@ -104,3 +123,5 @@ void QueryRegistryFeature::unprepare() {
   // clear the query registery
   QUERY_REGISTRY = nullptr;
 }
+
+} // arangodb

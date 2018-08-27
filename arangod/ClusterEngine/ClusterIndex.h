@@ -76,7 +76,7 @@ class ClusterIndex : public Index {
   size_t memory() const override { return 0; }
 
   int drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
-  int afterTruncate() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+  void afterTruncate() override { }
 
   bool hasCoveringIterator() const override;
 

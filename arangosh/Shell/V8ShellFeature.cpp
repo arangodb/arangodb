@@ -49,15 +49,18 @@ extern "C" {
 #include <linenoise.h>
 }
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
 static std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
-V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
-                               std::string const& name)
+namespace arangodb {
+
+V8ShellFeature::V8ShellFeature(
+    application_features::ApplicationServer& server,
+    std::string const& name
+)
     : ApplicationFeature(server, "V8Shell"),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
@@ -279,10 +282,10 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a Javascript variable SYS_ARANGO
-std::unique_ptr<V8ClientConnection> V8ShellFeature::setup(
+std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
-  std::unique_ptr<V8ClientConnection> v8connection;
+  std::shared_ptr<V8ClientConnection> v8connection;
 
   ClientFeature* client = nullptr;
 
@@ -290,10 +293,6 @@ std::unique_ptr<V8ClientConnection> V8ShellFeature::setup(
     client = server()->getFeature<ClientFeature>("Client");
 
     if (client != nullptr && client->isEnabled()) {
-      /*auto jwtSecret = client->jwtSecret();
-      if (!jwtSecret.empty()) {
-        V8ClientConnection::setJwtSecret(jwtSecret);
-      }*/
       v8connection = std::make_unique<V8ClientConnection>();
       v8connection->connect(client);
     } else {
@@ -335,7 +334,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
-        [&v8connection]() { v8connection->setInterrupted(true); });
+        [v8connection]() { v8connection->setInterrupted(true); });
   }
 
   v8LineEditor.open(_console->autoComplete());
@@ -432,7 +431,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       // this will change the prompt for the next round
       promptError = true;
     }
-
+    
     if (v8connection != nullptr) {
       v8connection->setInterrupted(false);
     }
@@ -907,8 +906,8 @@ void V8ShellFeature::initGlobals() {
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to get global context.  ";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "failed to get global context";
     FATAL_ERROR_EXIT();
   }
 
@@ -1051,3 +1050,5 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
     }
   }
 }
+
+} // arangodb

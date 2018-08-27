@@ -40,7 +40,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -237,15 +236,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
-  OperationResult countResult = trx.count(collectionName, false);
-
-  if (countResult.fail()) {
-    TRI_V8_THROW_EXCEPTION(countResult.result);
-  }
-
-  VPackSlice count = countResult.slice();
-  TRI_ASSERT(count.isNumber());
-
   if (!opCursor->hasMore()) {
     // OUT OF MEMORY. initial hasMore should return true even if index is empty
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -255,7 +245,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
 
-  ManagedDocumentResult mmdr;
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
@@ -265,7 +254,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   resultBuilder.close();
   
-  res = trx.finish(countResult.result);
+  res = trx.finish(Result());
   
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -278,7 +267,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto documents = TRI_VPackToV8(isolate, docs, &resultOptions);
   result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), documents);
   result->Set(TRI_V8_ASCII_STRING(isolate, "total"),
-              v8::Number::New(isolate, count.getNumericValue<double>()));
+              v8::Number::New(isolate, static_cast<double>(docs.length())));
   result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
               v8::Number::New(isolate, static_cast<double>(docs.length())));
 

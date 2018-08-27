@@ -196,6 +196,7 @@ CalculationBlock::getSome(size_t atMost) {
 
   auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
     return res;
   }
   if (res.second == nullptr) {

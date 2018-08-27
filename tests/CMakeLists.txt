@@ -11,7 +11,6 @@ if (USE_IRESEARCH)
     IResearch/common.cpp
     IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
-#    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
     IResearch/ExpressionFilter-test.cpp
     IResearch/ExecutionBlockMock.cpp
@@ -129,6 +128,9 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Maintenance/MaintenanceFeatureTest.cpp
+  Maintenance/MaintenanceRestHandlerTest.cpp
+  Maintenance/MaintenanceTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp

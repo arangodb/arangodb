@@ -103,9 +103,10 @@ struct IResearchLinkCoordinatorSetup {
   std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchLinkCoordinatorSetup(): server(nullptr, nullptr) {
+  IResearchLinkCoordinatorSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -136,37 +137,37 @@ struct IResearchLinkCoordinatorSetup {
       features.emplace(name, std::make_pair(ftr, start));
     };
 
-    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(&server), false);
-    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(&server, false), false);
-    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(&server), false);
- 
-    // setup required application features
-    buildFeatureEntry(new arangodb::V8DealerFeature(&server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(&server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(&server), false);
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
 
-    buildFeatureEntry(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
-    buildFeatureEntry(new arangodb::AuthenticationFeature(&server), false);
-    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
-    buildFeatureEntry(new arangodb::DatabasePathFeature(&server), false);
-    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    buildFeatureEntry(new arangodb::AqlFeature(&server), true);
-    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(&server), true);
+    // setup required application features
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+
+    buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    buildFeatureEntry(new arangodb::AqlFeature(server), true);
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
 
     // We need this feature to be added now in order to create the system database
     arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    buildFeatureEntry(new arangodb::FlushFeature(&server), false); // do not start the thread
-    buildFeatureEntry(new arangodb::ClusterFeature(&server), false);
-    buildFeatureEntry(new arangodb::ShardingFeature(&server), false);
-    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
 
     #if USE_ENTERPRISE
-      buildFeatureEntry(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -198,13 +199,10 @@ struct IResearchLinkCoordinatorSetup {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    testFilesystemPath = (
-      (irs::utf8_path()/=
-      TRI_GetTempPath())/=
-      (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
-    ).utf8();
+
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature->directory();
 
     long systemError;
     std::string systemErrorStr;

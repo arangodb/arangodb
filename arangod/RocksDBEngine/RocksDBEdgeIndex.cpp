@@ -90,7 +90,7 @@ RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBEdgeIndex const* index,
     std::unique_ptr<VPackBuilder> keys, std::shared_ptr<cache::Cache> cache)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _keys(std::move(keys)),
       _keysIterator(_keys->slice()),
       _index(index),
@@ -717,13 +717,13 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -772,7 +772,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // prepare transaction for parallel read access
   RocksDBTransactionState::toState(trx)->prepareForParallelReads();
 
-  auto rocksColl = toRocksDBCollection(&_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   auto* mthds = RocksDBTransactionState::toMethods(trx);
   auto bounds = RocksDBKeyBounds::EdgeIndex(_objectId);
 
@@ -851,7 +851,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
                                       rocksdb::Slice const& lower,
                                       rocksdb::Slice const& upper) {
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto rocksColl = toRocksDBCollection(&_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   bool needsInsert = false;
   std::string previous = "";
   VPackBuilder builder;
@@ -1081,7 +1081,14 @@ bool RocksDBEdgeIndex::deserializeEstimate(RocksDBSettingsManager* mgr) {
   return true;
 }
 
+void RocksDBEdgeIndex::afterTruncate() {
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
+  RocksDBIndex::afterTruncate();
+}
+
 void RocksDBEdgeIndex::recalculateEstimates() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 

@@ -48,6 +48,8 @@ In a cluster setup, the result will also contain the following attributes:
 
 - *replicationFactor*: contains how many copies of each shard are kept on different DBServers.
 
+- *shardingStrategy*: the sharding strategy selected for the collection.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
