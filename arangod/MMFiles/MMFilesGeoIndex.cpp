@@ -48,7 +48,7 @@ struct NearIterator final : public IndexIterator {
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                MMFilesGeoIndex const* index,
                geo::QueryParams&& params)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _index(index),
         _near(std::move(params)) {
     if (!params.fullRange) {

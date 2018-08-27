@@ -26,6 +26,7 @@
 
 #include "utils/async_utils.hpp"
 
+#include "IResearchView.h"
 #include "Transaction/Status.h"
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
@@ -99,7 +100,7 @@ class IResearchViewDBServer final: public arangodb::LogicalViewClusterInfo {
   PrimaryKeyIndexReader* snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
-    bool force = false
+    IResearchView::Snapshot mode = IResearchView::Snapshot::Find
   ) const;
 
   virtual arangodb::Result updateProperties(

@@ -35,6 +35,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -225,6 +226,7 @@ namespace iresearch {
     }
 
     static std::vector<std::string> const EMPTY;
+    arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY, // readCollections

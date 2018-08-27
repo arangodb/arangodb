@@ -23,16 +23,19 @@
 
 #include "LogicalView.h"
 
-#include "RestServer/ViewTypesFeature.h"
+#include "Aql/PlanCache.h"
+#include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Iterator.h>
 
 namespace arangodb {
 
@@ -351,6 +354,9 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   } catch (...) {
     return { TRI_ERROR_INTERNAL };
   }
+  
+  arangodb::aql::PlanCache::instance()->invalidate(&vocbase());
+  arangodb::aql::QueryCache::instance()->invalidate(&vocbase());
 
   return {};
 }

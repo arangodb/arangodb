@@ -114,9 +114,8 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
  public:
   MMFilesFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               MMFilesFulltextIndex const* index,
                                std::set<TRI_voc_rid_t>&& docs)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 

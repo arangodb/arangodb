@@ -208,8 +208,6 @@ protected:
 
   ActionDescription _description;
 
-  ActionModel _model;
-
   uint64_t _hash;
   std::string _clientId;
 
