@@ -60,7 +60,7 @@ function resilience (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
+  let testCases = tu.scanTestPaths(testPaths.client_resilience);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
