@@ -29,6 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
 #include "Utils/OperationResult.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -47,44 +48,32 @@
 namespace arangodb {
 
 namespace basics {
-
 struct AttributeName;
 class StringBuffer;
-
 }
 
 namespace velocypack {
-
 class Builder;
-
 }
 
 namespace aql {
-
 class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
-
 }
 
 namespace rest {
-
 enum class ResponseCode;
-
 }
 
 namespace traverser {
-
 class BaseEngine;
-
 }
 
 namespace transaction {
-
 class Context;
 struct Options;
-
 }
 
 /// @brief forward declarations
@@ -343,7 +332,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool details);
+  virtual OperationResult count(std::string const& collectionName, CountType type);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -534,9 +523,12 @@ class Methods {
  protected:
 
   OperationResult countCoordinator(std::string const& collectionName,
-                                   bool details);
+                                   CountType type);
 
-  OperationResult countLocal(std::string const& collectionName);
+  OperationResult countCoordinatorHelper(
+      std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
+
+  OperationResult countLocal(std::string const& collectionName, CountType type);
 
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,

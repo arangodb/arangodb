@@ -83,7 +83,7 @@ RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBVPackIndex const* index,
     VPackSlice const& indexValues)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _cmp(index->comparator()),
       _key(trx),
@@ -149,7 +149,7 @@ RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBVPackIndex const* index,
     bool reverse, RocksDBKeyBounds&& bounds)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
@@ -1120,7 +1120,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
               TRI_ASSERT(false);
-              return new EmptyIndexIterator(&_collection, trx, this);
+              return new EmptyIndexIterator(&_collection, trx);
           }
 
           value->toVelocyPackValue(searchValues);

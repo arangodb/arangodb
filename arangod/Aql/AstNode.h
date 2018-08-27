@@ -182,6 +182,8 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_WITH = 74,
   NODE_TYPE_SHORTEST_PATH = 75,
   NODE_TYPE_VIEW = 76,
+  NODE_TYPE_PARAMETER_DATASOURCE = 77,
+  NODE_TYPE_FOR_VIEW = 78,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -360,21 +362,6 @@ struct AstNode {
 
   /// @brief whether or not a value node is of array type
   inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
-
-  inline bool isDataSource() const noexcept {
-    switch (type) {
-      case NODE_TYPE_COLLECTION:
-      case NODE_TYPE_VIEW:
-        return true;
-      case NODE_TYPE_PARAMETER:
-        return value.type == VALUE_TYPE_STRING
-          && value.length
-          && value.value._string
-          && '@' == value.value._string[0];
-      default:
-        return false;
-    }
-  }
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
@@ -695,6 +682,9 @@ struct AstNode {
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
+  
+  /// @brief validate that given node is an object with const-only values
+  bool isConstObject() const;
 
   /// @brief append a string representation of the node into a string buffer
   /// the string representation does not need to be JavaScript-compatible

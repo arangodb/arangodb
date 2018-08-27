@@ -136,7 +136,6 @@ class IResearchView final
   : public arangodb::LogicalViewStorageEngine,
     public arangodb::FlushTransaction {
  public:
-
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief AsyncValue holding the view itself, modifiable by IResearchView
   ///////////////////////////////////////////////////////////////////////////////
@@ -147,6 +146,20 @@ class IResearchView final
     IResearchView* get() const {
       return static_cast<IResearchView*>(ResourceMutex::get());
     }
+  };
+
+  /// @enum snapshot getting mode
+  enum class Snapshot {
+    /// @brief lookup existing snapshot from a transaction
+    Find,
+
+    /// @brief lookup existing snapshop from a transaction
+    /// or create if it doesn't exist
+    FindOrCreate,
+
+    /// @brief retrieve the latest view snapshot and cache
+    /// it in a transaction
+    SyncAndCreate
   };
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -172,15 +185,10 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
-  ///        also remove 'cid' from the persisted list of tracked collection IDs
+  /// @param unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
   ////////////////////////////////////////////////////////////////////////////////
-  int drop(TRI_voc_cid_t cid);
-      
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove all documents matching collection 'cid' from this IResearch
-  ///        View and the underlying IResearch stores
-  ////////////////////////////////////////////////////////////////////////////////
-  int truncate(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid, bool unlink = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
@@ -266,7 +274,7 @@ class IResearchView final
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
     transaction::Methods& trx,
-    bool force = false
+    Snapshot mode = Snapshot::Find
   ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -299,12 +307,6 @@ class IResearchView final
     arangodb::velocypack::Builder& builder,
     bool forPersistence
   ) const override;
-      
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove all documents matching collection 'cid' from this IResearch
-  ///        View and the underlying IResearch stores
-  ////////////////////////////////////////////////////////////////////////////////
-  int truncateUnlocked(TRI_voc_cid_t cid);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View

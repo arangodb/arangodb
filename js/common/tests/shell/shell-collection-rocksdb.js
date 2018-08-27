@@ -283,8 +283,7 @@ function CollectionSuite () {
       try {
         db._create(cn, { isSystem: false });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
 

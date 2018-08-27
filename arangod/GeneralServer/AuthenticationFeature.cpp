@@ -62,11 +62,6 @@ AuthenticationFeature::AuthenticationFeature(
 #endif
 }
 
-AuthenticationFeature::~AuthenticationFeature() {
-  delete _userManager;
-  delete _authCache;
-}
-
 void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
@@ -135,22 +130,21 @@ void AuthenticationFeature::prepare() {
 #if USE_ENTERPRISE
     if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
             ->isEnabled()) {
-      _userManager = new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
+      _userManager.reset(new auth::UserManager(std::make_unique<LdapAuthenticationHandler>()));
     } else {
-      _userManager = new auth::UserManager();
+      _userManager.reset(new auth::UserManager());
     }
 #else
-    _userManager = new auth::UserManager();
+    _userManager.reset(new auth::UserManager());
 #endif
   } else {
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
   }
   
   TRI_ASSERT(_authCache == nullptr);
-  _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
+  _authCache.reset(new auth::TokenCache(_userManager.get(), _authenticationTimeout));
 
   std::string jwtSecret = _jwtSecretProgramOption;
-
   if (jwtSecret.empty()) {
     LOG_TOPIC(INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";

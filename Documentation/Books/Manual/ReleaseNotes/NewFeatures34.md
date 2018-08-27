@@ -508,6 +508,11 @@ COLLECT statement:
 * `SORTED_UNIQUE`
 * `COUNT_DISTINCT`
 
+The following function aliases have been created for existing AQL functions:
+
+* `CONTAINS_ARRAY` is an alias for `POSITION`
+* `KEYS` is an alias for `ATTRIBUTES`
+
 ### Distributed COLLECT
 
 In the general case, AQL COLLECT operations are expensive to execute in a cluster,
@@ -605,6 +610,25 @@ of V8 anymore, except for user-defined functions.
 If no user-defined functions are used in AQL, end users do not need to put aside
 dedicated V8 contexts for executing AQL queries with ArangoDB 3.4, making server
 configuration less complex and easier to understand.
+
+### AQL optimizer query planning improvements
+ 
+The AQL query optimizer will by default now create at most 128 different execution
+plans per AQL query. In previous versions the maximum number of plans was 192.
+
+Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+but there are some cases in which it creates multiple competing plans. More plans
+can lead to better optimized queries, however, plan creation has its costs. The
+more plans are created and shipped through the optimization pipeline, the more
+time will be spent in the optimizer.
+To make the optimizer better cope with some edge cases, the maximum number of plans
+created is now strictly enforced and was lowered compared to previous versions of
+ArangoDB. This helps a specific class of complex queries.
+
+Note that the default maximum value can be adjusted globally by setting the startup 
+option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+`maxNumberOfPlans` option.
+
 
 ### Single document optimizations
 
@@ -762,9 +786,21 @@ for such queries.
 
 ### Miscellaneous changes
 
-The `NEAR` AQL function now does not default to a limit of 100 documents any more
-when no limit value was specified. The previously used limit value of 100 was an
-arbitrary limit that acted contrary to user expectations.
+When creating query execution plans for a query, the query optimizer was fetching
+the number of documents of the underlying collections in case multiple query
+execution plans were generated. The optimizer used these counts as part of its 
+internal decisions and execution plan costs calculations. 
+
+Fetching the number of documents of a collection can have measurable overhead in a
+cluster, so ArangoDB 3.4 now caches the "number of documents" that are referred to
+when creating query execution plans. This may save a few roundtrips in case the
+same collections are frequently accessed using AQL queries. 
+
+The "number of documents" value was not and is not supposed to be 100% accurate 
+in this stage, as it is used for rough cost estimates only. It is possible however
+that when explaining an execution plan, the "number of documents" estimated for
+a collection is using a cached stale value, and that the estimates change slightly
+over time even if the underlying collection is not modified.
 
 
 Streaming AQL Cursors
@@ -857,19 +893,30 @@ engine at startup automatically.
 Foxx
 ----
 
-Foxx CLI
+The functions `uuidv4` and `genRandomBytes` have been added to the `crypto` module.
+
+The functions `hexSlice`, `hexWrite` have been added to the `Buffer` object.
+
+The functions `Buffer.from`, `Buffer.of`, `Buffer.alloc` and `Buffer.allocUnsafe`
+have been added to the `Buffer` object for improved compatibility with node.js.
 
 
 Security
 --------
 
-### Ownership for cursors and jobs
+### Ownership for cursors, jobs and tasks
 
-Cursors for AQL query results and jobs created by the APIs at endpoints `/_api/cursor`
-and `/_api/job` are now tied to the user that first created the cursor/job.
+Cursors for AQL query results created by the API at endpoint `/_api/cursor` 
+are now tied to the user that first created the cursor.
 
-Follow-up requests to consume or remove data of an already created cursor or job will
+Follow-up requests to consume or remove data of an already created cursor will
 now be denied if attempted by a different user.
+
+The same mechanism is also in place for the following APIs:
+
+- jobs created via the endpoint `/_api/job`
+- tasks created via the endpoint `/_api/tasks`
+
 
 ### Dropped support for SSLv2
 

@@ -55,9 +55,6 @@ class HttpConnection final : public fuerte::Connection {
   /// Start an asynchronous request.
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
   
-  /// @brief sed request synchronously, only save to use if the
-  std::unique_ptr<Response> sendRequestSync(std::unique_ptr<Request> r) override;
-  
   // Return the number of unfinished requests.
   size_t requestsLeft() const override {
     return _numQueued.load(std::memory_order_acquire);
@@ -67,14 +64,23 @@ class HttpConnection final : public fuerte::Connection {
   Connection::State state() const override final {
     return _state.load(std::memory_order_acquire);
   }
+
+  /// @brief cancel the connection, unusable afterwards
+  void cancel() override;
+  
+ protected:
   
   // Activate this connection
   void startConnection() override;
   
-  // called on shutdown, always call superclass
-  void shutdownConnection(const ErrorCondition) override;
-
  private:
+  
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries);
+  
+  // shutdown connection, cancel async operations
+  void shutdownConnection(const ErrorCondition);
+  
   // restart connection
   void restartConnection(const ErrorCondition);
   
@@ -124,7 +130,8 @@ class HttpConnection final : public fuerte::Connection {
   std::atomic<bool> _active;
   
   /// elements to send out
-  boost::lockfree::queue<fuerte::v1::http::RequestItem*> _queue;
+  boost::lockfree::queue<fuerte::v1::http::RequestItem*,
+    boost::lockfree::capacity<1024>> _queue;
   
   /// cached authentication header
   std::string _authHeader;

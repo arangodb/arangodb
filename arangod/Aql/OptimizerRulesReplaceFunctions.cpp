@@ -400,15 +400,15 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
                                   cname.c_str());
   }
 
-  if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
+  if (coll->type != NODE_TYPE_COLLECTION) {
    aql::addCollectionToQuery(ast->query(), cname, false);
-   coll = ast->createNodeCollection(coll->getStringValue(),
+   coll = ast->createNodeCollection(coll->getStringValue(), coll->getStringLength(),
                                     AccessMode::Type::READ);
   }
 
   // FOR part
   Variable* collVar = ast->variables()->createTemporaryVariable();
-  AstNode* forNode = ast->createNodeFor(collVar, coll);
+  AstNode* forNode = ast->createNodeFor(collVar, coll, nullptr);
 
   // Create GEO_CONTAINS function
   AstNode* loop = ast->createNodeArray(5);

@@ -114,21 +114,3 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() { return state()->lockCollections(); }
-
-/// @brief count the number of documents in a collection
-/// Handle locks based on the collections known to this transaction
-/// (Coordinator only)
-OperationResult AqlTransaction::count(std::string const& collectionName,
-                                      bool aggregate) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, aggregate);
-  }
-
-  return countLocal(collectionName);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

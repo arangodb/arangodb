@@ -2654,6 +2654,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engine()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_name()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_path()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_parse()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));
@@ -2747,7 +2748,7 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult = trx.count(collectionName, details);
+  OperationResult opResult = trx.count(collectionName, details ? transaction::CountType::Detailed : transaction::CountType::Normal);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {

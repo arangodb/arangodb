@@ -57,9 +57,6 @@ class EventLoopService {
   // Prevent copying
   EventLoopService(EventLoopService const& other) = delete;
   EventLoopService& operator=(EventLoopService const& other) = delete;
-  
-  /// forcebly stop all io contexts. service is unusable after
-  void forceStop();
 
   // io_service returns a reference to the boost io_service.
   std::shared_ptr<asio_io_context>& nextIOContext() {

@@ -18,7 +18,7 @@ SED=sed
 IS_MAC=0
 
 NOTIFY='if test -x /usr/games/oneko; then /usr/games/oneko& fi'
-trap "$NOTIFY"
+trap "$NOTIFY" EXIT
 
 
 if test "$(uname)" == "Darwin"; then

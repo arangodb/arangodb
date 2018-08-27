@@ -290,8 +290,8 @@ void CollectNode::setAggregateVariables(
 }
 
 /// @brief estimateCost
-double CollectNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies.at(0)->getCost(nrItems);
+CostEstimate CollectNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
 
   // As in the FilterNode case, we are pessimistic here by not reducing the
   // nrItems much, since the worst case for COLLECT is to return as many items
@@ -303,16 +303,16 @@ double CollectNode::estimateCost(size_t& nrItems) const {
 
   if (_groupVariables.empty()) {
     // we are known to only produce a single output row
-    nrItems = 1;
+    estimate.estimatedNrItems = 1;
   } else {
     // we do not know how many rows the COLLECT with produce...
     // the worst case is that there will be as many output rows as input rows
-    if (nrItems >= 10) {
+    if (estimate.estimatedNrItems >= 10) {
       // we assume that the collect will reduce the number of results at least
       // somewhat
-      nrItems = static_cast<size_t>(nrItems * 0.80);
+      estimate.estimatedNrItems *= 0.8;
     }
   }
-
-  return depCost + nrItems;
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }

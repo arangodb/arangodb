@@ -33,10 +33,6 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function ahuacatlQueryCacheTestSuite () {
   var cacheProperties;
   var c1, c2;
@@ -128,8 +124,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
@@ -182,8 +177,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
@@ -222,8 +216,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
@@ -254,8 +247,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
@@ -281,8 +273,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query);
         fail();
-      }
-      catch (err1) {
+      } catch (err1) {
         assertEqual(internal.errors.ERROR_QUERY_PARSE.code, err1.errorNum);
       }
 
@@ -290,8 +281,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query);
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(internal.errors.ERROR_QUERY_PARSE.code, err2.errorNum);
       }
     },
@@ -309,8 +299,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query);
         fail();
-      }
-      catch (err1) {
+      } catch (err1) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err1.errorNum);
       }
 
@@ -318,8 +307,7 @@ function ahuacatlQueryCacheTestSuite () {
       try {
         AQL_EXECUTE(query);
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err2.errorNum);
       }
     },
@@ -962,11 +950,342 @@ function ahuacatlQueryCacheTestSuite () {
   };
 }
 
+function ahuacatlQueryCacheViewTestSuite () {
+  var cacheProperties;
+  var c1, c2, v;
+
+  return {
+
+    setUp : function () {
+      cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
+      AQL_QUERY_CACHE_INVALIDATE();
+
+      db._drop("UnitTestsAhuacatlQueryCache1");
+      db._drop("UnitTestsAhuacatlQueryCache2");
+      db._dropView("UnitTestsView");
+
+      c1 = db._create("UnitTestsAhuacatlQueryCache1");
+      c2 = db._create("UnitTestsAhuacatlQueryCache2");
+
+      v = db._createView("UnitTestsView", "arangosearch", {});
+    },
+
+    tearDown : function () {
+      db._dropView("UnitTestsView");
+      db._drop("UnitTestsAhuacatlQueryCache1");
+      db._drop("UnitTestsAhuacatlQueryCache2");
+
+      AQL_QUERY_CACHE_PROPERTIES(cacheProperties);
+      AQL_QUERY_CACHE_INVALIDATE();
+    },
+
+    testQueryOnView : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+      
+      c1.insert({ value: 1 }, { waitForSync: true });
+
+      let query = "FOR doc IN @@view RETURN doc.value";
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result1.cached);
+      assertEqual(1, result1.json.length);
+
+      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(1, result2.json.length);
+      assertEqual(result1.json, result2.json);
+    },
+
+    testRenameView : function () {
+      if (require("@arangodb/cluster").isCluster()) {
+        // renaming views not supported in cluster
+        return;
+      }
+      
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+      
+      c1.insert({ value: 1 }, { waitForSync: true });
+
+      let query = "FOR doc IN @@view RETURN doc.value";
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result1.cached);
+      assertEqual(1, result1.json.length);
+
+      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(1, result2.json.length);
+      assertEqual(result1.json, result2.json);
+
+      v.rename("UnitTestsViewRenamed");
+
+      try {
+        AQL_EXECUTE(query, { "@view": "UnitTestsView" });
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+
+      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result2.cached);
+      assertEqual(result1.json, result2.json);
+
+      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(result1.json, result2.json);
+    },
+    
+    testPropertyChangeView : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+      
+      c1.insert({ value: 1 }, { waitForSync: true });
+
+      let query = "FOR doc IN @@view RETURN doc.value";
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result1.cached);
+      assertEqual(1, result1.json.length);
+
+      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(1, result2.json.length);
+      assertEqual(result1.json, result2.json);
+
+      meta = { links: { "UnitTestsAhuacatlQueryCache1" : null, "UnitTestsAhuacatlQueryCache2" : { includeAllFields: true } } };
+      v.properties(meta);
+
+      c2.insert({ value: 1 }, { waitForSync: true });
+      c2.insert({ value: 2 }, { waitForSync: true });
+      
+      result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result1.cached);
+      assertEqual(2, result1.json.length);
+
+      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(2, result2.json.length);
+    },
+
+    testDropView : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+      
+      c1.insert({ value: 1 }, { waitForSync: true });
+
+      let query = "FOR doc IN @@view RETURN doc.value";
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result1.cached);
+      assertEqual(1, result1.json.length);
+
+      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(1, result2.json.length);
+      assertEqual(result1.json, result2.json);
+
+      v.drop();
+
+      try {
+        AQL_EXECUTE(query, { "@view": "UnitTestsView" });
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+
+    testDropAndRecreateView : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+      
+      c1.insert({ value: 1 }, { waitForSync: true });
+
+      let query = "FOR doc IN @@view RETURN doc.value";
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result1.cached);
+      assertEqual(1, result1.json.length);
+
+      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual(1, result2.json.length);
+      assertEqual(result1.json, result2.json);
+
+      v.drop();
+      
+      v = db._createView("UnitTestsView", "arangosearch", {});
+      v.properties(meta);
+      
+      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result2.cached);
+      assertEqual([], result2.json);
+
+      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result2.cached);
+      assertEqual([], result2.json);
+    },
+    
+    testInvalidationAfterAqlInsertNoSync : function () {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+
+      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let result;
+
+      for (let i = 1; i <= 5; ++i) {
+        c1.insert({ value: i }, { waitForSync: i === 5 });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      try {
+        internal.debugSetFailAt("FlushThreadDisableAll");
+        internal.sleep(5); // give FlushThread some time
+
+        // explicitly without waitForSync here
+        AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection" : c1.name() });
+
+        // re-run query to repopulate the cache. however, the document is not yet contained
+        // in the view as we turned off the flush thread
+        result = AQL_EXECUTE(query, { "@view": v.name() });
+        assertFalse(result.cached);
+        assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+      
+        result = AQL_EXECUTE(query, { "@view": v.name() });
+        assertTrue(result.cached);
+        assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+      } finally {
+        internal.debugClearFailAt();
+      }
+        
+      internal.sleep(5); // give FlushThread some time
+        
+      // invalidate view query cache
+      AQL_EXECUTE("FOR doc in @@view OPTIONS { waitForSync: true } COLLECT WITH COUNT INTO count RETURN count", { "@view": v.name() });
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
+      
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
+    },
+    
+    testInvalidationAfterAqlInsert : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+
+      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let result;
+
+      for (let i = 1; i <= 5; ++i) {
+        c1.insert({ value: i }, { waitForSync: i === 5 });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("INSERT { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
+    },
+    
+    testInvalidationAfterAqlUpdate : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+
+      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let result;
+
+      for (let i = 1; i <= 5; ++i) {
+        c1.insert({ _key: "test" + i, value: i }, { waitForSync: i === 5 });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("UPDATE 'test5' WITH { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 9 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 9 ], result.json);
+    },
+    
+    testInvalidationAfterAqlRemove : function () {
+      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
+      v.properties(meta);
+
+      let query = "FOR doc IN @@view SORT doc.value RETURN doc.value";
+      let result;
+
+      for (let i = 1; i <= 5; ++i) {
+        c1.insert({ _key: "test" + i, value: i }, { waitForSync: i === 5 });
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("REMOVE 'test5' INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4 ], result.json);
+    },
+
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryCacheTestSuite);
+jsunity.run(ahuacatlQueryCacheViewTestSuite);
 
 return jsunity.done();
-

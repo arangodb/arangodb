@@ -629,7 +629,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
 
   if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
-    callback = [this,nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
+    callback = [this, nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
@@ -649,7 +649,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
     };
   } else {
     // No uniqueness checks
-    callback = [this,nrInRegs](LocalDocumentId const&, VPackSlice slice) {
+    callback = [this, nrInRegs](LocalDocumentId const&, VPackSlice slice) {
       TRI_ASSERT(_resultInFlight != nullptr);
       _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };

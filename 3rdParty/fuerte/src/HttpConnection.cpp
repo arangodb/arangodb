@@ -104,7 +104,7 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
   _state(Connection::State::Disconnected),
   _numQueued(0),
   _active(false),
-  _queue(1024) {
+  _queue() {
   // initialize http parsing code
   _parserSettings.on_message_begin = ::on_message_began;
   _parserSettings.on_status = ::on_status;
@@ -141,7 +141,6 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                           RequestCallback cb) {
   static std::atomic<uint64_t> ticketId(1);
   
-  assert(req);
   // construct RequestItem
   std::unique_ptr<RequestItem> item(new RequestItem());
   // requestItem->_response later
@@ -153,61 +152,92 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // Prepare a new request
   uint64_t id = item->_messageID;
   if (!_queue.push(item.get())) {
-    FUERTE_LOG_ERROR << "connection queue capactiy exceeded\n";
-    throw std::length_error("connection queue capactiy exceeded");
+    FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+    throw std::length_error("connection queue capacity exceeded");
   }
   item.release();
   _numQueued.fetch_add(1, std::memory_order_relaxed);
-
-  Connection::State state = _state.load(std::memory_order_acquire);
+  FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
+  
+  // _state.load() after queuing request, to prevent race with connect
+  Connection::State state = _state.load();
   if (state == Connection::State::Connected) {
-    FUERTE_LOG_HTTPTRACE << "sendRequest (http): start sending & reading\n";
     startWriting();
   } else if (state == State::Disconnected) {
-    FUERTE_LOG_VSTTRACE << "sendRequest (http): not connected\n";
+    FUERTE_LOG_HTTPTRACE << "sendRequest: not connected\n";
     startConnection();
+  } else if (state == Connection::State::Failed) {
+    FUERTE_LOG_ERROR << "queued request on failed connection\n";
   }
   return id;
+}
+  
+/// @brief cancel the connection, unusable afterwards
+template <SocketType ST>
+void HttpConnection<ST>::cancel() {
+  FUERTE_LOG_CALLBACKS << "cancel: this=" << this << "\n";
+  std::weak_ptr<Connection> self = shared_from_this();
+  asio_ns::post(*_io_context, [self, this] {
+    auto s = self.lock();
+    if (s) {
+      shutdownConnection(ErrorCondition::Canceled);
+      _state.store(State::Failed);
+    }
+  });
 }
   
 // Activate this connection.
 template <SocketType ST>
 void HttpConnection<ST>::startConnection() {
-  
   // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
-  if (!_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
-    FUERTE_LOG_ERROR << "already resolving endpoint\n";
-    return;
+  if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
+    tryConnect(_config._maxConnectRetries);
   }
+}
+  
+// Connect with a given number of retries
+template <SocketType ST>
+void HttpConnection<ST>::tryConnect(unsigned retries) {
+  assert(_state.load() == Connection::State::Connecting);
   
   auto self = shared_from_this();
-  _protocol.connect(_config, [self, this](asio_ns::error_code const& ec) {
-    if (ec) {
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+  _protocol.connect(_config, [self, this, retries](asio_ns::error_code const& ec) {
+    if (!ec) {
+      _state.store(Connection::State::Connected);
+      startWriting();  // starts writing queue if non-empty
+      return;
+    }
+    FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+    if (retries > 0) {
+      tryConnect(retries - 1);
+    } else {
       shutdownConnection(ErrorCondition::CouldNotConnect);
       onFailure(errorToInt(ErrorCondition::CouldNotConnect),
-                           "connecting failed: " + ec.message());
-    } else {
-      _state.store(Connection::State::Connected, std::memory_order_release);
-      startWriting();  // starts writing queue if non-empty
+                "connecting failed: " + ec.message());
     }
   });
 }
-  
+
 // shutdown the connection and cancel all pending messages.
 template<SocketType ST>
 void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
-  FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
+  FUERTE_LOG_CALLBACKS << "shutdownConnection: this=" << this << "\n";
+
+  if (_state.load() != State::Failed) {
+    _state.store(State::Disconnected);
+  }
   
-  _state.store(State::Disconnected, std::memory_order_release);
+  // cancel timeouts
   try {
-    _timeout.cancel();    // cancel timeouts
+    _timeout.cancel();   
   } catch (...) {
     // cancel() may throw, but we are not allowed to throw here
     // as we may be called from the dtor
   }
-  _protocol.shutdown(); // Close socket
+
+  // Close socket
+  _protocol.shutdown();
   _active.store(false); // no IO operations running
   
   RequestItem* item = nullptr;
@@ -309,8 +339,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
 // Thread-Safe: activate the combined write-read loop
 template<SocketType ST>
 void HttpConnection<ST>::startWriting() {
-  assert(_state.load(std::memory_order_acquire) == State::Connected);
-  FUERTE_LOG_HTTPTRACE << "startWriting (http): this=" << this << "\n";
+  FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   
   if (!_active) {
     auto self = shared_from_this();
@@ -325,17 +354,18 @@ void HttpConnection<ST>::startWriting() {
 // writes data from task queue to network using asio_ns::async_write
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
-  FUERTE_LOG_TRACE << "asyncWrite: preparing to send next\n";
+  FUERTE_LOG_TRACE << "asyncWriteNextRequest: this=" << this << "\n";
   assert(_active.load(std::memory_order_acquire));
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
     _active.store(false);
     if (!_queue.pop(ptr)) {
+      FUERTE_LOG_TRACE << "stopped writing: this=" << this << "\n";
       return;
     }
     // a request got queued in-between last minute
-    _active.store(true, std::memory_order_release);
+    _active.store(true);
   }
   std::shared_ptr<http::RequestItem> item(ptr);
   _numQueued.fetch_sub(1, std::memory_order_relaxed);
@@ -505,113 +535,21 @@ template<SocketType ST>
 void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
   if (millis.count() == 0) {
     _timeout.cancel();
-    return; // do
+    return;
   }
   assert(millis.count() > 0);
   _timeout.expires_after(millis);
-  auto self = shared_from_this();
-  _timeout.async_wait([this, self] (asio_ns::error_code const& e) {
-    if (e == asio_ns::error::operation_aborted) {
-      // timer was canceled
-      return;
-    }
-    
-    if (!e) {  // expired
-      FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-      restartConnection(ErrorCondition::Timeout);
+  
+  std::weak_ptr<Connection> self = shared_from_this();
+  _timeout.async_wait([self, this] (asio_ns::error_code const& ec) {
+    if (!ec) {
+      auto s = self.lock();
+      if (s) {
+        FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+        restartConnection(ErrorCondition::Timeout);
+      }
     }
   });
-}
-
-/// @brief sed request synchronously, only save to use if the
-template<SocketType ST>
-std::unique_ptr<Response> HttpConnection<ST>::sendRequestSync(std::unique_ptr<Request> req) {
-  int max = 1024;
-  Connection::State state = _state.load(std::memory_order_acquire);
-  while (state != State::Connected && max-- > 0) {
-    if (state == State::Failed) {
-      return nullptr;
-    } else if (state == State::Disconnected) {
-      startConnection();
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    state = _state.load(std::memory_order_acquire);
-  }
-  if (state != State::Connected) {
-    throw ErrorCondition::CouldNotConnect;
-  }
-  
-  RequestItem item;
-  // requestItem->_response later
-  item._requestHeader = buildRequestBody(*req);
-  item._request = std::move(req);
-  item._response.reset(new Response());
-
-  setTimeout(item._request->timeout());
-  std::vector<asio_ns::const_buffer> buffers(2);
-  buffers.emplace_back(item._requestHeader.data(),
-                       item._requestHeader.size());
-  // GET and HEAD have no payload
-  if (item._request->header.restVerb != RestVerb::Get &&
-      item._request->header.restVerb != RestVerb::Head) {
-    buffers.emplace_back(item._request->payload());
-  }
-  asio_ns::error_code ec;
-  asio_ns::write(_protocol.socket, buffers, ec);
-  if (ec) {
-    auto err = checkEOFError(ec, ErrorCondition::WriteError);;
-    shutdownConnection(err);
-    throw err;
-  }
-  
-  http_parser_init(&_parser, HTTP_RESPONSE);
-  _parser.data = static_cast<void*>(&item);
-  
-  while (!item.message_complete) {
-    // reserve 32kB in output buffer
-    auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
-    
-    size_t transferred = _protocol.socket.read_some(mutableBuff, ec);
-    if (ec) {
-      auto err = checkEOFError(ec, ErrorCondition::ReadError);;
-      shutdownConnection(err);
-      throw err;
-    }
-    
-    // Inspect the data we've received so far.
-    auto cursor = asio_ns::buffer_cast<const char*>(_receiveBuffer.data()); // no copy
-    
-    /* Start up / continue the parser.
-     * Note we pass recved==0 to signal that EOF has been received.
-     */
-    size_t nparsed = http_parser_execute(&_parser, &_parserSettings,
-                                         cursor, transferred);
-    
-    if (_parser.upgrade || nparsed != transferred) {
-      /* Handle error. Usually just close the connection. */
-      FUERTE_LOG_ERROR << "Invalid HTTP response in parser\n";
-      shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
-      throw ErrorCondition::ProtocolError;
-    }
-
-    // item.message_complete may have been set by the call to http_parser_execute!
-    if (item.message_complete) {
-      //_timeout.cancel(); // got response in time
-      // Remove consumed data from receive buffer.
-      _receiveBuffer.consume(nparsed);
-      
-      // thread-safe access on IO-Thread
-      if (!item._responseBuffer.empty()) {
-        item._response->setPayload(std::move(item._responseBuffer), 0);
-      }
-      if (!item.should_keep_alive) {
-        shutdownConnection(ErrorCondition::CloseRequested);
-      }
-      return std::move(item._response);
-    }
-  }
-  
-  throw ErrorCondition::Timeout;
 }
   
 template class arangodb::fuerte::v1::http::HttpConnection<SocketType::Tcp>;
