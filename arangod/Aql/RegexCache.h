@@ -50,6 +50,16 @@ class RegexCache {
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression);
+  
+  /// @brief inspect a LIKE pattern from a string, and remove all
+  /// of its escape characters. will stop at the first wildcards found.
+  /// returns a pair with the following meaning:
+  /// - first: true if the inspection aborted prematurely because a
+  ///   wildcard was found, and false if the inspection analyzed at the
+  ///   complete string
+  /// - second: true if the found wildcard is the last byte in the pattern,
+  ///   false otherwise. can only be true if first is also true
+  static std::pair<bool, bool> inspectLikePattern(std::string& out, char const* ptr, size_t length);
  
  private: 
   /// @brief clear the specified cache

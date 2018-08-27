@@ -243,16 +243,6 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       assertEqual(result[1].c, 0);
     },
 
-    testInTokensFilterSortTFIDF : function () {
-      var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync: true } SORT TFIDF(doc) LIMIT 4 RETURN doc").toArray();
-
-      assertEqual(result.length, 4);
-      assertEqual(result[0].name, 'other half');
-      assertEqual(result[1].name, 'full');
-      assertEqual(result[2].name, 'half');
-      assertEqual(result[3].name, 'quarter');
-    },
-
     testPhraseFilter : function () {
       var result0 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, 'quick brown fox jumps', 'text_en') OPTIONS { waitForSync: true } RETURN doc").toArray();
 
@@ -453,31 +443,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         assertEqual(doc.c, res.c);
       });
     },
-/*
-    testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
-      var expected = [];
-      expected.push({ a: "baz", b: "foo", c: 1 });
-      expected.push({ a: "bar", b: "foo", c: 1 });
-      expected.push({ a: "foo", b: "bar", c: 0 });
-      expected.push({ a: "foo", b: "baz", c: 0 });
 
-      var result = db._query(
-        "FOR adoc IN AnotherUnitTestsCollection" +
-        "  FOR doc IN UnitTestsView SEARCH adoc.id == doc.c && STARTS_WITH(doc['a'], adoc.a) OPTIONS { waitForSync : true }" +
-        "SORT TFIDF(doc) DESC, BM25(doc) DESC, doc.a DESC, doc.b " +
-        "RETURN doc"
-      , null, { waitForSync: true }).toArray();
-
-      assertEqual(result.length, expected.length);
-      var i = 0;
-      result.forEach(function(res) {
-        var doc = expected[i++];
-        assertEqual(doc.a, res.a);
-        assertEqual(doc.b, res.b);
-        assertEqual(doc.c, res.c);
-      });
-    },
-*/
   };
 }
 
