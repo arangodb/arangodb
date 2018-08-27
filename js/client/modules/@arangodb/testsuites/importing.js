@@ -39,8 +39,8 @@ const yaml = require('js-yaml');
 
 const testPaths = {
   'importing': [
-    'js/server/tests/import/',
-    'js/common/test-data/import/' // our testdata...
+    tu.pathForTesting('server/tests/import'),
+    tu.pathForTesting('common/test-data/import') // our testdata...
   ]
 };
 

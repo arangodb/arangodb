@@ -37,6 +37,7 @@ const foxxManager = require('@arangodb/foxx/manager');
 const suspendExternal = require('internal').suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
+const pathForTesting = require('internal').pathForTesting;
 
 const instanceInfo = JSON.parse(fs.read('instanceinfo.json'));
 
@@ -67,7 +68,7 @@ let executeOnServer = function(code) {
 };
 
 function serverSetup() {
-  let directory = require('./js/client/assets/queuetest/dirname.js');
+  let directory = require('./' + pathForTesting('client/assets/queuetest/dirname.js'));
   foxxManager.install(directory, '/queuetest');
   db._create('foxxqueuetest', {numberOfShards: 1, replicationFactor: 1});
   db.foxxqueuetest.insert({'_key': 'test', 'date': null, 'server': null});

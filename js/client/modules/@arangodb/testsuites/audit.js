@@ -45,7 +45,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  audit: ['js/server/tests/audit']
+  audit: [tu.pathForTesting('server/tests/audit')]
 };
 
 const sharedConf = {
