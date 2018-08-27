@@ -31,14 +31,15 @@ const wait = require('internal').wait;
 const db = arangodb.db;
 const fs = require('fs');
 const console = require('console');
-const request = require("@arangodb/request");
+const internal = require('internal');
+const request = require('@arangodb/request');
 const foxxManager = require('@arangodb/foxx/manager');
 
-const suspendExternal = require('internal').suspendExternal;
-const continueExternal = require("internal").continueExternal;
-const download = require('internal').download;
+const suspendExternal = internal.suspendExternal;
+const continueExternal = internal.continueExternal;
+const download = internal.download;
 
-const instanceInfo = JSON.parse(fs.read('instanceinfo.json'));
+const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
 
 try {
   let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
@@ -47,7 +48,6 @@ try {
   });
 } catch (e) {
 }
-
 
 let executeOnServer = function(code) {
   let httpOptions = {};
