@@ -26,6 +26,7 @@
 #include "src/objects/scope-info.h" // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 
 #include "catch.hpp"
+#include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -93,27 +94,6 @@ struct TestView: public arangodb::LogicalView {
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
-void v8Init() {
-  struct init_t {
-    std::shared_ptr<v8::Platform> platform;
-    init_t() {
-      platform = std::shared_ptr<v8::Platform>(
-        v8::platform::CreateDefaultPlatform(),
-        [](v8::Platform* p)->void {
-          v8::V8::Dispose();
-          v8::V8::ShutdownPlatform();
-          delete p;
-        }
-      );
-      v8::V8::InitializePlatform(platform.get()); // avoid SIGSEGV duing 8::Isolate::New(...)
-      v8::V8::Initialize(); // avoid error: "Check failed: thread_data_table_"
-    }
-  };
-  static const init_t init;
-  (void)(init);
-}
-
 }
 
 // -----------------------------------------------------------------------------
@@ -128,7 +108,7 @@ struct V8ViewsSetup {
   V8ViewsSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    v8Init(); // on-time initialize V8
+    arangodb::tests::v8Init(); // on-time initialize V8
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
@@ -167,7 +147,6 @@ struct V8ViewsSetup {
   }
 
   ~V8ViewsSetup() {
-
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
