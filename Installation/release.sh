@@ -236,7 +236,7 @@ else
 fi
 
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
-git pull --tags
+git fetch --tags
 
 
 # shellcheck disable=SC2002
