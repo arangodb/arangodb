@@ -361,17 +361,18 @@ void Cache::shutdown() {
     _metadata.readUnlock();
 
     cache::Table* table = _table.load(std::memory_order_relaxed);
-    TRI_ASSERT(table != nullptr);
-    std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
-    if (extra) {
-      extra->clear();
-      _manager->reclaimTable(extra);
+    if (table != nullptr) {
+      std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
+      if (extra) {
+        extra->clear();
+        _manager->reclaimTable(extra);
+      }
+      table->clear();
     }
-    table->clear();
     
     _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
     _manager->unregisterCache(_id);
-    _table = nullptr;
+    _table.store(nullptr, std::memory_order_relaxed);
   }
   _metadata.writeLock();
   _metadata.changeTable(0);
