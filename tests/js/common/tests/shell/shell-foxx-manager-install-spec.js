@@ -35,7 +35,7 @@ const fs = require('fs');
 const Module = require('module');
 const errors = require('internal').errors;
 const internal = require('internal');
-const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
 
 describe('Foxx Manager install', function () {

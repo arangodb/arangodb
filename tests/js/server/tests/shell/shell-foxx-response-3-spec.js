@@ -11,8 +11,7 @@ const SyntheticResponse = require('@arangodb/foxx/router/response');
 describe('SyntheticResponse', function () {
   describe('sendFile', function () {
     const filename = fs.normalize(fs.makeAbsolute(path.join(
-      internal.startupPath,
-      'common',
+      internal.pathForTesting('common'),
       'test-data',
       'foxx',
       'toomanysecrets.txt'

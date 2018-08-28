@@ -5,7 +5,7 @@ const expect = require('chai').expect;
 const FoxxManager = require('org/arangodb/foxx/manager');
 const fs = require('fs');
 const internal = require('internal');
-const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps', 'arango-auth'));
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps', 'arango-auth'));
 const url = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
 describe('Foxx arangoUser', function () {

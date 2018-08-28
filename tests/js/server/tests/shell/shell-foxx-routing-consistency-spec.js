@@ -8,7 +8,7 @@ const FoxxManager = require('@arangodb/foxx/manager');
 const FoxxService = require('@arangodb/foxx/service');
 const request = require('@arangodb/request');
 const SERVICE_PATH = fs.makeAbsolute(fs.join(
-  FoxxService._startupPath, 'common', 'test-data', 'apps', 'minimal-working-service'
+  require('internal').pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service'
 ));
 const MOUNT = '/consistencytest';
 

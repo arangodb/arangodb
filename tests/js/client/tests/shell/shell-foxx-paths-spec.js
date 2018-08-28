@@ -5,7 +5,7 @@ const fm = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
 const fs = require('fs');
 const internal = require('internal');
-const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
 const baseUrl = arango.getEndpoint().replace('tcp://', 'http://') + '/_db/_system';
 

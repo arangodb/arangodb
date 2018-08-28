@@ -8,7 +8,7 @@ const db = require('internal').db;
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
 const aql = arangodb.aql;
-const basePath = fs.makeAbsolute(fs.join(require('internal').startupPath, 'common', 'test-data', 'apps'));
+const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
 const download = require('internal').download;
 

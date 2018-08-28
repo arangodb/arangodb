@@ -39,7 +39,7 @@ const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
 const errors = require('@arangodb').errors;
 const fs = require('fs');
-const basePath = fs.makeAbsolute(fs.join(require('internal').startupPath, 'common', 'test-data', 'apps'));
+const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;

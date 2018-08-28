@@ -5,7 +5,7 @@ var expect = require('chai').expect;
 var FoxxManager = require('org/arangodb/foxx/manager');
 var fs = require('fs');
 var internal = require('internal');
-var basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 
 describe('Foxx Manager', function () {
   describe('when manifest changes', function () {

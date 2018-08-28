@@ -4,7 +4,7 @@ const internal = require('internal');
 const utils = require('@arangodb/foxx/manager-utils');
 const router = require('@arangodb/foxx/router')();
 
-const basePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'minimal-working-service');
+const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service');
 const servicePath = utils.zipDirectory(basePath);
 
 module.context.use(router);

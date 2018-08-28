@@ -8,7 +8,7 @@ const util = require('@arangodb/util');
 const fs = require('fs');
 const internal = require('internal');
 const path = require('path');
-const basePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'headers');
+const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'headers');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const aql = arangodb.aql;
@@ -143,13 +143,13 @@ describe('FoxxApi commit', function () {
 
 describe('Foxx service', () => {
   const mount = '/foxx-crud-test';
-  const basePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'minimal-working-service');
-  const itzPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'itzpapalotl');
+  const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service');
+  const itzPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
   var utils = require('@arangodb/foxx/manager-utils');
   const servicePath = utils.zipDirectory(basePath);
 
   const serviceServiceMount = '/foxx-crud-test-download';
-  const serviceServicePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'service-service', 'index.js');
+  const serviceServicePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'service-service', 'index.js');
 
   beforeEach(() => {
     FoxxManager.install(serviceServicePath, serviceServiceMount);
@@ -283,7 +283,7 @@ describe('Foxx service', () => {
     expect(resp.status).to.equal(404);
   });
 
-  const confPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-configuration');
+  const confPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-configuration');
 
   it('empty configuration should be available', () => {
     FoxxManager.install(basePath, mount);
@@ -667,7 +667,7 @@ describe('Foxx service', () => {
     expect(resp.json).not.to.have.property('test2');
   });
 
-  const depPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-dependencies');
+  const depPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-dependencies');
 
   it('empty configuration should be available', () => {
     FoxxManager.install(basePath, mount);
@@ -1117,7 +1117,7 @@ describe('Foxx service', () => {
     expect(util.isZipBuffer(resp.body)).to.equal(true);
   });
 
-  const readmePath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-readme');
+  const readmePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-readme');
 
   it('should deliver the readme', () => {
     FoxxManager.install(readmePath, mount);
@@ -1190,7 +1190,7 @@ describe('Foxx service', () => {
     expect(service.checksum).to.be.a('string');
   });
 
-  const scriptPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'minimal-working-setup-teardown');
+  const scriptPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-setup-teardown');
 
   it('list of scripts should be available', () => {
     FoxxManager.install(scriptPath, mount);
@@ -1222,7 +1222,7 @@ describe('Foxx service', () => {
     expect(resp.status).to.equal(400);
   });
 
-  const echoPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'echo-script');
+  const echoPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'echo-script');
 
   it('should pass argv to script and return exports', () => {
     FoxxManager.install(echoPath, mount);
@@ -1327,7 +1327,7 @@ describe('Foxx service', () => {
   }
 
   it('tests should run', () => {
-    const testPath = path.resolve(internal.startupPath, 'common', 'test-data', 'apps', 'with-tests');
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
     const resp = request.post('/_api/foxx/tests', {qs: { mount }});
     expect(resp.status).to.equal(200);

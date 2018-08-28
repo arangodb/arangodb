@@ -55,7 +55,7 @@ describe ArangoDB do
       end
 
       it "should install from local" do
-        body = JSON.dump({mount: @mount, appInfo: "./js/common/test-data/apps/itzpapalotl", options: {}})
+        body = JSON.dump({mount: @mount, appInfo: "./tests/js/common/test-data/apps/itzpapalotl", options: {}})
         doc = ArangoDB.log_post("#{@prefix}-install-store", "#{@api}/install", :body => body)
         doc.code.should eq(200)
         validate_app(@random)

@@ -35,7 +35,7 @@ const helper = require('@arangodb/user-helper');
 const foxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
 const internal = require('internal');
-const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const download = internal.download;
 const request = require('@arangodb/request');
 
