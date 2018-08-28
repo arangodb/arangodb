@@ -45,6 +45,14 @@
 #include <sys/mman.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif  // defined(_MSC_VER)
+
 #include "snappy-stubs-public.h"
 
 #if defined(__x86_64__)
@@ -52,16 +60,20 @@
 // Enable 64-bit optimized versions of some routines.
 #define ARCH_K8 1
 
+#elif defined(__ppc64__)
+
+#define ARCH_PPC 1
+
+#elif defined(__aarch64__)
+
+#define ARCH_ARM 1
+
 #endif
 
 // Needed by OS X, among others.
 #ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS MAP_ANON
 #endif
-
-// Pull in std::min, std::ostream, and the likes. This is safe because this
-// header file is never used from any public header files.
-using namespace std;
 
 // The size of an array, if known at compile-time.
 // Will give unexpected results if used on a pointer.
@@ -73,11 +85,11 @@ using namespace std;
 
 // Static prediction hints.
 #ifdef HAVE_BUILTIN_EXPECT
-#define PREDICT_FALSE(x) (__builtin_expect(x, 0))
-#define PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
+#define SNAPPY_PREDICT_FALSE(x) (__builtin_expect(x, 0))
+#define SNAPPY_PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
 #else
-#define PREDICT_FALSE(x) x
-#define PREDICT_TRUE(x) x
+#define SNAPPY_PREDICT_FALSE(x) x
+#define SNAPPY_PREDICT_TRUE(x) x
 #endif
 
 // This is only used for recomputing the tag byte table used during
@@ -96,9 +108,10 @@ static const int64 kint64max = static_cast<int64>(0x7FFFFFFFFFFFFFFFLL);
 
 // Potentially unaligned loads and stores.
 
-// x86 and PowerPC can simply do these loads and stores native.
+// x86, PowerPC, and ARM64 can simply do these loads and stores native.
 
-#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__)
+#if defined(__i386__) || defined(__x86_64__) || defined(__powerpc__) || \
+    defined(__aarch64__)
 
 #define UNALIGNED_LOAD16(_p) (*reinterpret_cast<const uint16 *>(_p))
 #define UNALIGNED_LOAD32(_p) (*reinterpret_cast<const uint32 *>(_p))
@@ -225,22 +238,8 @@ inline void UNALIGNED_STORE64(void *p, uint64 v) {
 
 #endif
 
-// This can be more efficient than UNALIGNED_LOAD64 + UNALIGNED_STORE64
-// on some platforms, in particular ARM.
-inline void UnalignedCopy64(const void *src, void *dst) {
-  if (sizeof(void *) == 8) {
-    UNALIGNED_STORE64(dst, UNALIGNED_LOAD64(src));
-  } else {
-    const char *src_char = reinterpret_cast<const char *>(src);
-    char *dst_char = reinterpret_cast<char *>(dst);
-
-    UNALIGNED_STORE32(dst_char, UNALIGNED_LOAD32(src_char));
-    UNALIGNED_STORE32(dst_char + 4, UNALIGNED_LOAD32(src_char + 4));
-  }
-}
-
 // The following guarantees declaration of the byte swap functions.
-#ifdef WORDS_BIGENDIAN
+#if defined(SNAPPY_IS_BIG_ENDIAN)
 
 #ifdef HAVE_SYS_BYTEORDER_H
 #include <sys/byteorder.h>
@@ -297,7 +296,7 @@ inline uint64 bswap_64(uint64 x) {
 
 #endif
 
-#endif  // WORDS_BIGENDIAN
+#endif  // defined(SNAPPY_IS_BIG_ENDIAN)
 
 // Convert to little-endian storage, opposite of network format.
 // Convert x from host to little endian: x = LittleEndian.FromHost(x);
@@ -311,7 +310,7 @@ inline uint64 bswap_64(uint64 x) {
 class LittleEndian {
  public:
   // Conversion functions.
-#ifdef WORDS_BIGENDIAN
+#if defined(SNAPPY_IS_BIG_ENDIAN)
 
   static uint16 FromHost16(uint16 x) { return bswap_16(x); }
   static uint16 ToHost16(uint16 x) { return bswap_16(x); }
@@ -321,7 +320,7 @@ class LittleEndian {
 
   static bool IsLittleEndian() { return false; }
 
-#else  // !defined(WORDS_BIGENDIAN)
+#else  // !defined(SNAPPY_IS_BIG_ENDIAN)
 
   static uint16 FromHost16(uint16 x) { return x; }
   static uint16 ToHost16(uint16 x) { return x; }
@@ -331,7 +330,7 @@ class LittleEndian {
 
   static bool IsLittleEndian() { return true; }
 
-#endif  // !defined(WORDS_BIGENDIAN)
+#endif  // !defined(SNAPPY_IS_BIG_ENDIAN)
 
   // Functions to do unaligned loads and stores in little-endian order.
   static uint16 Load16(const void *p) {
@@ -361,10 +360,15 @@ class Bits {
   // undefined value if n == 0.  FindLSBSetNonZero() is similar to ffs() except
   // that it's 0-indexed.
   static int FindLSBSetNonZero(uint32 n);
+
+#if defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
   static int FindLSBSetNonZero64(uint64 n);
+#endif  // defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(Bits);
+  // No copying
+  Bits(const Bits&);
+  void operator=(const Bits&);
 };
 
 #ifdef HAVE_BUILTIN_CTZ
@@ -377,9 +381,36 @@ inline int Bits::FindLSBSetNonZero(uint32 n) {
   return __builtin_ctz(n);
 }
 
+#if defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
 inline int Bits::FindLSBSetNonZero64(uint64 n) {
   return __builtin_ctzll(n);
 }
+#endif  // defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
+
+#elif defined(_MSC_VER)
+
+inline int Bits::Log2Floor(uint32 n) {
+  unsigned long where;
+  if (_BitScanReverse(&where, n)) {
+    return where;
+  } else {
+    return -1;
+  }
+}
+
+inline int Bits::FindLSBSetNonZero(uint32 n) {
+  unsigned long where;
+  if (_BitScanForward(&where, n)) return static_cast<int>(where);
+  return 32;
+}
+
+#if defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
+inline int Bits::FindLSBSetNonZero64(uint64 n) {
+  unsigned long where;
+  if (_BitScanForward64(&where, n)) return static_cast<int>(where);
+  return 64;
+}
+#endif  // defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
 
 #else  // Portable versions.
 
@@ -413,6 +444,7 @@ inline int Bits::FindLSBSetNonZero(uint32 n) {
   return rc;
 }
 
+#if defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
 // FindLSBSetNonZero64() is defined in terms of FindLSBSetNonZero().
 inline int Bits::FindLSBSetNonZero64(uint64 n) {
   const uint32 bottombits = static_cast<uint32>(n);
@@ -423,6 +455,7 @@ inline int Bits::FindLSBSetNonZero64(uint64 n) {
     return FindLSBSetNonZero(bottombits);
   }
 }
+#endif  // defined(ARCH_K8) || defined(ARCH_PPC) || defined(ARCH_ARM)
 
 #endif  // End portable versions.
 
