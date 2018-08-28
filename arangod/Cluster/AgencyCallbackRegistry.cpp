@@ -102,7 +102,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
 
 std::string AgencyCallbackRegistry::getEndpointUrl(uint32_t endpoint) {
   std::stringstream url;
-  url << Endpoint::uriForm(ServerState::instance()->getAddress())
+  url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
       << _callbackBasePath << "/" << endpoint;
 
   return url.str();

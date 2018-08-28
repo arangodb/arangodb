@@ -76,6 +76,9 @@ struct HealthRecord {
     if (endpoint.empty()) {
       endpoint = node.hasAsString("Endpoint").first;
     }
+    if (hostId.empty()) {
+      hostId = node.hasAsString("Host").first;
+    }
     if (node.has("Status")) {
       status = node.hasAsString("Status").first;
       if (node.has("SyncStatus")) { // New format
@@ -96,9 +99,6 @@ struct HealthRecord {
         if (node.has("LastHeartbeatAcked")) {
           lastAcked = node.hasAsString("LastHeartbeatAcked").first;
         }
-      }
-      if (node.has("Host")) {
-        hostId = node.hasAsString("Host").first;
       }
     }
     return *this;
@@ -436,17 +436,25 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       shortName = tmp_shortName.first;
 
-      // Endpoint
+      // "/arango/Current/<serverId>/endpoint"
       std::string endpoint;
       std::string epPath = serverID + "/endpoint";
       if (serversRegistered.has(epPath)) {
         endpoint = serversRegistered.hasAsString(epPath).first;
       }
+      // "/arango/Current/<serverId>/host"
       std::string hostId;
       std::string hoPath = serverID + "/host";
       if (serversRegistered.has(hoPath)) {
         hostId = serversRegistered.hasAsString(hoPath).first;
       }
+      
+      // "/arango/Current/<serverId>/externalEndpoint"
+      /*std::string externalEndpoint;
+      std::string extEndPath = serverID + "/externalEndpoint";
+      if (serversRegistered.has(extEndPath)) {
+        externalEndpoint = serversRegistered.hasAsString(extEndPath).first;
+      }*/
 
       // Health records from persistence, from transience and a new one
       HealthRecord transist(shortName, endpoint, hostId);

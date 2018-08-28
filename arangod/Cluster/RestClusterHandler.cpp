@@ -141,10 +141,14 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     for (ServerID const& sid : endpoints) {
       VPackObjectBuilder obj(&builder);
-      builder.add(VPackValue("endpoint"));
-      builder.add(VPackValue(ci->getServerAdvertisedEndpoint(sid)));
-      // TODO: if there is a separate advertised server endpoint, publish
-      // the internal one as well.
+      std::string advertised = ci->getServerAdvertisedEndpoint(sid);
+      std::string internal = ci->getServerEndpoint(sid);
+      if (!advertised.empty()) {
+        builder.add("endpoint", VPackValue(advertised));
+        builder.add("internal", VPackValue(internal));
+      } else {
+        builder.add("endpoint", VPackValue(internal));
+      }
     }
   }
   builder.close();

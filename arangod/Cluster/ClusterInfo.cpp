@@ -3050,7 +3050,7 @@ void ClusterInfo::loadServers() {
               slice, "endpoint", "");
           std::string advertised =
             arangodb::basics::VelocyPackHelper::getStringValue(
-              slice, "advertisedEndpoints", "");
+              slice, "advertisedEndpoint", "");
 
           std::string serverId = res.key.copyString();
           try {
@@ -3073,6 +3073,7 @@ void ClusterInfo::loadServers() {
         WRITE_LOCKER(writeLocker, _serversProt.lock);
         _servers.swap(newServers);
         _serverAliases.swap(newAliases);
+        _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
@@ -3165,16 +3166,15 @@ std::string ClusterInfo::getServerAdvertisedEndpoint(ServerID const& serverID) {
       READ_LOCKER(readLocker, _serversProt.lock);
 
       // _serversAliases is a map-type <Alias, ServerID>
-      auto ita = _serverAdvertisedEndpoints.find(serverID_);
-
-      if (ita != _serverAdvertisedEndpoints.end()) {
+      auto ita = _serverAliases.find(serverID_);
+      
+      if (ita != _serverAliases.end()) {
         serverID_ = (*ita).second;
       }
-
-      // _servers is a map-type <ServerId, std::string>
-      auto it = _servers.find(serverID_);
-
-      if (it != _servers.end()) {
+      
+      // _serversAliases is a map-type <ServerID, std::string>
+      auto it = _serverAdvertisedEndpoints.find(serverID_);
+      if (it != _serverAdvertisedEndpoints.end()) {
         return (*it).second;
       }
     }
