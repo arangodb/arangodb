@@ -1659,12 +1659,12 @@ int getDocumentOnCoordinator(
     optsUrlPart += std::string("&onlyget=true");
   }
 
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
     VPackBuilder reqBuilder;
-    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
     
     // Now prepare the requests:
     std::vector<ClusterCommRequest> requests;
