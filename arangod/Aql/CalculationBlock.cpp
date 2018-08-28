@@ -101,7 +101,6 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (ExecutionNode::castTo<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
   TRI_ASSERT(!hasCondition); // currently not implemented
@@ -135,12 +134,10 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
     guard.steal(); // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
-  DEBUG_END_BLOCK();
 }
 
 /// @brief doEvaluation, private helper to do the work
 void CalculationBlock::doEvaluation(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result != nullptr);
 
   if (_isReference) {
@@ -182,12 +179,10 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // the V8 handle scope and the scope guard
     executeExpression(result);
   }
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 CalculationBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
@@ -210,7 +205,4 @@ CalculationBlock::getSome(size_t atMost) {
   clearRegisters(res.second.get());
   traceGetSomeEnd(res.second.get(), res.first);
   return res;
-
-  // cppcheck-suppress *
-  DEBUG_END_BLOCK();
 }

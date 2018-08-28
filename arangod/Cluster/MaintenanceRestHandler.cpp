@@ -75,7 +75,6 @@ RestStatus MaintenanceRestHandler::execute() {
 void MaintenanceRestHandler::putAction() {
   bool good(true);
   VPackSlice parameters;
-  std::map<std::string, std::string> param_map;
 
   try {
     parameters = _request->payload();

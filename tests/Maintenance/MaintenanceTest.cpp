@@ -64,7 +64,7 @@ char const* dbs2Str =
 #include "DBServer0003.json"
 ;
 
-std::map<std::string,std::string> matchShortLongIds(Node const& supervision) {
+std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
   std::map<std::string,std::string> ret;
   for (auto const& dbs : supervision("Health").children()) {
     if (dbs.first.front() == 'P') {
@@ -75,7 +75,6 @@ std::map<std::string,std::string> matchShortLongIds(Node const& supervision) {
 }
 
 Node createNodeFromBuilder(Builder const& builder) {
-
   Builder opBuilder;
   { VPackObjectBuilder a(&opBuilder);
     opBuilder.add("new", builder.slice()); }
@@ -87,7 +86,6 @@ Node createNodeFromBuilder(Builder const& builder) {
 }
 
 Builder createBuilder(char const* c) {
-
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
@@ -108,19 +106,19 @@ std::random_device rd;
 std::mt19937 g(rd());
 
 // Relevant agency
-auto plan = createNode(planStr);
-auto originalPlan = plan;
-auto supervision = createNode(supervisionStr);
-auto current = createNode(currentStr);
+Node plan("");
+Node originalPlan("");
+Node supervision("");
+Node current("");
 
-std::vector<std::string> shortNames {
+std::vector<std::string> const shortNames {
   "DBServer0001","DBServer0002","DBServer0003"};
 
 // map <shortId, UUID>
-auto dbsIds = matchShortLongIds(supervision);
+std::map<std::string,std::string> dbsIds;
 
-std::string PLAN_COL_PATH = "/Collections/";
-std::string PLAN_DB_PATH = "/Databases/";
+std::string const PLAN_COL_PATH = "/Collections/";
+std::string const PLAN_DB_PATH = "/Databases/";
 
 size_t localId =  1016002;
 
@@ -159,7 +157,6 @@ VPackBuilder createIndex(
     }}
   
   return index;
-  
 }
 
 void createPlanIndex(
@@ -171,7 +168,6 @@ void createPlanIndex(
   { VPackObjectBuilder o(&val); 
     val.add("new", createIndex(type, fields, unique, sparse, deduplicate).slice()); }
   plan(PLAN_COL_PATH + dbname + "/" + colname + "/indexes").handle<PUSH>(val.slice());
-  
 }
 
 void createCollection(
@@ -283,6 +279,12 @@ class LogicalCollection;
 }
 
 TEST_CASE("ActionDescription", "[cluster][maintenance]") {
+  plan = createNode(planStr);
+  originalPlan = plan;
+  supervision = createNode(supervisionStr);
+  current = createNode(currentStr);
+  
+  dbsIds = matchShortLongIds(supervision);
 
   SECTION("Construct minimal ActionDescription") {
     ActionDescription desc(std::map<std::string,std::string>{{"name", "SomeAction"}});
@@ -756,7 +758,8 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       for (auto const& shard : shards) {
         shname = shard.first;
-        Slice servers = shard.second->toBuilder().slice();
+        auto shardBuilder = shard.second->toBuilder();
+        Slice servers = shardBuilder.slice();
 
         REQUIRE(servers.isArray());
         REQUIRE(servers.length() == 2);

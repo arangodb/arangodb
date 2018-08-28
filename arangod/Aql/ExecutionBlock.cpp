@@ -133,7 +133,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   }
 
   for (auto& it : _buffer) {
-    delete it;
+    returnBlock(it);
   }
   _buffer.clear();
 
@@ -258,8 +258,6 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 //      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   traceGetSomeBegin(atMost);
     
   auto res = getSomeWithoutRegisterClearout(atMost);
@@ -271,7 +269,6 @@ ExecutionBlock::getSome(size_t atMost) {
   clearRegisters(res.second.get());
   traceGetSomeEnd(res.second.get(), res.first);
   return res;
-  DEBUG_END_BLOCK();
 }
 
 /// @brief request an AqlItemBlock from the memory manager
@@ -296,61 +293,34 @@ void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
-  DEBUG_BEGIN_BLOCK();
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto const& value = src->getValueReference(srcRow, i);
+    if (planNode->_regsToClear.find(i) != planNode->_regsToClear.end()) {
+      continue;
+    }
 
-      if (!value.isEmpty()) {
-        AqlValue a = value.clone();
-        AqlValueGuard guard(a, true);
+    auto const& value = src->getValueReference(srcRow, i);
 
-        dst->setValue(dstRow, i, a);
-        guard.steal();
+    if (!value.isEmpty()) {
+      AqlValue a = value.clone();
+      AqlValueGuard guard(a, true);
+
+      TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
+      dst->setValue(dstRow, i, a);
+      guard.steal();
     }
   }
-  DEBUG_END_BLOCK();
-}
-
-/// @brief copy register data from one block (src) into another (dst)
-/// register values are cloned
-void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
-                                      AqlItemBlock* dst, size_t row) {
-  DEBUG_BEGIN_BLOCK();
-  RegisterId const n = src->getNrRegs();
-  auto planNode = getPlanNode();
-
-  for (RegisterId i = 0; i < n; i++) {
-    if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto const& value = src->getValueReference(row, i);
-
-      if (!value.isEmpty()) {
-        AqlValue a = value.clone();
-        AqlValueGuard guard(a, true);
-
-        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        dst->setValue(0, i, a);
-        guard.steal();
-      }
-    }
-  }
-
-  DEBUG_END_BLOCK();
 }
 
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
 std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   throwIfKilled();  // check if we were aborted
 
   auto res = _dependencies[0]->getSome(atMost);
@@ -371,7 +341,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   }
 
   return {res.first, false};
-  DEBUG_END_BLOCK();
 }
 
 /// @brief getSomeWithoutRegisterClearout, same as above, however, this
@@ -381,7 +350,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 /// cleanup can use this method, internal use only
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(atMost > 0);
 
   std::unique_ptr<AqlItemBlock> result;
@@ -405,16 +373,13 @@ ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   }
 
   return {state, std::move(result)};
-  DEBUG_END_BLOCK();
 }
 
 void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   // Clear out registers not needed later on:
   if (result != nullptr) {
     result->clearRegisters(getPlanNode()->_regsToClear);
   }
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {

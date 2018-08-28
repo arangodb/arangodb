@@ -786,9 +786,21 @@ for such queries.
 
 ### Miscellaneous changes
 
-The `NEAR` AQL function now does not default to a limit of 100 documents any more
-when no limit value was specified. The previously used limit value of 100 was an
-arbitrary limit that acted contrary to user expectations.
+When creating query execution plans for a query, the query optimizer was fetching
+the number of documents of the underlying collections in case multiple query
+execution plans were generated. The optimizer used these counts as part of its 
+internal decisions and execution plan costs calculations. 
+
+Fetching the number of documents of a collection can have measurable overhead in a
+cluster, so ArangoDB 3.4 now caches the "number of documents" that are referred to
+when creating query execution plans. This may save a few roundtrips in case the
+same collections are frequently accessed using AQL queries. 
+
+The "number of documents" value was not and is not supposed to be 100% accurate 
+in this stage, as it is used for rough cost estimates only. It is possible however
+that when explaining an execution plan, the "number of documents" estimated for
+a collection is using a cached stale value, and that the estimates change slightly
+over time even if the underlying collection is not modified.
 
 
 Streaming AQL Cursors
@@ -864,10 +876,14 @@ implementations to C++-based implementations in ArangoDB 3.4:
     - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
+* all the DBserver internal maintenance tasks for shard creation, index
+  creation and the like in the cluster
 
 By making the listed functionality not use and depend on the V8 JavaScript engine,
 the respective functionality can now be invoked more efficiently, without requiring
-the conversion of data between ArangoDB's native format and V8's internal format.
+the conversion of data between ArangoDB's native format and V8's
+internal format. For the maintenance operations this will lead to
+improved stability in the cluster.
 
 As less functionality depends on the V8 JavaScript engine, an ArangoDB 3.4 server
 will not require as many V8 contexts as previous versions.

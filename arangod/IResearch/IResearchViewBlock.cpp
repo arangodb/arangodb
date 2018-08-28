@@ -130,8 +130,6 @@ IResearchViewBlockBase::IResearchViewBlockBase(
 
 std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
-
   const auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -144,8 +142,6 @@ std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
   _inflight = 0;
 
   return res;
-
-  DEBUG_END_BLOCK();
 }
 
 void IResearchViewBlockBase::reset() {
@@ -238,7 +234,6 @@ bool IResearchViewBlockBase::readDocument(
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 IResearchViewBlockBase::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
@@ -331,13 +326,9 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 
   traceGetSomeEnd(res.get(), getHasMoreState());
   return {getHasMoreState(), std::move(res)};
-
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   if (_done) {
     size_t skipped = _inflight;
     _inflight = 0;
@@ -389,9 +380,6 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
   size_t skipped = _inflight;
   _inflight = 0;
   return {getHasMoreState(), skipped};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 // -----------------------------------------------------------------------------

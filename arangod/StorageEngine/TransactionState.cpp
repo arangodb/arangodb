@@ -64,11 +64,13 @@ TransactionState::~TransactionState() {
   }
 }
 
-std::vector<std::string> TransactionState::collectionNames() const {
+std::vector<std::string> TransactionState::collectionNames(std::unordered_set<std::string> const& initial) const {
   std::vector<std::string> result;
-  result.reserve(_collections.size());
-
-  for (auto& trxCollection : _collections) {
+  result.reserve(_collections.size() + initial.size());
+  for (auto const& it : initial) {
+    result.emplace_back(it);
+  }
+  for (auto const& trxCollection : _collections) {
     if (trxCollection->collection() != nullptr) {
       result.emplace_back(trxCollection->collectionName());
     }

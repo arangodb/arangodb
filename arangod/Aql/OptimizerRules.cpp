@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
@@ -3107,9 +3108,8 @@ void arangodb::aql::optimizeClusterSingleShardRule(
   // TODO: properly handle subqueries here
   SmallVector<ExecutionNode*>::allocator_type::arena_type s;
   SmallVector<ExecutionNode*> nodes{s};
-  // std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL,
-  // ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY};
-  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::SHORTEST_PATH,
+  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL,
+                                                ExecutionNode::SHORTEST_PATH,
                                                 ExecutionNode::SUBQUERY};
   plan->findNodesOfType(nodes, types, true);
 
@@ -6106,7 +6106,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
       VPackBuilder builder;
-      idx->toVelocyPack(builder, true, false);
+      idx->toVelocyPack(builder, Index::SERIALIZE_BASICS);
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(
           builder.slice(), "geoJson", false);
 

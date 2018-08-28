@@ -1007,10 +1007,11 @@ function processQuery (query, explain) {
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
+        var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition) + '   ' + annotation('/* view query */');
+          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1435,7 +1436,7 @@ function processQuery (query, explain) {
               return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
             }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ') + '  ' + annotation('/* sort mode: ' + node.sortmode + ' */');
+          }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
     }
 
     return 'unhandled node type (' + node.type + ')';

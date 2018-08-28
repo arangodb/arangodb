@@ -81,8 +81,8 @@ struct IResearchViewDBServerSetup {
 
   IResearchViewDBServerSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true); // need 2 connections or Agency callbacks will fail
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_PRIMARY);
@@ -460,7 +460,7 @@ SECTION("test_query") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
+    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
     CHECK(0 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
   }
@@ -509,7 +509,7 @@ SECTION("test_query") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
+    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
     CHECK(12 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
   }
@@ -559,7 +559,6 @@ SECTION("test_query") {
     }
 
     arangodb::transaction::Options trxOptions;
-    trxOptions.waitForSync = true;
 
     arangodb::transaction::Methods trx0(
       arangodb::transaction::StandaloneContext::Create(*vocbase),
@@ -569,7 +568,9 @@ SECTION("test_query") {
       trxOptions
     );
     CHECK((trx0.begin().ok()));
-    auto* snapshot0 = wiewImpl->snapshot(trx0, { logicalCollection->name() }, true);
+    CHECK(nullptr == wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot0 = wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    CHECK(snapshot0 == wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
     CHECK(12 == snapshot0->docs_count());
     CHECK((trx0.commit().ok()));
 
@@ -607,7 +608,7 @@ SECTION("test_query") {
       trxOptions
     );
     CHECK((trx1.begin().ok()));
-    auto* snapshot1 = wiewImpl->snapshot(trx1, { logicalCollection->name() }, true);
+    auto* snapshot1 = wiewImpl->snapshot(trx1, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
     CHECK(24 == snapshot1->docs_count());
     CHECK((trx1.commit().ok()));
   }
@@ -681,7 +682,7 @@ SECTION("test_query") {
           arangodb::transaction::Options{}
         );
         CHECK((trx.begin().ok()));
-        auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
+        auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
         CHECK(i == snapshot->docs_count());
         CHECK((trx.commit().ok()));
       }
@@ -909,8 +910,9 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
-    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
-    CHECK((nullptr != snapshot));
+    CHECK(nullptr == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate);
+    CHECK(snapshot == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
     CHECK((0 == snapshot->live_docs_count()));
     CHECK((trx.commit().ok()));
   }
@@ -935,7 +937,6 @@ SECTION("test_transaction_snapshot") {
   // no snapshot in TransactionState (force == true, waitForSync = true)
   {
     arangodb::transaction::Options opts;
-    opts.waitForSync = true;
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
@@ -944,7 +945,10 @@ SECTION("test_transaction_snapshot") {
       opts
     );
     CHECK((trx.begin().ok()));
-    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
+    CHECK(nullptr == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
+    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    CHECK(snapshot == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
+    CHECK(snapshot == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK((trx.commit().ok()));

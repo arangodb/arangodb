@@ -78,7 +78,7 @@ RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     RocksDBPrimaryIndex* index,
     std::unique_ptr<VPackBuilder> keys,
     bool allowCoveringIndexOptimization)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _keys(std::move(keys)),
       _iterator(_keys->slice()),
@@ -178,10 +178,9 @@ void RocksDBPrimaryIndex::load() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                       bool forPersistence) const {
+void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   // hard-coded
   builder.add(
     arangodb::StaticStrings::IndexUnique,
@@ -391,14 +390,14 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
 
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index

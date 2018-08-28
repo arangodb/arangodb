@@ -147,7 +147,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName, std::string
     std::unique_ptr<Graph> graph;
     try {
       graph = Graph::fromPersistence(graphSlice, _vocbase);
-    } catch (basics::Exception& e) {
+    } catch (basics::Exception&) {
       // return {e.message(), e.code()};
       return false;
     }

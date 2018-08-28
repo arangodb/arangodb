@@ -76,8 +76,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&, bool, bool) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(velocypack::Builder&, unsigned flags) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 

@@ -672,6 +672,21 @@ static void JS_RenameViewVocbase(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view");
   }
 
+  // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+  try {
+    arangodb::velocypack::Builder viewBuilder;
+
+    viewBuilder.openObject();
+
+    auto res = view->toVelocyPack(viewBuilder, true, false);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res); // skip view
+    }
+  } catch(...) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); // skip view
+  }
+
   int res = view->vocbase().renameView(view, name);
 
   if (res != TRI_ERROR_NO_ERROR) {

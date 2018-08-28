@@ -191,8 +191,6 @@ std::pair<ExecutionState, arangodb::Result> TraversalBlock::initializeCursor(
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves
 std::pair<ExecutionState, Result> TraversalBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-
   ExecutionState state;
   Result result;
 
@@ -236,15 +234,11 @@ std::pair<ExecutionState, Result> TraversalBlock::shutdown(int errorCode) {
   }
 
   return {state, result};
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief read more paths from _traverser. returns true if there are more
 /// paths.
 bool TraversalBlock::getSomePaths(size_t hint) {
-  DEBUG_BEGIN_BLOCK();
-  
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -286,23 +280,16 @@ bool TraversalBlock::getSomePaths(size_t hint) {
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   return !_vertices.empty();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief skip the next paths
 size_t TraversalBlock::skipPaths(size_t hint) {
-  DEBUG_BEGIN_BLOCK();
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
     return 0;
   }
   return _traverser->skip(hint);
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos) {
@@ -318,7 +305,6 @@ void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos
 
 /// @brief initialize the list of paths
 void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
     // No Initialization required.
     return;
@@ -358,15 +344,11 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
                                        "allowed");
     }
   }
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 TraversalBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   RegisterId const nrOutRegs = getNrOutputRegisters();
@@ -458,15 +440,10 @@ TraversalBlock::getSome(size_t atMost) {
   clearRegisters(result.get());
   traceGetSomeEnd(result.get(), getHasMoreState());
   return {getHasMoreState(), std::move(result)};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   if (_done) {
     return {ExecutionState::DONE, 0};
   }
@@ -524,7 +501,4 @@ std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
   size_t skipped = _skipped;
   _skipped = 0;
   return {getHasMoreState(), skipped};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
