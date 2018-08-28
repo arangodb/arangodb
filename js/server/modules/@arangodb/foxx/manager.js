@@ -943,8 +943,13 @@ function runScript (scriptName, mount, options) {
     service = reloadInstalledService(mount, runSetup);
   }
   ensureServiceLoaded(mount);
-  const result = service.executeScript(scriptName, options);
-  return result === undefined ? null : result;
+  try {
+    const result = service.executeScript(scriptName, options);
+    return result === undefined ? null : result;
+  } catch (e) {
+    e.codeFrame = codeFrame(e, service.basePath);
+    throw e;
+  }
 }
 
 function runTests (mount, options = {}) {
