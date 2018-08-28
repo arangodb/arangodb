@@ -337,7 +337,7 @@ static void JS_GrantCollection(
     static const std::string wildcard("*");
 
     if (!database
-        || (wildcard != coll && !database->lookupCollection(coll))) {
+        || (wildcard != coll && !arangodb::CollectionNameResolver(*database).getCollection(coll))) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
@@ -400,7 +400,7 @@ static void JS_RevokeCollection(
     static const std::string wildcard("*");
 
     if (!database
-        || (wildcard != coll && !database->lookupCollection(coll))) {
+        || (wildcard != coll && !arangodb::CollectionNameResolver(*database).getCollection(coll))) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }

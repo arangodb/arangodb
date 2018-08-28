@@ -26,6 +26,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -368,7 +369,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         static const std::string wildcard("*");
 
         if (!database
-            || (wildcard != coll && !database->lookupCollection(coll))) {
+            || (wildcard != coll && !arangodb::CollectionNameResolver(*database).getCollection(coll))) {
           generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
 
           return RestStatus::DONE;
@@ -548,7 +549,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
         static const std::string wildcard("*");
 
         if (!database
-            || (wildcard != coll && !database->lookupCollection(coll))) {
+            || (wildcard != coll && !arangodb::CollectionNameResolver(*database).getCollection(coll))) {
           generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
 
           return RestStatus::DONE;

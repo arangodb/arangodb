@@ -13,12 +13,15 @@ describe ArangoDB do
       (0...10).each{|i|
         ArangoDB.delete("/_api/user/users-" + i.to_s);
       }
+      ArangoDB.drop_collection("test")
+      ArangoDB.create_collection("test")
     end
 
     after do
       (0...10).each{|i|
         ArangoDB.delete("/_api/user/users-" + i.to_s);
       }
+      ArangoDB.drop_collection("test")
     end
 
 ################################################################################
