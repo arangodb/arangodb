@@ -1582,7 +1582,6 @@ int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::transaction::Methods const& trx,
     VPackSlice slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1665,7 +1664,8 @@ int getDocumentOnCoordinator(
     // Contact all shards directly with the correct information.
 
     VPackBuilder reqBuilder;
-
+    auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+    
     // Now prepare the requests:
     std::vector<ClusterCommRequest> requests;
     auto body = std::make_shared<std::string>();
