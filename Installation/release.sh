@@ -234,8 +234,9 @@ else
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
-(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
 
+(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+git pull --tags
 
 
 # shellcheck disable=SC2002
@@ -355,10 +356,10 @@ if [ "$TAG" == "1" ];  then
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
-        git push --tags
+        git push origin "refs/tags/v$VERSION"
     else
         git tag -f "v$VERSION"
-        git push --tags -f
+        git push -f origin "refs/tags/v$VERSION"
     fi
 
     cd "${ENTERPRISE_SRC_DIR}"
@@ -367,10 +368,10 @@ if [ "$TAG" == "1" ];  then
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
-        git push --tags
+        git push origin "refs/tags/v$VERSION"
     else
         git tag -f "v$VERSION"
-        git push --tags -f
+        git push -f origin "refs/tags/v$VERSION"
     fi
 
     echo
