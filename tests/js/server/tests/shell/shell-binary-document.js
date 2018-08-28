@@ -61,7 +61,7 @@ function CollectionBinaryDocumentSuite () {
     },
 
     testBinaryDocument : function () {
-      const filename1 = path.resolve(pathForTesting('apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png').split('/').join(path.sep));
+      const filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
       const content = fs.readFileSync(filename1);
 
       const d1 = collection._binaryInsert({_key: "test", meta: "hallo"}, filename1);
