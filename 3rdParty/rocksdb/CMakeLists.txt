@@ -4,7 +4,7 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_ROCKSDB_VERSION "v5.15.X")
+set(ARANGO_ROCKSDB_VERSION "v5.16.X")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # jemalloc settings
@@ -33,6 +33,7 @@ set(WITH_TESTS OFF CACHE BOOL "disable tests")
 set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 if (MSVC) 
+  set(SNAPPY_ROOT_DIR "${SNAPPY_SOURCE_DIR}" CACHE PATH "snappy source")
   set(SNAPPY_HOME "${SNAPPY_SOURCE_DIR}" CACHE PATH "snappy source")
   set(SNAPPY_INCLUDE "${SNAPPY_INCLUDE_DIR}" CACHE PATH "where the wintendo should look for the snappy libs")
   set(SNAPPY_LIB_DEBUG "${CMAKE_BINARY_DIR}/bin/Debug/${SNAPPY_LIB}.lib")
