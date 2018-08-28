@@ -1,9 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
-// execute with:
-// ./scripts/unittest shell_server_aql --test js/server/tests/aql/aql-optimizer-geoindex.js
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///

@@ -41,11 +41,11 @@ const _ = require('lodash');
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'shell_client': [ 'js/common/tests/shell', 'js/client/tests/http', 'js/client/tests/shell' ],
-  'shell_server': [ 'js/common/tests/shell', 'js/server/tests/shell' ],
-  'shell_server_only': [ 'js/server/tests/shell' ],
-  'shell_server_aql': [ 'js/server/tests/aql', 'js/common/tests/aql' ],
-  'shell_client_aql': [ 'js/client/tests/aql', 'js/common/tests/aql' ]
+  'shell_client': [ tu.pathForTesting('common/tests/shell'), tu.pathForTesting('client/tests/http'), tu.pathForTesting('client/tests/shell') ],
+  'shell_server': [ tu.pathForTesting('common/tests/shell'), tu.pathForTesting('server/tests/shell') ],
+  'shell_server_only': [ tu.pathForTesting('server/tests/shell') ],
+  'shell_server_aql': [ tu.pathForTesting('server/tests/aql'), tu.pathForTesting('common/tests/aql') ],
+  'shell_client_aql': [ tu.pathForTesting('client/tests/aql'), tu.pathForTesting('common/tests/aql') ]
 };
 
 // //////////////////////////////////////////////////////////////////////////////

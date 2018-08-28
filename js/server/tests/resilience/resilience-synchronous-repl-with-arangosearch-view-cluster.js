@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
 ///
-/// @file js/server/tests/resilience/resilience-synchronous-replication-cluster.js
-///
 /// DISCLAIMER
 ///
 /// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany

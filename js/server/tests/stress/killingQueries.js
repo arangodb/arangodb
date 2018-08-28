@@ -26,7 +26,8 @@
 
 const internal = require('internal');
 const fs = require('fs');
-const tasks = require('org/arangodb/tasks');
+const tasks = require('@arangodb/tasks');
+const pathForTesting = internal.pathForTesting;
 
 const _ = require('lodash');
 
@@ -480,16 +481,16 @@ exports.killingParallel = function (opts) {
   // start worker
   const w = [
     function (params) {
-      require('./js/server/tests/stress/killingQueries').inserter(params);
+      require('./' + pathForTesting('server/tests/stress/killingQueries')).inserter(params);
     },
     function (params) {
-      require('./js/server/tests/stress/killingQueries').updater(params);
+      require('./' + pathForTesting('server/tests/stress/killingQueries')).updater(params);
     },
     function (params) {
-      require('./js/server/tests/stress/killingQueries').remover(params);
+      require('./' + pathForTesting('server/tests/stress/killingQueries')).remover(params);
     },
     function (params) {
-      require('./js/server/tests/stress/killingQueries').killer(params);
+      require('./' + pathForTesting('server/tests/stress/killingQueries')).killer(params);
     }
   ];
 
