@@ -1782,20 +1782,20 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_OPTIONS;
   }
   
-  let testsBasePath;
-  exports.pathForTesting = function(path) {
+  let testsBasePaths = {};
+  exports.pathForTesting = function(path, prefix = 'js') {
     let fs = require('fs');
-    if (testsBasePath === undefined) {
+    if (!testsBasePaths.hasOwnProperty(prefix)) {
       // first invocation
-      testsBasePath = 'js';
+      testsBasePaths[prefix] = fs.join('tests', prefix);
       // build path with version number contained
       let versionString = exports.version.replace(/-.*$/, '');
-      if (fs.isDirectory(fs.join(testsBasePath, versionString))) {
-        testsBasePath = fs.join(testsBasePath, versionString);
+      if (fs.isDirectory(fs.join(testsBasePaths[prefix], versionString))) {
+        testsBasePaths[prefix] = fs.join(testsBasePaths[prefix], versionString);
       }
     }
-    
-    return fs.join(testsBasePath, path);
+
+    return fs.join(testsBasePaths[prefix], path);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
