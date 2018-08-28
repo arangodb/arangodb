@@ -6,7 +6,7 @@ arangosh&gt; db.test.ensureHashIndex(<span class="hljs-string">"hashListAttribut
     <span class="hljs-string">"hashListAttribute"</span>, 
     <span class="hljs-string">"hashListSecondAttribute.subAttribute"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109246"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109244"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
@@ -74,7 +74,7 @@ arangosh&gt; db.test.getIndexes();
       <span class="hljs-string">"memory"</span> : <span class="hljs-number">560</span>, 
       <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109240"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109238"</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
     <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
@@ -88,7 +88,7 @@ arangosh&gt; db.test.getIndexes();
       <span class="hljs-string">"memory"</span> : <span class="hljs-number">560</span>, 
       <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109243"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109241"</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
     <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
@@ -138,7 +138,7 @@ arangosh&gt; db.test.getIndexes();
       <span class="hljs-string">"nrBuckets"</span> : <span class="hljs-number">8</span>, 
       <span class="hljs-string">"totalUsed"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109246"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109244"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
