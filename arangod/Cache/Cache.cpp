@@ -232,17 +232,20 @@ void Cache::requestGrow() {
 }
 
 void Cache::requestMigrate(uint32_t requestedLogSize) {
-  // fail fast if inside banned window
-  if (std::chrono::steady_clock::now() <= _migrateRequestTime) {
+  if (isShutdown() || !_taskLock.readLock(Cache::triesFast)) {
     return;
   }
+  // fail fast if inside banned window
+  if (std::chrono::steady_clock::now() <= _migrateRequestTime) {
+    _taskLock.unlockRead();
+    return;
+  }
+  _taskLock.unlockRead();
 
-  bool ok = _taskLock.writeLock(Cache::triesGuarantee);
-  if (ok) {
-    if (!isShutdown() && std::chrono::steady_clock::now() > _migrateRequestTime) {
+  if (_taskLock.writeLock(Cache::triesGuarantee)) {
+    if (std::chrono::steady_clock::now() > _migrateRequestTime) {
       _metadata.readLock();
-      ok = !_metadata.isMigrating() &&
-           (requestedLogSize != _table->logSize());
+      bool ok = !_metadata.isMigrating() && (requestedLogSize != _table->logSize());
       _metadata.readUnlock();
       if (ok) {
         std::tie(ok, _migrateRequestTime) =
