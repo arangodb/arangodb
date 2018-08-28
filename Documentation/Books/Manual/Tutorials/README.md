@@ -28,7 +28,7 @@ Deployment
 - [DC2DC on Kubernetes](Kubernetes/DC2DC.md):
   Start DC2DC between two ArangoDB clusters running in Kubernetes 
   
-- [Monitor ArangoDB](https://www.arangodb.com/tutorials/monitoring-collectd-prometheus-grafana/)
+- [Monitor ArangoDB](https://www.arangodb.com/tutorials/monitoring-collectd-prometheus-grafana/):
   Set up a monitoring system for ArangoDB using collectd, Prometheus and Grafana
 
 
