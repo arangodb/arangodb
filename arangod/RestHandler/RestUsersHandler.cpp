@@ -365,8 +365,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         }
 
         auto* database = databaseFeature->lookupDatabase(db);
+        static const std::string wildcard("*");
 
-        if (!database || !database->lookupCollection(coll)) {
+        if (!database
+            || (wildcard != coll && !database->lookupCollection(coll))) {
           generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
 
           return RestStatus::DONE;
@@ -543,8 +545,10 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
         }
 
         auto* database = databaseFeature->lookupDatabase(db);
+        static const std::string wildcard("*");
 
-        if (!database || !database->lookupCollection(coll)) {
+        if (!database
+            || (wildcard != coll && !database->lookupCollection(coll))) {
           generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
 
           return RestStatus::DONE;

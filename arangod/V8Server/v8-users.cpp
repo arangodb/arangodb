@@ -334,8 +334,10 @@ static void JS_GrantCollection(
     }
 
     auto* database = databaseFeature->lookupDatabase(db);
+    static const std::string wildcard("*");
 
-    if (!database || !database->lookupCollection(coll)) {
+    if (!database
+        || (wildcard != coll && !database->lookupCollection(coll))) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }
@@ -395,8 +397,10 @@ static void JS_RevokeCollection(
     }
 
     auto* database = databaseFeature->lookupDatabase(db);
+    static const std::string wildcard("*");
 
-    if (!database || !database->lookupCollection(coll)) {
+    if (!database
+        || (wildcard != coll && !database->lookupCollection(coll))) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
   }

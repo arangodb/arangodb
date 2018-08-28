@@ -177,12 +177,22 @@ SECTION("test_collection_auth") {
   auto& grantRequest = *grantRequestPtr;
   auto grantResponcePtr = std::make_unique<GeneralResponseMock>();
   auto& grantResponce = *grantResponcePtr;
+  auto grantWildcardRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
+  auto& grantWildcardRequest = *grantWildcardRequestPtr;
+  auto grantWildcardResponcePtr = std::make_unique<GeneralResponseMock>();
+  auto& grantWildcardResponce = *grantWildcardResponcePtr;
   auto revokeRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& revokeRequest = *revokeRequestPtr;
   auto revokeResponcePtr = std::make_unique<GeneralResponseMock>();
   auto& revokeResponce = *revokeResponcePtr;
+  auto revokeWildcardRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
+  auto& revokeWildcardRequest = *revokeWildcardRequestPtr;
+  auto revokeWildcardResponcePtr = std::make_unique<GeneralResponseMock>();
+  auto& revokeWildcardResponce = *revokeWildcardResponcePtr;
   arangodb::RestUsersHandler grantHandler(grantRequestPtr.release(), grantResponcePtr.release());
+  arangodb::RestUsersHandler grantWildcardHandler(grantWildcardRequestPtr.release(), grantWildcardResponcePtr.release());
   arangodb::RestUsersHandler revokeHandler(revokeRequestPtr.release(), revokeResponcePtr.release());
+  arangodb::RestUsersHandler revokeWildcardHandler(revokeWildcardRequestPtr.release(), revokeWildcardResponcePtr.release());
 
   grantRequest.addSuffix("testUser");
   grantRequest.addSuffix("database");
@@ -193,11 +203,26 @@ SECTION("test_collection_auth") {
   grantRequest._payload.add("grant", arangodb::velocypack::Value(arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)));
   grantRequest._payload.close();
 
+  grantWildcardRequest.addSuffix("testUser");
+  grantWildcardRequest.addSuffix("database");
+  grantWildcardRequest.addSuffix(vocbase->name());
+  grantWildcardRequest.addSuffix("*");
+  grantWildcardRequest.setRequestType(arangodb::rest::RequestType::PUT);
+  grantWildcardRequest._payload.openObject();
+  grantWildcardRequest._payload.add("grant", arangodb::velocypack::Value(arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)));
+  grantWildcardRequest._payload.close();
+
   revokeRequest.addSuffix("testUser");
   revokeRequest.addSuffix("database");
   revokeRequest.addSuffix(vocbase->name());
   revokeRequest.addSuffix("testDataSource");
   revokeRequest.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
+
+  revokeWildcardRequest.addSuffix("testUser");
+  revokeWildcardRequest.addSuffix("database");
+  revokeWildcardRequest.addSuffix(vocbase->name());
+  revokeWildcardRequest.addSuffix("*");
+  revokeWildcardRequest.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
   struct ExecContext: public arangodb::ExecContext {
     ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, userName, "",
@@ -352,6 +377,54 @@ SECTION("test_collection_auth") {
     CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource"))); // not modified from above
+  }
+
+  // test auth wildcard (grant)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    arangodb::auth::UserMap userMap;
+    arangodb::auth::User* userPtr = nullptr;
+    userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
+    userManager->storeUser(false, userName, arangodb::StaticStrings::Empty, true, arangodb::velocypack::Slice());
+    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
+    REQUIRE((nullptr != userPtr));
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    REQUIRE((false == !logicalCollection));
+
+    CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+    auto status = grantWildcardHandler.execute();
+    CHECK((arangodb::RestStatus::DONE == status));
+    CHECK((arangodb::rest::ResponseCode::OK == grantWildcardResponce.responseCode()));
+    auto slice = grantWildcardResponce._payload.slice();
+    CHECK((slice.isObject()));
+    CHECK((slice.hasKey(vocbase->name() + "/*") && slice.get(vocbase->name() + "/*").isString() && arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW) == slice.get(vocbase->name() + "/*").copyString()));
+    CHECK((arangodb::auth::Level::RW == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+  }
+
+  // test auth wildcard (revoke)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    arangodb::auth::UserMap userMap;
+    arangodb::auth::User* userPtr = nullptr;
+    userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
+    userManager->storeUser(false, userName, arangodb::StaticStrings::Empty, true, arangodb::velocypack::Slice());
+    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
+    REQUIRE((nullptr != userPtr));
+    userPtr->grantCollection(vocbase->name(), "testDataSource", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    REQUIRE((false == !logicalCollection));
+
+    CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+    auto status = revokeWildcardHandler.execute();
+    CHECK((arangodb::RestStatus::DONE == status));
+    CHECK((arangodb::rest::ResponseCode::ACCEPTED == revokeWildcardResponce.responseCode()));
+    auto slice = revokeWildcardResponce._payload.slice();
+    CHECK((slice.isObject()));
+    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::ACCEPTED) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+    CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource"))); // unchanged since revocation is only for exactly matching collection names
   }
 }
 

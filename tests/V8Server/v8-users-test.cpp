@@ -221,10 +221,21 @@ SECTION("test_collection_auth") {
     TRI_V8_ASCII_STRING(isolate.get(), "testDataSource"),
     TRI_V8_STD_STRING(isolate.get(), arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)),
   };
+  std::vector<v8::Local<v8::Value>> grantWildcardArgs = {
+    TRI_V8_STD_STRING(isolate.get(), userName),
+    TRI_V8_STD_STRING(isolate.get(), vocbase->name()),
+    TRI_V8_ASCII_STRING(isolate.get(), "*"),
+    TRI_V8_STD_STRING(isolate.get(), arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW)),
+  };
   std::vector<v8::Local<v8::Value>> revokeArgs = {
     TRI_V8_STD_STRING(isolate.get(), userName),
     TRI_V8_STD_STRING(isolate.get(), vocbase->name()),
     TRI_V8_ASCII_STRING(isolate.get(), "testDataSource"),
+  };
+  std::vector<v8::Local<v8::Value>> revokeWildcardArgs = {
+    TRI_V8_STD_STRING(isolate.get(), userName),
+    TRI_V8_STD_STRING(isolate.get(), vocbase->name()),
+    TRI_V8_ASCII_STRING(isolate.get(), "*"),
   };
 
   struct ExecContext: public arangodb::ExecContext {
@@ -383,6 +394,53 @@ SECTION("test_collection_auth") {
     CHECK((slice.isObject()));
     CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
     CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource"))); // not modified from above
+  }
+
+  // test auth wildcard (grant)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    arangodb::auth::UserMap userMap;
+    arangodb::auth::User* userPtr = nullptr;
+    userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
+    userManager->storeUser(false, userName, arangodb::StaticStrings::Empty, true, arangodb::velocypack::Slice());
+    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
+    REQUIRE((nullptr != userPtr));
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    REQUIRE((false == !logicalCollection));
+
+    CHECK((arangodb::auth::Level::NONE == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+    arangodb::velocypack::Builder responce;
+    v8::TryCatch tryCatch(isolate.get());
+    auto result = v8::Function::Cast(*fn_grantCollection)->CallAsFunction(context, arangoUsers, grantWildcardArgs.size(), grantWildcardArgs.data());
+    CHECK((!result.IsEmpty()));
+    CHECK((result.ToLocalChecked()->IsUndefined()));
+    CHECK((!tryCatch.HasCaught()));
+    CHECK((arangodb::auth::Level::RW == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+  }
+
+  // test auth wildcard (revoke)
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testDataSource\" }");
+    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(s.system->createCollection(usersJson->slice()), [&s](arangodb::LogicalCollection* ptr)->void{ s.system->dropCollection(ptr->id(), true, 0.0); });
+    arangodb::auth::UserMap userMap;
+    arangodb::auth::User* userPtr = nullptr;
+    userManager->setAuthInfo(userMap); // insure an empy map is set before UserManager::storeUser(...)
+    userManager->storeUser(false, userName, arangodb::StaticStrings::Empty, true, arangodb::velocypack::Slice());
+    userManager->accessUser(userName, [&userPtr](arangodb::auth::User const& user)->arangodb::Result { userPtr = const_cast<arangodb::auth::User*>(&user); return arangodb::Result(); });
+    REQUIRE((nullptr != userPtr));
+    userPtr->grantCollection(vocbase->name(), "testDataSource", arangodb::auth::Level::RO); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+    auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(vocbase->createCollection(collectionJson->slice()), [vocbase](arangodb::LogicalCollection* ptr)->void{ vocbase->dropCollection(ptr->id(), false, 0); });
+    REQUIRE((false == !logicalCollection));
+
+    CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+    arangodb::velocypack::Builder responce;
+    v8::TryCatch tryCatch(isolate.get());
+    auto result = v8::Function::Cast(*fn_revokeCollection)->CallAsFunction(context, arangoUsers, revokeWildcardArgs.size(), revokeWildcardArgs.data());
+    CHECK((!result.IsEmpty()));
+    CHECK((result.ToLocalChecked()->IsUndefined()));
+    CHECK((!tryCatch.HasCaught()));
+    CHECK((arangodb::auth::Level::RO == execContext.collectionAuthLevel(vocbase->name(), "testDataSource"))); // unchanged since revocation is only for exactly matching collection names
   }
 }
 
