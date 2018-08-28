@@ -77,9 +77,7 @@ install(
     ${PROJECT_SOURCE_DIR}/js/apps
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX       "^.*/server/tests$"                          EXCLUDE
   REGEX       "^.*/aardvark/APP/node_modules$"             EXCLUDE
-  REGEX       "^.*/aardvark/APP/test$"                     EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
 
@@ -87,9 +85,7 @@ if (USE_ENTERPRISE)
   install(
     DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-    REGEX       "^.*/server/tests$"                        EXCLUDE
     REGEX       "^.*/aardvark/APP/node_modules$"           EXCLUDE
-    REGEX       "^.*/aardvark/APP/test$"                   EXCLUDE
   )
 endif ()
 
