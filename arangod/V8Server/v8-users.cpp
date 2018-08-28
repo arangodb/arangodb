@@ -302,33 +302,56 @@ static void JS_GrantCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
+
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "user are not supported on this server");
   }
-  
+
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
 
+  // validate that the collection is present
+  {
+    auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+
+    if (!databaseFeature) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    auto* database = databaseFeature->lookupDatabase(db);
+
+    if (!database || !database->lookupCollection(coll)) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+  }
+
   auth::Level lvl = auth::Level::RW;
+
   if (args.Length() >= 4) {
     std::string type = TRI_ObjectToString(args[3]);
     lvl = auth::convertToAuthLevel(type);
   }
+
   Result r = um->updateUser(username, [&](auth::User& entry) {
     entry.grantCollection(db, coll, lvl);
     return TRI_ERROR_NO_ERROR;
   });
+
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -341,14 +364,16 @@ static void JS_RevokeCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
+
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -358,12 +383,30 @@ static void JS_RevokeCollection(
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
-  
+
+  // validate that the collection is present
+  {
+    auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+
+    if (!databaseFeature) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    auto* database = databaseFeature->lookupDatabase(db);
+
+    if (!database || !database->lookupCollection(coll)) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    }
+  }
+
   Result r = um->updateUser(
       username, [&](auth::User& entry) {
         entry.removeCollection(db, coll);
         return TRI_ERROR_NO_ERROR;
       });
+
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }

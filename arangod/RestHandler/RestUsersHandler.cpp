@@ -340,18 +340,43 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     // update database / collection permissions
     std::string const& name = suffixes[0];
+
     if (suffixes[1] == "database") {
       // update a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+
       if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+
         return RestStatus::DONE;
+      }
+
+      // validate that the collection is present
+      if (suffixes.size() > 3) {
+        auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+          arangodb::DatabaseFeature
+        >("Database");
+
+        if (!databaseFeature) {
+          generateError(Result(TRI_ERROR_INTERNAL, "failure to find feature 'Database'"));
+
+          return RestStatus::DONE;
+        }
+
+        auto* database = databaseFeature->lookupDatabase(db);
+
+        if (!database || !database->lookupCollection(coll)) {
+          generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+
+          return RestStatus::DONE;
+        }
       }
 
       if (!body.isObject() ||
           !body.get("grant").isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+
         return RestStatus::DONE;
       }
 
@@ -360,7 +385,9 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
       // contains response in case of success
       VPackBuilder b;
+
       b(VPackValue(VPackValueType::Object));
+
       Result r = um->updateUser(name, [&](auth::User& entry) {
         if (coll.empty()) {
           entry.grantDatabase(db, lvl);
@@ -369,14 +396,15 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
           entry.grantCollection(db, coll, lvl);
           b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
         }
+
         return TRI_ERROR_NO_ERROR;
       });
+
       if (r.ok()) {
         generateUserResult(ResponseCode::OK, b);
       } else {
         generateError(r);
       }
-
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
       if (!canAccessUser(name)) {
@@ -495,9 +523,32 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       // revoke a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+
       if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+
         return RestStatus::DONE;
+      }
+
+      // validate that the collection is present
+      if (suffixes.size() > 3) {
+        auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+          arangodb::DatabaseFeature
+        >("Database");
+
+        if (!databaseFeature) {
+          generateError(Result(TRI_ERROR_INTERNAL, "failure to find feature 'Database'"));
+
+          return RestStatus::DONE;
+        }
+
+        auto* database = databaseFeature->lookupDatabase(db);
+
+        if (!database || !database->lookupCollection(coll)) {
+          generateError(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+
+          return RestStatus::DONE;
+        }
       }
 
       Result r = um->updateUser(user, [&](auth::User& entry) {
@@ -506,8 +557,10 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
         } else {
           entry.removeCollection(db, coll);
         }
+
         return TRI_ERROR_NO_ERROR;
       });
+
       if (r.ok()) {
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
