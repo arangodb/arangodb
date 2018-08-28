@@ -44,6 +44,7 @@ const ArangoClusterControl = require('@arangodb/cluster');
 const request = require('@arangodb/request');
 const actions = require('@arangodb/actions');
 const isZipBuffer = require('@arangodb/util').isZipBuffer;
+const codeFrame = require('@arangodb/util').codeFrame;
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
@@ -677,6 +678,7 @@ function _install (mount, tempPaths, options = {}) {
       }
     } catch (e) {
       if (!options.force) {
+        e.codeFrame = codeFrame(e, servicePath);
         throw e;
       } else {
         console.warnStack(e);
@@ -941,8 +943,13 @@ function runScript (scriptName, mount, options) {
     service = reloadInstalledService(mount, runSetup);
   }
   ensureServiceLoaded(mount);
-  const result = service.executeScript(scriptName, options);
-  return result === undefined ? null : result;
+  try {
+    const result = service.executeScript(scriptName, options);
+    return result === undefined ? null : result;
+  } catch (e) {
+    e.codeFrame = codeFrame(e, service.basePath);
+    throw e;
+  }
 }
 
 function runTests (mount, options = {}) {
