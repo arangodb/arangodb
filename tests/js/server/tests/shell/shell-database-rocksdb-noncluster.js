@@ -123,7 +123,7 @@ function DatabaseSuite () {
       ];
 
       keys.forEach(function(k) {
-        assertMatch(/^\d+(\.\d+)*([\.\-][a-z\-]+\d*)?$/, result[k]);
+        assertMatch(/^\d+(\.\d+)*([\.\-][a-z\-]+(\.?\d*)?)?$/, result[k]);
       });
     },
 
@@ -168,7 +168,7 @@ function DatabaseSuite () {
       assertEqual(1000, c.count());
       assertEqual("test", c.name());
 
-      internal.wait(5);
+      internal.wait(5, false);
       // still...
       assertEqual(1000, c.count());
 
@@ -220,7 +220,7 @@ function DatabaseSuite () {
       assertEqual(4, d4.value);
       assertEqual(9, d9.value);
 
-      internal.wait(5);
+      internal.wait(5, false);
 
       assertEqual(0, d0.value);
       assertEqual(4, d4.value);
@@ -229,7 +229,7 @@ function DatabaseSuite () {
       d0 = null;
       d4 = null;
 
-      internal.wait(3);
+      internal.wait(3, false);
       assertEqual(9, d9.value);
 
       d9 = null;
