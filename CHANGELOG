@@ -1,6 +1,10 @@
 devel
 -----
 
+* upgraded bundled RocksDB version to 5.16.0
+
+* upgraded bundled Snappy compression library to 1.1.7
+
 * improved error messages when managing Foxx services
 
   Install/replace/upgrade will now provide additional information when an error

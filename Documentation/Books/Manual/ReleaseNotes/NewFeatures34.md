@@ -175,7 +175,10 @@ to RocksDB collections, so it should be used with extreme care.
 
 ### RocksDB library upgrade
 
-The version of the bundled RocksDB library was upgraded from 5.9 to 5.15.
+The version of the bundled RocksDB library was upgraded from 5.6 to 5.16.
+
+The version of the bundled Snappy compression library used by RocksDB was upgraded from
+1.1.3 to 1.1.7.
 
 
 Collection and document operations
