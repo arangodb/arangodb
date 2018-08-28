@@ -948,6 +948,7 @@ if test -n "${TARGET_DIR}";  then
          tar -u -f "${TARFILE_TMP}" \
              tests/js \
              tests/rb \
+             tests/arangobRspecLib \
              VERSION \
              utils \
              scripts \
