@@ -956,6 +956,7 @@ if test -n "${TARGET_DIR}";  then
              etc/testing \
              UnitTests \
              Documentation \
+             js \
              lib/Basics/errors.dat \
              3rdParty/.keepme \
              arangod/.keepme \
