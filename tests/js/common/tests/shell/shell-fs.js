@@ -1096,7 +1096,7 @@ function FileSystemSuite () {
 
     testAdler32File : function() {
       const internal = require('internal');
-      const file = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'foxx','toomanysecrets.txt'));
+      const file = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx','toomanysecrets.txt'));
       const checksum = fs.adler32(file);
       assertEqual(checksum, '583533794');
     },
@@ -1125,7 +1125,7 @@ function FileSystemSuite () {
 
     testAdler32Folder : function() {
       const internal = require('internal');
-      const folder = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'foxx'));
+      const folder = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx'));
       try {
         fs.adler32(folder);
         fail();
