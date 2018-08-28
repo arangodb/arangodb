@@ -53,10 +53,10 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'http_replication': [fs.join('UnitTests', 'HttpReplication')],
-  'http_server': [fs.join('UnitTests', 'HttpInterface')],
+  'http_replication': [tu.pathForTesting('HttpReplication')],
+  'http_server': [tu.pathForTesting('HttpInterface')],
   'server_http': [tu.pathForTesting('common/tests/http')],
-  'ssl_server': [fs.join('UnitTests', 'HttpInterface')]
+  'ssl_server': [tu.pathForTesting('HttpInterface')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
