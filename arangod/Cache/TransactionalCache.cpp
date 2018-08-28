@@ -388,7 +388,7 @@ TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
   Table* source = nullptr;
 
   Table* table = _table.load(std::memory_order_relaxed);
-  if (isShutdown()) {
+  if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(status, bucket, source);
   }
