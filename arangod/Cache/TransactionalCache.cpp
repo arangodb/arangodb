@@ -230,7 +230,7 @@ TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
 }
 
 TransactionalCache::~TransactionalCache() {
-  if (!_shutdown) {
+  if (!isShutdown()) {
     try {
       shutdown();
     } catch (...) {

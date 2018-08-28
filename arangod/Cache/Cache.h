@@ -142,8 +142,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begin the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  bool isShutdown() const {
-    return _shutdown;
+  inline bool isShutdown() const {
+    return _shutdown.load();
   }
 
  protected:
@@ -153,8 +153,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  protected:
   basics::ReadWriteSpinLock _taskLock;
-
-  bool _shutdown;
+  std::atomic<bool> _shutdown;
 
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;

@@ -189,7 +189,7 @@ PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
 PlainCache::~PlainCache() {
-  if (!_shutdown) {
+  if (!isShutdown()) {
     try {
       shutdown();
     } catch (...) {

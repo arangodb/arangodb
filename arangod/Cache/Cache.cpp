@@ -333,9 +333,7 @@ void Cache::shutdown() {
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
-  if (!_shutdown) {
-    _shutdown = true;
-
+  if (!_shutdown.exchange(true)) {
     _metadata.readLock();
     while (true) {
       if (!_metadata.isMigrating() &&
