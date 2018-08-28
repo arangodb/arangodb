@@ -1,6 +1,14 @@
 devel
 -----
 
+* improved error messages when managing Foxx services
+
+  Install/replace/upgrade will now provide additional information when an error
+  is encountered during setup. Errors encountered during a `require` call will
+  also include information about the underlying cause in the error message.
+
+* fixed some Foxx script names being displayed incorrectly in web UI and Foxx CLI
+
 * major revision of the maintenance feature
 
 * added `uuidv4` and `genRandomBytes` methods to crypto module
