@@ -35,6 +35,7 @@ const toArgv = require('internal').toArgv;
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
+const pathForTesting = require('internal').pathForTesting;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -793,3 +794,4 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.makeResults = makeResults;
 exports.diffArray = diffArray;
+exports.pathForTesting = pathForTesting;

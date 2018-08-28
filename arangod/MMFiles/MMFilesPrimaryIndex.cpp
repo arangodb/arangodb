@@ -220,21 +220,18 @@ size_t MMFilesPrimaryIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                       bool forPersistence) const {
+void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  {
-    Index::toVelocyPack(builder, withFigures, forPersistence);
-    // hard-coded
-    builder.add(
-      arangodb::StaticStrings::IndexUnique,
-      arangodb::velocypack::Value(true)
-    );
-    builder.add(
-      arangodb::StaticStrings::IndexSparse,
-      arangodb::velocypack::Value(false)
-    );
-  }
+  Index::toVelocyPack(builder, flags);
+  // hard-coded
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(true)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 

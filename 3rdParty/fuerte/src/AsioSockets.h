@@ -130,6 +130,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec;
+      socket.lowest_layer().cancel(ec);
       socket.shutdown(ec);
       socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       socket.lowest_layer().close(ec);

@@ -1,9 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, print */
 
-// execute with:
-// ./scripts/unittest shell_server --test js/server/tests/shell/shell-cluster-shard-merge.js
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests that tests if collecting results from multiple
 ///        shards works correctly

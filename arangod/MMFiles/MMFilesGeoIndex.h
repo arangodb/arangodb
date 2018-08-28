@@ -80,9 +80,7 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(velocypack::Builder&, bool withFigures,
-                    bool forPersistence) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(velocypack::Builder&, unsigned flags) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 

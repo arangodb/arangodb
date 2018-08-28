@@ -310,7 +310,7 @@ CostEstimate CollectNode::estimateCost() const {
     if (estimate.estimatedNrItems >= 10) {
       // we assume that the collect will reduce the number of results at least
       // somewhat
-      estimate.estimatedNrItems *= 0.8;
+      estimate.estimatedNrItems = static_cast<size_t>(estimate.estimatedNrItems * 0.8);
     }
   }
   estimate.estimatedCost += estimate.estimatedNrItems;

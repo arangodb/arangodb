@@ -39,7 +39,7 @@ class MaintenanceWorker : public Thread {
   MaintenanceWorker(
     MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
-  virtual ~MaintenanceWorker() {}
+  virtual ~MaintenanceWorker() { shutdown(); }
 
   //
   // MaintenanceWorker entry points

@@ -184,11 +184,10 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void toVelocyPack(
       VPackBuilder& builder,
-      bool withFigures,
-      bool forPersistence
+      unsigned flags
   ) const override {
     builder.openObject();
-    Index::toVelocyPack(builder, withFigures, forPersistence);
+    Index::toVelocyPack(builder, flags);
     // hard-coded
     builder.add("unique", VPackValue(false));
     builder.add("sparse", VPackValue(false));
@@ -1386,6 +1385,10 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
+}
+  
+std::vector<std::string> StorageEngineMock::currentWalFiles() const {
+  return std::vector<std::string>(); 
 }
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {

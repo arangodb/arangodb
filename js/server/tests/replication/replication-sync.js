@@ -72,7 +72,6 @@ const compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incrementa
 
   db._flushCache();
   masterFunc(state);
-  require("internal").wal.flush(true, true);
 
   db._flushCache();
   connectToSlave();
@@ -110,14 +109,14 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
+          let docs = [];
 
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i
-            });
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i });
           }
+
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -166,14 +165,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -192,11 +190,13 @@ function BaseTestConfig() {
 
       connectToSlave();
 
-      var c = db._collection(cn);
+      let c = db._collection(cn);
       // insert some random documents
-      for (var i = 0; i < 100; ++i) {
-        c.insert({ foo: "bar" + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ foo: "bar" + i });
       }
+      c.insert(docs);
 
       assertEqual(5100, collectionCount(cn));
 
@@ -222,14 +222,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -292,14 +291,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -512,16 +510,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value1": i,
-              "value2": "test" + i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, "value1": i, "value2": "test" + i });
           }
+          c.insert(docs);
 
           c.ensureIndex({
             type: "hash",
@@ -542,16 +537,16 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value1": "test" + i,
-              "value2": i
-            });
+          let docs = [];
+         
+          // create it with different values 
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, "value1": i, "value2": "test" + i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -708,14 +703,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -739,14 +733,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -770,14 +763,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -809,14 +801,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -861,14 +852,15 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -900,14 +892,15 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -926,14 +919,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -971,14 +963,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1016,14 +1007,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1035,14 +1025,14 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 6000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1061,14 +1051,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1080,14 +1069,14 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 6000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          for (let i = 0; i < 6000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1106,15 +1095,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1126,15 +1113,15 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
-
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value": i
-            });
+          
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1153,15 +1140,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1173,15 +1158,15 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value": i
-            });
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1200,14 +1185,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1219,14 +1203,15 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1245,14 +1230,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1264,14 +1248,15 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1290,16 +1275,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value1": i,
-              "value2": "test" + i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1311,16 +1293,14 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
-
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value1": "test" + i,
-              "value2": i
-            });
+          
+          let docs = [];
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value1: "test" + i, value2: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1339,16 +1319,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value1": i,
-              "value2": "test" + i
-            });
+          let c = db._create(cn);
+          let docs = [];
+          
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1360,16 +1337,14 @@ function BaseTestConfig() {
             endpoint: masterEndpoint,
             incremental: false
           });
-          var c = db._collection(cn);
+          let c = db._collection(cn);
           c.truncate(); // but empty it
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              _key: "test" + i,
-              "value1": "test" + i,
-              "value2": i
-            });
+          let docs = [];
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ _key: "test" + i, value1: "test" + i, value2: i });
           }
+          c.insert(docs);
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));

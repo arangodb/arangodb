@@ -232,13 +232,11 @@ MMFilesGeoIndex::MMFilesGeoIndex(
 size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                   bool forPersistence) const {
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
-  // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
+  MMFilesIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));

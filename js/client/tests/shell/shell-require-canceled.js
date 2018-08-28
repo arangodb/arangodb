@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
+let pathForTesting = require('internal').pathForTesting;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for 'require-canceled'
@@ -40,7 +41,7 @@ function RequireCanceledTestSuite() {
   return {
     setUp() {
         arango.POST_RAW("/_admin/execute",
-          "require('module').globalPaths.unshift(require('path').resolve('./js/common/test-data/modules'));", {
+          "require('module').globalPaths.unshift(require('path').resolve('./" + pathForTesting('common/test-data/modules') + "'));", {
             'x-arango-v8-context': 0
           });
       },

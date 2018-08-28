@@ -34,14 +34,14 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -195,10 +195,10 @@ struct IResearchAnalyzerFeatureSetup {
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<Vocbase>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
@@ -548,7 +548,7 @@ SECTION("test_text_features") {
 
 SECTION("test_persistence") {
   auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::iresearch::SystemDatabaseFeature
+    arangodb::SystemDatabaseFeature
   >();
   auto vocbase = database->use();
 
@@ -849,7 +849,7 @@ SECTION("test_remove") {
 
 SECTION("test_start") {
   auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::iresearch::SystemDatabaseFeature
+    arangodb::SystemDatabaseFeature
   >();
   auto vocbase = database->use();
 
@@ -1157,7 +1157,7 @@ SECTION("test_start") {
 
 SECTION("test_tokens") {
   auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::iresearch::SystemDatabaseFeature
+    arangodb::SystemDatabaseFeature
   >();
   auto vocbase = database->use();
 
@@ -1174,7 +1174,7 @@ SECTION("test_tokens") {
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(server);
   auto* sharding = new arangodb::ShardingFeature(server);
-  auto* systemdb = new arangodb::iresearch::SystemDatabaseFeature(server, s.system.get());
+  auto* systemdb = new arangodb::SystemDatabaseFeature(server, s.system.get());
 
   arangodb::application_features::ApplicationServer::server->addFeature(analyzers);
   arangodb::application_features::ApplicationServer::server->addFeature(functions);

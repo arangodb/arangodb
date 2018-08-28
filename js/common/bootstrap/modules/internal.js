@@ -945,27 +945,16 @@ global.DEFINE_MODULE('internal', (function () {
   var colors = exports.COLORS;
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief useColor
+  // / @brief useColor, prettyPrint
   // //////////////////////////////////////////////////////////////////////////////
 
   var useColor = false;
-
-  if (global.COLOR_OUTPUT) {
-    useColor = Boolean(global.COLOR_OUTPUT);
-    delete global.COLOR_OUTPUT;
-  }
-
-  exports.COLOR_OUTPUT = useColor;
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief usePrettyPrint
-  // //////////////////////////////////////////////////////////////////////////////
-
   var usePrettyPrint = false;
 
-  if (global.PRETTY_PRINT) {
-    usePrettyPrint = global.PRETTY_PRINT;
-    delete global.PRETTY_PRINT;
+  if (global.SYS_OPTIONS) {
+    let opts = global.SYS_OPTIONS();
+    usePrettyPrint = opts['console.pretty-print'];
+    useColor = opts['console.colors'];
   }
 
   var printRecursive;
@@ -1679,26 +1668,28 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.startColorPrint = function (color, silent) {
-    var schemes = {
+    const schemes = {
       arangodb: {
         COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
         COLOR_STRING: exports.COLORS.COLOR_BOLD_MAGENTA,
         COLOR_NUMBER: exports.COLORS.COLOR_BOLD_GREEN,
-        COLOR_INDEX: exports.COLORS.COLOR_BOLD_CYAN,
-        COLOR_TRUE: exports.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_FALSE: exports.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_NULL: exports.COLORS.COLOR_BOLD_YELLOW,
-        COLOR_UNDEFINED: exports.COLORS.COLOR_BOLD_YELLOW
+        COLOR_INDEX: exports.COLORS.COLOR_BOLD_BLUE,
+        COLOR_TRUE: exports.COLORS.COLOR_YELLOW,
+        COLOR_FALSE: exports.COLORS.COLOR_YELLOW,
+        COLOR_NULL: exports.COLORS.COLOR_YELLOW,
+        COLOR_UNDEFINED: exports.COLORS.COLOR_YELLOW
       }
     };
 
     if (!useColor && !silent) {
       exports.print('starting color printing');
     }
-
+    
     if (color === undefined || color === null) {
-      color = null;
-    } else if (typeof color === 'string') {
+      color = 'arangodb';
+    }
+
+    if (typeof color === 'string') {
       color = color.toLowerCase();
       var c;
 
@@ -1790,6 +1781,22 @@ global.DEFINE_MODULE('internal', (function () {
     exports.options = global.SYS_OPTIONS;
     delete global.SYS_OPTIONS;
   }
+  
+  let testsBasePath;
+  exports.pathForTesting = function(path) {
+    let fs = require('fs');
+    if (testsBasePath === undefined) {
+      // first invocation
+      testsBasePath = 'js';
+      // build path with version number contained
+      let versionString = exports.version.replace(/-.*$/, '');
+      if (fs.isDirectory(fs.join(testsBasePath, versionString))) {
+        testsBasePath = fs.join(testsBasePath, versionString);
+      }
+    }
+    
+    return fs.join(testsBasePath, path);
+  };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief print
@@ -1846,24 +1853,24 @@ global.DEFINE_MODULE('internal', (function () {
   // / @brief start_pretty_print
   // //////////////////////////////////////////////////////////////////////////////
 
-  global.start_pretty_print = function start_pretty_print () {
-    require('internal').startPrettyPrint();
+  global.start_pretty_print = function start_pretty_print (silent) {
+    require('internal').startPrettyPrint(silent);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief stop_pretty_print
   // //////////////////////////////////////////////////////////////////////////////
 
-  global.stop_pretty_print = function stop_pretty_print () {
-    require('internal').stopPrettyPrint();
+  global.stop_pretty_print = function stop_pretty_print (silent) {
+    require('internal').stopPrettyPrint(silent);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief start_color_print
   // //////////////////////////////////////////////////////////////////////////////
 
-  global.start_color_print = function start_color_print (color) {
-    require('internal').startColorPrint(color, false);
+  global.start_color_print = function start_color_print (color, silent) {
+    require('internal').startColorPrint(color, silent);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1894,6 +1901,10 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_TERMINAL_SIZE) {
     exports.terminalSize = global.SYS_TERMINAL_SIZE;
     delete global.SYS_TERMINAL_SIZE;
+  }
+  
+  if (useColor) {
+    exports.startColorPrint('arangodb', true);
   }
 
   return exports;

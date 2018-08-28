@@ -66,7 +66,6 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
 }
 
 icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
-
   std::string rx;
 
   AqlValueMaterializer materializer(trx);
@@ -87,16 +86,14 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arang
       const char *str = it.getString(length);
       escapeRegexParams(rx, str, length);
     }
-  }
-  else if (splitExpression.isString()) {
+  } else if (splitExpression.isString()) {
     arangodb::velocypack::ValueLength length;
     const char* str = slice.getString(length);
     escapeRegexParams(rx, str, length);
     if (rx.length() == 0) {
       isEmptyExpression = true;
     }
-  }
-  else {
+  } else {
     rx.clear();
   }
   return fromCache(rx, _likeCache);
@@ -209,4 +206,58 @@ void RegexCache::buildLikePattern(std::string& out,
 
   // always anchor the pattern
   out.push_back('$');
+}
+
+/// @brief inspect a LIKE pattern from a string, and remove all
+/// of its escape characters. will stop at the first wildcards found.
+/// returns a pair with the following meaning:
+/// - first: true if the inspection aborted prematurely because a
+///   wildcard was found, and false if the inspection analyzed at the
+///   complete string
+/// - second: true if the found wildcard is the last byte in the pattern,
+///   false otherwise. can only be true if first is also true
+std::pair<bool, bool> RegexCache::inspectLikePattern(std::string& out,
+                                                     char const* ptr, size_t length) {
+  out.reserve(length);
+  bool escaped = false;
+
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+
+    if (c == '\\') {
+      if (escaped) {
+        // literal backslash
+        out.push_back('\\');
+      }
+      escaped = !escaped;
+    } else {
+      if (c == '%' || c == '_') {
+        if (escaped) {
+          // literal %
+          out.push_back(c);
+        } else {
+          // wildcard found
+          bool wildcardIsLastChar = (i == length - 1);
+          return std::make_pair(true, wildcardIsLastChar);
+        }
+      } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
+                 c == '\\' || c == '.' || c == '*') {
+        // character with special meaning in a regex
+        out.push_back(c);
+      } else {
+        if (escaped) {
+          // found a backslash followed by no special character
+          out.push_back('\\');
+        }
+
+        // literal character
+        out.push_back(c);
+      }
+
+      escaped = false;
+    }
+  }
+
+  return std::make_pair(false, false);
 }

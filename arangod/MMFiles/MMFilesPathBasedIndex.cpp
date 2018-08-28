@@ -73,11 +73,9 @@ void MMFilesPathBasedIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
-                                         bool withFigures,
-                                         bool forPersistence) const {
+void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(_unique)

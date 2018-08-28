@@ -157,7 +157,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   bool needToPersistEstimate() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   bool canBeDropped() const override { return true; }
   

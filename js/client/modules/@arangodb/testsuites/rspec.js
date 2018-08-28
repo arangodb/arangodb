@@ -55,7 +55,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const testPaths = {
   'http_replication': [fs.join('UnitTests', 'HttpReplication')],
   'http_server': [fs.join('UnitTests', 'HttpInterface')],
-  'server_http': ['js/common/tests/http'],
+  'server_http': [tu.pathForTesting('common/tests/http')],
   'ssl_server': [fs.join('UnitTests', 'HttpInterface')]
 };
 

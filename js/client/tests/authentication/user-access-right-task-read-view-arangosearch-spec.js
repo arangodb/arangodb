@@ -386,7 +386,9 @@ function hasIResearch (db) {
                 }
               });
 
-              describe('with links to multiple collections with none access level to one of them', () => {
+              var descName = 'view with links to multiple collections with NONE access level to one of them';
+              !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? describe(descName, () => {}) :
+              describe(descName, () => {
                 before(() => {
                     rootGrantCollection(testCol2Name, name, 'none');
                     expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
