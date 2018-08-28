@@ -351,9 +351,7 @@ function hasIResearch (db) {
                     tasks.register(task);
                     wait(keySpaceId, name);
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} managed to drop the view with insufficient rights`);
-                    console.error("SHOULD PASS 1: " + name);
                     expect(rootTestView(testViewName)).to.equal(true, 'View deletion reported success, but view was found afterwards');
-                    console.error("SHOULD PASS 2: " + name);
                   }
                 } else {
                   try {
