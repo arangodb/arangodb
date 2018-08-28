@@ -169,7 +169,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // manage the actual table
   std::shared_ptr<Table> _tableShrdPtr;
   /// keep a pointer to the current table, which can be atomically set
-  Table* _table;
+  std::atomic<Table*> _table;
   
   Table::BucketClearer _bucketClearer;
   size_t _slotsPerBucket;

@@ -129,7 +129,7 @@ Result TransactionalCache::insert(CachedValue* value) {
 
   bucket->unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());  // let function do the hard work
+    requestMigrate(source->idealSize());  // let function do the hard work
   }
 
   return status;
@@ -163,7 +163,7 @@ Result TransactionalCache::remove(void const* key, uint32_t keySize) {
 
   bucket->unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());
+    requestMigrate(source->idealSize());
   }
 
   return status;
@@ -198,7 +198,7 @@ Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
 
   bucket->unlock();
   if (maybeMigrate) {
-    requestMigrate(_table->idealSize());
+    requestMigrate(source->idealSize());
   }
 
   return status;
@@ -262,11 +262,14 @@ uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
 
   bucket->unlock();
 
-  uint32_t size = _table->idealSize();
-  if (maybeMigrate) {
-    requestMigrate(size);
+  cache::Table* table = _table.load(std::memory_order_relaxed);
+  if (table) {
+    int32_t size = table->idealSize();
+    if (maybeMigrate) {
+      requestMigrate(size);
+    }
   }
-
+  
   return reclaimed;
 }
 
@@ -379,12 +382,13 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
 std::tuple<Result, TransactionalBucket*, Table*>
 TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
                               bool singleOperation) {
+  // allow compiler to RVO these variables
   Result status;
   TransactionalBucket* bucket = nullptr;
   Table* source = nullptr;
 
-  Table* table = _table;
-  if (isShutdown() || table == nullptr) {
+  Table* table = _table.load(std::memory_order_relaxed);
+  if (isShutdown()) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
     return std::make_tuple(status, bucket, source);
   }
