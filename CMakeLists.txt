@@ -1047,9 +1047,9 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
-set(ROCKSDB_LIBS rocksdb;snappystatic)
+set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappystatic)
+add_dependencies(rocksdb ${SNAPPY_LIB})
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
