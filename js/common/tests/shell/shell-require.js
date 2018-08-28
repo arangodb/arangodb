@@ -31,7 +31,7 @@
 var jsunity = require('jsunity');
 var Module = require('module');
 var path = require('path');
-
+let pathForTesting = require('internal').pathForTesting;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for 'require'
@@ -56,7 +56,7 @@ function RequireTestSuite () {
   return {
 
     setUp() {
-      Module.globalPaths.unshift(path.resolve('./js/common/test-data/modules'));
+      Module.globalPaths.unshift(path.resolve('./' + pathForTesting('common/test-data/modules')));
       Module.globalPaths.unshift(path.resolve(Module.globalPaths[0], 'node_modules'));
     },
 
@@ -128,7 +128,7 @@ function RequireTestSuite () {
 function CommonJSTestSuite () {
   'use strict';
   var console = require('console');
-  var basePath = path.resolve('./js/common/test-data/modules/commonjs/tests/modules/1.0/');
+  var basePath = path.resolve('./' + pathForTesting('common/test-data/modules/commonjs/tests/modules/1.0/'));
 
   function createTestPackage (testPath) {
 

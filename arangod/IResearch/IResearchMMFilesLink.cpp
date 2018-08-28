@@ -80,15 +80,14 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 
 void IResearchMMFilesLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPersistence
+    unsigned flags
 ) const {
   TRI_ASSERT(!builder.isOpenObject());
   builder.openObject();
-  bool success = json(builder, forPersistence);
+  bool success = json(builder, flags & arangodb::Index::SERIALIZE_OBJECTID);
   TRI_ASSERT(success);
 
-  if (withFigures) {
+  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();

@@ -75,10 +75,9 @@ void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 // ========== below is cluster schmutz ============
 
 /// @brief return a VelocyPack representation of the index
-void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                bool forPersistence) const {
+void ClusterIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexUnique, VPackValue(_unique));
   builder.add(StaticStrings::IndexSparse, VPackValue(_sparse));
 

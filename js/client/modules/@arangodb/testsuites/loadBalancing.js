@@ -44,7 +44,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const download = require('internal').download;
 
 const testPaths = {
-  'load_balancing': ['js/client/tests/load-balancing']
+  'load_balancing': [tu.pathForTesting('client/tests/load-balancing')]
 };
 
 ////////////////////////////////////////////////////////////////////////////////

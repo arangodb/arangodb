@@ -255,11 +255,10 @@ RocksDBGeoIndex::RocksDBGeoIndex(
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                     bool forPersistence) const {
+void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));

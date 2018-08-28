@@ -34,6 +34,7 @@ const executeExternalAndWait = require('internal').executeExternalAndWait;
 
 const db = internal.db;
 const sleep = internal.sleep;
+const pathForTesting = internal.pathForTesting;
 
 const optsDefault = {
   chunk: 10000,
@@ -294,7 +295,7 @@ exports.createDeleteUpdateParallel = function (opts) {
   print('Starting', n, 'worker');
 
   const cmd = function (params) {
-    require('./js/server/tests/stress/crud').createDeleteUpdateRaw(params);
+    require('./' + pathForTesting('server/tests/stress/crud')).createDeleteUpdateRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {

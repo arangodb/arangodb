@@ -80,7 +80,6 @@ ExecutionBlockMock::ExecutionBlockMock(
 std::pair<arangodb::aql::ExecutionState, arangodb::Result>
 ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
                                      size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   const auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == arangodb::aql::ExecutionState::WAITING || !res.second.ok()) {
@@ -91,7 +90,6 @@ ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
   _pos_in_data = 0;
   _upstreamState = arangodb::aql::ExecutionState::HASMORE;
   _inflight = 0;
-  DEBUG_END_BLOCK();
 
   return res;
 }
@@ -99,7 +97,6 @@ ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
 std::pair<arangodb::aql::ExecutionState,
           std::unique_ptr<arangodb::aql::AqlItemBlock>>
 ExecutionBlockMock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
@@ -174,13 +171,9 @@ ExecutionBlockMock::getSome(size_t atMost) {
 
   traceGetSomeEnd(res.get(), getHasMoreState());
   return {getHasMoreState(), std::move(res)};
-
-  DEBUG_END_BLOCK();
 }
 
 std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   if (_done) {
     return {arangodb::aql::ExecutionState::DONE, 0};
   }
@@ -227,7 +220,4 @@ std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(si
   size_t skipped = _inflight;
   _inflight = 0;
   return {getHasMoreState(), skipped};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }

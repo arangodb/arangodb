@@ -272,13 +272,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn);
+          let c = db._create(cn);
 
-          for (var i = 0; i < 5000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          for (let i = 0; i < 5000; ++i) {
+            docs.push({ value: i });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -300,13 +300,15 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 50000; ++i) {
-            c.save({
-              "value": i
-            });
+          let docs = [];
+          for (let i = 0; i < 50000; ++i) {
+            docs.push({ value: i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
 
           state.checksum = collectionChecksum(cn);
@@ -329,14 +331,18 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 150000; ++i) {
-            c.save({
-              "value": i
-            });
+          let c = db._create(cn);
+          
+          let docs = [];
+          for (let i = 0; i < 150000; ++i) {
+            docs.push({ value: i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
+
+          state.checksum = collectionChecksum(cn);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -358,14 +364,14 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
+          
           var doc = {};
-          for (i = 0; i < 1000; ++i) {
+          for (let i = 0; i < 1000; ++i) {
             doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
           }
-
-          for (i = 0; i < 100; ++i) {
+          
+          for (let i = 0; i < 100; ++i) {
             c.save({
               "value": i,
               "values": doc
@@ -395,14 +401,14 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-          var doc = [];
-          for (i = 0; i < 1000; ++i) {
+          let c = db._create(cn);
+          let doc = [];
+
+          for (let i = 0; i < 1000; ++i) {
             doc.push("the quick brown foxx jumped over the LAZY dog");
           }
 
-          for (i = 0; i < 100; ++i) {
+          for (let i = 0; i < 100; ++i) {
             c.save({
               "value": i,
               "values": doc
@@ -432,17 +438,17 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
-
-          for (i = 0; i < 1000; ++i) {
-            var doc = {};
+          let c = db._create(cn);
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            let doc = {};
             doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
-            c.save({
+            docs.push({
               "value": i,
               "values": doc
             });
           }
+          c.insert(docs);
 
           var d = c.any();
           assertEqual(1, Object.keys(d.values).length);
@@ -467,12 +473,13 @@ function BaseTestConfig() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 1000; ++i) {
-            c.save({});
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({});
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -492,11 +499,11 @@ function BaseTestConfig() {
     testDocuments1: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "value": i,
               "foo": true,
               "bar": [i, false],
@@ -506,6 +513,7 @@ function BaseTestConfig() {
               }
             });
           }
+          c.insert(docs);
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -526,10 +534,9 @@ function BaseTestConfig() {
     testDocuments2: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 1000; ++i) {
+          for (let i = 0; i < 1000; ++i) {
             c.save({
               "abc": true,
               "_key": "test" + i
@@ -561,15 +568,19 @@ function BaseTestConfig() {
     testDocuments3: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 50000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 50000; ++i) {
+            docs.push({
               "_key": "test" + i,
               "foo": "bar",
               "baz": "bat"
             });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
 
           state.checksum = collectionChecksum(cn);
@@ -590,15 +601,19 @@ function BaseTestConfig() {
     testDocuments4: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 50000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 50000; ++i) {
+            docs.push({
               "_key": "test" + i,
               "foo": "bar",
               "baz": "bat"
             });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
           }
 
           state.checksum = collectionChecksum(cn);
@@ -621,10 +636,9 @@ function BaseTestConfig() {
     testDocuments5: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
 
-          for (i = 0; i < 100; ++i) {
+          for (let i = 0; i < 100; ++i) {
             c.save({
               "abc": true,
               "_key": "test" + i
@@ -656,22 +670,27 @@ function BaseTestConfig() {
     testEdges: function() {
       compare(
         function(state) {
-          var v = db._create(cn),
-            i;
-          var e = db._createEdgeCollection(cn2);
+          let v = db._create(cn);
+          let e = db._createEdgeCollection(cn2);
 
-          for (i = 0; i < 1000; ++i) {
-            v.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i
             });
           }
+          v.save(docs);
 
-          for (i = 0; i < 5000; i += 10) {
-            e.save(cn + "/test" + i, cn + "/test" + i, {
+          docs = [];
+          for (let i = 0; i < 5000; i += 10) {
+            docs.push({ 
+              _from: cn + "/test" + i, 
+              _to: cn + "/test" + i,
               "foo": "bar",
               "value": i
             });
           }
+          e.save(docs);
 
           state.checksum1 = collectionChecksum(cn);
           state.count1 = collectionCount(cn);
@@ -734,7 +753,7 @@ function BaseTestConfig() {
     testTransactionInsertFail: function() {
       compare(
         function(state) {
-          var c = db._create(cn);
+          let c = db._create(cn);
 
           try {
             db._executeTransaction({
@@ -774,13 +793,15 @@ function BaseTestConfig() {
     testTransactionRemove: function() {
       compare(
         function(state) {
-          var c = db._create(cn);
+          let c = db._create(cn);
 
-          for (var i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i
             });
           }
+          c.insert(docs);
 
           db._executeTransaction({
             collections: {
@@ -813,13 +834,15 @@ function BaseTestConfig() {
     testTransactionRemoveFail: function() {
       compare(
         function(state) {
-          var c = db._create(cn);
+          let c = db._create(cn);
 
-          for (var i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i
             });
           }
+          c.insert(docs);
 
           try {
             db._executeTransaction({
@@ -1544,17 +1567,18 @@ function BaseTestConfig() {
     testHashIndex: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureHashIndex("a", "b");
 
-          for (i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i,
               "a": parseInt(i / 2),
               "b": i
             });
           }
+          c.insert(docs);
           c.save({});
 
           state.checksum = collectionChecksum(cn);
@@ -1584,19 +1608,20 @@ function BaseTestConfig() {
     testSparseHashIndex: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureHashIndex("a", "b", {
             sparse: true
           });
 
-          for (i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i,
               "a": parseInt(i / 2),
               "b": i
             });
           }
+          c.insert(docs);
           c.save({});
 
           state.checksum = collectionChecksum(cn);
@@ -1626,11 +1651,10 @@ function BaseTestConfig() {
     testUniqueConstraint: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureUniqueConstraint("a");
 
-          for (i = 0; i < 1000; ++i) {
+          for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
                 "_key": "test" + i,
@@ -1667,13 +1691,12 @@ function BaseTestConfig() {
     testSparseUniqueConstraint: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureUniqueConstraint("a", {
             sparse: true
           });
 
-          for (i = 0; i < 1000; ++i) {
+          for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
                 "_key": "test" + i,
@@ -1710,17 +1733,18 @@ function BaseTestConfig() {
     testSkiplist: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureSkiplist("a", "b");
 
-          for (i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i,
               "a": parseInt(i / 2),
               "b": i
             });
           }
+          c.insert(docs);
           c.save({});
 
           state.checksum = collectionChecksum(cn);
@@ -1750,19 +1774,20 @@ function BaseTestConfig() {
     testSparseSkiplist: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureSkiplist("a", "b", {
             sparse: true
           });
 
-          for (i = 0; i < 1000; ++i) {
-            c.save({
+          let docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({
               "_key": "test" + i,
               "a": parseInt(i / 2),
               "b": i
             });
           }
+          c.insert(docs);
           c.save({});
 
           state.checksum = collectionChecksum(cn);
@@ -1792,11 +1817,10 @@ function BaseTestConfig() {
     testUniqueSkiplist: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureUniqueSkiplist("a");
 
-          for (i = 0; i < 1000; ++i) {
+          for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
                 "_key": "test" + i,
@@ -1833,13 +1857,12 @@ function BaseTestConfig() {
     testUniqueSparseSkiplist: function() {
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          let c = db._create(cn);
           c.ensureUniqueSkiplist("a", {
             sparse: true
           });
 
-          for (i = 0; i < 1000; ++i) {
+          for (let i = 0; i < 1000; ++i) {
             try {
               c.save({
                 "_key": "test" + i,

@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 
 var arangodb = require("@arangodb");
 var db = arangodb.db;
-
+let pathForTesting = require('internal').pathForTesting;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statement results encoding
@@ -42,7 +42,7 @@ function StatementResultEncodingSuite () {
   "use strict";
 
   var c = null;
-  var countries = JSON.parse(require("fs").read("js/common/tests/countries.json"));
+  var countries = JSON.parse(require("fs").read(pathForTesting('common/tests/countries.json')));
 
   return {
 
