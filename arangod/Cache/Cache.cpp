@@ -62,7 +62,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& 
       _id(id),
       _metadata(std::move(metadata)),
       _tableShrdPtr(std::move(table)),
-      _table(table.get()),
+      _table(_tableShrdPtr.get()),
       _bucketClearer(bucketClearer(&_metadata)),
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(),

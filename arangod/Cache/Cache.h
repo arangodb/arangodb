@@ -140,7 +140,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isBusy();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache has begin the process of shutting down.
+  /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const {
     return _shutdown.load();
