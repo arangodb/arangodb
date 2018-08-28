@@ -129,7 +129,6 @@ int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     transaction::Methods const& trx,
     VPackSlice slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
