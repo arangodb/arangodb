@@ -290,6 +290,8 @@ STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/rele
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
 ${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
 
+./utils/generateREADME.sh
+
 git add -f \
     README \
     arangod/Aql/tokens.cpp \
