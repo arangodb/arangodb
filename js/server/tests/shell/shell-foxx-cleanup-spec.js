@@ -5,7 +5,7 @@ const FoxxService = require('@arangodb/foxx/service');
 const fs = require('fs');
 const path = require('path');
 const expect = require('chai').expect;
-const fixtureRoot = path.resolve('js', 'common', 'test-data');
+const fixtureRoot = path.resolve(require('internal').pathForTesting('common'), 'test-data');
 
 describe('Foxx self-heal cleanup', () => {
   let mount = null;

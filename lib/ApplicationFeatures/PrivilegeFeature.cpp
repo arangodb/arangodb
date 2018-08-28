@@ -101,8 +101,9 @@ void PrivilegeFeature::extractPrivileges() {
       if (g != nullptr) {
         gidNumber = g->gr_gid;
       } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert groupname '" << _gid
-                   << "' to numeric gid";
+                   << "' to numeric gid: " << TRI_last_error();
         FATAL_ERROR_EXIT();
       }
 #else

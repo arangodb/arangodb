@@ -1436,7 +1436,7 @@ function processQuery (query, explain) {
               return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
             }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ') + '  ' + annotation('/* sort mode: ' + node.sortmode + ' */');
+          }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
     }
 
     return 'unhandled node type (' + node.type + ')';

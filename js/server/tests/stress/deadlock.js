@@ -26,7 +26,8 @@
 
 const internal = require('internal');
 const fs = require('fs');
-const tasks = require('org/arangodb/tasks');
+const tasks = require('@arangodb/tasks');
+const pathForTesting = internal.pathForTesting;
 
 const _ = require('lodash');
 
@@ -245,7 +246,7 @@ exports.lockCycleParallel = function (opts) {
   print('Starting', n, 'worker');
 
   const cmd = function (params) {
-    require('./js/server/tests/stress/deadlock').lockCycleRaw(params);
+    require('./' + pathForTesting('server/tests/stress/deadlock')).lockCycleRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {

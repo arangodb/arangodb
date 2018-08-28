@@ -1914,21 +1914,16 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::vector<std::string> names;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  bool haveRocks = engine->typeName() == RocksDBEngine::EngineName;
-  if (haveRocks) {
-    names = static_cast<RocksDBEngine*>(engine)->currentWalFiles();
-  }
+  std::vector<std::string> names = engine->currentWalFiles();
   std::sort(names.begin(), names.end());
 
   // already create an array of the correct size
-  v8::Handle<v8::Array> result = v8::Array::New(isolate);
+  uint32_t const n = static_cast<uint32_t>(names.size());
+  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
-  size_t const n = names.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    result->Set(static_cast<uint32_t>(i), TRI_V8_STD_STRING(isolate, names[i]));
+  for (uint32_t i = 0; i < n; ++i) {
+    result->Set(i, TRI_V8_STD_STRING(isolate, names[i]));
   }
 
   TRI_V8_RETURN(result);
@@ -2020,7 +2015,7 @@ void TRI_InitV8VocBridge(
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_path"),
                        JS_PathDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_currentWalFiles"),
-                       JS_CurrentWalFiles);
+                       JS_CurrentWalFiles, true);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_versionFilename"),
                        JS_VersionFilenameDatabase, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,

@@ -33,13 +33,18 @@
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SortNode.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
+  
+namespace {
+
+std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
+
+} // namespace
 
 void RocksDBOptimizerRules::registerResources() {
   // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
@@ -59,14 +64,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
-  plan->findNodesOfType(nodes, types, true);
+  plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
   std::unordered_set<Variable const*> vars;
   std::unordered_set<std::string> attributes;
 
-  for (auto const& n : nodes) {
+  for (auto& n : nodes) {
     bool stop = false;
     bool optimize = false;
     attributes.clear();

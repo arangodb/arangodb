@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test moving shards in the cluster
 ///
-/// @file js/server/tests/resilience/moving-shards-cluster.js
-///
 /// DISCLAIMER
 ///
 /// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany

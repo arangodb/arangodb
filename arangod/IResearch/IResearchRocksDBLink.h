@@ -120,11 +120,10 @@ class IResearchRocksDBLink final
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    unsigned flags
   ) const override;
 
   virtual IndexType type() const override {

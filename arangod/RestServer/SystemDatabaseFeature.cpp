@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,19 +21,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchCommon.h"
+#include "DatabaseFeature.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
 #include "SystemDatabaseFeature.h"
 
 namespace {
-  static std::string const FEATURE_NAME("SystemDatabase");
+
+static std::string const FEATURE_NAME("SystemDatabase");
+
 }
 
 namespace arangodb {
-namespace iresearch {
 
 void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
   if (ptr) {
@@ -42,11 +42,11 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
 }
 
 SystemDatabaseFeature::SystemDatabaseFeature(
-    arangodb::application_features::ApplicationServer& server,
+    application_features::ApplicationServer& server,
     TRI_vocbase_t* vocbase /*= nullptr*/
 ): ApplicationFeature(server, SystemDatabaseFeature::name()),
    _vocbase(vocbase) {
-  startsAfter("V8Phase");
+  startsAfter("Database");
 }
 
 /*static*/ std::string const& SystemDatabaseFeature::name() noexcept {
@@ -54,18 +54,18 @@ SystemDatabaseFeature::SystemDatabaseFeature(
 }
 
 void SystemDatabaseFeature::start() {
-  auto* databases = arangodb::application_features::ApplicationServer::lookupFeature<
+  auto* feature = application_features::ApplicationServer::lookupFeature<
     arangodb::DatabaseFeature
   >("Database");
 
-  if (databases) {
-    _vocbase.store(databases->systemDatabase());
+  if (feature) {
+    _vocbase.store(feature->systemDatabase());
 
     return;
   }
 
-  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-    << "failure to find feature 'Database' while starting SystemDatabaseFeature";
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    << "failure to find feature 'Database' while starting feature '" << FEATURE_NAME << "'";
   FATAL_ERROR_EXIT();
 }
 
@@ -79,7 +79,6 @@ SystemDatabaseFeature::ptr SystemDatabaseFeature::use() const {
   return ptr(vocbase && vocbase->use() ? vocbase : nullptr);
 }
 
-} // iresearch
 } // arangodb
 
 // -----------------------------------------------------------------------------

@@ -174,12 +174,12 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
                                                 "not supported with a master < "
                                                 "ArangoDB 2.7";
         incremental = false;
-      } else {
-        r = sendFlush();
-        if (r.fail()) {
-          return r;
-        }
-      }
+      } 
+    }
+        
+    r = sendFlush();
+    if (r.fail()) {
+      return r;
     }
 
     if (!_config.isChild()) {
@@ -315,6 +315,12 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 Result DatabaseInitialSyncer::sendFlush() {
   if (isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
+  
+  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+  if (engineName == "rocksdb" && _state.master.engine == engineName) {
+    // no WAL flush required for RocksDB. this is only relevant for MMFiles
+    return Result();
   }
 
   std::string const url = "/_admin/wal/flush";
@@ -486,6 +492,15 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
     return;
   }
+
+  // check if master & slave use the same storage engine
+  // if both use RocksDB, there is no need to use an async request for the
+  // initial batch. this is because with RocksDB there is no initial load
+  // time for collections as there may be with MMFiles if the collection is
+  // not yet in memory
+  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
+  bool const useAsync = (batch == 1 &&
+                         (engineName != "rocksdb" || _state.master.engine != engineName));
  
   try { 
     std::string const typeString = (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
@@ -507,7 +522,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     }
 
     auto headers = replutils::createHeaders();
-    if (batch == 1) {
+    if (useAsync) {
       // use async mode for first batch
       headers[StaticStrings::Async] = "store";
     }
@@ -539,7 +554,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
     }
 
     // use async mode for first batch
-    if (batch == 1) {
+    if (useAsync) {
       bool found = false;
       std::string jobId =
           response->getHeaderField(StaticStrings::AsyncId, found);

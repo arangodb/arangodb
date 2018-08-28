@@ -173,7 +173,6 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
 }
 
 void IndexBlock::executeExpressions() {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(_condition != nullptr);
   TRI_ASSERT(!_nonConstExpressions.empty());
 
@@ -216,7 +215,6 @@ void IndexBlock::executeExpressions() {
       }
     }
   }
-  DEBUG_END_BLOCK();
 }
 
 void IndexBlock::initializeOnce() {
@@ -362,7 +360,6 @@ void IndexBlock::initializeOnce() {
 // _pos to evaluate the variable bounds.
 
 bool IndexBlock::initIndexes() {
-  DEBUG_BEGIN_BLOCK();
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
@@ -436,22 +433,15 @@ bool IndexBlock::initIndexes() {
   }
   _indexesExhausted = false;
   return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief create an OperationCursor object
 void IndexBlock::createCursor() {
-  DEBUG_BEGIN_BLOCK();
   _cursor = orderCursor(_currentIndex);
-  DEBUG_END_BLOCK();
 }
 
 /// @brief Forwards _iterator to the next available index
 void IndexBlock::startNextCursor() {
-  DEBUG_BEGIN_BLOCK();
-
   IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   if (!node->options().ascending) {
     --_currentIndex;
@@ -466,13 +456,10 @@ void IndexBlock::startNextCursor() {
   } else {
     _cursor = nullptr;
   }
-  DEBUG_END_BLOCK();
 }
 
 // this is called every time we just skip in the index
 bool IndexBlock::skipIndex(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   if (_cursor == nullptr || _indexesExhausted) {
     // All indexes exhausted
     return false;
@@ -500,15 +487,11 @@ bool IndexBlock::skipIndex(size_t atMost) {
     return true;
   }
   return false;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes
 bool IndexBlock::readIndex(size_t atMost,
                            IndexIterator::DocumentCallback const& callback) {
-  DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -573,14 +556,10 @@ bool IndexBlock::readIndex(size_t atMost,
   }
   // if we get here the indexes are exhausted.
   return false;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -597,15 +576,11 @@ std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
   _copyFromRow = 0;
 
   return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
     size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   if (_done) {
     TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -761,14 +736,10 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
   traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
 
   return {getHasMoreState(), std::move(_resultInFlight)};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return {ExecutionState::DONE, 0};
   }
@@ -829,10 +800,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 
   size_t returned = _returned;
   _returned = 0;
-  return {getHasMoreState(), returned}
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  return {getHasMoreState(), returned};
 }
 
 /// @brief frees the memory for all non-constant expressions
