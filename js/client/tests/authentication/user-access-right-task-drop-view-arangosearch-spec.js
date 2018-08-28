@@ -189,13 +189,13 @@ function hasIResearch (db) {
                       users.grantCollection(user, dbName, colName, explicitRight);
                     }
                   }
-                helper.switchUser(user, dbName);
                 }
+                helper.switchUser(user, dbName);
               };
 
             const rootTestView = (viewName = testViewName, switchBack = true) => {
-              delete db[viewName];
               helper.switchUser('root', dbName);
+              delete db[viewName];
               let view = db._view(viewName);
               if (switchBack) {
                   helper.switchUser(name, dbName);
@@ -350,7 +350,10 @@ function hasIResearch (db) {
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to drop the view with insufficient rights`);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} managed to drop the view with insufficient rights`);
+                    console.error("SHOULD PASS 1: " + name);
+                    expect(rootTestView(testViewName)).to.equal(true, 'View deletion reported success, but view was found afterwards');
+                    console.error("SHOULD PASS 2: " + name);
                   }
                 } else {
                   try {
@@ -377,6 +380,7 @@ function hasIResearch (db) {
                 rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
                 expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
                 rootGrantCollection(testCol2Name, name, 'rw');
+
                 setKey(keySpaceId, name);
                 const taskId = 'task_drop_view_with_link_to_existing_diff_col' + name;
                 const task = {
@@ -403,6 +407,7 @@ function hasIResearch (db) {
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
                     expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                   }
                 } else {
