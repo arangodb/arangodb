@@ -684,7 +684,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   }
 
   args = ['--color',
-          '-I', fs.join('UnitTests', 'arangodbRspecLib'),
+          '-I', fs.join('tests', 'arangodbRspecLib'),
           '--format', 'd',
           '--format', 'j',
           '--out', jsonFN,
