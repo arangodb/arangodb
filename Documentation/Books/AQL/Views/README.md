@@ -4,10 +4,12 @@ Views in AQL
 Conceptually a **view** is just another document data source, similar to an
 array or a document/edge collection, e.g.:
 
-FOR doc IN exampleView
+```js
+FOR doc IN exampleView SEARCH ...
   FILTER ...
   SORT ...
   RETURN ...
+```
 
 A view is meant to be an abstraction over a transformation applied to documents
 of zero or more collections. The transformation is view-implementation specific
@@ -19,4 +21,4 @@ the [web interface](../../Manual/Programs/WebInterface/index.html).
 
 The currently supported view implementations are:
 
-- **arangosearch** as described in [ArangoSearch View](ArangoSearch/README.md)
+- `arangosearch` as described in [ArangoSearch View](ArangoSearch/README.md)

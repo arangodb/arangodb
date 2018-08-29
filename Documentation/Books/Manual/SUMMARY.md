@@ -91,7 +91,7 @@
     * [View Methods](DataModeling/Views/ViewMethods.md)
   * [Naming Conventions](DataModeling/NamingConventions/README.md)
     * [Database Names](DataModeling/NamingConventions/DatabaseNames.md)
-    * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
+    * [Collection and View Names](DataModeling/NamingConventions/CollectionAndViewNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
 * [Indexing](Indexing/README.md)

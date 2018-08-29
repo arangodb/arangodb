@@ -1,7 +1,7 @@
 ArangoSearch Views in AQL
 =========================
 
-Views of type **arangosearch** are an integration layer meant to seamlessly
+Views of type `arangosearch` are an integration layer meant to seamlessly
 integrate with and natively expose the full power of the
 [IResearch library](https://github.com/iresearch-toolkit/iresearch)
 to the ArangoDB user.
@@ -278,7 +278,7 @@ to match documents where 'description' best matches 'a quick brown fox'
 ArangoSearch sort
 -----------------
 
-A major feature of ArangoSearch views is their capability of sorting results
+A major feature of ArangoSearch Views is their capability of sorting results
 based on the creation-time search conditions and zero or more sorting functions.
 The sorting functions are meant to be user-defined.
 

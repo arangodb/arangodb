@@ -1,22 +1,20 @@
 ArangoSearch Scorers
 ====================
 
-ArangoSearch accesses scorers directly by their internal names. The
-name (in upper-case) of the scorer is the function name to be used in the
-['SORT' section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
-Function arguments, (excluding the first argument), are serialized as a
-string representation of a JSON array and passed directly to the corresponding
-scorer. The first argument to any scorer function is the reference to the 
-current document emitted by the `FOR` statement, i.e. it would be 'doc' for this
+ArangoSearch accesses scorers directly by their internal names.  The name (in
+upper-case) of the scorer is the function name to be used in the ['SORT'
+section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
+The first argument to any scorer function is the reference to the current
+document emitted by the `FOR` statement, i.e. it would be 'doc' for this
 statement:
 
 ```js
 FOR doc IN someView
 ```
 
-IResearch provides a 'bm25' scorer implementing the
-[BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). This scorer
-optionally takes 'k' and 'b' positional parameters.
+IResearch provides a 'bm25' scorer implementing the [BM25
+algorithm](https://en.wikipedia.org/wiki/Okapi_BM25).  This scorer optionally
+takes 'k' and 'b' positional parameters.
 
 The user is able to run queries with the said scorer, e.g.
 
