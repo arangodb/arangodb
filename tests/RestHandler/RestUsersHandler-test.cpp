@@ -20,7 +20,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include <iostream>
+
 #include "catch.hpp"
 #include "../IResearch/RestHandlerMock.h"
 #include "../IResearch/StorageEngineMock.h"
@@ -397,7 +397,7 @@ SECTION("test_collection_auth") {
     CHECK((arangodb::RestStatus::DONE == status));
     CHECK((arangodb::rest::ResponseCode::OK == grantWildcardResponce.responseCode()));
     auto slice = grantWildcardResponce._payload.slice();
-    CHECK((slice.isObject()));std::cerr << "|" << slice.toString() << "|" << std::endl;
+    CHECK((slice.isObject()));
     CHECK((slice.hasKey(vocbase->name() + "/*") && slice.get(vocbase->name() + "/*").isString() && arangodb::auth::convertFromAuthLevel(arangodb::auth::Level::RW) == slice.get(vocbase->name() + "/*").copyString()));
     CHECK((arangodb::auth::Level::RW == execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
