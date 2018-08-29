@@ -615,8 +615,7 @@ describe ArangoDB do
     end
 
     it "granting collection" do
-      ArangoDB.drop_collection("test")
-      ArangoDB.create_collection("test")
+      ArangoDB.post("/_db/test/_api/collection", :body => "{ \"name\" : \"test\" }")
       body = "{ \"grant\" : \"rw\"}"
       doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test/test", :body => body)
       doc.code.should eq(200)
