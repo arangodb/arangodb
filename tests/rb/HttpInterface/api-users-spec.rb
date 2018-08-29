@@ -13,15 +13,12 @@ describe ArangoDB do
       (0...10).each{|i|
         ArangoDB.delete("/_api/user/users-" + i.to_s);
       }
-      ArangoDB.drop_collection("test")
-      ArangoDB.create_collection("test")
     end
 
     after do
       (0...10).each{|i|
         ArangoDB.delete("/_api/user/users-" + i.to_s);
       }
-      ArangoDB.drop_collection("test")
     end
 
 ################################################################################
@@ -618,6 +615,8 @@ describe ArangoDB do
     end
 
     it "granting collection" do
+      ArangoDB.drop_collection("test")
+      ArangoDB.create_collection("test")
       body = "{ \"grant\" : \"rw\"}"
       doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test/test", :body => body)
       doc.code.should eq(200)

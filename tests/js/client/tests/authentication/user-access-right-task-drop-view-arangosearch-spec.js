@@ -194,8 +194,8 @@ function hasIResearch (db) {
               };
 
             const rootTestView = (viewName = testViewName, switchBack = true) => {
-              delete db[viewName];
               helper.switchUser('root', dbName);
+              delete db[viewName];
               let view = db._view(viewName);
               if (switchBack) {
                   helper.switchUser(name, dbName);
