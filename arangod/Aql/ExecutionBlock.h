@@ -26,7 +26,6 @@
 
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/Variable.h"
 
