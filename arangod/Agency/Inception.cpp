@@ -250,7 +250,7 @@ bool Inception::restartingActiveAgent() {
         }
         auto const& tcc = theirConfig.get("configuration");
 
-        if (!tcc.isObject() || !tcc.has("id")) {
+        if (!tcc.isObject() || !tcc.hasKey("id")) {
           continue ;
         }
         auto const& theirId = tcc.get("id").copyString();

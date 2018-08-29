@@ -173,8 +173,6 @@ bool CreateCollection::first() {
         _description.get(SERVER_ID), _result);
 
       _result.reset(TRI_ERROR_FAILED, error.str());
-      notify();
-      return false;
     }
 
   } catch (std::exception const& e) { // Guard failed?
@@ -182,10 +180,6 @@ bool CreateCollection::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
-    // Notify not necessary, since no shard error created.
-    //  General Problem: what if components needed to report error
-    //  are not there - because thats the error?
-    return false;
   }
 
   notify();
