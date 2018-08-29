@@ -35,7 +35,12 @@ namespace maintenance {
 
 class MaintenanceWorker : public Thread {
  public:
-  MaintenanceWorker(MaintenanceFeature& feature);
+  
+  MaintenanceWorker(
+    MaintenanceFeature& feature,
+    std::unordered_map<std::string, std::string> const& options =
+    std::unordered_map<std::string, std::string>());
+  
   MaintenanceWorker(
     MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
@@ -77,6 +82,8 @@ protected:
   bool _directAction;
 
   Result _lastResult;
+
+  std::unordered_map<std::string,std::string> _options;
 
 private:
   MaintenanceWorker(MaintenanceWorker const &) = delete;

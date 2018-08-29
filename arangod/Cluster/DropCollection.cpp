@@ -42,6 +42,8 @@ DropCollection::DropCollection(
 
   std::stringstream error;
   
+  _options[FAST_TRACK] = "true";
+
   if (!d.has(COLLECTION)) {
     error << "collection must be specified. "; 
   }

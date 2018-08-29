@@ -117,7 +117,15 @@ void MaintenanceFeature::start() {
   
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
+
+    // First worker will be available only to fast track
+    std::unordered_map<std::string, std::string> special {
+      {ActionBase::FAST_TRACK, "true"}};
+    
+    auto newWorker = (loop == 0) ? 
+      std::make_unique<maintenance::MaintenanceWorker>(*this, special) :
+      std::make_unique<maintenance::MaintenanceWorker>(*this);
+    
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "MaintenanceFeature::start:  newWorker start failed";

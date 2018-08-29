@@ -41,6 +41,8 @@ DropDatabase::DropDatabase(
 
   std::stringstream error;
 
+  _options[FAST_TRACK] = "true";
+
   if (!desc.has(DATABASE)) {
     error << "database must be specified";
   }

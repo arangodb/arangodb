@@ -30,13 +30,14 @@ namespace arangodb {
 
 namespace maintenance {
 
-MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature & feature)
-  : Thread("MaintenanceWorker"),
-    _feature(feature), _curAction(nullptr), _loopState(eFIND_ACTION),
-    _directAction(false) {
+MaintenanceWorker::MaintenanceWorker(
+  arangodb::MaintenanceFeature& feature,
+  std::unordered_map<std::string, std::string> const& options) 
+  : Thread("MaintenanceWorker"), _feature(feature), _curAction(nullptr),
+    _loopState(eFIND_ACTION), _directAction(false), _options(options) {
 
   return;
-
+  
 } // MaintenanceWorker::MaintenanceWorker
 
 

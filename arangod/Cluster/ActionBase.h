@@ -38,7 +38,6 @@ class MaintenanceFeature;
 
 namespace maintenance {
 
-
 class Action;
 
 class ActionBase {
@@ -99,6 +98,8 @@ class ActionBase {
   ActionState state() const {
     return _state;
   }
+
+  bool fastTrack() const;
 
   void notify();
 
@@ -197,16 +198,18 @@ class ActionBase {
   std::chrono::system_clock::time_point getDoneTime() const
     {return std::chrono::system_clock::time_point() + _actionDone.load(); }
 
+  std::string const static FAST_TRACK; 
 
 protected:
 
   /// @brief common initialization for all constructors
   void init();
 
-
   arangodb::MaintenanceFeature& _feature;
 
   ActionDescription _description;
+
+  std::map<std::string, std::string> _options;
 
   uint64_t _hash;
   std::string _clientId;
@@ -230,7 +233,7 @@ protected:
 
   Result _result;
 
-
+  
 
 }; // class ActionBase
 

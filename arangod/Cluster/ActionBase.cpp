@@ -51,6 +51,8 @@ const char ActionBase::LOCAL_LEADER[]="localLeader";
 const char ActionBase::GLOB_UID[]="globallyUniqueId";
 const char ActionBase::OBJECT_ID[]="objectId";
 
+std::string const ActionBase::FAST_TRACK = "fastTrack";
+
 inline static std::chrono::system_clock::duration secs_since_epoch() {
   return std::chrono::system_clock::now().time_since_epoch();
 }
@@ -95,6 +97,12 @@ void ActionBase::notify() {
   if (cf != nullptr) {	
     cf->syncDBServerStatusQuo();	
   }
+}
+
+
+bool ActionBase::fastTrack() const {
+  auto const& it = _options.find(FAST_TRACK);
+  return (it != _options.end()) ? it->second == "true" : false;
 }
 
 

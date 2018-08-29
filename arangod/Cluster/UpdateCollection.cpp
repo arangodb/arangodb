@@ -45,6 +45,8 @@ UpdateCollection::UpdateCollection(
 
   std::stringstream error;
   
+  _options[FAST_TRACK] = "true";
+
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
