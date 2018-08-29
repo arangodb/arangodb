@@ -92,6 +92,8 @@ bool DropIndex::first() {
       return false;
     }
 
+    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      << "Dropping local index " + collection + "/" + id;
     _result = Indexes::drop(col.get(), index.slice());
 
   } catch (std::exception const& e) {

@@ -169,20 +169,8 @@ bool CreateCollection::first() {
             << _result;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
 
-      // Error report for phaseTwo
-      VPackBuilder eb;
-      { VPackObjectBuilder o(&eb);
-        eb.add("error", VPackValue(true));
-        eb.add("errorMessage", VPackValue(_result.errorMessage()));
-        eb.add("errorNum", VPackValue(_result.errorNumber()));
-        eb.add(VPackValue("indexes"));
-        { VPackArrayBuilder a(&eb); } // []
-        eb.add(VPackValue("servers"));
-        {VPackArrayBuilder a(&eb);    // [serverId]
-          eb.add(VPackValue(_description.get(SERVER_ID))); }}
-
-      // Steal buffer for maintenance feature
-      _feature.storeShardError(database, collection, shard, eb.steal());
+      _feature.storeShardError(database, collection, shard,
+        _description.get(SERVER_ID), _result);
 
       _result.reset(TRI_ERROR_FAILED, error.str());
       notify();

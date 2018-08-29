@@ -148,6 +148,9 @@ std::shared_ptr<Action> ActionBase::getPostAction() {
 }
 
 
+// FIXMEMAINTENANCE: Code path could corrupt registry object because
+//   this does not hold lock.
+
 /// @brief Create a new action that will start after this action successfully completes
 void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
 

@@ -217,9 +217,9 @@ void handlePlanShard(
           errors.shards.end()) {
         actions.emplace_back(
           ActionDescription(
-            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
-            {LEADER, shouldBeLeading ? std::string() : leaderId},
-            {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
+            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, colname},
+            {SHARD, shname}, {LEADER, shouldBeLeading ? std::string() : leaderId},
+            {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
             properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)

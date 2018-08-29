@@ -215,6 +215,11 @@ public:
     std::string const& database, std::string const& collection,
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error);
 
+  arangodb::Result storeShardError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& serverId,
+    arangodb::Result const& failure);
+
   /**
    * @brief get all pending shard errors
    *

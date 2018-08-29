@@ -523,6 +523,25 @@ arangodb::Result MaintenanceFeature::removeDBError (
 
 arangodb::Result MaintenanceFeature::storeShardError (
   std::string const& database, std::string const& collection,
+  std::string const& shard, std::string const& serverId,
+  arangodb::Result const& failure)
+{
+  VPackBuilder eb;
+  { VPackObjectBuilder o(&eb);
+    eb.add("error", VPackValue(true));
+    eb.add("errorMessage", VPackValue(failure.errorMessage()));
+    eb.add("errorNum", VPackValue(failure.errorNumber()));
+    eb.add(VPackValue("indexes"));
+    { VPackArrayBuilder a(&eb); } // []
+    eb.add(VPackValue("servers"));
+    {VPackArrayBuilder a(&eb);    // [serverId]
+      eb.add(VPackValue(serverId)); }}
+
+  return storeShardError(database, collection, shard, eb.steal());
+}
+
+arangodb::Result MaintenanceFeature::storeShardError (
+  std::string const& database, std::string const& collection,
   std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {
 
   std::string key = database + SLASH + collection + SLASH + shard;
