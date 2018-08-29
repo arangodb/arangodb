@@ -382,7 +382,6 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
 std::tuple<Result, TransactionalBucket*, Table*>
 TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
                               bool singleOperation) {
-  // allow compiler to RVO these variables
   Result status;
   TransactionalBucket* bucket = nullptr;
   Table* source = nullptr;
@@ -390,7 +389,7 @@ TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
   Table* table = _table.load(std::memory_order_relaxed);
   if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
-    return std::make_tuple(status, bucket, source);
+    return std::make_tuple(std::move(status), bucket, source);
   }
 
   if (singleOperation) {
@@ -408,7 +407,7 @@ TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
-  return std::make_tuple(status, bucket, source);
+  return std::make_tuple(std::move(status), bucket, source);
 }
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {

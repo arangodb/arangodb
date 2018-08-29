@@ -301,7 +301,7 @@ std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
   Table* table = _table.load(std::memory_order_relaxed);
   if (isShutdown() || table == nullptr) {
     status.reset(TRI_ERROR_SHUTTING_DOWN);
-    return std::make_tuple(status, bucket, source);
+    return std::make_tuple(std::move(status), bucket, source);
   }
 
   if (singleOperation) {
@@ -317,7 +317,7 @@ std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
     status.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
-  return std::make_tuple(status, bucket, source);
+  return std::make_tuple(std::move(status), bucket, source);
 }
 
 Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
