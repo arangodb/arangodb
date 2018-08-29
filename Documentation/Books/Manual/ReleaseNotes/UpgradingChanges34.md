@@ -249,6 +249,12 @@ APIs:
 - if authentication is turned on, requests to databases by users with insufficient 
   access rights will be answered with HTTP 401 (Forbidden) instead of HTTP 404 (Not found).
 
+- the REST handler for user permissions at `/_api/user` will now return HTTP 404
+  (Not found) when trying to grant or revoke user permissions for a non-existing
+  collection.
+
+  This affects the HTTP PUT calls to the endpoint `/_api/user/<user>/<database>/<collection>` 
+  for collections that do not exist.
 
 The following APIs have been added or augmented:
 
