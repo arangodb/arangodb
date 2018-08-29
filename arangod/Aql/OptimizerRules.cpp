@@ -84,10 +84,13 @@ class CollectionVariableTracker final
   using DependencyPair = std::pair<arangodb::aql::Variable const*,
                                    arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
+  using VariableSet = std::unordered_set<arangodb::aql::Variable const*>;
   arangodb::aql::ExecutionPlan* _plan;
   bool _stop;
   std::unordered_map<arangodb::aql::Variable const*, DependencySet>
       _dependencies;
+  std::unordered_map<arangodb::aql::Collection const*, VariableSet>
+      _collectionVariables;
 
  private:
   template <class NodeType>
@@ -101,18 +104,24 @@ class CollectionVariableTracker final
         }
       }
     } catch (...) {
-      // do nothing
+      _stop = true;  // won't be able to recover correctly
     }
   }
 
   template <class NodeType>
   void processModificationNode(arangodb::aql::ExecutionNode const* en) {
     auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
-    auto outVariable = node->getOutVariableOld();
-    if (nullptr == outVariable) {
-      return;  // nothing to actually track here
+    auto collection = node->collection();
+    auto outVariableOld = node->getOutVariableOld();
+    if (nullptr != outVariableOld) {
+      processSetter<NodeType>(node, outVariableOld);
+      _collectionVariables[collection].emplace(outVariableOld);
     }
-    processSetter<NodeType>(node, outVariable);
+    auto outVariableNew = node->getOutVariableNew();
+    if (nullptr != outVariableNew) {
+      processSetter<NodeType>(node, outVariableNew);
+      _collectionVariables[collection].emplace(outVariableNew);
+    }
   }
 
  public:
@@ -123,6 +132,11 @@ class CollectionVariableTracker final
 
   DependencySet const& getDependencies(arangodb::aql::Variable const* var) {
     return _dependencies[var];
+  }
+
+  VariableSet const& getCollectionVariables(
+      arangodb::aql::Collection const* collection) {
+    return _collectionVariables[collection];
   }
 
   void after(arangodb::aql::ExecutionNode* en) override final {
@@ -151,6 +165,7 @@ class CollectionVariableTracker final
         // originates the collection variable, direct dependence
         try {
           _dependencies[variable].emplace(variable, collection);
+          _collectionVariables[collection].emplace(variable);
         } catch (...) {
           _stop = true;  // we won't be able to figure it out
         }
@@ -199,6 +214,7 @@ class RestrictToSingleShardChecker final
                      std::unordered_set<std::string>>
       _shardsUsed;
   bool _stop;
+  std::map<arangodb::aql::Collection const*, bool> _unsafe;
 
  public:
   explicit RestrictToSingleShardChecker(arangodb::aql::ExecutionPlan* plan,
@@ -223,6 +239,15 @@ class RestrictToSingleShardChecker final
     }
 
     return *set.begin();
+  }
+
+  bool isSafeForOptimization(
+      arangodb::aql::Collection const* collection) const {
+    auto it = _unsafe.find(collection);
+    if (it == _unsafe.end()) {
+      return true;
+    }
+    return !it->second;
   }
 
   bool isSafeForOptimization(arangodb::aql::Variable const* variable) const {
@@ -268,7 +293,7 @@ class RestrictToSingleShardChecker final
         auto v = node->getVariablesUsedHere();
         TRI_ASSERT(v.size() == 1);
         arangodb::aql::Variable const* inputVariable = v[0];
-        handleInputVariable(en, inputVariable, false);
+        handleInputVariable(en, inputVariable);
         break;
       }
 
@@ -283,9 +308,14 @@ class RestrictToSingleShardChecker final
       case EN::REMOVE: {
         auto node =
             ExecutionNode::castTo<arangodb::aql::ModificationNode const*>(en);
-        auto v = node->getVariablesUsedHere();
-        for (auto inputVariable : v) {
-          handleInputVariable(en, inputVariable, true);
+        // make sure we don't restrict this collection via a filter
+        auto accessors = _tracker.getCollectionVariables(node->collection());
+        for (auto var : accessors) {
+          _shardsUsed[var].clear();
+        }
+        std::string shardId = ::getSingleShardId(_plan, en, node->collection());
+        if (shardId.empty()) {
+          _unsafe[node->collection()] = true;
         }
         break;
       }
@@ -301,17 +331,13 @@ class RestrictToSingleShardChecker final
 
  private:
   void handleInputVariable(arangodb::aql::ExecutionNode const* en,
-                           arangodb::aql::Variable const* inputVariable,
-                           bool isModificationNode) {
+                           arangodb::aql::Variable const* inputVariable) {
     auto dependencies = _tracker.getDependencies(inputVariable);
     for (auto dep : dependencies) {
       auto variable = dep.first;
       auto collection = dep.second;
       auto shardId = ::getSingleShardId(_plan, en, collection, variable);
       if (shardId.empty()) {
-        if (isModificationNode) {
-          _shardsUsed[variable].clear();
-        }
         if (_shardsUsed[variable].empty()) {
           _shardsUsed[variable].emplace("all");
         }
@@ -616,7 +642,7 @@ std::string getSingleShardId(
         ::findShardKeysInExpression(n, inputVariable, toFind, builder);
       }
     }
-  } else if (setter->getType() == ExecutionNode::INDEX) {
+  } else if (setter->getType() == ExecutionNode::INDEX && setter == node) {
     auto const* c =
         ExecutionNode::castTo<arangodb::aql::IndexNode const*>(setter);
 
@@ -4474,6 +4500,8 @@ void arangodb::aql::restrictToSingleShardRule(
   plan->findNodesOfType(nodes, EN::REMOTE, true);
 
   std::unordered_set<ExecutionNode*> toUnlink;
+  std::map<Collection const*, std::unordered_set<std::string>>
+      modificationRestrictions;
 
   for (auto& node : nodes) {
     TRI_ASSERT(node->getType() == ExecutionNode::REMOTE);
@@ -4488,28 +4516,17 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection =
             ExecutionNode::castTo<ModificationNode const*>(current)
                 ->collection();
-        Variable const* collectionVariable = nullptr;
-        auto v = current->getVariablesUsedHere();
-        for (auto inputVariable : v) {
-          auto dependencies = tracker.getDependencies(inputVariable);
-          for (auto dep : dependencies) {
-            if (dep.second == collection) {
-              TRI_ASSERT(collectionVariable == nullptr);
-              collectionVariable = dep.first;
-            }
-          }
-        }
-        TRI_ASSERT(collectionVariable != nullptr);
-        std::string shardId = finder.getShard(collectionVariable);
+        std::string shardId =
+            ::getSingleShardId(plan.get(), current, collection);
 
-        if (finder.isSafeForOptimization(collectionVariable) &&
-            !shardId.empty()) {
+        if (!shardId.empty()) {
           wasModified = true;
           // we are on a single shard. we must not ignore not-found documents
           // now
           auto* modNode = ExecutionNode::castTo<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
           modNode->restrictToShard(shardId);
+          modificationRestrictions[collection].emplace(shardId);
 
           auto deps = current->getDependencies();
           if (deps.size() && deps[0]->getType() == ExecutionNode::REMOTE) {
@@ -4558,6 +4575,9 @@ void arangodb::aql::restrictToSingleShardRule(
         break;
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
+        auto collection =
+            ExecutionNode::castTo<CollectionAccessingNode const*>(current)
+                ->collection();
         auto collectionVariable =
             ExecutionNode::castTo<DocumentProducingNode const*>(current)
                 ->outVariable();
@@ -4568,6 +4588,14 @@ void arangodb::aql::restrictToSingleShardRule(
           wasModified = true;
           ExecutionNode::castTo<CollectionAccessingNode*>(current)
               ->restrictToShard(shardId);
+        } else if (finder.isSafeForOptimization(collection)) {
+          auto& shards = modificationRestrictions[collection];
+          if (shards.size() == 1) {
+            wasModified = true;
+            shardId = *shards.begin();
+            ExecutionNode::castTo<CollectionAccessingNode*>(current)
+                ->restrictToShard(shardId);
+          }
         }
         break;
       } else if (currentType == ExecutionNode::UPSERT ||

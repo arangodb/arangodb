@@ -453,8 +453,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-
-    testInnerOuter1 : function () {
+    testInnerOuterSame1 : function () {
       dropIndexes(collectionByKey);
 
       for (let i = 0; i < 24; ++i) {
@@ -477,7 +476,31 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testInnerOuter2 : function () {
+    testInnerOuterSameIndex1 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSame2 : function () {
       dropIndexes(collectionByKey);
 
       for (let i = 0; i < 24; ++i) {
@@ -501,7 +524,32 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testInnerOuter3 : function () {
+    testInnerOuterSameIndex2 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i+1}
+              RETURN [doc1, doc2]
+        `;
+        // Multi-shard not implemented yet
+        // validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i + 1 === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSame3 : function () {
       dropIndexes(collectionByKey);
 
       for (let i = 0; i < 24; ++i) {
@@ -528,7 +576,35 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testInnerOuter4 : function () {
+    testInnerOuterSameIndex3 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 16);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame4 : function () {
       dropIndexes(collectionByKey);
 
       for (let i = 0; i < 24; ++i) {
@@ -548,7 +624,28 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testInnerOuter5 : function () {
+    testInnerOuterSameIndex4 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              RETURN doc1
+        `;
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let doc of results) {
+          assertTrue(i === doc.value);
+        }
+      }
+    },
+
+    testInnerOuterSame5 : function () {
       dropIndexes(collectionByKey);
 
       for (let i = 0; i < 24; ++i) {
@@ -560,8 +657,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               FILTER doc2.${shardKey} == ${i}
               RETURN [NEW, doc2]
         `;
-        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
-        db._explain(query);
 
         let raw = db._query(query);
         let stats = raw.getExtra().stats;
@@ -572,6 +667,920 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertTrue(i === doc1.value);
           assertTrue(i === doc2.value);
           assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    /* TODO reenable once index-modify-filter bug is fixed
+    testInnerOuterSameIndex5 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query, {}, disableSingleShard);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },*/
+
+    testInnerOuterSame6 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex6 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame7 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            UPDATE doc1 WITH {test:1} IN ${cnKey}
+            RETURN NEW
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 4);
+        let results = raw.toArray();
+        assertEqual(4, results.length);
+        for (let doc of results) {
+          assertTrue(i === doc.value);
+          assertEqual(doc.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame7 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            UPDATE doc1 WITH {test:1} IN ${cnKey}
+            RETURN NEW
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 4);
+        let results = raw.toArray();
+        assertEqual(4, results.length);
+        for (let doc of results) {
+          assertTrue(i === doc.value);
+          assertEqual(doc.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame8 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex8 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSame9 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 16);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex9 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 16);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame10 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex10 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+        }
+      }
+    },
+
+    testInnerOuterSame11 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    /* TODO reenable once index-modify-filter bug is fixed
+    testInnerOuterSameIndex11 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc1.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query, {}, disableSingleShard);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },*/
+
+    testInnerOuterSame12 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+        FOR doc1 IN ${cnKey}
+          FOR doc2 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            UPDATE doc1 WITH {test:1} IN ${cnKey}
+            RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex12 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+        FOR doc1 IN ${cnKey}
+          FOR doc2 IN ${cnKey}
+            FILTER doc1.${shardKey} == ${i}
+            UPDATE doc1 WITH {test:1} IN ${cnKey}
+            RETURN [NEW, doc2]
+        `;
+        db._explain(query);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame13 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              FILTER doc1.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex13 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              FILTER doc1.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSame14 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              FILTER doc1.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 16);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex14 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              FILTER doc1.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 16);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame15 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex15 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [doc1, doc2]
+        `;
+
+        let raw = db._query(query);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc2.value);
+        }
+      }
+    },
+
+    testInnerOuterSame16 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER NEW.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query, {}, disableSingleShard);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex16 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER NEW.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query, {}, disableSingleShard);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame17 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex17 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 400);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    /* TODO reenable once sharding-register-crash is fixed
+    testInnerOuterSame18 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER NEW.${shardKey} == ${i}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query, {}, disableSingleShard);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex18 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER NEW.${shardKey} == ${i}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query, {}, disableSingleShard);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame19 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER NEW.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex19 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER NEW.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame20 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              FILTER NEW.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex20 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              FILTER NEW.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(16, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc1.value);
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame21 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex21 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              FILTER doc2.${shardKey} == ${i}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(400, results.length);
+        for (let [doc1, doc2] of results) {
+          assertTrue(i === doc2.value);
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSame22 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(10000, results.length);
+        for (let [doc1, doc2] of results) {
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex22 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            FOR doc2 IN ${cnKey}
+              UPDATE doc1 WITH {test:1} IN ${cnKey}
+              RETURN [NEW, doc2]
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 10000);
+        let results = raw.toArray();
+        assertEqual(10000, results.length);
+        for (let [doc1, doc2] of results) {
+          assertEqual(doc1.test, 1);
+        }
+      }
+    },*/
+
+    testInnerOuterSame23 : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            UPDATE doc1 WITH {test:1} IN ${cnKey}
+            FILTER NEW.${shardKey} == ${i}
+            RETURN NEW
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 100);
+        let results = raw.toArray();
+        assertEqual(4, results.length);
+        for (let doc of results) {
+          assertTrue(i === doc.value);
+          assertEqual(doc.test, 1);
+        }
+      }
+    },
+
+    testInnerOuterSameIndex23 : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 24; ++i) {
+        const query = `
+          FOR doc1 IN ${cnKey}
+            UPDATE doc1 WITH {test:1} IN ${cnKey}
+            FILTER NEW.${shardKey} == ${i}
+            RETURN NEW
+        `;
+
+        let raw = db._query(query);
+        let stats = raw.getExtra().stats;
+        assertEqual(stats.writesExecuted, 100);
+        let results = raw.toArray();
+        assertEqual(4, results.length);
+        for (let doc of results) {
+          assertTrue(i === doc.value);
+          assertEqual(doc.test, 1);
         }
       }
     },
