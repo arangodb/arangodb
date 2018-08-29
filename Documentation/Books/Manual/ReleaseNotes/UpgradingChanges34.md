@@ -722,3 +722,10 @@ removed in future versions of ArangoDB:
   will still work and automatically be rewritten by the AQL query optimizer 
   to the above forms. However, AQL queries using the deprecated AQL functions
   should eventually be adjusted.
+
+* using the `arangoimp` binary instead of `arangoimport` 
+
+  `arangoimp` has been renamed to `arangoimport` for consistency in ArangoDB
+  3.4, and `arangoimp` is just a symbolic link to `arangoimport` now.
+  `arangoimp` is there for compatibility only, but client scripts should 
+  eventually be migrated to use `arangoimport` instead.
