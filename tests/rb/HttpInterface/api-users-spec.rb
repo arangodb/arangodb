@@ -631,7 +631,8 @@ describe ArangoDB do
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['code'].should eq(200)
-      doc.parsed_response['result'].should eq('rw')
+      #doc.parsed_response['result'].should eq('rw')
+      doc.parsed_response['result'].should eq('ro')
     end
 
     it "revoking granted collection" do
