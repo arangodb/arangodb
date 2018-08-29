@@ -33,9 +33,9 @@ class SocketTcp final : public Socket {
   friend class AcceptorTcp;
 
  public:
-  SocketTcp(rest::Scheduler* scheduler)
-      : Socket(scheduler, /*encrypted*/ false),
-        _socket(scheduler->newSocket()),
+  SocketTcp(rest::GeneralServer::IoContext &context)
+      : Socket(context, /*encrypted*/ false),
+        _socket(context.newSocket()),
         _peerEndpoint() {}
 
   SocketTcp(SocketTcp const& that) = delete;
@@ -58,7 +58,7 @@ class SocketTcp final : public Socket {
 
   void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override {
-    return asio_ns::async_write(*_socket, buffer, _strand->wrap(handler));
+    return asio_ns::async_write(*_socket, buffer, handler);
   }
 
   size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
@@ -68,7 +68,7 @@ class SocketTcp final : public Socket {
 
   void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) override {
-    return _socket->async_read_some(buffer, _strand->wrap(handler));
+    return _socket->async_read_some(buffer, handler);
   }
 
   void close(asio_ns::error_code& ec) override {

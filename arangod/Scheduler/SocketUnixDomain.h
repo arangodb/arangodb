@@ -36,9 +36,9 @@ class SocketUnixDomain final : public Socket {
   friend class AcceptorUnixDomain;
 
  public:
-  explicit SocketUnixDomain(rest::Scheduler* scheduler)
-      : Socket(scheduler, false),
-        _socket(scheduler->newDomainSocket()) {}
+  explicit SocketUnixDomain(rest::GeneralServer::IoContext &context)
+      : Socket(context, false),
+        _socket(context.newDomainSocket()) {}
 
   SocketUnixDomain(SocketUnixDomain&& that) = default;
 

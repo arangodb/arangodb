@@ -64,15 +64,16 @@ static std::string const Open("/_open/");
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
+GeneralCommTask::GeneralCommTask(GeneralServer &server,
+                                 GeneralServer::IoContext &context,
                                  std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
-    : Task(scheduler, "GeneralCommTask"),
-      SocketTask(scheduler, std::move(socket), std::move(info),
+    : IoTask(server, context, "GeneralCommTask"),
+      SocketTask(server, context, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
-      _server(server),
       _auth(AuthenticationFeature::instance()) {
+
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -131,23 +132,24 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
-  
+
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
     addResponse(*res, nullptr);
     return RequestFlow::Abort;
   }
-  
+
   bool found;
   std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
   if (found) { // log request source in cluster for debugging
     LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
     << "\",\"" << source << "\"";
   }
-  
+
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
+
   ServerState::Mode mode = ServerState::mode();
   switch (mode) {
     case ServerState::Mode::MAINTENANCE: {
@@ -199,7 +201,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // no special handling required
       break;
   }
-  
+
   // Step 3: Try to resolve vocbase and use
   if (!::resolveRequestContext(req)) { // false if db not found
     if (_auth->isActive()) {

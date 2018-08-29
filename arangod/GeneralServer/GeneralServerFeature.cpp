@@ -109,7 +109,8 @@ GeneralServerFeature::GeneralServerFeature(
 )
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
-      _proxyCheck(true) {
+      _proxyCheck(true),
+      _numIoThreads(8) {
   setOptional(true);
   startsAfter("AQLPhase");
 
@@ -132,6 +133,11 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("server.default-api-compatibility", "");
   options->addOldOption("no-server", "server.rest-server");
+
+  options->addOption(
+      "--server.io-threads",
+      "Number of threads used to handle IO",
+      new UInt64Parameter(&_numIoThreads));
 
   options->addSection("http", "HttpServer features");
 
@@ -192,6 +198,11 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                          return basics::StringUtils::trim(value).empty();
                        }),
         _accessControlAllowOrigins.end());
+  }
+
+  // we need at least one io thread and context
+  if (_numIoThreads <= 0) {
+    _numIoThreads = 1;
   }
 }
 
@@ -261,7 +272,7 @@ void GeneralServerFeature::buildServers() {
     ssl->SSL->verifySslOptions();
   }
 
-  GeneralServer* server = new GeneralServer();
+  GeneralServer* server = new GeneralServer(_numIoThreads);
 
   server->setEndpointList(&endpointList);
   _servers.push_back(server);
