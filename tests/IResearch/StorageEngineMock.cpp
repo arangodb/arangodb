@@ -861,8 +861,10 @@ arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods* 
 
 arangodb::Result PhysicalCollectionMock::replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous) {
   before();
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+
+  auto key = newSlice.get(arangodb::StaticStrings::KeyString);
+
+  return update(trx, newSlice, result, options, resultMarkerTick, lock, prevRev, previous, key);
 }
 
 int PhysicalCollectionMock::restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) {
