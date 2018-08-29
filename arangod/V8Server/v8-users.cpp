@@ -44,6 +44,48 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a collection exists in database or a wildcard was specified
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result existsCollection(
+    std::string const& database, std::string const& collection
+) {
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL, "failure to find feature 'Database'"
+    );
+  }
+
+  static const std::string wildcard("*");
+
+  if (wildcard == database) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  auto* vocbase = databaseFeature->lookupDatabase(database);
+
+  if (!vocbase) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (wildcard == collection) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  return !arangodb::CollectionNameResolver(*vocbase).getCollection(collection)
+    ? arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
+    : arangodb::Result()
+    ;
+}
+
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -325,20 +367,10 @@ static void JS_GrantCollection(
 
   // validate that the collection is present
   {
-    auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::DatabaseFeature
-    >("Database");
+    auto res = existsCollection(db, coll);
 
-    if (!databaseFeature) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    auto* database = databaseFeature->lookupDatabase(db);
-    static const std::string wildcard("*");
-
-    if (!database
-        || (wildcard != coll && !arangodb::CollectionNameResolver(*database).getCollection(coll))) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
   }
 
@@ -388,20 +420,10 @@ static void JS_RevokeCollection(
 
   // validate that the collection is present
   {
-    auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::DatabaseFeature
-    >("Database");
+    auto res = existsCollection(db, coll);
 
-    if (!databaseFeature) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-
-    auto* database = databaseFeature->lookupDatabase(db);
-    static const std::string wildcard("*");
-
-    if (!database
-        || (wildcard != coll && !arangodb::CollectionNameResolver(*database).getCollection(coll))) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
   }
 

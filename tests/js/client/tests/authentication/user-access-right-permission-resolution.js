@@ -118,8 +118,6 @@ function PermissionResolutionSuite () {
 
     testAcessLevelFallbacks : function () {
       for (const user of userSet) {
-        db._drop(user.col.name);
-        db._create(user.col.name);
         createUser(user);
 
         let permission = users.permission(user.name, '_system');
