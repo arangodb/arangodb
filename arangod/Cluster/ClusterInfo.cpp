@@ -3589,10 +3589,6 @@ void ClusterInfo::invalidatePlan() {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
   }
-  { // WHY IS THIS DONE TWICE?
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
