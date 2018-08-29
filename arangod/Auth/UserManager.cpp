@@ -39,6 +39,7 @@
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -50,6 +51,28 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
+  if (!feature) {
+    LOG_TOPIC(WARN, arangodb::Logger::AUTHENTICATION)
+      << "failure to find feature '" << arangodb::SystemDatabaseFeature::name() << "' while getting the system database";
+
+    return nullptr;
+  }
+
+  return feature->use();
+}
+
+}
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -100,8 +123,9 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    aql::QueryRegistry* queryRegistry) {
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    aql::QueryRegistry* queryRegistry
+) {
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
@@ -234,7 +258,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   bool hasRev = data.slice().hasKey(StaticStrings::RevString);
   TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
@@ -550,7 +574,7 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
 
 static Result RemoveUserInternal(auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");

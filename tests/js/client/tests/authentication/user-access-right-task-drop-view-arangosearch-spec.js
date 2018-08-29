@@ -44,7 +44,7 @@ const rightLevels = helper.rightLevels;
 const testViewName = `${namePrefix}ViewNew`;
 const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
-const testCol2Name = `${namePrefix}Col1New`;
+const testCol2Name = `${namePrefix}Col2New`;
 const keySpaceId = 'task_drop_view_keyspace';
 
 const userSet = helper.userSet;
@@ -180,27 +180,27 @@ function hasIResearch (db) {
             };
 
             const rootGrantCollection = (colName, user, explicitRight = '') => {
-                if (rootTestCollection(colName, false)) {
-                  if (explicitRight !== '' && rightLevels.includes(explicitRight))
-                  {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-                    } else {
-                      users.grantCollection(user, dbName, colName, explicitRight);
-                    }
+              if (rootTestCollection(colName, false)) {
+                if (explicitRight !== '' && rightLevels.includes(explicitRight))
+                {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + user, dbName, colName, explicitRight);
+                  } else {
+                    users.grantCollection(user, dbName, colName, explicitRight);
                   }
-                helper.switchUser(user, dbName);
                 }
-              };
+              }
+              helper.switchUser(user, dbName);
+            };
 
             const rootTestView = (viewName = testViewName, switchBack = true) => {
-              delete db[viewName];
               helper.switchUser('root', dbName);
+              delete db[viewName];
               let view = db._view(viewName);
               if (switchBack) {
                   helper.switchUser(name, dbName);
               }
-              return view != null;
+              return view !== null;
             };
 
             const rootCreateView = (viewName = testViewName, properties = null) => {
@@ -249,7 +249,7 @@ function hasIResearch (db) {
                   command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
-                      db._view('${testViewName}').drop();
+                      db._dropView('${testViewName}');
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
@@ -350,7 +350,8 @@ function hasIResearch (db) {
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to drop the view with insufficient rights`);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} managed to drop the view with insufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(true, 'View deletion reported success, but view was found afterwards');
                   }
                 } else {
                   try {
@@ -377,6 +378,7 @@ function hasIResearch (db) {
                 rootCreateView(testViewName, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
                 expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
                 rootGrantCollection(testCol2Name, name, 'rw');
+
                 setKey(keySpaceId, name);
                 const taskId = 'task_drop_view_with_link_to_existing_diff_col' + name;
                 const task = {
@@ -403,6 +405,7 @@ function hasIResearch (db) {
                   } else {
                     tasks.register(task);
                     wait(keySpaceId, name);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could drop the view with insufficient rights`);
                     expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
                   }
                 } else {
@@ -413,7 +416,7 @@ function hasIResearch (db) {
                     checkError(e);
                     return;
                   } finally {
-                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could update the view with insufficient rights`);
+                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(false, `${name} could drop the view with insufficient rights`);
                   }
                   expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
                 }

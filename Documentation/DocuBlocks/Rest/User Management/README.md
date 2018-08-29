@@ -223,7 +223,9 @@ Returned if you have *No access* server access level.
 @EXAMPLE_ARANGOSH_RUN{RestGrantCollection}
     var users = require("@arangodb/users");
     var theUser = "admin@myapp";
-    try { users.remove(theUser); } catch (err) {}
+~   try { users.remove(theUser); } catch (err) {}
+~   try { db_drop("reports"); } catch (err) {}
+~   db._create("reports");
     users.save(theUser, "secret")
 
     var url = "/_api/user/" + theUser + "/database/_system/reports";
@@ -231,6 +233,7 @@ Returned if you have *No access* server access level.
     var response = logCurlRequest('PUT', url, data);
 
     assert(response.code === 200);
+~   db._drop("reports");
 
     logJsonResponse(response);
     users.remove(theUser);
@@ -274,19 +277,22 @@ If there was an error
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestRevokeCollection}
-var users = require("@arangodb/users");
-var theUser = "admin@myapp";
-try { users.remove(theUser); } catch (err) {}
-users.save(theUser, "secret")
-users.grantCollection(theUser, "_system", "reports", "rw");
+  var users = require("@arangodb/users");
+  var theUser = "admin@myapp";
+  try { users.remove(theUser); } catch (err) {}
+~ try { db_drop("reports"); } catch (err) {}
+~ db._create("reports");
+  users.save(theUser, "secret")
+  users.grantCollection(theUser, "_system", "reports", "rw");
 
-var url = "/_api/user/" + theUser + "/database/_system/reports";
-var response = logCurlRequest('DELETE', url);
+  var url = "/_api/user/" + theUser + "/database/_system/reports";
+  var response = logCurlRequest('DELETE', url);
 
-assert(response.code === 202);
+  assert(response.code === 202);
+~ db._drop("reports");
 
-logJsonResponse(response);
-users.remove(theUser);
+  logJsonResponse(response);
+  users.remove(theUser);
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
