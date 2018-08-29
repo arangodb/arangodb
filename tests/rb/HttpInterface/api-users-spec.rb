@@ -615,24 +615,28 @@ describe ArangoDB do
     end
 
     it "granting collection" do
+      ArangoDB.drop_collection("test", "test")
+      ArangoDB.create_collection("test", false, 2, "test") # collection must exist
       body = "{ \"grant\" : \"rw\"}"
       doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test/test", :body => body)
-      doc.code.should eq(404) # collection not present
-      doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['code'].should eq(404)
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
 
       doc = ArangoDB.log_get("#{prefix}-grant-validate", api + "/users-1/database/test/test")
       doc.code.should eq(200)
       doc.parsed_response['error'].should eq(false)
       doc.parsed_response['code'].should eq(200)
-      doc.parsed_response['result'].should eq('ro')
+      doc.parsed_response['result'].should eq('rw')
     end
 
     it "revoking granted collection" do
+      ArangoDB.drop_collection("test", "test")
+      ArangoDB.create_collection("test", false, 2, "test") # collection must exist
       doc = ArangoDB.log_delete("#{prefix}-revoke", api + "/users-1/database/test/test")
-      doc.code.should eq(404) # collection not present
-      doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['code'].should eq(404)
+      doc.code.should eq(202)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(202)
 
       doc = ArangoDB.log_get("#{prefix}-validate", api + "/users-1/database/test/test")
       doc.code.should eq(200)
