@@ -3,7 +3,8 @@ ArangoSearch Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of named analyzers which
 are merely aliases for type+configuration of IResearch analyzers. Management of
-named analyzers is exposed via REST, GUI and JavaScript APIs e.g.
+named analyzers will be exposed in upcoming ArangoDB versions via REST, GUI
+and JavaScript APIs, e.g.
 
 `db._globalSettings("iresearch.analyzers")`
 
@@ -56,8 +57,8 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
       RETURN doc
 
-Runtime-plugging functionality for analyzers is not available in ArangoDB at this
-point in time, so ArangoDB comes with a few default-initialized analyzers:
+Runtime-plugging functionality for analyzers is not available in ArangoDB at
+this point in time, so ArangoDB comes with a few default-initialized analyzers:
 
 * `identity`
   treat the value as an atom

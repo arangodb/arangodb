@@ -162,7 +162,7 @@ void UpgradeFeature::start() {
     }
 
     LOG_TOPIC(INFO, arangodb::Logger::STARTUP)
-      << "Server will now shutdown due to upgrade, database init or admin restoration.";
+      << "server will now shut down due to upgrade, database initialization or admin restoration.";
 
     server()->beginShutdown();
   }

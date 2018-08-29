@@ -55,52 +55,9 @@ inline bool filterConditionIsEmpty(aql::AstNode const* filterCondition) {
   return filterCondition == &ALL;
 }
 
-// in loop or non-deterministic
-bool hasDependecies(
-    aql::ExecutionPlan const& plan,
-    aql::AstNode const& node,
-    aql::Variable const& ref,
-    std::unordered_set<aql::Variable const*>& vars
-) {
-  if (!node.isDeterministic()) {
-    return false;
-  }
-
-  vars.clear();
-  aql::Ast::getReferencedVariables(&node, vars);
-  vars.erase(&ref); // remove "our" variable
-
-  for (auto const* var : vars) {
-    auto* setter = plan.getVarSetBy(var->id);
-
-    if (!setter) {
-      // unable to find setter
-      continue;
-    }
-
-    if (!setter->isDeterministic()) {
-      // found nondeterministic setter
-      return true;
-    }
-
-    switch (setter->getType()) {
-      case aql::ExecutionNode::ENUMERATE_COLLECTION:
-      case aql::ExecutionNode::ENUMERATE_LIST:
-      case aql::ExecutionNode::SUBQUERY:
-      case aql::ExecutionNode::COLLECT:
-      case aql::ExecutionNode::TRAVERSAL:
-      case aql::ExecutionNode::INDEX:
-      case aql::ExecutionNode::SHORTEST_PATH:
-      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-        // we're in the loop with dependent context
-        return true;
-      default:
-        break;
-    }
-  }
-
-  return false;
-}
+// -----------------------------------------------------------------------------
+// --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
+// -----------------------------------------------------------------------------
 
 void toVelocyPack(
     velocypack::Builder& builder,
@@ -174,6 +131,166 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
   return sorts;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                            helpers for IResearchViewNode::Options
+// -----------------------------------------------------------------------------
+
+void toVelocyPack(
+    velocypack::Builder& builder,
+    arangodb::iresearch::IResearchViewNode::Options const& options
+) {
+  VPackObjectBuilder objectScope(&builder);
+  builder.add("waitForSync", VPackValue(options.forceSync));
+}
+
+bool fromVelocyPack(
+    velocypack::Slice optionsSlice,
+    arangodb::iresearch::IResearchViewNode::Options& options
+) {
+  if (!optionsSlice.isObject()) {
+    return false;
+  }
+
+  // forceSync
+  {
+    auto const optionSlice = optionsSlice.get("waitForSync");
+
+    if (!optionSlice.isBool()) {
+      return false;
+    }
+
+    options.forceSync = optionSlice.getBool();
+  }
+
+  return true;
+}
+
+bool parseOptions(
+    aql::AstNode const* optionsNode,
+    arangodb::iresearch::IResearchViewNode::Options& options,
+    std::string& error
+) {
+  typedef bool(*OptionHandler)(
+    aql::AstNode const&,
+    arangodb::iresearch::IResearchViewNode::Options&,
+    std::string&
+  );
+
+  static std::map<irs::string_ref, OptionHandler> const Handlers {
+    {
+      "waitForSync", [](
+        aql::AstNode const& value,
+        arangodb::iresearch::IResearchViewNode::Options& options,
+        std::string& error
+      ) {
+        if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
+          error = "boolean value expected for 'waitForSync'";
+          return false;
+        }
+
+        options.forceSync = value.getBoolValue();
+        return true;
+    }}
+  };
+
+  if (!optionsNode) {
+    // nothing to parse
+    return true;
+  }
+
+  if (aql::NODE_TYPE_OBJECT != optionsNode->type) {
+    // must be an object
+    return false;
+  }
+
+  const size_t n = optionsNode->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto const* attribute = optionsNode->getMemberUnchecked(i);
+
+    if (!attribute
+        || attribute->type != aql::NODE_TYPE_OBJECT_ELEMENT
+        || !attribute->isValueType(aql::VALUE_TYPE_STRING)
+        || !attribute->numMembers()) {
+      // invalid or malformed node detected
+      return false;
+    }
+
+    irs::string_ref const attributeName(
+      attribute->getStringValue(), attribute->getStringLength()
+    );
+
+    auto const handler = Handlers.find(attributeName);
+
+    if (handler == Handlers.end()) {
+      // no handler found for attribute
+      continue;
+    }
+
+    auto const* value = attribute->getMemberUnchecked(0);
+
+    if (!value
+        || !value->isConstant()
+        || !handler->second(*value, options, error)) {
+      // can't handle attribute
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     other helpers
+// -----------------------------------------------------------------------------
+
+// in loop or non-deterministic
+bool hasDependecies(
+    aql::ExecutionPlan const& plan,
+    aql::AstNode const& node,
+    aql::Variable const& ref,
+    std::unordered_set<aql::Variable const*>& vars
+) {
+  if (!node.isDeterministic()) {
+    return false;
+  }
+
+  vars.clear();
+  aql::Ast::getReferencedVariables(&node, vars);
+  vars.erase(&ref); // remove "our" variable
+
+  for (auto const* var : vars) {
+    auto* setter = plan.getVarSetBy(var->id);
+
+    if (!setter) {
+      // unable to find setter
+      continue;
+    }
+
+    if (!setter->isDeterministic()) {
+      // found nondeterministic setter
+      return true;
+    }
+
+    switch (setter->getType()) {
+      case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_LIST:
+      case aql::ExecutionNode::SUBQUERY:
+      case aql::ExecutionNode::COLLECT:
+      case aql::ExecutionNode::TRAVERSAL:
+      case aql::ExecutionNode::INDEX:
+      case aql::ExecutionNode::SHORTEST_PATH:
+      case aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+        // we're in the loop with dependent context
+        return true;
+      default:
+        break;
+    }
+  }
+
+  return false;
+}
+
 /// negative value - value is dirty
 /// _volatilityMask & 1 == volatile filter
 /// _volatilityMask & 2 == volatile sort
@@ -227,6 +344,7 @@ IResearchViewNode::IResearchViewNode(
     std::shared_ptr<const arangodb::LogicalView> const& view,
     arangodb::aql::Variable const& outVariable,
     arangodb::aql::AstNode* filterCondition,
+    arangodb::aql::AstNode* options,
     std::vector<IResearchSort>&& sortCondition)
   : arangodb::aql::ExecutionNode(&plan, id),
     _vocbase(vocbase),
@@ -238,6 +356,15 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+
+  // FIXME any other way to validate options before object creation???
+  std::string error;
+  if (!parseOptions(options, _options, error)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "invalid ArangoSearch options provided: " + error
+    );
+  }
 }
 
 IResearchViewNode::IResearchViewNode(
@@ -310,6 +437,12 @@ IResearchViewNode::IResearchViewNode(
   } else {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
       << "invalid 'IResearchViewNode' json format: unable to find 'shards' array";
+  }
+
+  // options
+  if (!::fromVelocyPack(base.get("options"), _options)) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "failed to parse 'IResearchViewNode' options";
   }
 
   // volatility mask
@@ -392,11 +525,15 @@ void IResearchViewNode::toVelocyPackHelper(
 
   // shards
   {
-    VPackArrayBuilder guard(&nodes, "shards");
+    VPackArrayBuilder arrayScope(&nodes, "shards");
     for (auto& shard: _shards) {
       nodes.add(VPackValue(shard));
     }
   }
+
+  // options
+  nodes.add(VPackValue("options"));
+  ::toVelocyPack(nodes, _options);
 
   // volatility mask
   nodes.add("volatility", VPackValue(_volatilityMask));
@@ -451,9 +588,11 @@ aql::ExecutionNode* IResearchViewNode::clone(
     _view,
     *outVariable,
     const_cast<aql::AstNode*>(_filterCondition),
+    nullptr,
     decltype(_sortCondition)(_sortCondition)
   );
   node->_shards = _shards;
+  node->_options = _options;
   node->_volatilityMask = _volatilityMask;
 
   return cloneHelper(std::move(node), withDependencies, withProperties);
@@ -527,9 +666,25 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, true);
+    // there are no cluster-wide transactions,
+    // no place to store snapshot
+    static IResearchView::Snapshot const SNAPSHOT[] {
+      IResearchView::Snapshot::FindOrCreate,
+      IResearchView::Snapshot::SyncAndCreate
+    };
+
+    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(
+      *trx, _shards, SNAPSHOT[size_t(_options.forceSync)]
+    );
   } else {
-    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx);
+    static IResearchView::Snapshot const SNAPSHOT[] {
+      IResearchView::Snapshot::Find,
+      IResearchView::Snapshot::SyncAndCreate
+    };
+
+    reader = LogicalView::cast<IResearchView>(view).snapshot(
+      *trx, SNAPSHOT[size_t(_options.forceSync)]
+    );
   }
 
   if (!reader) {

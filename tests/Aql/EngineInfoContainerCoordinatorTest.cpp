@@ -28,6 +28,7 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/ExecutionEngine.h"

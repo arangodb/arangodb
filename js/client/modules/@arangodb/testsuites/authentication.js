@@ -49,8 +49,8 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const download = require('internal').download;
 
 const testPaths = {
-  'authentication': ['js/client/tests/authentication'],
-  'authentication_server': ['js/server/tests/authentication'],
+  'authentication': [tu.pathForTesting('client/tests/authentication')],
+  'authentication_server': [tu.pathForTesting('server/tests/authentication')],
   'authentication_parameters': []
 };
 

@@ -132,7 +132,7 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
-  std::vector<std::string> collectionNames() const;
+  std::vector<std::string> collectionNames(std::unordered_set<std::string> const& initial = std::unordered_set<std::string>()) const;
 
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,

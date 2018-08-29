@@ -35,23 +35,21 @@ namespace maintenance {
 
 enum Signal { GRACEFUL, IMMEDIATE };
 
-enum ActionModel { BACKGROUND, FOREGROUND };
+//
+// state accessor and set functions
+//  (some require time checks and/or combination tests)
+//
+enum ActionState {
+  READY = 1,     // waiting for a worker on the deque
+  EXECUTING = 2, // user or worker thread currently executing
+  WAITING = 3,   // initiated a pre-task, waiting for its completion
+  WAITINGPRE = 4,// parent task created, about to execute on parent's thread
+  WAITINGPOST = 5,// parent task created, will execute after parent's success
+  PAUSED = 6,    // (not implemented) user paused task
+  COMPLETE = 7,  // task completed successfully
+  FAILED = 8,    // task failed, no longer executing
+};
 
-  //
-  // state accessor and set functions
-  //  (some require time checks and/or combination tests)
-  //
-  enum ActionState {
-    READY = 1,     // waiting for a worker on the deque
-    EXECUTING = 2, // user or worker thread currently executing
-    WAITING = 3,   // initiated a pre-task, waiting for its completion
-    WAITINGPRE = 4,// parent task created, about to execute on parent's thread
-    WAITINGPOST = 5,// parent task created, will execute after parent's success
-    PAUSED = 6,    // (not implemented) user paused task
-    COMPLETE = 7,  // task completed successfully
-    FAILED = 8,    // task failed, no longer executing
-  };
-  
 static std::string const KEY("key");
 static std::string const FIELDS("fields");
 static std::string const TYPE("type");
@@ -104,7 +102,7 @@ public:
    * @param  other  Other descriptor
    */
   std::size_t hash() const;
-  static std::size_t hash(std::map<std::string, std::string> desc);
+  static std::size_t hash(std::map<std::string, std::string> const &desc);
 
   /// @brief Name of action
   std::string const& name() const;

@@ -22,6 +22,7 @@
 
 #include "ProgramOptions.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/terminal-utils.h"
 #include "ProgramOptions/Option.h"
@@ -31,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <algorithm>
 #include <iostream>
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
@@ -365,7 +367,7 @@ bool ProgramOptions::unknownOption(std::string const& name) {
 // report an error (callback from parser)
 bool ProgramOptions::fail(std::string const& message) {
   _processingResult.failed(true);
-  std::cerr << "Error while processing " << _context << ":" << std::endl;
+  std::cerr << "Error while processing " << _context << " for " << TRI_Basename(_progname.c_str()) << ":" << std::endl;
   failNotice(message);
   std::cerr << std::endl;
 #ifdef _WIN32
@@ -433,7 +435,7 @@ void ProgramOptions::checkIfSealed() const {
 
 // get a list of similar options
 std::vector<std::string> ProgramOptions::similar(std::string const& value, int cutOff,
-                                  size_t maxResults) {
+                                                 size_t maxResults) {
   std::vector<std::string> result;
 
   if (_similarity != nullptr) {
@@ -466,6 +468,22 @@ std::vector<std::string> ProgramOptions::similar(std::string const& value, int c
       last = it.first;
     }
   }
+
+  if (value.size() >= 3) {
+    // additionally add all options that have the search string as part
+    // of their name
+    walk(
+        [this, &value, &result](Section const&, Option const& option) {
+          if (option.fullName().find(value) != std::string::npos) {
+            result.emplace_back(option.displayName());
+          }
+        },
+        false);
+  }
+    
+  // produce a unique result
+  std::sort(result.begin(), result.end());
+  result.erase(std::unique(result.begin(), result.end()), result.end());
 
   return result;
 }

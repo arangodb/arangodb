@@ -1536,6 +1536,29 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
   }
   return it->second;
 }
+   
+   
+/// @brief return a list of the currently open WAL files
+std::vector<std::string> RocksDBEngine::currentWalFiles() const {
+  rocksdb::VectorLogPtr files;
+  std::vector<std::string> names;
+
+  auto status = _db->GetSortedWalFiles(files);
+  if (!status.ok()) {
+    return names;  // TODO: error here?
+  }
+
+  for (size_t current = 0; current < files.size(); current++) {
+    auto f = files[current].get();
+    try {
+      names.push_back(f->PathName());
+    } catch (...) {
+      return names;
+    }
+  }
+
+  return names;
+}
 
 Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool /*writeShutdownFile*/) {
@@ -1585,27 +1608,6 @@ Result RocksDBEngine::registerRecoveryHelper(
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
 RocksDBEngine::recoveryHelpers() {
   return _recoveryHelpers;
-}
-
-std::vector<std::string> RocksDBEngine::currentWalFiles() {
-  rocksdb::VectorLogPtr files;
-  std::vector<std::string> names;
-
-  auto status = _db->GetSortedWalFiles(files);
-  if (!status.ok()) {
-    return names;  // TODO: error here?
-  }
-
-  for (size_t current = 0; current < files.size(); current++) {
-    auto f = files[current].get();
-    try {
-      names.push_back(f->PathName());
-    } catch (...) {
-      return names;
-    }
-  }
-
-  return names;
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {

@@ -43,7 +43,7 @@ ShortStringStorage::~ShortStringStorage() {
 
 /// @brief register a short string
 char* ShortStringStorage::registerString(char const* p, size_t length) {
-  TRI_ASSERT(length <= maxStringLength());
+  TRI_ASSERT(length <= maxStringLength);
 
   if (_current == nullptr || (_current + length + 1 > _end)) {
     allocateBlock();

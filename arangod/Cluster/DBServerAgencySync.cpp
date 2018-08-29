@@ -34,11 +34,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -82,31 +77,31 @@ Result getLocalCollections(VPackBuilder& collections) {
     try {
       DatabaseGuard guard(database);
       auto vocbase = &guard.database();
-      
+
       collections.add(VPackValue(database));
       VPackObjectBuilder db(&collections);
       auto cols = vocbase->collections(false);
-      
+
       for (auto const& collection : cols) {
         std::string const colname = collection->name();
         if (colname.front() != '_') {
-          collections.add(VPackValue(collection->name()));
+          collections.add(VPackValue(colname));
           VPackObjectBuilder col(&collections);
           collection->toVelocyPack(collections,true,false);
           collections.add(
             "theLeader", VPackValue(collection->followers()->getLeader()));
         }
-      }        
+      }
     } catch (std::exception const& e) {
       return Result(
         TRI_ERROR_INTERNAL,
         std::string("Failed to guard database ") +  database + ": " + e.what());
     }
-    
+
   }
-  
+
   return Result();
-  
+
 }
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
@@ -114,17 +109,17 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   TRI_ASSERT(AgencyCommManager::isEnabled());
   AgencyComm comm;
-  
+
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
-  
+
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::execute starting";
-  DatabaseFeature* dbfeature = 
+  DatabaseFeature* dbfeature =
     ApplicationServer::getFeature<DatabaseFeature>("Database");
-  MaintenanceFeature* mfeature = 
+  MaintenanceFeature* mfeature =
     ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
   TRI_vocbase_t* const vocbase = dbfeature->systemDatabase();
-  
+
   DBServerAgencySyncResult result;
 
   if (vocbase == nullptr) {
@@ -132,7 +127,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       << "DBServerAgencySync::execute no vocbase";
     return result;
   }
-  
+
   Result tmp;
   VPackBuilder rb;
   auto clusterInfo = ClusterInfo::instance();
@@ -153,7 +148,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto start = clock::now();
   try {
     // in previous life handlePlanChange
-    
+
     VPackObjectBuilder o(&rb);
 
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
@@ -170,15 +165,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     if (!glc.ok()) {
       return result;
     }
-  
+
     auto current = clusterInfo->getCurrent();
     LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
     tmp = arangodb::maintenance::phaseTwo(
       plan->slice(), current->slice(), local.slice(), serverId, *mfeature, rb);
-                                             
+
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo done";
-    
+
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "Failed to handle plan change: " << e.what();
@@ -193,14 +188,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
       std::vector<std::string> agency = {"phaseTwo", "agency"};
       if (report.hasKey(agency) && report.get(agency).isObject()) {
-      
+
         auto phaseTwo = report.get(agency);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "DBServerAgencySync reporting to Current: " << phaseTwo.toJson();
-      
+
         // Report to current
         if (!phaseTwo.isEmptyObject()) {
-        
+
           std::vector<AgencyOperation> operations;
           for (auto const& ao : VPackObjectIterator(phaseTwo)) {
             auto const key = ao.key.copyString();
@@ -227,7 +222,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           }
         }
       }
-    
+
       // FIXMEMAINTENANCE: If comm.sendTransactionWithFailover()
       // fails, the result is ok() based upon phaseTwo()'s execution?
       result = DBServerAgencySyncResult(
@@ -236,11 +231,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         report.get("Plan").get("Version").getNumber<uint64_t>() : 0,
         report.hasKey("Current") ?
         report.get("Current").get("Version").getNumber<uint64_t>() : 0);
-      
+
     }
   }
-  
-  auto took = duration<double>(clock::now()-start).count();
+
+  auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
       "took " << took << " s to execute handlePlanChange";

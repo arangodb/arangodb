@@ -135,14 +135,9 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
       return executeSimpleExpression(_node, trx, mustDestroy, true);
     }
 
-    case ATTRIBUTE_SYSTEM: {
+    case ATTRIBUTE_ACCESS: {
       TRI_ASSERT(_accessor != nullptr);
-      return _accessor->getSystem(trx, ctx, mustDestroy);
-    }
-
-    case ATTRIBUTE_DYNAMIC: {
-      TRI_ASSERT(_accessor != nullptr);
-      return _accessor->getDynamic(trx, ctx, mustDestroy);
+      return _accessor->get(trx, ctx, mustDestroy);
     }
 
     case UNPROCESSED: {
@@ -162,7 +157,7 @@ void Expression::replaceVariables(
 
   _node = _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
 
-  if ((_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC) && _accessor != nullptr) {
+  if (_type == ATTRIBUTE_ACCESS && _accessor != nullptr) {
     _accessor->replaceVariable(replacements);
   } else {
     freeInternals();
@@ -199,8 +194,7 @@ void Expression::freeInternals() noexcept {
       _data = nullptr;
       break;
 
-    case ATTRIBUTE_SYSTEM:
-    case ATTRIBUTE_DYNAMIC: {
+    case ATTRIBUTE_ACCESS: {
       delete _accessor;
       _accessor = nullptr;
       break;
@@ -216,7 +210,7 @@ void Expression::freeInternals() noexcept {
 
 /// @brief reset internal attributes after variables in the expression were changed
 void Expression::invalidateAfterReplacements() {
-  if (_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC || _type == SIMPLE) {
+  if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE) {
     freeInternals();
     // must even set back the expression type so the expression will be analyzed
     // again
@@ -375,12 +369,8 @@ void Expression::initSimpleExpression() {
   }
 
   // specialize the simple expression into an attribute accessor
-  _accessor = new AttributeAccessor(std::move(parts), v, dataIsFromCollection);
-  if (_accessor->isDynamic()) {
-    _type = ATTRIBUTE_DYNAMIC;
-  } else {
-    _type = ATTRIBUTE_SYSTEM;
-  }
+  _accessor = AttributeAccessor::create(std::move(parts), v, dataIsFromCollection);
+  _type = ATTRIBUTE_ACCESS;
 }
 
 /// @brief analyze the expression (determine its type etc.)
