@@ -1161,7 +1161,7 @@ SECTION("createBlockSingleServer") {
       *query.trx(), arangodb::iresearch::IResearchView::Snapshot::FindOrCreate
     ));
     CHECK(snapshot == arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate
+      *query.trx(), arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace
     ));
 
     // after transaction has started

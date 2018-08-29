@@ -83,7 +83,7 @@ function recoverySuite () {
       var p = v.properties().links;
       assertFalse(p.hasOwnProperty('UnitTestsRecoveryDummy'));
 
-      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").json;
       assertEqual(result[0], 0);
     }
 

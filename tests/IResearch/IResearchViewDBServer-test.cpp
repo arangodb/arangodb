@@ -158,7 +158,6 @@ struct IResearchViewDBServerSetup {
 
   ~IResearchViewDBServerSetup() {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
@@ -176,6 +175,7 @@ struct IResearchViewDBServerSetup {
 
     ClusterCommControl::reset();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_SINGLE);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
     arangodb::AgencyCommManager::MANAGER.reset();
@@ -569,7 +569,7 @@ SECTION("test_query") {
     );
     CHECK((trx0.begin().ok()));
     CHECK(nullptr == wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot0 = wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    auto* snapshot0 = wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK(snapshot0 == wiewImpl->snapshot(trx0, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
     CHECK(12 == snapshot0->docs_count());
     CHECK((trx0.commit().ok()));
@@ -608,7 +608,7 @@ SECTION("test_query") {
       trxOptions
     );
     CHECK((trx1.begin().ok()));
-    auto* snapshot1 = wiewImpl->snapshot(trx1, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    auto* snapshot1 = wiewImpl->snapshot(trx1, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK(24 == snapshot1->docs_count());
     CHECK((trx1.commit().ok()));
   }
@@ -946,7 +946,7 @@ SECTION("test_transaction_snapshot") {
     );
     CHECK((trx.begin().ok()));
     CHECK(nullptr == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK(snapshot == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::Find));
     CHECK(snapshot == wiewImpl->snapshot(trx, { logicalCollection->name() }, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
     CHECK((nullptr != snapshot));
