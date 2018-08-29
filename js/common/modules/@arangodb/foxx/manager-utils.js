@@ -50,7 +50,7 @@ function getReadableName (name) {
   .replace(/[a-z][A-Z]/g, (str) => `${str.charAt(0)} ${str.slice(1)}`)
   .replace(/[A-Z][A-Z][a-z]/g, (str) => `${str.charAt(0)} ${str.slice(1)}`)
   .replace(/\s[a-z]/g, (str) => `${str.toUpperCase()}`);
-  return readable.charAt(0).toUpperCase() + readable.substr(1)
+  return readable.charAt(0).toUpperCase() + readable.substr(1);
 }
 
 function getStorage () {
