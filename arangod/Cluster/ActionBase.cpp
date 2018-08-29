@@ -91,9 +91,9 @@ void ActionBase::notify() {
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "Job " << _description << " calling syncDBServerStatusQuo";
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");	
-  if (cf != nullptr) {	
-    cf->syncDBServerStatusQuo();	
+  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (cf != nullptr) {
+    cf->syncDBServerStatusQuo();
   }
 }
 
@@ -148,25 +148,16 @@ std::shared_ptr<Action> ActionBase::getPostAction() {
 }
 
 
-// FIXMEMAINTENANCE: Code path could corrupt registry object because
-// this does not hold lock. Also, current implementation is a race condition
-// where another thread could pick this up.
-
 /// @brief Create a new action that will start after this action successfully completes
 void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
 
-  // preAction() sets up what we need
+  // postAction() sets up what we need
   _postAction = description;
-  std::shared_ptr<Action> new_action = _feature.postAction(description);
-
-  // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
-  //  workers from picking it up
-  if (_postAction && new_action->ok()) {
-    new_action->setState(WAITINGPOST);
+  if (_postAction) {
+    _feature.postAction(description);
   } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters for _postAction.");
-  } // else
-
+    _result.reset(TRI_ERROR_BAD_PARAMETER, "postAction rejected parameters for _postAction.");
+  }
 } // ActionBase::createPostAction
 
 

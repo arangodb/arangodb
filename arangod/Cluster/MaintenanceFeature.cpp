@@ -42,7 +42,7 @@ using namespace arangodb::maintenance;
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Maintenance"),
     _forceActivation(false),
-    _maintenanceThreadsMax(2) { 
+    _maintenanceThreadsMax(2) {
   // the number of threads will be adjusted later. it's just that we want to initialize all members properly
 
   // this feature has to know the role of this server in its `start`. The role
@@ -106,7 +106,7 @@ void MaintenanceFeature::prepare() {
 
 void MaintenanceFeature::start() {
   auto serverState = ServerState::instance();
-  
+
   // _forceActivation is set by the catch tests
   if (!_forceActivation &&
       (serverState->isAgent() || serverState->isSingleServer())) {
@@ -114,7 +114,7 @@ void MaintenanceFeature::start() {
       << " for single-server or agents.";
     return ;
   }
-  
+
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
     auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
@@ -169,12 +169,6 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 
 } // MaintenanceFeature::deleteAction
 
-
-// FIXMEMAINTENANCE: None of the addAction() and createAction() routines
-// explicitly check to see if construction of action set FAILED.
-// Therefore it is possible for an "executeNow" action to start running
-// with known invalid parameters.
-
 /// @brief This is the  API for creating an Action and executing it.
 ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
 ///  not yet:  ActionDescription parameter will be MOVED to new object.
@@ -195,9 +189,10 @@ Result MaintenanceFeature::addAction(
     // similar action not in the queue (or at least no longer viable)
     if (curAction == nullptr || curAction->done()) {
 
-      createAction(newAction, executeNow);
-
-      if (!newAction || !newAction->ok()) {
+      if (newAction && newAction->ok()) {
+        // Register action only if construction was ok
+        registerAction(newAction, executeNow);
+      } else {
         /// something failed in action creation ... go check logs
         result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
       } // if
@@ -246,7 +241,7 @@ Result MaintenanceFeature::addAction(
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction || curAction->done()) {
-      newAction = createAction(description, executeNow);
+      newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
         /// something failed in action creation ... go check logs
@@ -275,7 +270,7 @@ Result MaintenanceFeature::addAction(
 std::shared_ptr<Action> MaintenanceFeature::preAction(
   std::shared_ptr<ActionDescription> const & description) {
 
-  return createAction(description, true);
+  return createAndRegisterAction(description, true);
 
 } // MaintenanceFeature::preAction
 
@@ -283,13 +278,21 @@ std::shared_ptr<Action> MaintenanceFeature::preAction(
 std::shared_ptr<Action> MaintenanceFeature::postAction(
   std::shared_ptr<ActionDescription> const & description) {
 
-  return createAction(description, false);
+  auto action = createAction(description);
 
+  if (action->ok()) {
+    action->setState(WAITINGPOST);
+    registerAction(action, false);
+  }
+
+  return action;
 } // MaintenanceFeature::postAction
 
 
-void MaintenanceFeature::createAction(
+void MaintenanceFeature::registerAction(
   std::shared_ptr<Action> action, bool executeNow) {
+
+  // Assumes write lock on _actionRegistryLock
 
   // mark as executing so no other workers accidentally grab it
   if (executeNow) {
@@ -311,8 +314,7 @@ void MaintenanceFeature::createAction(
 
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(
-  std::shared_ptr<ActionDescription> const & description,
-  bool executeNow) {
+  std::shared_ptr<ActionDescription> const & description) {
 
   // write lock via _actionRegistryLock is assumed held
   std::shared_ptr<Action> newAction;
@@ -324,18 +326,26 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
   newAction = std::make_shared<Action>(*this, *description);
 
   // if a new action constructed successfully
-  if (newAction->ok()) {
-
-    createAction(newAction, executeNow);
-
-  } else {
+  if (!newAction->ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "createAction:  unknown action name given, \"" << name.c_str() << "\", or other construction failure.";
-  } // else
+  }
 
   return newAction;
 
 } // if
+
+std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
+  std::shared_ptr<ActionDescription> const & description, bool executeNow) {
+
+  std::shared_ptr<Action> newAction = createAction(description);
+
+  if (newAction->ok()) {
+    registerAction(newAction, executeNow);
+  }
+
+  return newAction;
+}
 
 
 std::shared_ptr<Action> MaintenanceFeature::findAction(
@@ -448,6 +458,19 @@ std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
 #endif
 
 std::string const SLASH("/");
+
+arangodb::Result  MaintenanceFeature::storeDBError (
+    std::string const& database, Result const& failure)
+{
+    VPackBuilder eb;
+  { VPackObjectBuilder b(&eb);
+    eb.add(NAME, VPackValue(database));
+    eb.add("error", VPackValue(true));
+    eb.add("errorNum", VPackValue(failure.errorNumber()));
+    eb.add("errorMessage", VPackValue(failure.errorMessage())); }
+
+  return storeDBError(database, eb.steal());
+}
 
 arangodb::Result MaintenanceFeature::storeDBError (
   std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error) {

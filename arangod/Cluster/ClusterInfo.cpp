@@ -3589,7 +3589,7 @@ void ClusterInfo::invalidatePlan() {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
   }
-  {
+  { // WHY IS THIS DONE TWICE?
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
   }
@@ -3689,12 +3689,12 @@ arangodb::Result ClusterInfo::getShardServers(
   if (it != _shardServers.end()) {
     servers = (*it).second;
     return arangodb::Result();
-  } 
+  }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Strange, did not find shard in _shardServers: " << shardId;
   return arangodb::Result(TRI_ERROR_FAILED);
-  
+
 }
 
 

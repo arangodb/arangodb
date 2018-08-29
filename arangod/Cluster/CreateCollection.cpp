@@ -53,7 +53,7 @@ CreateCollection::CreateCollection(
   : ActionBase(feature, desc) {
 
   std::stringstream error;
-  
+
   if (!desc.has(DATABASE)) {
     error << "database must be specified. ";
   }
@@ -95,7 +95,7 @@ CreateCollection::CreateCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-    
+
 }
 
 
@@ -118,23 +118,23 @@ bool CreateCollection::first() {
 
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-    
+
     auto cluster =
       ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    
+
     bool waitForRepl =
       (props.hasKey(WAIT_FOR_SYNC_REPL) &&
        props.get(WAIT_FOR_SYNC_REPL).isBool()) ?
       props.get(WAIT_FOR_SYNC_REPL).getBool() :
       cluster->createWaitsForSyncReplication();
-    
+
     bool enforceReplFact =
       (props.hasKey(ENF_REPL_FACT) &&
        props.get(ENF_REPL_FACT).isBool()) ?
       props.get(ENF_REPL_FACT).getBool() : true;
-    
+
     TRI_col_type_e type = static_cast<TRI_col_type_e>(props.get(TYPE).getNumber<uint32_t>());
-    
+
     VPackBuilder docket;
     { VPackObjectBuilder d(&docket);
       for (auto const& i : VPackObjectIterator(props)) {
@@ -150,7 +150,7 @@ bool CreateCollection::first() {
       }
       docket.add("planId", VPackValue(collection));
     }
-    
+
     _result = Collections::create(
       vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
       [=](LogicalCollection& col) {
@@ -161,7 +161,7 @@ bool CreateCollection::first() {
           col.followers()->clear();
         }
       });
-    
+
     if (_result.fail()) {
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard
@@ -183,18 +183,20 @@ bool CreateCollection::first() {
 
       // Steal buffer for maintenance feature
       _feature.storeShardError(database, collection, shard, eb.steal());
-      
+
       _result.reset(TRI_ERROR_FAILED, error.str());
-      // FIXMEMAINTENANCE: notify here?
+      notify();
       return false;
     }
-    
+
   } catch (std::exception const& e) { // Guard failed?
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
-    // FIXMEMAINTENANCE: notify here?
+    // Notify not necessary, since no shard error created.
+    //  General Problem: what if components needed to report error
+    //  are not there - because thats the error?
     return false;
   }
 
