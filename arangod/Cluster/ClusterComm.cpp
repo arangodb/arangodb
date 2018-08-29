@@ -375,8 +375,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 /// ownership of `callback`. We use a shared_ptr for the body string
 /// such that it is possible to use the same body in multiple requests.
 ///
-/// Arguments: `clientTransactionID` is a string coming from the
-/// client and describing the transaction the client is doing,
+/// Arguments:
 /// `coordTransactionID` is a number describing the transaction the
 /// coordinator is doing, `destination` is a string that either starts
 /// with "shard:" followed by a shardID identifying the shard this
@@ -398,7 +397,6 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationID ClusterComm::asyncRequest(
-    ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
@@ -407,7 +405,6 @@ OperationID ClusterComm::asyncRequest(
     bool singleRequest, ClusterCommTimeout initTimeout) {
   auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
-  result->clientTransactionID = clientTransactionID;
   result->coordTransactionID = coordTransactionID;
   result->single = singleRequest;
 
@@ -504,8 +501,7 @@ OperationID ClusterComm::asyncRequest(
 /// does not keep a record of this operation, in particular, you cannot
 /// use @ref enquire to ask about it.
 ///
-/// Arguments: `clientTransactionID` is a string coming from the client
-/// and describing the transaction the client is doing, `coordTransactionID`
+/// Arguments: `coordTransactionID`
 /// is a number describing the transaction the coordinator is doing,
 /// shardID is a string that identifies the shard this request is sent to,
 /// actually, this is internally translated into a server ID. It is also
@@ -513,7 +509,6 @@ OperationID ClusterComm::asyncRequest(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
-    ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::rest::RequestType reqtype, std::string const& path,
     std::string const& body,
@@ -576,12 +571,9 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
 /// @brief internal function to match an operation:
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClusterComm::match(ClientTransactionID const& clientTransactionID,
-                        CoordTransactionID const coordTransactionID,
+bool ClusterComm::match(CoordTransactionID const coordTransactionID,
                         ShardID const& shardID, ClusterCommResult* res) {
-  return ((clientTransactionID == "" ||
-           clientTransactionID == res->clientTransactionID) &&
-          (0 == coordTransactionID ||
+  return ((0 == coordTransactionID ||
            coordTransactionID == res->coordTransactionID) &&
           (shardID == "" || shardID == res->shardID));
 }
@@ -624,8 +616,7 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for one answer matching the criteria
 ///
-/// If clientTransactionID is empty, then any answer with any
-/// clientTransactionID matches. If coordTransactionID is 0, then any
+/// If coordTransactionID is 0, then any
 /// answer with any coordTransactionID matches. If shardID is empty,
 /// then any answer from any ShardID matches. If operationID is 0, then
 /// any answer with any operationID matches. This function returns
@@ -638,7 +629,6 @@ ClusterCommResult const ClusterComm::enquire(communicator::Ticket const ticketId
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult const ClusterComm::wait(
-    ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, communicator::Ticket const ticketId,
     ShardID const& shardID, ClusterCommTimeout timeout) {
 
@@ -663,7 +653,7 @@ ClusterCommResult const ClusterComm::wait(
     if (ticketId == 0) {
       i_erase = responses.end();
       for (i = responses.begin(); i != responses.end() && !status_ready; i++) {
-        if (match(clientTransactionID, coordTransactionID, shardID, i->second.result.get())) {
+        if (match(coordTransactionID, shardID, i->second.result.get())) {
           match_good = true;
           return_result = *i->second.result.get();
           status_ready = (CL_COMM_SUBMITTED != return_result.status);
@@ -723,8 +713,7 @@ ClusterCommResult const ClusterComm::wait(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore and drop current and future answers matching
 ///
-/// If clientTransactionID is empty, then any answer with any
-/// clientTransactionID matches. If coordTransactionID is 0, then
+/// If coordTransactionID is 0, then
 /// any answer with any coordTransactionID matches. If shardID is
 /// empty, then any answer from any ShardID matches. If operationID
 /// is 0, then any answer with any operationID matches. If there
@@ -734,8 +723,7 @@ ClusterCommResult const ClusterComm::wait(
 /// operation, for which @ref enquire reported successful completion.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
-                       CoordTransactionID const coordTransactionID,
+void ClusterComm::drop(CoordTransactionID const coordTransactionID,
                        OperationID const operationID, ShardID const& shardID) {
   QueueIterator q;
   QueueIterator nextq;
@@ -748,7 +736,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
     for (q = toSend.begin(); q != toSend.end();) {
       ClusterCommOperation* op = *q;
       if ((0 != operationID && operationID == op->result.operationID) ||
-          match(clientTransactionID, coordTransactionID, shardID, &op->result)) {
+          match(coordTransactionID, shardID, &op->result)) {
         if (op->result.status == CL_COMM_SENDING) {
           op->result.dropped = true;
           q++;
@@ -774,7 +762,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
     for (q = received.begin(); q != received.end();) {
       ClusterCommOperation* op = *q;
       if ((0 != operationID && operationID == op->result.operationID) ||
-          match(clientTransactionID, coordTransactionID, shardID, &op->result)) {
+          match(coordTransactionID, shardID, &op->result)) {
         nextq = q;
         nextq++;
         i = receivedByOpID.find(op->result.operationID);  // cannot fail
@@ -944,7 +932,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             dueTime[i] = endTime + 10;
             double localTimeout = endTime - now;
             OperationID opId = asyncRequest(
-                "", coordinatorTransactionID, requests[i].destination,
+                coordinatorTransactionID, requests[i].destination,
                 requests[i].requestType, requests[i].path, requests[i].getBodyShared(),
                 requests[i].getHeaders(), nullptr, localTimeout, false,
                 2.0);
@@ -960,7 +948,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       }
 
       TRI_ASSERT(actionNeeded >= now);
-      auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
+      auto res = wait(coordinatorTransactionID, 0, "", actionNeeded - now);
       // wait could have taken some time, so we need to update now now
       now = TRI_microtime();
       // note that this is needed further below from here, so it is *not*
@@ -1058,7 +1046,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                              << "got timeout, this will be reported...";
 
   // Forget about
-  drop("", coordinatorTransactionID, 0, "");
+  drop(coordinatorTransactionID, 0, "");
   return nrGood;
 }
 
@@ -1084,71 +1072,12 @@ void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& r
 
   constexpr double shortTimeout = 10.0; // Picked arbitrarily
   for (auto const& req : requests) {
-    asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
+    asyncRequest(coordinatorTransactionID, req.destination, req.requestType,
                  req.path, req.getBodyShared(), req.getHeaders(), nullptr, shortTimeout, false,
                  2.0);
   }
   // Forget about it
-  drop("", coordinatorTransactionID, 0, "");
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief this is the fast path method for performRequests for the case
-/// of only a single request in the vector. In this case we can use a single
-/// syncRequest, which saves a network roundtrip. This is an important
-/// optimization for the single document operation case.
-/// Exact same semantics as performRequests.
-//////////////////////////////////////////////////////////////////////////////
-
-size_t ClusterComm::performSingleRequest(
-    std::vector<ClusterCommRequest>& requests, ClusterCommTimeout timeout,
-    size_t& nrDone, arangodb::LogTopic const& logTopic) {
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  ClusterCommRequest& req(requests[0]);
-  
-  req.result = *syncRequest("", coordinatorTransactionID, req.destination,
-                            req.requestType, req.path, req.getBody(),
-                            req.getHeaders(), timeout);
-
-  // mop: helpless attempt to fix segfaulting due to body buffer empty
-  if (req.result.status == CL_COMM_BACKEND_UNAVAILABLE) {
-    nrDone = 0;
-    return 0;
-  }
-
-  if (req.result.status == CL_COMM_ERROR && req.result.result != nullptr
-      && req.result.result->getHttpReturnCode() == 503) {
-    req.result.status = CL_COMM_BACKEND_UNAVAILABLE;
-    nrDone = 0;
-    return 0;
-  }
-
-  // Add correct recognition of content type later.
-  req.result.status = CL_COMM_RECEIVED;  // a fake, but a good one
-  req.done = true;
-  nrDone = 1;
-  // This was it, except for a small problem: syncRequest reports back in
-  // req.result.result of type httpclient::SimpleHttpResult rather than
-  // req.result.answer of type GeneralRequest, so we have to translate.
-  // Additionally, GeneralRequest is a virtual base class, so we actually
-  // have to create an HttpRequest instance:
-  rest::ContentType type = rest::ContentType::JSON;
-
-  basics::StringBuffer& buffer = req.result.result->getBody();
-
-  auto answer = HttpRequest::createHttpRequest(
-      type, buffer.c_str(), static_cast<int64_t>(buffer.length()),
-      req.result.result->getHeaderFields());
-
-  req.result.answer.reset(static_cast<GeneralRequest*>(answer));
-  req.result.answer_code =
-      static_cast<rest::ResponseCode>(req.result.result->getHttpReturnCode());
-  return (req.result.answer_code == rest::ResponseCode::OK ||
-          req.result.answer_code == rest::ResponseCode::CREATED ||
-          req.result.answer_code == rest::ResponseCode::ACCEPTED)
-             ? 1
-             : 0;
+  drop(coordinatorTransactionID, 0, "");
 }
 
 communicator::Destination ClusterComm::createCommunicatorDestination(std::string const& endpoint, std::string const& path) {

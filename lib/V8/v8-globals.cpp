@@ -61,7 +61,6 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       BodyFromFileKey(),
       BodyKey(),
       ClientKey(),
-      ClientTransactionIDKey(),
       CodeKey(),
       ContentTypeKey(),
       CoordTransactionIDKey(),
@@ -147,8 +146,6 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   BodyFromFileKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "bodyFromFile"));
   BodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "body"));
   ClientKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "client"));
-  ClientTransactionIDKey.Reset(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "clientTransactionID"));
   CodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "code"));
   ContentTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "contentType"));
   CookiesKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "cookies"));

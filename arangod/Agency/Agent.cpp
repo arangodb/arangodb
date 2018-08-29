@@ -638,7 +638,7 @@ void Agent::sendAppendEntriesRPC() {
       // Send request
       std::unordered_map<std::string, std::string> headerFields;
       cc->asyncRequest(
-        "1", 1, _config.poolAt(followerId),
+        1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
@@ -715,7 +715,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   // Send request
   std::unordered_map<std::string, std::string> headerFields;
   cc->asyncRequest(
-    "1", 1, _config.poolAt(followerId),
+    1, _config.poolAt(followerId),
     arangodb::rest::RequestType::POST, path.str(),
     std::make_shared<std::string>("[]"), headerFields,
     std::make_shared<AgentCallback>(this, followerId, 0, 0),
@@ -1468,7 +1468,7 @@ void Agent::notifyInactive() const {
   std::unordered_map<std::string, std::string> headerFields;
   for (auto const& p : pool) {
     if (p.first != id()) {
-      cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
+      cc->asyncRequest(1, p.second, arangodb::rest::RequestType::POST,
                        path, std::make_shared<std::string>(out.toJson()),
                        headerFields, nullptr, 1.0, true);
     }

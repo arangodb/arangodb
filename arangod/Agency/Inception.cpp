@@ -102,15 +102,16 @@ void Inception::gossip() {
             continue;
           }
         }
-        std::string clientid = config.id() + std::to_string(j++);
+        
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 1: "
             << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        CoordTransactionID coordTrxId = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(
-          clientid, 1, p, rest::RequestType::POST, path,
+          coordTrxId, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
@@ -127,15 +128,15 @@ void Inception::gossip() {
           }
         }
         complete = false;
-        auto const clientid = config.id() + std::to_string(j++);
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 2: "
             << out->toJson() << " to pool member " << pair.second;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        CoordTransactionID coordTrxId = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(
-          clientid, 1, pair.second, rest::RequestType::POST, path,
+          coordTrxId, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
           std::make_shared<GossipCallback>(_agent, version), 1.0, true, 0.5);
       }
@@ -201,6 +202,7 @@ bool Inception::restartingActiveAgent() {
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
   auto const majority   = myConfig.size()/2+1;
+  
 
   Builder greeting;
   {
@@ -231,13 +233,14 @@ bool Inception::restartingActiveAgent() {
 
     auto gp = myConfig.gossipPeers();
     std::vector<std::string> informed;
+    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
     for (auto& p : gp) {
       if (this->isStopping() && _agent->isStopping() && cc==nullptr) {
         return false;
       }
       auto comres = cc->syncRequest(
-        clientId, 1, p, rest::RequestType::POST, path, greetstr,
+        coordinatorTransactionID, p, rest::RequestType::POST, path, greetstr,
         std::unordered_map<std::string, std::string>(), 2.0);
       // FIXMEMAINTENANCE: handle case of result not 200
       if (comres->status == CL_COMM_SENT) { // WARN: What if result not 200?
@@ -267,8 +270,9 @@ bool Inception::restartingActiveAgent() {
           return false;
         }
 
+        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
         auto comres = cc->syncRequest(
-          clientId, 1, p.second, rest::RequestType::POST, path, greetstr,
+          coordinatorTransactionID, p.second, rest::RequestType::POST, path, greetstr,
           std::unordered_map<std::string, std::string>(), 2.0);
 
         if (comres->status == CL_COMM_SENT) {
@@ -296,7 +300,7 @@ bool Inception::restartingActiveAgent() {
                   return false;
                 }
                 comres = cc->syncRequest(
-                  clientId, 1, theirLeaderEp, rest::RequestType::POST, path,
+                  coordinatorTransactionID, theirLeaderEp, rest::RequestType::POST, path,
                   greetstr, std::unordered_map<std::string, std::string>(), 2.0);
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
