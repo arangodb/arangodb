@@ -41,7 +41,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   MaintenanceFeature();
 
-  virtual ~MaintenanceFeature() {};
+  virtual ~MaintenanceFeature() {}
 
   struct errors_t {
     std::map<std::string,
@@ -59,6 +59,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // preparation phase for feature in the preparation phase, the features must
   // not start any threads. furthermore, they must not write any files under
@@ -77,6 +78,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   // shut down the feature
   virtual void unprepare() override {};
+
 
 
   //
@@ -192,9 +194,9 @@ public:
    */
   arangodb::Result removeIndexErrors (
     std::string const& database, std::string const& collection,
-    std::string const& shard, std::unordered_set<std::string> indexIds);
+    std::string const& shard, std::unordered_set<std::string> const& indexIds);
   arangodb::Result removeIndexErrors (
-    std::string const& path, std::unordered_set<std::string> indexIds);
+    std::string const& path, std::unordered_set<std::string> const& indexIds);
 
   /**
    * @brief add shard error to bucket
@@ -297,9 +299,12 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
-protected:
+ protected:
+  /// @brief option for forcing this feature to always be enable - used by the catch tests
+  bool _forceActivation;
+
   /// @brief tunable option for thread pool size
-  int32_t _maintenanceThreadsMax;
+  uint32_t _maintenanceThreadsMax;
 
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry
@@ -332,7 +337,7 @@ protected:
   arangodb::basics::ConditionVariable _actionRegistryCond;
 
   /// @brief list of background workers
-  std::vector<maintenance::MaintenanceWorker *> _activeWorkers;
+  std::vector<std::unique_ptr<maintenance::MaintenanceWorker>> _activeWorkers;
 
   /// @brief condition variable to indicate thread completion
   arangodb::basics::ConditionVariable _workerCompletion;
@@ -359,9 +364,6 @@ protected:
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
-
-
-
 };
 
 }

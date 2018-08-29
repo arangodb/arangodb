@@ -85,10 +85,9 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
+void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)
@@ -508,6 +507,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
   }
 
   return new RocksDBFulltextIndexIterator(
-    &_collection, trx, this, std::move(results)
+    &_collection, trx, std::move(results)
   );
 }

@@ -47,9 +47,9 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'dump': ['js/server/tests/dump/'],
-  'dump_encrypted': ['js/server/tests/dump/'],
-  'dump_authentication': ['js/server/tests/dump/']
+  'dump': [tu.pathForTesting('server/tests/dump')],
+  'dump_encrypted': [tu.pathForTesting('server/tests/dump')],
+  'dump_authentication': [tu.pathForTesting('server/tests/dump')]
 };
 
 
@@ -164,7 +164,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, which, 
               results.failed = 0;
 	    } else {
               print(CYAN + Date() + ': Dump and Restore - restoreOld' + RESET);
-              let restoreDir = tu.makePathUnix('js/server/tests/dump/dump' + notCluster);
+              let restoreDir = tu.makePathUnix(tu.pathForTesting('server/tests/dump/dump' + notCluster));
 
               results.restoreOld = pu.run.arangoDumpRestore(
                 options,

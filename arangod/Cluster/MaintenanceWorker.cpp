@@ -162,15 +162,5 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
 } // MaintenanceWorker::nextState
 
-#if 0
-std::shared_ptr<Action> MaintenanceWorker::findReadyAction() {
-  std::shared_ptr<Action> ret_ptr;
-
-
-
-  return ret_ptr;
-
-} // Maintenance::findReadyAction
-#endif
 } // namespace maintenance
 } // namespace arangodb

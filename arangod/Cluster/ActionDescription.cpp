@@ -77,7 +77,7 @@ std::size_t ActionDescription::hash() const {
   return std::hash<std::string>{}(propstr);
 }
 
-std::size_t ActionDescription::hash(std::map<std::string, std::string> desc) {
+std::size_t ActionDescription::hash(std::map<std::string, std::string> const &desc) {
   std::string propstr;
   for (auto const& i : desc) {
     propstr += i.first + i.second;

@@ -120,7 +120,8 @@ void ConsoleThread::inner() {
 
     // read and eval .arangod.rc from home directory if it exists
     char const* startupScript = R"SCRIPT(
-start_pretty_print();
+start_pretty_print(true);
+start_color_print('arangodb', true);
 
 (function () {
   var __fs__ = require("fs");

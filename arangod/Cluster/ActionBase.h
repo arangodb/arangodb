@@ -152,7 +152,7 @@ class ActionBase {
   std::shared_ptr<Action> getPostAction();
 
   /// @brief Save pointer to successor action
-  void setPostAction(std::shared_ptr<ActionDescription> post) {
+  void setPostAction(std::shared_ptr<ActionDescription> &post) {
     _postAction=post;
   }
 
@@ -207,8 +207,6 @@ protected:
   arangodb::MaintenanceFeature& _feature;
 
   ActionDescription _description;
-
-  ActionModel _model;
 
   uint64_t _hash;
   std::string _clientId;

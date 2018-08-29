@@ -203,6 +203,9 @@ class MMFilesEngine final : public StorageEngine {
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
   void waitForSyncTick(TRI_voc_tick_t tick) override;
+  
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override;
 
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;

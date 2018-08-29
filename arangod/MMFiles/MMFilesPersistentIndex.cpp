@@ -74,7 +74,7 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
     arangodb::MMFilesPrimaryIndex* primaryIndex,
     rocksdb::OptimisticTransactionDB* db, bool reverse, VPackSlice const& left,
     VPackSlice const& right)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _primaryIndex(primaryIndex),
       _db(db),
       _reverse(reverse),
