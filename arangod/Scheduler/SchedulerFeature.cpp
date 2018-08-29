@@ -120,7 +120,7 @@ void SchedulerFeature::start() {
 
   if (_nrMaximalThreads > 8 * N) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads
+        << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
   }
@@ -134,7 +134,7 @@ void SchedulerFeature::start() {
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
     LOG_TOPIC(WARN, arangodb::Logger::THREADS)
-        << "--server.threads (" << _nrMaximalThreads << ") should be at least "
+        << "--server.maximal-threads (" << _nrMaximalThreads << ") should be at least "
         << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads + 1;
   }
@@ -211,7 +211,7 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
-    
+
 /// @brief return the default number of threads to use (upper bound)
 size_t SchedulerFeature::defaultNumberOfThreads() const {
   // use two times the number of hardware threads as the default
