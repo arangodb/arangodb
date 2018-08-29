@@ -1077,8 +1077,6 @@ class FilterNode : public ExecutionNode {
     vars.emplace(_inVariable);
   }
 
-  std::vector<std::pair<Variable const*, Collection const*>> collectionVariables() const;
-
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
