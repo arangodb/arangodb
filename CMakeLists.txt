@@ -93,23 +93,23 @@ if (NOT DEFINED ARANGODB_VERSION_PATCH)
   set(ARANGODB_VERSION_RELEASE_TYPE   "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
-  unset(ARANGODB_VERSION_RELEASE_TYPE)
-  unset(ARANGODB_VERSION_RELEASE_NUMBER)
+  unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
+  unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
 endif()
 
 # unset TYPE and NUMBER in case they are empty
 if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
   if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "")
-    unset(ARANGODB_VERSION_RELEASE_TYPE)
-    unset(ARANGODB_VERSION_RELEASE_NUMBER)
+    unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
+    unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
   endif()
 else()
-  unset(ARANGODB_VERSION_RELEASE_NUMBER)
+  unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
 endif()
 
 if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
   if (ARANGODB_VERSION_RELEASE_NUMBER STREQUAL "")
-    unset(ARANGODB_VERSION_RELEASE_NUMBER)
+    unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
   endif()
 endif()
 
@@ -1047,9 +1047,9 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
-set(ROCKSDB_LIBS rocksdb;snappystatic)
+set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappystatic)
+add_dependencies(rocksdb ${SNAPPY_LIB})
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)

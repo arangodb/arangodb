@@ -140,8 +140,8 @@ function hasIResearch (db) {
                   users.grantCollection(user, dbName, colName, explicitRight);
                 }
               }
-            helper.switchUser(user, dbName);
             }
+            helper.switchUser(user, dbName);
           };
 
           const rootTestView = (viewName = testViewName, switchBack = true) => {

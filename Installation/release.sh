@@ -236,16 +236,16 @@ else
 fi
 
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
-git pull --tags
+git fetch --tags
 
 
 # shellcheck disable=SC2002
 cat CMakeLists.txt \
-    | $SED -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR       \"$VERSION_MAJOR\")~" \
-    | $SED -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR       \"$VERSION_MINOR\")~" \
-    | $SED -e "s~set(ARANGODB_VERSION_PATCH.*~set(ARANGODB_VERSION_PATCH       \"$VERSION_PATCH\")~" \
-    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_TYPE.*~set(ARANGODB_VERSION_RELEASE_TYPE \"$VERSION_VERSION_RELEASE_TYPE\")~" \
-    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_NUMBER.*~set(ARANGODB_VERSION_RELEASE_NUMBER \"$VERSION_VERSION_RELEASE_NUMBER\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR \"$VERSION_MAJOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR \"$VERSION_MINOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_PATCH.*~set(ARANGODB_VERSION_PATCH \"$VERSION_PATCH\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_TYPE.*~set(ARANGODB_VERSION_RELEASE_TYPE \"$VERSION_RELEASE_TYPE\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_NUMBER.*~set(ARANGODB_VERSION_RELEASE_NUMBER \"$VERSION_RELEASE_NUMBER\")~" \
           > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt

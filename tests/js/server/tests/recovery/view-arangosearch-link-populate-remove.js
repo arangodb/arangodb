@@ -83,7 +83,7 @@ function recoverySuite () {
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
 // FIXME uncomment when we'll be able to handle tons of removals properly
-//      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+//      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").json;
 //      assertEqual(result[0], 10000);
     }
 

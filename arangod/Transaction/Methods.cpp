@@ -1420,8 +1420,6 @@ OperationResult transaction::Methods::document(
 OperationResult transaction::Methods::documentCoordinator(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1440,7 +1438,6 @@ OperationResult transaction::Methods::documentCoordinator(
     *this,
     value,
     options,
-    std::move(headers),
     responseCode,
     errorCounter,
     resultBody
