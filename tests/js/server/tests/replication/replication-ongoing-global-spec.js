@@ -68,11 +68,9 @@ const compareIndexes = function(l, r, eq) {
   for (let x of l) {
     delete x.id;
     delete x.selectivityEstimate;
-    delete x.figures;
   }
   for (let x of r) {
     delete x.id;
-    delete x.figures;
     delete x.selectivityEstimate;
   }
   if (eq) {
