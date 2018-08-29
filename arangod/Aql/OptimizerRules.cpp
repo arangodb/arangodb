@@ -213,6 +213,9 @@ class RestrictToSingleShardChecker final
   std::unordered_map<arangodb::aql::Variable const*,
                      std::unordered_set<std::string>>
       _shardsUsed;
+  std::unordered_map<arangodb::aql::Variable const*,
+                     std::unordered_set<std::string>>
+      _shardsCleared;
   bool _stop;
   std::map<arangodb::aql::Collection const*, bool> _unsafe;
 
@@ -228,8 +231,8 @@ class RestrictToSingleShardChecker final
   }
 
   std::string getShard(arangodb::aql::Variable const* variable) const {
-    auto const& it = _shardsUsed.find(variable);
-    if (it == _shardsUsed.end()) {
+    auto const& it = _shardsCleared.find(variable);
+    if (it == _shardsCleared.end()) {
       return "";
     }
 
@@ -251,8 +254,8 @@ class RestrictToSingleShardChecker final
   }
 
   bool isSafeForOptimization(arangodb::aql::Variable const* variable) const {
-    auto it = _shardsUsed.find(variable);
-    if (it == _shardsUsed.end()) {
+    auto it = _shardsCleared.find(variable);
+    if (it == _shardsCleared.end()) {
       return false;
     }
 
@@ -297,7 +300,13 @@ class RestrictToSingleShardChecker final
         break;
       }
 
+      case EN::ENUMERATE_COLLECTION: {
+        handleSourceNode(en);
+        break;
+      }
+
       case EN::INDEX: {
+        handleIndexNode(en);
         handleSourceNode(en);
         break;
       }
@@ -309,14 +318,13 @@ class RestrictToSingleShardChecker final
         auto node =
             ExecutionNode::castTo<arangodb::aql::ModificationNode const*>(en);
         // make sure we don't restrict this collection via a filter
-        auto accessors = _tracker.getCollectionVariables(node->collection());
-        for (auto var : accessors) {
-          _shardsUsed[var].clear();
-        }
+        _shardsUsed.clear();
         std::string shardId = ::getSingleShardId(_plan, en, node->collection());
         if (shardId.empty()) {
+          // mark the collection unsafe to restrict
           _unsafe[node->collection()] = true;
         }
+        // no need to track the shardId, we'll find it again later
         break;
       }
 
@@ -351,7 +359,7 @@ class RestrictToSingleShardChecker final
     }
   }
 
-  void handleSourceNode(arangodb::aql::ExecutionNode const* en) {
+  void handleIndexNode(arangodb::aql::ExecutionNode const* en) {
     auto collection = arangodb::aql::ExecutionNode::castTo<
                           arangodb::aql::CollectionAccessingNode const*>(en)
                           ->collection();
@@ -370,6 +378,15 @@ class RestrictToSingleShardChecker final
       }
       _shardsUsed[variable].emplace(shardId);
     }
+  }
+
+  void handleSourceNode(arangodb::aql::ExecutionNode const* en) {
+    auto variable = arangodb::aql::ExecutionNode::castTo<
+                        arangodb::aql::DocumentProducingNode const*>(en)
+                        ->outVariable();
+
+    // now move all shards for this variable to the cleared list
+    _shardsCleared[variable] = std::move(_shardsUsed[variable]);
   }
 };
 
