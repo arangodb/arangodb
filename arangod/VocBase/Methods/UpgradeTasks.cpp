@@ -178,7 +178,7 @@ bool UpgradeTasks::upgradeGeoIndexes(
     arangodb::velocypack::Slice const& slice
 ) {
   if (EngineSelectorFeature::engineName() != "rocksdb") {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "No need to upgrade geo indexes!";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "No need to upgrade geo indexes!";
     return true;
   }
 
