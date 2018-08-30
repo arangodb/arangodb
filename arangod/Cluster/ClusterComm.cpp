@@ -387,13 +387,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ///
 /// There are two timeout arguments. `timeout` is the globale timeout
 /// specifying after how many seconds the complete operation must be
-/// completed. `initTimeout` is a second timeout, which is used to
-/// limit the time to send the initial request away. If `initTimeout`
-/// is negative (as for example in the default value), then `initTimeout`
-/// is taken to be the same as `timeout`. The idea behind the two timeouts
-/// is to be able to specify correct behaviour for automatic failover.
-/// The idea is that if the initial request cannot be sent within
-/// `initTimeout`, one can retry after a potential failover.
+/// completed. `connectTimeout` is the Timeout for initially opening a connection
 ////////////////////////////////////////////////////////////////////////////////
 
 OperationID ClusterComm::asyncRequest(
@@ -402,7 +396,7 @@ OperationID ClusterComm::asyncRequest(
     std::shared_ptr<std::string const> body,
     std::unordered_map<std::string, std::string> const& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-    bool singleRequest, ClusterCommTimeout initTimeout) {
+    bool singleRequest, ClusterCommTimeout connectTimeout) {
   auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
   result->coordTransactionID = coordTransactionID;
@@ -417,7 +411,7 @@ OperationID ClusterComm::asyncRequest(
   }
 
   communicator::Options opt;
-  opt.connectionTimeout = initTimeout;
+  opt.connectionTimeout = connectTimeout;
   opt.requestTimeout = timeout;
 
   Callbacks callbacks;
@@ -777,45 +771,6 @@ void ClusterComm::drop(CoordTransactionID const coordTransactionID,
       }
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move an operation from the send to the receive queue
-////////////////////////////////////////////////////////////////////////////////
-
-bool ClusterComm::moveFromSendToReceived(OperationID operationID) {
-  TRI_ASSERT(false);
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "In moveFromSendToReceived " << operationID;
-
-  CONDITION_LOCKER(locker, somethingReceived);
-  CONDITION_LOCKER(sendLocker, somethingToSend);
-
-  IndexIterator i = toSendByOpID.find(operationID);  // cannot fail
-  // TRI_ASSERT(i != toSendByOpID.end());
-  // KV: Except the operation has been dropped in the meantime
-
-  QueueIterator q = i->second;
-  ClusterCommOperation* op = *q;
-  TRI_ASSERT(op->result.operationID == operationID);
-  toSendByOpID.erase(i);
-  toSend.erase(q);
-  std::unique_ptr<ClusterCommOperation> opPtr(op);
-  if (op->result.dropped) {
-    return false;
-  }
-  if (op->result.status == CL_COMM_SENDING) {
-    // Note that in the meantime the status could have changed to
-    // CL_COMM_ERROR, CL_COMM_TIMEOUT or indeed to CL_COMM_RECEIVED in
-    // these cases, we do not want to overwrite this result
-    op->result.status = CL_COMM_SENT;
-  }
-  received.push_back(op);
-  opPtr.release();
-  q = received.end();
-  q--;
-  receivedByOpID[operationID] = q;
-  somethingReceived.broadcast();
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
