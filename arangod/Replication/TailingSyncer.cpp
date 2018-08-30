@@ -111,7 +111,7 @@ TailingSyncer::TailingSyncer(
   }
 
   // FIXME: move this into engine code
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
   _supportsSingleOperations = (engineName == "mmfiles");
 }
 
@@ -1873,7 +1873,7 @@ void TailingSyncer::checkParallel() {
     return;
   }
 
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
+  std::string const& engineName = EngineSelectorFeature::ENGINE->typeName();
   if (engineName == "rocksdb" && _state.master.engine == engineName) {
     // master and slave are both on RocksDB... that means we do not need
     // to post the list of open transactions every time, and we can

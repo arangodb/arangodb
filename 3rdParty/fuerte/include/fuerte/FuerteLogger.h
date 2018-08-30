@@ -78,21 +78,21 @@
 #endif
 
 #if ENABLE_FUERTE_LOG_VSTTRACE > 0
-#define FUERTE_LOG_VSTTRACE std::cout
+#define FUERTE_LOG_VSTTRACE std::cout << "[vst] "
 #else
 #define FUERTE_LOG_VSTTRACE \
   if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_VSTCHUNKTRACE > 0
-#define FUERTE_LOG_VSTCHUNKTRACE std::cout
+#define FUERTE_LOG_VSTCHUNKTRACE std::cout << "[vst] "
 #else
 #define FUERTE_LOG_VSTCHUNKTRACE \
   if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_HTTPTRACE > 0
-#define FUERTE_LOG_HTTPTRACE std::cout
+#define FUERTE_LOG_HTTPTRACE std::cout << "[http] "
 #else
 #define FUERTE_LOG_HTTPTRACE \
   if (0) std::cout

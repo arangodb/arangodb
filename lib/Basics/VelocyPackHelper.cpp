@@ -770,14 +770,17 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::Null:
       return 0;
     case VPackValueType::Bool: {
-      bool left = lhs.getBoolean();
-      bool right = rhs.getBoolean();
-      if (left == right) {
+      TRI_ASSERT(lhs.isBoolean());
+      TRI_ASSERT(rhs.isBoolean());
+      bool left = lhs.isTrue();
+      if (left == rhs.isTrue()) {
         return 0;
       }
       if (!left) {
+        TRI_ASSERT(rhs.isTrue());
         return -1;
       }
+      TRI_ASSERT(rhs.isFalse());
       return 1;
     }
     case VPackValueType::Double:

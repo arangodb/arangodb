@@ -557,26 +557,12 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
 void MMFilesRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-  bool found;
 
   // include system collections?
-  bool includeSystem = true;
-  {
-    std::string const& value = _request->value("includeSystem", found);
-
-    if (found) {
-      includeSystem = StringUtils::boolean(value);
-    }
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
-  bool global = false;
-  {
-    std::string const& value = _request->value("global", found);
-    if (found) {
-      global = StringUtils::boolean(value);
-    }
-  }
+  bool global = _request->parsedValue("global", false);
 
   if (global &&
       _request->databaseName() != StaticStrings::SystemDatabase) {
@@ -610,6 +596,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
     // add collections and views
+    grantTemporaryRights();
     _vocbase.inventory(builder, tick, nameFilter);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }

@@ -120,14 +120,13 @@ class ExecutionPlan {
   /// @brief invalidate all cost estimations in the plan
   inline void invalidateCost() {
     TRI_ASSERT(_root != nullptr);
-    return _root->invalidateCost();
+    _root->invalidateCost();
   }
 
   /// @brief get the estimated cost . . .
-  inline double getCost() {
+  CostEstimate getCost() {
     TRI_ASSERT(_root != nullptr);
-    size_t nrItems;
-    return _root->getCost(nrItems);
+    return _root->getCost();
   }
 
   /// @brief returns true if a plan is so simple that optimizations would
@@ -261,11 +260,11 @@ class ExecutionPlan {
   /// and adding plan specific options.
   ModificationOptions createModificationOptions(AstNode const*);
 
-public:
+ public:
   /// @brief parses modification options form an AST node
   static ModificationOptions parseModificationOptions(AstNode const*);
 
-private:
+ private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 

@@ -1101,53 +1101,6 @@ static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef DEBUG_SYNC_REPLICATION
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock getFollowers
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  auto& vocbase = GetContextVocBase(isolate);
-
-  if (vocbase.isDropped()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("addFollower(<name>)");
-  }
-
-  ServerID const serverId = TRI_ObjectToString(args[0]);
-
-  if (ServerState::instance()->isDBServer()) {
-    arangodb::LogicalCollection const* v8Collection =
-        TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                     WRP_VOCBASE_COL_TYPE);
-
-    if (v8Collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
-    }
-
-    std::string collectionName = v8Collection->name();
-    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
-
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    }
-
-    collection->followers()->add(serverId);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock removeFollower
 ////////////////////////////////////////////////////////////////////////////////
@@ -2639,7 +2592,6 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createEdgeCollection()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createView()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createStatement()"));
-  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_currentWalFiles()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_document()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_drop()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_dropDatabase()"));
@@ -2654,6 +2606,7 @@ static void JS_CompletionsVocbase(
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engine()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_name()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_path()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_parse()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));
@@ -2747,7 +2700,7 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult = trx.count(collectionName, details);
+  OperationResult opResult = trx.count(collectionName, details ? transaction::CountType::Detailed : transaction::CountType::Normal);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
@@ -2856,10 +2809,6 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_SetTheLeader, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getLeader"),
                        JS_GetLeader, true);
-#ifdef DEBUG_SYNC_REPLICATION
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "addFollower"),
-                       JS_AddFollower, true);
-#endif
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "removeFollower"),
                        JS_RemoveFollower, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFollowers"),

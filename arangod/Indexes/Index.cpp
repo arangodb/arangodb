@@ -484,22 +484,21 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPersistence) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(unsigned flags) const {
   auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder, withFigures, forPersistence);
+  toVelocyPack(*builder, flags);
   return builder;
 }
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
+void Index::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(
     arangodb::StaticStrings::IndexId,
     arangodb::velocypack::Value(std::to_string(_iid))
   );
-  //builder.add(arangodb::StaticStrings::IndexType, VPackValue(oldtypeName()));
   builder.add(
     arangodb::StaticStrings::IndexType,
     arangodb::velocypack::Value(oldtypeName(type()))
@@ -518,11 +517,11 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
 
   builder.close();
 
-  if (hasSelectivityEstimate() && !ServerState::instance()->isCoordinator()) {
+  if (hasSelectivityEstimate() && (flags & SERIALIZE_ESTIMATES)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
-  if (withFigures) {
+  if (flags & SERIALIZE_FIGURES) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
@@ -942,6 +941,33 @@ void Index::expandInSearchValues(VPackSlice const base,
       }
     }
   }
+}
+
+bool Index::covers(std::unordered_set<std::string> const& attributes) const {
+  // check if we can use covering indexes
+  if (_fields.size() < attributes.size()) {
+    // we will not be able to satisfy all requested projections with this index
+    return false;
+  }
+
+  std::string result;
+  size_t i = 0;
+  for (size_t j = 0; j < _fields.size(); ++j) {
+    bool found = false;
+    result.clear();
+    TRI_AttributeNamesToString(_fields[j], result, false);
+    for (auto const& it : attributes) {
+      if (result == it) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
 }
 
 void Index::warmup(arangodb::transaction::Methods*,

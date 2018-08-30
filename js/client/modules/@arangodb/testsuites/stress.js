@@ -141,7 +141,7 @@ function stressCrud (options) {
   const concurrency = options.concurrency;
 
   const command = `
-  const stressCrud = require('./js/server/tests/stress/crud')
+  const stressCrud = require('./' + tu.pathForTesting('server/tests/stress/crud'));
 
   stressCrud.createDeleteUpdateParallel({
     concurrency: ${concurrency},
@@ -168,7 +168,7 @@ function stressKilling (options) {
   _.defaults(opts, options);
 
   const command = `
-  const stressCrud = require('./js/server/tests/stress/killingQueries')
+  const stressCrud = require('./' + tu.pathForTesting('server/tests/stress/killingQueries'));
 
   stressCrud.killingParallel({
     duration: ${duration},
@@ -188,7 +188,7 @@ function stressLocks (options) {
   const concurrency = options.concurrency;
 
   const command = `
-  const deadlock = require('./js/server/tests/stress/deadlock')
+  const deadlock = require('./' + tu.pathForTesting('server/tests/stress/deadlock'));
 
   deadlock.lockCycleParallel({
     concurrency: ${concurrency},

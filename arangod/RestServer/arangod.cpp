@@ -60,6 +60,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/EngineEqualityCheckFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -85,6 +86,7 @@
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -110,7 +112,6 @@
 #ifdef USE_IRESEARCH
   #include "IResearch/IResearchAnalyzerFeature.h"
   #include "IResearch/IResearchFeature.h"
-  #include "IResearch/SystemDatabaseFeature.h"
 #endif
 
 // storage engines
@@ -188,6 +189,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new LockfileFeature(server));
     server.addFeature(new LoggerBufferFeature(server));
     server.addFeature(new LoggerFeature(server, true));
+    server.addFeature(new MaintenanceFeature(server));
     server.addFeature(new MaxMapCountFeature(server));
     server.addFeature(new NonceFeature(server));
     server.addFeature(new PageSizeFeature(server));
@@ -207,6 +209,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new SslFeature(server));
     server.addFeature(new StatisticsFeature(server));
     server.addFeature(new StorageEngineFeature(server));
+    server.addFeature(new SystemDatabaseFeature(server));
     server.addFeature(new TempFeature(server, name));
     server.addFeature(new TransactionManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
@@ -237,7 +240,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 #ifdef USE_IRESEARCH
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
     server.addFeature(new arangodb::iresearch::IResearchFeature(server));
-    server.addFeature(new arangodb::iresearch::SystemDatabaseFeature(server));
 #endif
 
     // storage engines

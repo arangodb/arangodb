@@ -64,11 +64,13 @@ TransactionState::~TransactionState() {
   }
 }
 
-std::vector<std::string> TransactionState::collectionNames() const {
+std::vector<std::string> TransactionState::collectionNames(std::unordered_set<std::string> const& initial) const {
   std::vector<std::string> result;
-  result.reserve(_collections.size());
-
-  for (auto& trxCollection : _collections) {
+  result.reserve(_collections.size() + initial.size());
+  for (auto const& it : initial) {
+    result.emplace_back(it);
+  }
+  for (auto const& trxCollection : _collections) {
     if (trxCollection->collection() != nullptr) {
       result.emplace_back(trxCollection->collectionName());
     }
@@ -339,13 +341,6 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
 
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
-    // server is in read-only mode
-    if (accessType > AccessMode::Type::READ && ServerState::readOnly()) {
-      LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
-
-      return TRI_ERROR_ARANGO_READ_ONLY;
-    }
-
     auto level = exec->collectionAuthLevel(_vocbase.name(), cname);
     TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
 

@@ -29,12 +29,11 @@ using namespace arangodb::aql;
 /// @brief create the function
 Function::Function(std::string const& name,
                    char const* arguments,
-                   bool isDeterministic, bool canRunOnDBServer,
+                   std::underlying_type<Flags>::type flags,
                    FunctionImplementation const& implementation)
     : name(name),
       arguments(arguments),
-      isDeterministic(isDeterministic),
-      canRunOnDBServer(canRunOnDBServer),
+      flags(flags),
       implementation(implementation),
       conversions() {
   initializeArguments();
@@ -42,9 +41,9 @@ Function::Function(std::string const& name,
   // almost all AQL functions have a cxx implementation
   // only function V8() plus the ArangoSearch functions do not
   LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name <<
-                                     "'. cacheable: " << isCacheable() <<
-                                     ", deterministic: " << isDeterministic <<
-                                     ", canRunOnDBServer: " << canRunOnDBServer <<
+                                     "'. cacheable: " << hasFlag(Flags::Cacheable) <<
+                                     ", deterministic: " << hasFlag(Flags::Deterministic) <<
+                                     ", canRunOnDBServer: " << hasFlag(Flags::CanRunOnDBServer) <<
                                      ", hasCxxImplementation: " << (implementation != nullptr) <<
                                      ", hasConversions: " << !conversions.empty();
 }
@@ -103,7 +102,7 @@ void Function::initializeArguments() {
       case '+':
         // repeated optional argument
         TRI_ASSERT(inOptional);
-        maxRequiredArguments = MaxArguments;
+        maxRequiredArguments = maxArguments;
         return;
 
       case 'h':
@@ -112,10 +111,10 @@ void Function::initializeArguments() {
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
-          conversions.emplace_back(CONVERSION_REQUIRED);
-        } else if (conversions[position] == CONVERSION_NONE) {
+          conversions.emplace_back(Conversion::Required);
+        } else if (conversions[position] == Conversion::None) {
           // we already had a parameter at this position
-          conversions[position] = CONVERSION_OPTIONAL;
+          conversions[position] = Conversion::Optional;
         }
         foundArg = true;
         break;
@@ -126,10 +125,10 @@ void Function::initializeArguments() {
         // set the conversion info for the position
         if (conversions.size() <= position) {
           // we don't yet have another parameter at this position
-          conversions.emplace_back(CONVERSION_NONE);
-        } else if (conversions[position] == CONVERSION_REQUIRED) {
+          conversions.emplace_back(Conversion::None);
+        } else if (conversions[position] == Conversion::Required) {
           // we already had a parameter at this position
-          conversions[position] = CONVERSION_OPTIONAL;
+          conversions[position] = Conversion::Optional;
         }
         foundArg = true;
         break;

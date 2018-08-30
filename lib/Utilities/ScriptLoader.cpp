@@ -122,7 +122,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(filename.c_str(), nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot locate file '" << StringUtils::correctPath(name) << "', path: '" << parts[i] << "': " << TRI_last_error();
       }
 
       if (result != nullptr) {

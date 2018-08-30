@@ -1554,8 +1554,8 @@ bool AstNode::isSimple() const {
       auto conversion = func->getArgumentConversion(i);
 
       if (member->type == NODE_TYPE_COLLECTION &&
-          (conversion == Function::CONVERSION_REQUIRED ||
-           conversion == Function::CONVERSION_OPTIONAL)) {
+          (conversion == Function::Conversion::Required ||
+           conversion == Function::Conversion::Optional)) {
         // collection attribute: no need to check for member simplicity
         continue;
       } else {
@@ -1743,12 +1743,12 @@ bool AstNode::canRunOnDBServer() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
-    if (func->canRunOnDBServer) {
+    if (func->hasFlag(Function::Flags::CanRunOnDBServer)) {
       setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-    } else {
-      setFlag(DETERMINED_RUNONDBSERVER);
+      return true;
     }
-    return func->canRunOnDBServer;
+    setFlag(DETERMINED_RUNONDBSERVER);
+    return false;
   }
 
   if (type == NODE_TYPE_FCALL_USER) {
@@ -1836,8 +1836,8 @@ bool AstNode::isDeterministic() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be deterministic
     auto func = static_cast<Function*>(getData());
-
-    if (!func->isDeterministic) {
+    
+    if (!func->hasFlag(Function::Flags::Deterministic)) {
       setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
       return false;
     }
@@ -1877,7 +1877,7 @@ bool AstNode::isCacheable() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be cacheable
     auto func = static_cast<Function*>(getData());
-    return func->isCacheable();
+    return func->hasFlag(Function::Flags::Cacheable);
   }
 
   if (type == NODE_TYPE_FCALL_USER) {
@@ -1949,6 +1949,16 @@ bool AstNode::containsDynamicAttributeName() const {
 
 /// @brief clone a node, recursively
 AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
+
+/// @brief validate that given node is an object with const-only values
+bool AstNode::isConstObject() const {
+  if (type != NODE_TYPE_OBJECT) {
+    return false;
+  }
+
+  return isConstant();
+}
+
 
 /// @brief append a string representation of the node to a string buffer
 /// the string representation does not need to be JavaScript-compatible

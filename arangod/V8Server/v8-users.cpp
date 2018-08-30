@@ -44,6 +44,48 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a collection exists in database or a wildcard was specified
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result existsCollection(
+    std::string const& database, std::string const& collection
+) {
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL, "failure to find feature 'Database'"
+    );
+  }
+
+  static const std::string wildcard("*");
+
+  if (wildcard == database) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  auto* vocbase = databaseFeature->lookupDatabase(database);
+
+  if (!vocbase) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (wildcard == collection) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  return !arangodb::CollectionNameResolver(*vocbase).getCollection(collection)
+    ? arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
+    : arangodb::Result()
+    ;
+}
+
+}
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -224,8 +266,8 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
-    um->outdate();
-    um->reloadAllUsers(); // noop except on coordinator
+    um->triggerLocalReload();
+    um->triggerGlobalReload(); // noop except on coordinator
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -302,33 +344,48 @@ static void JS_GrantCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
+
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "user are not supported on this server");
   }
-  
+
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
 
+  // validate that the collection is present
+  {
+    auto res = existsCollection(db, coll);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
   auth::Level lvl = auth::Level::RW;
+
   if (args.Length() >= 4) {
     std::string type = TRI_ObjectToString(args[3]);
     lvl = auth::convertToAuthLevel(type);
   }
+
   Result r = um->updateUser(username, [&](auth::User& entry) {
     entry.grantCollection(db, coll, lvl);
     return TRI_ERROR_NO_ERROR;
   });
+
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -341,14 +398,16 @@ static void JS_RevokeCollection(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
+
   if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
-  
+
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -358,12 +417,22 @@ static void JS_RevokeCollection(
   std::string username = TRI_ObjectToString(args[0]);
   std::string db = TRI_ObjectToString(args[1]);
   std::string coll = TRI_ObjectToString(args[2]);
-  
+
+  // validate that the collection is present
+  {
+    auto res = existsCollection(db, coll);
+
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+
   Result r = um->updateUser(
       username, [&](auth::User& entry) {
         entry.removeCollection(db, coll);
         return TRI_ERROR_NO_ERROR;
       });
+
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }

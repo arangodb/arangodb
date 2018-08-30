@@ -168,6 +168,9 @@ class Index {
     return _useExpansion;
   }
 
+  /// @brief whether or not the index covers all the attributes passed in
+  virtual bool covers(std::unordered_set<std::string> const& attributes) const;
+
   /// @brief return the underlying collection
   inline LogicalCollection* collection() const { return &_collection; }
 
@@ -262,9 +265,21 @@ class Index {
   virtual bool implicitlyUnique() const;
 
   virtual size_t memory() const = 0;
+  
+  // serialization flags for indexes
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool withFigures, bool forPersistence) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool withFigures, bool forPersistence) const;
+  // serialize the basics. this cannot be turne off
+  static constexpr unsigned SERIALIZE_BASICS       = 0;
+  // serialize figures for index
+  static constexpr unsigned SERIALIZE_FIGURES      = 1;
+  // serialize object ids for persistence
+  static constexpr unsigned SERIALIZE_OBJECTID     = 1 << 1;
+  // serialize selectivity estimates
+  static constexpr unsigned SERIALIZE_ESTIMATES    = 1 << 2;
+
+  /// serialize an index to velocypack, using the serialization flags above
+  virtual void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(unsigned flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
@@ -333,8 +348,6 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
-
-  //returns estimate for index in cluster - the bool is true if the index was found
 
  protected:
   TRI_idx_iid_t const _iid;

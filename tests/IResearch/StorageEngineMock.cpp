@@ -88,7 +88,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       arangodb::Index const* index,
       Map const& map,
       std::unique_ptr<VPackBuilder>&& keys
-  ) : IndexIterator(collection, trx, index),
+  ) : IndexIterator(collection, trx),
       _map(map),
       _begin(_map.begin()),
       _end(_map.end()),
@@ -184,11 +184,10 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void toVelocyPack(
       VPackBuilder& builder,
-      bool withFigures,
-      bool forPersistence
+      unsigned flags
   ) const override {
     builder.openObject();
-    Index::toVelocyPack(builder, withFigures, forPersistence);
+    Index::toVelocyPack(builder, flags);
     // hard-coded
     builder.add("unique", VPackValue(false));
     builder.add("sparse", VPackValue(false));
@@ -309,14 +308,14 @@ class EdgeIndexMock final : public arangodb::Index {
       // a.b IN values
       if (!valNode->isArray()) {
         // a.b IN non-array
-        return new arangodb::EmptyIndexIterator(&_collection, trx, this);
+        return new arangodb::EmptyIndexIterator(&_collection, trx);
       }
 
       return createInIterator(trx, mmdr, attrNode, valNode);
     }
 
     // operator type unsupported
-    return new arangodb::EmptyIndexIterator(&_collection, trx, this);
+    return new arangodb::EmptyIndexIterator(&_collection, trx);
   }
 
   arangodb::aql::AstNode* specializeCondition(
@@ -416,7 +415,7 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
       uint64_t size,
       arangodb::LogicalCollection* coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(coll, trx, nullptr),
+    : arangodb::IndexIterator(coll, trx),
       _end(size), _size(size) {
   }
 
@@ -448,7 +447,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
       uint64_t size,
       arangodb::LogicalCollection& coll,
       arangodb::transaction::Methods* trx)
-    : arangodb::IndexIterator(&coll, trx, nullptr),
+    : arangodb::IndexIterator(&coll, trx),
       _end(size) {
   }
 
@@ -881,8 +880,10 @@ arangodb::Result PhysicalCollectionMock::replace(
   arangodb::OperationOptions& options
 ) {
   before();
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+
+  auto key = newSlice.get(arangodb::StaticStrings::KeyString);
+
+  return update(trx, newSlice, result, options, resultMarkerTick, lock, prevRev, previous, key);
 }
 
 int PhysicalCollectionMock::restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) {
@@ -1405,6 +1406,10 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
+}
+  
+std::vector<std::string> StorageEngineMock::currentWalFiles() const {
+  return std::vector<std::string>(); 
 }
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {

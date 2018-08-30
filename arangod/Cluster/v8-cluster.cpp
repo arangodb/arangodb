@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1158,27 +1158,6 @@ static void JS_JavaScriptPathServerState(
   TRI_V8_TRY_CATCH_END
 }
 
-#ifdef DEBUG_SYNC_REPLICATION
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set arangoserver state to initialized
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EnableSyncReplicationDebug(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("enableSyncReplicationDebug()");
-  }
-
-  ServerState::instance()->setInitialized();
-  ServerState::instance()->setId("repltest");
-  AgencyComm::syncReplDebug = true;
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialized
 ////////////////////////////////////////////////////////////////////////////////
@@ -1897,7 +1876,7 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
     options->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
     
-    std::string authorization = "bearer " + af->tokenCache()->jwtToken();
+    std::string authorization = "bearer " + af->tokenCache().jwtToken();
     v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
     headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
     
@@ -2089,10 +2068,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "javaScriptPath"),
                        JS_JavaScriptPathServerState);
-#ifdef DEBUG_SYNC_REPLICATION
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enableSyncReplicationDebug"),
-                       JS_EnableSyncReplicationDebug);
-#endif
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isCoordinator"),

@@ -10,9 +10,9 @@ if [ "x$@" == "x" ] ; then
     `find ./js/common/modules/@arangodb -name "*.js"` \
     `find ./js/client/modules/@arangodb -name "*.js"` \
     `find ./js/server/modules/@arangodb -name "*.js"` \
-    `find ./js/server/tests -name "*.js" | grep -v "ranges-combined"` \
-    `find ./js/common/tests -name "*.js"` \
-    `find ./js/client/tests -name "*.js"` \
+    `find ./tests/js/server/tests -name "*.js" | grep -v "ranges-combined"` \
+    `find ./tests/js/common/tests -name "*.js"` \
+    `find ./tests/js/client/tests -name "*.js"` \
     `find ./UnitTests -name "*.js"` \
     \
     `find ./js/apps/system/_admin/aardvark/APP/frontend/js/models -name "*.js"` \

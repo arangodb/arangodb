@@ -19,11 +19,11 @@ We use [the city graph](../../Manual/Graphs/index.html#the-city-graph) and its g
     ~addIgnoreCollection("internationalHighway");
     var examples = require("@arangodb/graph-examples/example-graph.js");
     var g = examples.loadGraph("routeplanner");
-    var bonn=[50.7340, 7.0998];
-    |db._query(`FOR startCity IN
-    |             WITHIN(germanCity, @lat, @long, @radius)
+    var bonn=[7.0998, 50.7340];
+    |db._query(`FOR startCity IN germanCity 
+    |             FILTER GEO_DISTANCE(@bonn, startCity) < @radius
     |               RETURN startCity`,
-    |   {lat: bonn[0], long: bonn[1], radius: 400000}
+    |   { bonn: bonn, radius: 400000 }
     ).toArray()
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock COMBINING_GRAPH_01_create_graph
@@ -33,17 +33,14 @@ We won't find **Paris** since its in the `frenchCity` collection.
 
     @startDocuBlockInline COMBINING_GRAPH_02_combine
     @EXAMPLE_ARANGOSH_OUTPUT{COMBINING_GRAPH_02_combine}
-    ~var bonn=[50.7340, 7.0998]
-    |db._query(`FOR startCity IN
-    |             WITHIN(germanCity, @lat, @long, @radius)
+    var bonn=[7.0998, 50.7340];
+    |db._query(`FOR startCity IN germanCity 
+    |             FILTER GEO_DISTANCE(@bonn, startCity) < @radius
     |               FOR v, e, p IN 1..1 OUTBOUND startCity
     |                 GRAPH 'routeplanner'
     |     RETURN {startcity: startCity._key, traversedCity: v}`,
-    |{
-    |  lat: bonn[0],
-    |  long: bonn[1],
-    |  radius: 400000
-    } ).toArray()
+    |   { bonn: bonn, radius: 400000 }
+    ).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock COMBINING_GRAPH_02_combine
 
@@ -54,16 +51,13 @@ Alternatively we could use a `LET` statement with a subquery to group the traver
     @startDocuBlockInline COMBINING_GRAPH_03_combine_let
     @EXAMPLE_ARANGOSH_OUTPUT{COMBINING_GRAPH_03_combine_let}
     ~var bonn=[50.7340, 7.0998];
-    |db._query(`FOR startCity IN
-    |            WITHIN(germanCity, @lat, @long, @radius)
+    |db._query(`FOR startCity IN germanCity
+    |             FILTER GEO_DISTANCE(@bonn, startCity) < @radius
     |              LET oneCity = (FOR v, e, p IN 1..1 OUTBOUND startCity
     |                GRAPH 'routeplanner' RETURN v)
     |              return {startCity: startCity._key, connectedCities: oneCity}`,
-    |{
-    |  lat: bonn[0],
-    |  long: bonn[1],
-    |  radius: 400000
-    } ).toArray();
+    |   { bonn: bonn, radius: 400000 }
+    ).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock COMBINING_GRAPH_03_combine_let
 

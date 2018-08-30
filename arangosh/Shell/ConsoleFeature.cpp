@@ -314,18 +314,12 @@ std::string ConsoleFeature::readPassword() {
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet) {
-    if (_pager) {
-      std::ostringstream s;
+  if (!_quiet && _pager) {
+    std::ostringstream s;
 
-      s << "Using pager '" << _pagerCommand << "' for output buffering.";
+    s << "Using pager '" << _pagerCommand << "' for output buffering.";
 
-      printLine(s.str());
-    }
-
-    if (_prettyPrint) {
-      printLine("Pretty printing values.");
-    }
+    printLine(s.str());
   }
 }
 

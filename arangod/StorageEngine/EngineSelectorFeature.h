@@ -50,7 +50,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   // whether the engine has been started yet
   bool hasStarted() const { return _hasStarted.load(); }
 
-  static char const* engineName();
+  static std::string const& engineName();
 
   static std::string const& defaultEngine();
 

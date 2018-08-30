@@ -113,7 +113,11 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner, withFigures, false);
+    unsigned flags = Index::SERIALIZE_ESTIMATES;
+    if (withFigures) {
+      flags |= Index::SERIALIZE_FIGURES;
+    }
+    c->getIndexesVPack(tmpInner, flags);
 
     tmp.openArray();
     for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
@@ -158,7 +162,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.openArray(true);
 
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-      idx->toVelocyPack(tmp, withFigures, false);
+      idx->toVelocyPack(tmp, Index::SERIALIZE_FIGURES | Index::SERIALIZE_ESTIMATES);
     }
     tmp.close();
     trx.finish(res);
@@ -296,7 +300,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   VPackBuilder tmp;
   try {
-    idx->toVelocyPack(tmp, false, false);
+    idx->toVelocyPack(tmp, Index::SERIALIZE_ESTIMATES);
   } catch (...) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -344,10 +348,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
     if ((create && (lvl != auth::Level::RW || !canModify)) ||
         (lvl == auth::Level::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
-    }
-    if (create && !exec->isSuperuser() && ServerState::readOnly()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 

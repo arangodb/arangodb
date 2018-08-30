@@ -103,7 +103,7 @@ class PhysicalCollection {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+  void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
 
   /// @brief return the figures for a collection

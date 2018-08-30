@@ -28,95 +28,134 @@
 namespace arangodb {
 class Result {
  public:
-  Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
+  Result();
 
   Result(bool avoidCastingErrors) = delete;
 
-  Result(int errorNumber)
-      : _errorNumber(errorNumber){
-    if (errorNumber != TRI_ERROR_NO_ERROR) {
-      _errorMessage = TRI_errno_string(errorNumber);
-    }
-  }
+  Result(int errorNumber);
 
-  Result(int errorNumber, std::string const& errorMessage)
-      : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+  Result(int errorNumber, std::string const& errorMessage);
+    
+  /**
+   * @brief Construct with error number and message
+   * @param  errorNumber   Said error number
+   * @param  errorMessage  Said error message
+   */
+  Result(int errorNumber, std::string&& errorMessage);
+  
+  /**
+   * @brief Construct as copy
+   * @param  other  To copy from
+   */
+  Result(Result const& other); 
 
-  Result(int errorNumber, std::string&& errorMessage)
-      : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
+  /**
+   * @brief Construct as clone
+   * @param  other  The prototype
+   */
+  Result(Result&& other) noexcept;
 
-  // copy
-  Result(Result const& other)
-      : _errorNumber(other._errorNumber),
-        _errorMessage(other._errorMessage) {}
+  /**
+   * @brief Assignment operator
+   * @param  other  To assign from
+   * @return        Refernce to ourselves
+   */
+  Result& operator=(Result const& other);
+  
+  /**
+   * @brief Assignment operator
+   * @param  other  To assign from
+   * @return        Refernce to ourselves
+   */
+  Result& operator=(Result&& other) noexcept;
 
-  Result& operator=(Result const& other) {
-    _errorNumber = other._errorNumber;
-    _errorMessage = other._errorMessage;
-    return *this;
-  }
-
-  // move
-  Result(Result&& other) noexcept
-      : _errorNumber(other._errorNumber),
-        _errorMessage(std::move(other._errorMessage)) {}
-
-  Result& operator=(Result&& other) noexcept {
-    _errorNumber = other._errorNumber;
-    _errorMessage = std::move(other._errorMessage);
-    return *this;
-  }
-
-  virtual ~Result() {}
+  /**
+   * @brief Default dtor
+   */
+  virtual ~Result();
 
  public:
-  bool ok()   const { return _errorNumber == TRI_ERROR_NO_ERROR; }
-  bool fail() const { return !ok(); }
 
-  int errorNumber() const { return _errorNumber; }
-  bool is(int errorNumber) const { return _errorNumber == errorNumber; }
-  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  /**
+   * @brief  Nomen est omen
+   * @return OK?
+   */
+  bool ok() const noexcept;
 
-  Result& reset(int errorNumber = TRI_ERROR_NO_ERROR) {
-    _errorNumber = errorNumber;
+  /**
+   * @see ok()
+   */
+  bool fail() const noexcept;
 
-    if (errorNumber != TRI_ERROR_NO_ERROR) {
-      _errorMessage = TRI_errno_string(errorNumber);
-    } else {
-      _errorMessage.clear();
-    }
-    return *this;
-  }
+  /**
+   * @brief  Get error number
+   * @return error number
+   */
+  int errorNumber() const noexcept;
 
-  Result& reset(int errorNumber, std::string const& errorMessage) {
-    _errorNumber = errorNumber;
-    _errorMessage = errorMessage;
-    return *this;
-  }
+  /**
+   * @brief  Is specific error
+   * @param errorNumber Said specific error
+   * @return            Equality with specific error
+   */
+  bool is(int errorNumber) const noexcept;
 
-  Result& reset(int errorNumber, std::string&& errorMessage) noexcept {
-    _errorNumber = errorNumber;
-    _errorMessage = std::move(errorMessage);
-    return *this;
-  }
+  /**
+   * @see is(int errorNumber)
+   */
+  bool isNot(int errorNumber) const;
 
-  Result& reset(Result const& other) {
-    _errorNumber = other._errorNumber;
-    _errorMessage = other._errorMessage;
-    return *this;
-  }
+  /**
+   * @brief  Reset to specific error number.
+   *         If ok, error message is cleared.
+   * @param errorNumber Said specific error number
+   * @return            Reference to ourselves
+   */
+  Result& reset(int errorNumber = TRI_ERROR_NO_ERROR);
+    
+  /**
+   * @brief  Reset to specific error number with message.
+   *         If ok, error message is cleared.
+   * @param errorNumber Said specific error number
+   * @param errorMessage Said specific error message
+   * @return            Reference to ourselves
+   */
+  Result& reset(int errorNumber, std::string const& errorMessage);
+  
+  /**
+   * @brief  Reset to specific error number with message.
+   *         If ok, error message is cleared.
+   * @param errorNumber Said specific error number
+   * @param errorMessage Said specific error message
+   * @return            Reference to ourselves
+   */
+  Result& reset(int errorNumber, std::string&& errorMessage) noexcept;
 
-  Result& reset(Result&& other) noexcept {
-    _errorNumber = other._errorNumber;
-    _errorMessage = std::move(other._errorMessage);
-    return *this;
-  }
+  /**
+   * @brief  Reset to other error.
+   * @param  other  Said specific error
+   * @return        Reference to ourselves
+   */
+  Result& reset(Result const& other);
 
-  // the default implementation is const, but sub-classes might
-  // really do more work to compute.
+  /**
+   * @brief  Reset to other error.
+   * @param  other  Said specific error
+   * @return        Reference to ourselves
+   */
+  Result& reset(Result&& other) noexcept;
 
-  virtual std::string errorMessage() const& { return _errorMessage; }
-  virtual std::string errorMessage() && { return std::move(_errorMessage); }
+  /**
+   * @brief  Get error message
+   * @return Our error message
+   */
+  virtual std::string errorMessage() const&;
+
+  /**
+   * @brief  Get error message
+   * @return Our error message
+   */
+  virtual std::string errorMessage() &&;
 
  protected:
   int _errorNumber;
@@ -125,5 +164,11 @@ class Result {
 
 Result prefixResultMessage(Result const& res, std::string const& prefix);
 }
+
+/**
+ * @brief  Print to output stream
+ * @return Said output steam
+ */
+std::ostream& operator<<(std::ostream& out, arangodb::Result const& result);
 
 #endif

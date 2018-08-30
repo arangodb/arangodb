@@ -674,14 +674,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
 void RestReplicationHandler::handleCommandClusterInventory() {
   std::string const& dbName = _request->databaseName();
-  bool found;
-  bool includeSystem = true;
-
-  std::string const& value = _request->value("includeSystem", found);
-
-  if (found) {
-    includeSystem = StringUtils::boolean(value);
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
@@ -796,13 +789,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
   }
   VPackSlice const slice = parsedRequest->slice();
 
-  bool found;
-  bool force = false;
-  std::string const& value = _request->value("force", found);
-
-  if (found) {
-    force = StringUtils::boolean(value);
-  }
+  bool force = _request->parsedValue("force", false);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
@@ -1141,17 +1128,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 #ifdef USE_ENTERPRISE
-  {
-    bool force = false;
-    bool found = false;
-    std::string const& forceVal = _request->value("force", found);
-
-    if (found) {
-      force = StringUtils::boolean(forceVal);
-    }
-    if (ignoreHiddenEnterpriseCollection(colName, force)) {
-      return {TRI_ERROR_NO_ERROR};
-    }
+  bool force = _request->parsedValue("force", false);
+  if (ignoreHiddenEnterpriseCollection(colName, force)) {
+    return {TRI_ERROR_NO_ERROR};
   }
 #endif
 
@@ -1324,9 +1303,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
-    af->userManager()->outdate();
+    af->userManager()->triggerLocalReload();
+    af->userManager()->triggerGlobalReload();
   }
-  af->tokenCache()->invalidateBasicCache();
 
   return Result{queryResult.code};
 }
@@ -2115,7 +2094,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), false);
+      auto countRes = trx.count(col->name(), transaction::CountType::Normal);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2170,7 +2149,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
       // referenceChecksum is the stringified number of documents in the
       // collection
-      uint64_t num = col->numberDocuments(trx.get());
+      uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
       referenceChecksum = std::to_string(num);
     }
 
@@ -2315,7 +2294,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   AccessMode::Type access = AccessMode::Type::READ;
-  if (StringRef(EngineSelectorFeature::ENGINE->typeName()) == "rocksdb") {
+  if (EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
     // we need to lock in EXCLUSIVE mode here, because simply locking
     // in READ mode will not stop other writers in RocksDB. In order
     // to stop other writers, we need to fetch the EXCLUSIVE lock
@@ -2705,12 +2684,7 @@ void RestReplicationHandler::grantTemporaryRights() {
 }
 
 ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
-  global = false;
-  bool found = false;
-  std::string const& value = _request->value("global", found);
-  if (found) {
-    global = StringUtils::boolean(value);
-  }
+  global = _request->parsedValue("global", false);
 
   if (global &&
       _request->databaseName() != StaticStrings::SystemDatabase) {

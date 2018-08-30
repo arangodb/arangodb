@@ -62,44 +62,30 @@ V8ClientConnection::V8ClientConnection()
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
+  _builder.onFailure([this](int error, std::string const& msg) {
+    _lastHttpReturnCode = 503;
+    _lastErrorMessage = msg;
+  });
 }
 
 V8ClientConnection::~V8ClientConnection() {
   shutdownConnection();
-  _loop.forceStop();
 }
 
-void V8ClientConnection::init(ClientFeature* client) {
-  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
-  _username = client->username();
-  _password = client->password();
-  _databaseName = client->databaseName();
-
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(client->endpoint());
-  if (!client->username().empty()) {
-    builder.user(client->username()).password(client->password());
-    builder.authenticationType(fuerte::AuthenticationType::Basic);
-  } else if (!client->jwtSecret().empty()) {
-    builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
-    builder.authenticationType(fuerte::AuthenticationType::Jwt);
-  }
-  builder.onFailure([this](int error, std::string const& msg) {
-    _lastHttpReturnCode = 505;
-    _lastErrorMessage = msg;
-  });
+void V8ClientConnection::createConnection() {
  
-  shutdownConnection(); 
-  _connection = builder.connect(_loop);
-  
+  auto newConnection = _builder.connect(_loop);
   fuerte::StringMap params{{"details","true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
   req->header.database = _databaseName;
+  req->timeout(std::chrono::seconds(30));
   try {
-    auto res = _connection->sendRequestSync(std::move(req));
+    auto res = newConnection->sendRequest(std::move(req));
     _lastHttpReturnCode = res->statusCode();
     
     if (_lastHttpReturnCode == 200) {
+      _connection = std::move(newConnection);
+      
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
       if (res->contentType() == fuerte::ContentType::VPack) {
@@ -140,24 +126,24 @@ void V8ClientConnection::init(ClientFeature* client) {
     }
   } catch (fuerte::ErrorCondition const& e) { // connection error
     _lastErrorMessage = fuerte::to_string(e);
-    _lastHttpReturnCode = 505;
+    _lastHttpReturnCode = 503;
   }
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
-  if (_connection) {
-    if (interrupted) {
-      shutdownConnection(); 
-    } else {
-      if (_connection->state() == fuerte::Connection::State::Disconnected) {
-        _connection->startConnection();
-      }
-    }
+  if (interrupted && _connection.get() != nullptr) {
+    _connection->cancel();
+    _connection.reset();
+  } else if (!interrupted && _connection.get() == nullptr) {
+    createConnection();
   }
 }
 
 bool V8ClientConnection::isConnected() {
-  return _connection->state() == fuerte::Connection::State::Connected;
+  if (_connection) {
+    return _connection->state() == fuerte::Connection::State::Connected;
+  }
+  return false;
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
@@ -168,12 +154,39 @@ std::string V8ClientConnection::endpointSpecification() const {
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
-  this->init(client);
+  TRI_ASSERT(client);
+  
+  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
+  _databaseName = client->databaseName();
+  _builder.endpoint(client->endpoint());
+  if (!client->username().empty()) {
+    _builder.user(client->username()).password(client->password());
+    _builder.authenticationType(fuerte::AuthenticationType::Basic);
+  } else if (!client->jwtSecret().empty()) {
+    _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+    _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  }
+  createConnection();
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
+  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
+  _databaseName = client->databaseName();
+  _builder.endpoint(client->endpoint());
+  if (!client->username().empty()) {
+    _builder.user(client->username()).password(client->password());
+    _builder.authenticationType(fuerte::AuthenticationType::Basic);
+  } else if (!client->jwtSecret().empty()) {
+    _builder.jwtToken(fuerte::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+    _builder.authenticationType(fuerte::AuthenticationType::Jwt);
+  }
+  
+  auto oldConnection = std::move(_connection);
+  if (oldConnection) {
+    oldConnection->cancel();
+  }
   try {
-    init(client);
+    createConnection();
   } catch (...) {
     std::string errorMessage = "error in '" + client->endpoint() + "'";
     throw errorMessage;
@@ -186,7 +199,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
         << "'" << endpointSpecification() << "', "
         << "version " << _version << " [" << _mode << "], "
         << "database '" << _databaseName << "', "
-        << "username: '" << _username << "'";
+        << "username: '" << client->username() << "'";
   } else {
     if (client->getWarnConnect()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -1353,7 +1366,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   _lastHttpReturnCode = 0;
   if (!_connection) {
     _lastErrorMessage = "not connected";
-    _lastHttpReturnCode = 505;
+    _lastHttpReturnCode = 503;
     return v8::Null(isolate);
   }
   
@@ -1403,7 +1416,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequestSync(std::move(req));
+    response = _connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition const& ec) {
     return handleResult(isolate, nullptr, ec);
   }
@@ -1455,10 +1468,10 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   
   std::unique_ptr<fuerte::Response> response;
   try {
-    response = _connection->sendRequestSync(std::move(req));
+    response = _connection->sendRequest(std::move(req));
   } catch (fuerte::ErrorCondition const& e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
-    _lastHttpReturnCode = 505;
+    _lastHttpReturnCode = 503;
   }
   
   v8::Local<v8::Object> result = v8::Object::New(isolate);
@@ -1756,7 +1769,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 
 void V8ClientConnection::shutdownConnection() {
   if (_connection) {
-    _connection->shutdownConnection(fuerte::ErrorCondition::Canceled); 
+    _connection->cancel();
     _connection.reset();
   }
 }

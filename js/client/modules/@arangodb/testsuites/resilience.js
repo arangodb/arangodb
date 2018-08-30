@@ -28,7 +28,6 @@
 const functionsDocumentation = {
   'resilience': 'resilience tests',
   'client_resilience': 'client resilience tests',
-  'cluster_sync': 'cluster sync tests',
   'active_failover': 'active failover tests'
 };
 const optionsDocumentation = [
@@ -37,10 +36,9 @@ const optionsDocumentation = [
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'resilience': ['js/server/tests/resilience'],
-  'client_resilience': ['js/client/tests/resilience'],
-  'cluster_sync': ['js/server/tests/cluster-sync'],
-  'active_failover': ['js/client/tests/active-failover']
+  'resilience': [tu.pathForTesting('server/tests/resilience')],
+  'client_resilience': [tu.pathForTesting('client/tests/resilience')],
+  'active_failover': [tu.pathForTesting('client/tests/active-failover')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -62,35 +60,13 @@ function resilience (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
+  let testCases = tu.scanTestPaths(testPaths.client_resilience);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
   }
 
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: cluster_sync
-// //////////////////////////////////////////////////////////////////////////////
-
-function clusterSync (options) {
-  if (options.cluster) {
-    // may sound strange but these are actually pure logic tests
-    // and should not be executed on the cluster
-    return {
-      'cluster_sync': {
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
-  options.propagateInstanceInfo = true;
-
-  return tu.performTests(options, testCases, 'cluster_sync', tu.runThere);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -121,7 +97,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   Object.assign(allTestPaths, testPaths);
   testFns['resilience'] = resilience;
   testFns['client_resilience'] = clientResilience;
-  testFns['cluster_sync'] = clusterSync;
   testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

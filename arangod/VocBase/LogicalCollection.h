@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -51,6 +52,7 @@ class PhysicalCollection;
 class Result;
 class ShardingInfo;
 class StringRef;
+
 namespace transaction {
 class Methods;
 }
@@ -146,7 +148,7 @@ class LogicalCollection: public LogicalDataSource {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments(transaction::Methods*) const;
+  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
@@ -213,7 +215,7 @@ class LogicalCollection: public LogicalDataSource {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+  void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter =
                          [](arangodb::Index const*) -> bool { return true; }) const;
 
@@ -342,6 +344,8 @@ class LogicalCollection: public LogicalDataSource {
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  
+  transaction::CountCache& countCache() { return _countCache; }
 
   ChecksumResult checksum(bool, bool) const;
 
@@ -366,6 +370,8 @@ class LogicalCollection: public LogicalDataSource {
   bool openIndex(velocypack::Slice const&, transaction::Methods*);
 
   void increaseInternalVersion();
+
+  transaction::CountCache _countCache;
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
