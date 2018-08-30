@@ -68,7 +68,6 @@ void Inception::gossip() {
 
   auto startTime = steady_clock::now();
   seconds timeout(3600);
-  size_t j = 0;
   long waitInterval = 250000;
 
   CONDITION_LOCKER(guard, _cv);
