@@ -275,47 +275,94 @@ to match documents where 'description' best matches 'a quick brown fox'
     FOR doc IN someView SEARCH ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'text_en')
       RETURN doc
 
-ArangoSearch sort
+ArangoSearch `SORT()`
 -----------------
 
 A major feature of ArangoSearch Views is their capability of sorting results
 based on the creation-time search conditions and zero or more sorting functions.
-The sorting functions are meant to be user-defined.
+The ArangoSearch sorting functions available are `TFIDF()` and `BM25()`.
 
-Note: Similar to other sorting functions on regular collections the first
-  argument to any sorting function is _always_ either the document emitted by
-  the `FOR` statement, or some sub-attribute of it. 
+Note: The first argument to any ArangoSearch sorting function is _always_ the
+document emitted by a `FOR` operation over an ArangoSearch View.
 
-The sorting functions are meant to be user-defined. The following functions are already built in:
+Note: An ArangoSearch sorting function is _only_ allowed as an argument to a
+`SORT` operation. But they can be mixed with other arguments to `SORT`.
+
+So the following examples are valid:
+
+```js
+FOR doc IN someView
+    SORT TFIDF(doc)
+```
+
+```js
+FOR a IN viewA
+    FOR b IN viewB
+        SORT BM25(a), TFIDF(b)
+```
+
+```js
+FOR a IN viewA
+    FOR c IN someCollection
+        FOR b IN viewB
+            SORT TFIDF(b), c.name, BM25(a)
+```
+
+while these will _not_ work:
+
+```js
+FOR doc IN someCollection
+    SORT TFIDF(doc) // !!! Error
+```
+```js
+FOR doc IN someView
+    RETURN BM25(doc) // !!! Error
+```
+```js
+FOR doc IN someView
+    SORT BM25(doc.someAttr) // !!! Error
+```
+```js
+FOR doc IN someView
+    SORT TFIDF("someString") // !!! Error
+```
+```js
+FOR doc IN someView
+    SORT BM25({some: obj}) // !!! Error
+```
+
+The following sorting methods are available:
 
 ### Literal sorting
-You can sort documents by simply specifying the *attribute-name* directly, as you do using indices in other places.
+You can sort documents by simply specifying arbitrary values or expressions, as
+you do in other places.
 
 ### Best Matching 25 Algorithm
 
-`BM25(attribute-name, [k, [b]])`
+`BM25(doc, k, b)`
 
-Sorts documents using the [**Best Matching 25** algorithm](https://en.wikipedia.org/wiki/Okapi_BM25).
+- *doc* (document): must be emitted by `FOR doc IN someView`
+- *k* (number, _optional_): term frequency, the default is _1.2_
+- *b* (number, _optional_): term frequency, the default is _0.75_
 
-Optionally the term frequency **k** and coefficient **b** of the algorithm can be specified as floating point numbers:
-
-- *k* defaults to `1.2`; *k* calibrates the text term frequency scaling.
-  A *k* value of *0* corresponds to a binary model (no term frequency),
-  and a large value corresponds to using raw term frequency.
-
-- *b* defaults to `0.75`; *b* determines the scaling by the total text length.
-  - b = 1 corresponds to fully scaling the term weight by the total text length
-  - b = 0 corresponds to no length normalization.
- 
-At the extreme values of the coefficient *b*, BM25 turns into ranking functions known as BM11 (for b = 1) and BM15 (for b = 0).
+Sorts documents using the [**Best Matching 25**
+algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). See the [`BM25()` section
+in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.md) for
+details.
 
 ### Term Frequency – Inverse Document Frequency Algorithm
 
-`TFIDF(attribute-name, [with-norms])`
+`TFIDF(doc, withNorms)`
 
-Sorts documents using the [**term frequency–inverse document frequency** algorithm](https://en.wikipedia.org/wiki/TF-IDF).
+- *doc* (document): must be emitted by `FOR doc IN someView`
+- *withNorms* (bool, _optional_): specifying whether norms should be used via
+  **with-norms**, the default is _false_
 
-  optionally specifying that norms should be used via **with-norms**
+Sorts documents using the [**term frequency–inverse document frequency**
+algorithm](https://en.wikipedia.org/wiki/TF-IDF). See the [`TFIDF()` section in
+ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.md) for
+details.
+
 
 ### Sorting examples
 
