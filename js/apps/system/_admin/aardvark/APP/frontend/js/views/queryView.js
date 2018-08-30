@@ -2030,7 +2030,7 @@
             $('#json-switch').css('display', 'inline');
 
             // fallback
-            if (result.fallback && result.fallback === 'geo' || result.fallback === 'geotable') {
+            if (result.fallback && (result.fallback === 'geo' || result.fallback === 'geotable')) {
               $('#geo-switch').addClass('disabled').css('display', 'inline').css('opacity', '0.5');
               $('#geo-switch').addClass('tippy').attr('title', 'No internet collection. Map is not available.');
               arangoHelper.createTooltips();
