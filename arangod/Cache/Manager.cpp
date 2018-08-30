@@ -320,7 +320,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     table.reset();
   }
 
-  return std::make_tuple(ok, metadata, table);
+  return std::make_tuple(ok, std::move(metadata), std::move(table));
 }
 
 void Manager::unregisterCache(uint64_t id) {

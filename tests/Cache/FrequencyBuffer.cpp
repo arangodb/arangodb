@@ -45,7 +45,8 @@ TEST_CASE("cache::FrequencyBuffer", "[cache]") {
     REQUIRE(uint8_t() == zero);
 
     FrequencyBuffer<uint8_t> buffer(1024);
-    REQUIRE(buffer.memoryUsage() == sizeof(FrequencyBuffer<uint8_t>) + 1024);
+    REQUIRE(buffer.memoryUsage() ==
+            sizeof(FrequencyBuffer<uint8_t>) + 1024);
 
     for (size_t i = 0; i < 512; i++) {
       buffer.insertRecord(two);
