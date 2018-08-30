@@ -62,12 +62,12 @@ UpdateCollection::UpdateCollection(
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(LEADER)) {
-    error << "leader must be stecified. ";
+    error << "leader must be specified. ";
   }
   TRI_ASSERT(desc.has(LEADER));
 
   if (!desc.has(LOCAL_LEADER)) {
-    error << "local leader must be stecified. ";
+    error << "local leader must be specified. ";
   }
   TRI_ASSERT(desc.has(LOCAL_LEADER));
 
