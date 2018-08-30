@@ -261,7 +261,7 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index, graph::EdgeDocumentT
     auto const& step = _schreier[index];
     // Massive logic error, only valid pointers should inserted in _schreier
     TRI_ASSERT(step != nullptr);
-    if (step->edge.equalsLocal(edge)) {
+    if (step->edge.equals(edge)) {
       // We have the given vertex on this path
       return true;
     }
