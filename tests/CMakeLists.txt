@@ -78,6 +78,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/SupervisionTest.cpp
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/FilterExecutor.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
