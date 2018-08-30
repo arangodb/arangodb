@@ -48,7 +48,11 @@ class RocksDBSavePoint {
   RocksDBSavePoint(RocksDBMethods* trx, bool handled);
   ~RocksDBSavePoint();
 
-  void commit();
+  /// @brief acknowledges the current savepoint, so there
+  /// will be no rollback when the destructor is called
+  /// if an intermediate commit was performed, pass a value of
+  /// true, false otherwise
+  void finish(bool hasPerformedIntermediateCommit);
 
  private:
   void rollback();
@@ -63,10 +67,15 @@ class RocksDBMethods {
   explicit RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
   virtual ~RocksDBMethods() {}
 
-  rocksdb::ReadOptions const& readOptions();
+  /// @brief current sequence number
+  rocksdb::SequenceNumber sequenceNumber();
 
-  // the default implementation is to do nothing
-  virtual void DisableIndexing() {}
+  /// @brief read options for use with iterators
+  rocksdb::ReadOptions iteratorReadOptions();
+
+  /// @brief returns true if indexing was disabled by this call
+  /// the default implementation is to do nothing
+  virtual bool DisableIndexing() { return false; }
   
   // the default implementation is to do nothing
   virtual void EnableIndexing() {}
@@ -81,15 +90,16 @@ class RocksDBMethods {
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
 
-  std::unique_ptr<rocksdb::Iterator> NewIterator(
+  /*std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ColumnFamilyHandle* cf) {
     return this->NewIterator(this->readOptions(), cf);
-  }
+  }*/
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
 
   virtual void SetSavePoint() = 0;
   virtual arangodb::Result RollbackToSavePoint() = 0;
+  virtual void PopSavePoint() = 0;
   
   // convenience and compatibility method
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
@@ -124,6 +134,7 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
+  void PopSavePoint() override {}
 
  private:
   rocksdb::TransactionDB* _db;
@@ -134,7 +145,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
  public:
   explicit RocksDBTrxMethods(RocksDBTransactionState* state);
   
-  void DisableIndexing() override;
+  /// @brief returns true if indexing was disabled by this call
+  bool DisableIndexing() override;
   
   void EnableIndexing() override;
 
@@ -154,6 +166,9 @@ class RocksDBTrxMethods : public RocksDBMethods {
 
   void SetSavePoint() override;
   arangodb::Result RollbackToSavePoint() override;
+  void PopSavePoint() override;
+
+  bool _indexingDisabled;
 };
 
 /// transaction wrapper, uses the current rocksdb transaction and non-tracking methods
@@ -189,6 +204,7 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
 
   void SetSavePoint() override {}
   arangodb::Result RollbackToSavePoint() override { return arangodb::Result(); }
+  void PopSavePoint() override {}
 
  private:
   rocksdb::TransactionDB* _db;

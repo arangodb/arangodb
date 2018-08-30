@@ -35,14 +35,14 @@ var API = '/_api/control_pregel';
 // //////////////////////////////////////////////////////////////////////////////
 var startExecution = function(algo, second, params) {
   if (typeof algo !== 'string' || !second) {
-    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''}" +
+    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollections: ['',..]}" +
           " or {graphName:'<graph>'} or graph name";
-  }  
-  
+  }
+
   var message = {};
   var first = second.vertexCollections && second.vertexCollections instanceof Array
   && second.edgeCollections && second.edgeCollections instanceof Array;
-  if (first) {// !first && !second && !third || 
+  if (first) {// !first && !second && !third ||
     message.algorithm = algo;
     message.vertexCollections = second.vertexCollections;
     message.edgeCollections = second.edgeCollections;
@@ -53,14 +53,14 @@ var startExecution = function(algo, second, params) {
     message.algorithm = algo;
     message.graphName = second;
   } else {
-    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollection: ''}" +
+    throw "Invalid parameters, either {vertexCollections:['',..], edgeCollections: ['',..]}" +
           " or {graphName:'<graph>'} or graph name";
   }
   if (params && typeof params === 'object') {
     message.params = params;
-  } 
+  }
 
-  var requestResult = db._connection.POST(API, JSON.stringify(message));
+  var requestResult = db._connection.POST(API, message);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };

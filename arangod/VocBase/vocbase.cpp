@@ -27,7 +27,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
-#include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
@@ -45,7 +44,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
-#include "Basics/locks.h"
 #include "Basics/memory-map.h"
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
@@ -503,7 +501,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
   try {
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     // set collection version to 3.1, as the collection is just created
-    collection->setVersion(LogicalCollection::VERSION_31);
+    collection->setVersion(LogicalCollection::VERSION_33);
 
     // Let's try to persist it.
     collection->persistPhysicalCollection();
@@ -1024,14 +1022,23 @@ void TRI_vocbase_t::inventory(
   result.close(); // </collection>
   
   result.add("views", VPackValue(VPackValueType::Array, true));
-  for (auto const& dataSource : dataSourceById) {
-    if (dataSource.second->category() != LogicalView::category()) {
-      continue;
+  if (ServerState::instance()->isCoordinator()) {
+    auto views = ClusterInfo::instance()->getViews(name());
+    for (auto const& view : views) {
+      result.openObject();
+      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      result.close();
     }
-    LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
-    result.openObject();
-    view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
-    result.close();
+  } else {
+    for (auto const& dataSource : dataSourceById) {
+      if (dataSource.second->category() != LogicalView::category()) {
+        continue;
+      }
+      LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
+      result.openObject();
+      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      result.close();
+    }
   }
   result.close(); // </views>
 }
@@ -1209,8 +1216,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   }
 
   auto res2 = engine->persistCollection(*this, *collection);
-  // API compatibility, we always return the collection, even if creation
-  // failed.
+  // API compatibility, we always return the collection,
+  // even if creation failed.
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1626,11 +1633,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       );
     }
 
+    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
     view = LogicalView::create(*this, parameters, true);
 
     if (!view) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+        TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno(),
         std::string("failed to instantiate view in agency'")
       );
     }
@@ -1660,9 +1668,13 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     READ_LOCKER(readLocker, _inventoryLock);
 
     // Try to create a new view. This is not registered yet
+    TRI_set_errno(TRI_ERROR_NO_ERROR); // clear error state so can get valid error below
     view = LogicalView::create(*this, parameters, true, 0, callback);
 
     if (!view) {
+      auto errorNumber = TRI_ERROR_NO_ERROR == TRI_errno()
+                       ? TRI_ERROR_INTERNAL : TRI_errno();
+
       if (registeredView) {
         unregisterView(*registeredView);
       }
@@ -1672,7 +1684,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       );
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+        errorNumber,
         std::string("failed to instantiate view '") + name + "'"
       );
     }
@@ -2162,6 +2174,27 @@ std::string TRI_RidToString(TRI_voc_rid_t rid) {
     return arangodb::basics::StringUtils::itoa(rid);
   }
   return HybridLogicalClock::encodeTimeStamp(rid);
+}
+
+/// encodes the uint64_t timestamp into the provided result buffer
+/// the result buffer must be at least 11 chars long
+/// the length of the encoded value and the start position into
+/// the result buffer are returned by the function
+std::pair<size_t, size_t> TRI_RidToString(TRI_voc_rid_t rid, char* result) {
+  if (rid <= tickLimit) {
+    std::pair<size_t, size_t> pos{0, 0};
+    pos.second = arangodb::basics::StringUtils::itoa(rid, result);
+    return pos;
+  }
+  return HybridLogicalClock::encodeTimeStamp(rid, result);
+}
+
+/// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
+/// using the specific temporary result buffer
+/// the result buffer must be at least 11 chars long
+arangodb::velocypack::ValuePair TRI_RidToValuePair(TRI_voc_rid_t rid, char* result) {
+  auto positions = TRI_RidToString(rid, result);
+  return arangodb::velocypack::ValuePair(&result[0] + positions.first, positions.second, velocypack::ValueType::String);
 }
 
 /// @brief Convert a string into a revision ID, no check variant

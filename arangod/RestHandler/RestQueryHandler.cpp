@@ -110,7 +110,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     if (q.bindParameters != nullptr) {
       result.add("bindVars", q.bindParameters->slice());
     } else {
-      result.add("bindVars", arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+      result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
     }
     result.add("started", VPackValue(timeString));
     result.add("runTime", VPackValue(q.runTime));
@@ -319,7 +319,7 @@ bool RestQueryHandler::parseQuery() {
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::BAD, parseResult.code,
+    generateError(GeneralResponse::responseCode(parseResult.code), parseResult.code,
                   parseResult.details);
     return true;
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_BASICS_READ_WRITE_LOCK_H
@@ -89,13 +90,13 @@ private:
   /// the last 16 bits the number of active readers.  
   std::atomic<uint32_t> _state;
 
-  static const unsigned WRITE_LOCK = 1;
+  static constexpr uint32_t WRITE_LOCK = 1;
 
-  static const unsigned READER_INC = 1 << 16;
-  static const unsigned READER_MASK = ~(READER_INC - 1);
+  static constexpr uint32_t READER_INC = 1 << 16;
+  static constexpr uint32_t READER_MASK = ~(READER_INC - 1);
 
-  static const unsigned QUEUED_WRITER_INC = 1 << 1;
-  static const unsigned QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
+  static constexpr uint32_t QUEUED_WRITER_INC = 1 << 1;
+  static constexpr uint32_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
 
   static_assert((READER_MASK & WRITE_LOCK) == 0, "READER_MASK and WRITE_LOCK conflict");
   static_assert((READER_MASK & QUEUED_WRITER_MASK) == 0, "READER_MASK and QUEUED_WRITER_MASK conflict");

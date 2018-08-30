@@ -78,4 +78,5 @@ the [ArangoDB Query Language](../../AQL/index.html) (AQL).
 easily processable batches instead of one big hunk.
 
 **Indexes** are used to speed up searches. There are various types of indexes,
-such as [hash indexes](../Indexing/Hash.md) and [geo-spatial indexes](../Indexing/Geo.md).
+such as [hash indexes](../Indexing/Hash.md)
+and [geo-spatial indexes](../Indexing/Geo.md).

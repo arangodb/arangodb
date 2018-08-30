@@ -68,14 +68,14 @@ struct MMFilesEngineCollectionFiles {
 class MMFilesEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit MMFilesEngine(application_features::ApplicationServer*);
+  explicit MMFilesEngine(application_features::ApplicationServer& server);
 
   ~MMFilesEngine();
 
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
+  // add the storage engine's specific options to the global list of options
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // validate the storage engine's specific options
@@ -203,8 +203,6 @@ class MMFilesEngine final : public StorageEngine {
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
   void waitForSyncTick(TRI_voc_tick_t tick) override;
-
-  void waitForSyncTimeout(double maxWait) override;
 
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
@@ -352,14 +350,13 @@ class MMFilesEngine final : public StorageEngine {
     LogicalCollection& collection
   ) override;
 
-  void changeView(
+  arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const&,
     bool doSync
   ) override;
 
-  void createView(
+  arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -369,19 +366,6 @@ class MMFilesEngine final : public StorageEngine {
      TRI_vocbase_t& vocbase,
      LogicalView const& view,
      VPackBuilder& builder
-  ) override;
-
-  arangodb::Result persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
-  ) override;
-
-  // asks the storage engine to persist renaming of a view
-  // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
   ) override;
 
   arangodb::Result dropView(
@@ -397,8 +381,7 @@ class MMFilesEngine final : public StorageEngine {
   std::string createViewDirectoryName(std::string const& basePath,
                                       TRI_voc_cid_t id);
 
-  void saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                    arangodb::LogicalView const*, bool forceSync) const;
+  void saveViewInfo(TRI_vocbase_t* vocbase, arangodb::LogicalView const*, bool sync) const;
 
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
@@ -573,6 +556,10 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief writes a drop-database marker into the log
   int writeDropMarker(TRI_voc_tick_t id, std::string const& name);
+
+  /// @brief wait until everything written to the WAL got completely
+  /// synced
+  void waitForSyncTimeout(double maxWait);
 
  public:
   static std::string const EngineName;

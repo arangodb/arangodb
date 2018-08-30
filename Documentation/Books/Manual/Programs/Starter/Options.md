@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com//arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Option reference
 
 The ArangoDB Starter provides a lot of options to control various aspects
@@ -261,6 +261,9 @@ This option only has to be specified if the standard search fails.
 
 Sets the storage engine used by the `arangod` servers.
 The value `rocksdb` is only allowed on `arangod` version 3.2 and up.
+
+On `arangod` version 3.3 and earlier, the default value is `mmfiles`.
+On `arangod` version 3.4 and later, the default value is `rocksdb`.
 
 - `--cluster.start-coordinator=bool`
 

@@ -222,17 +222,24 @@
     c.save({ _key: "test" + i, value: i });
   }
 
+  // setup a view
   try {
-    db._create("UnitTestsDumpViewCollection");
+    c = db._create("UnitTestsDumpViewCollection");
+
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
-    view.properties({links: { 
+    view.properties({ links: {
       "UnitTestsDumpViewCollection": { 
         includeAllFields: true,
         fields: {
           text: { analyzers: [ "text_en" ] }
         }
       }
-    }});
+    } });
+
+    for (i = 0; i < 5000; ++i) {
+      c.save({ _key: "test" + i, value: i});
+    }
+    c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 
 })();

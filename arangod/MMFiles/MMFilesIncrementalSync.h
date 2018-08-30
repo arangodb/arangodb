@@ -39,6 +39,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -127,7 +128,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::READ
     );
     Result res = trx.begin();
@@ -158,7 +159,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::READ
     );
     Result res = trx.begin();
@@ -175,7 +176,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    markers.reserve(trx.documentCollection()->numberDocuments(&trx));
+    markers.reserve(trx.documentCollection()->numberDocuments(&trx, transaction::CountType::Normal));
 
     uint64_t iterations = 0;
     ManagedDocumentResult mmdr;
@@ -312,7 +313,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::WRITE
     );
 
@@ -391,7 +392,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      coll,
+      *coll,
       AccessMode::Type::WRITE
     );
 

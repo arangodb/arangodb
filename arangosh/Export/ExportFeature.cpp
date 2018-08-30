@@ -38,14 +38,17 @@
 #include <regex>
 #include <iostream>
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace boost::property_tree::xml_parser;
 
-ExportFeature::ExportFeature(application_features::ApplicationServer* server,
-                             int* result)
+namespace arangodb {
+
+ExportFeature::ExportFeature(
+    application_features::ApplicationServer& server,
+    int* result
+)
     : ApplicationFeature(server, "Export"),
       _collections(),
       _graphName(),
@@ -65,9 +68,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer* server,
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Config");
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
 
   _outputDirectory = FileUtils::buildFilename(
       FileUtils::currentDirectory().result(), "export");
@@ -846,3 +847,5 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName,
     writeToFile(fd, xmlTag, fileName);
   }
 }
+
+} // arangodb

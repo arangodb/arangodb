@@ -167,6 +167,7 @@ void HeartbeatThread::runBackgroundJob() {
   {
     MUTEX_LOCKER(mutexLocker, *_statusLock);
     TRI_ASSERT(_backgroundJobScheduledOrRunning);
+
     if (_launchAnotherBackgroundJob) {
       jobNr = ++_backgroundJobsPosted;
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
@@ -174,7 +175,8 @@ void HeartbeatThread::runBackgroundJob() {
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
       _lastSyncTime = TRI_microtime();
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+      SchedulerFeature::SCHEDULER->post(
+          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -525,10 +527,6 @@ void HeartbeatThread::runSingleServer() {
         ApplicationServer::server->beginShutdown();
         break;
       }
-      
-      auto readOnlySlice = response.get(std::vector<std::string>(
-                                    {AgencyCommManager::path(), "Readonly"}));
-      updateServerMode(readOnlySlice);
 
       // performing failover checks
       VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
@@ -588,6 +586,11 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
+        
+        // put the leader in optional read-only mode
+        auto readOnlySlice = response.get(std::vector<std::string>(
+                                          {AgencyCommManager::path(), "Readonly"}));
+        updateServerMode(readOnlySlice);
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
@@ -605,6 +608,8 @@ void HeartbeatThread::runSingleServer() {
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following: " << leader;
 
       ServerState::instance()->setFoxxmaster(leaderStr);
+      ServerState::instance()->setReadOnly(true); // Disable writes with dirty-read header
+      
       std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
@@ -642,7 +647,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
-          config._jwt = af->tokenCache()->jwtToken();
+          config._jwt = af->tokenCache().jwtToken();
         }
         config._endpoint = endpoint;
         config._autoResync = true;
@@ -707,8 +712,6 @@ void HeartbeatThread::runCoordinator() {
   AuthenticationFeature* af = application_features::ApplicationServer::getFeature<
             AuthenticationFeature>("Authentication");
   TRI_ASSERT(af != nullptr);
-
-  uint64_t oldUserVersion = 0;
 
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
@@ -797,7 +800,7 @@ void HeartbeatThread::runCoordinator() {
             // We won the race we are the master
             ServerState::instance()->setFoxxmaster(state->getId());
           }
-
+          _agency.increment("Current/Version");
         }
 
         VPackSlice versionSlice =
@@ -837,11 +840,9 @@ void HeartbeatThread::runCoordinator() {
           } catch (...) {
           }
 
-          if (userVersion > 0 && userVersion != oldUserVersion) {
-            oldUserVersion = userVersion;
+          if (userVersion > 0) {
             if (af->isActive() && af->userManager() != nullptr) {
-              af->userManager()->outdate();
-              af->tokenCache()->invalidateBasicCache();
+              af->userManager()->setGlobalVersion(userVersion);
             }
           }
         }
@@ -1131,8 +1132,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
 void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   bool shouldUpdate = false;
-  bool becauseOfPlan = false;
-  bool becauseOfCurrent = false;
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
 
@@ -1141,14 +1140,12 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
         << "Plan version " << _currentVersions.plan
         << " is lower than desired version " << _desiredVersions->plan;
     shouldUpdate = true;
-    becauseOfPlan = true;
   }
   if (_desiredVersions->current > _currentVersions.current) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "Current version " << _currentVersions.current
         << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
-    becauseOfCurrent = true;
   }
 
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
@@ -1164,10 +1161,10 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
-  if (becauseOfPlan) {
+  if (_desiredVersions->plan > ci->getPlanVersion()) {
     ci->invalidatePlan();
   }
-  if (becauseOfCurrent) {
+  if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
 
@@ -1183,8 +1180,8 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
-
+  SchedulerFeature::SCHEDULER->post(
+      HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1245,6 +1242,8 @@ void HeartbeatThread::logThreadDeaths(bool force) {
 
   bool doLogging(force);
 
+  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
+
   if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
     doLogging = true;
   } // if
@@ -1252,9 +1251,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
   if (doLogging) {
     deadThreadsPosted = std::chrono::system_clock::now();
 
-    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
+    
     for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 

@@ -33,6 +33,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -528,16 +529,6 @@ class ClusterInfo {
   std::shared_ptr<std::vector<ShardID>> getShardList(CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the shard that is responsible for a document
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes,
-                          std::string const& key = "");
-
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
   //////////////////////////////////////////////////////////////////////////////
 
@@ -603,6 +594,16 @@ class ClusterInfo {
   std::unordered_map<ServerID, std::string> getServers();
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
+  
+  uint64_t getPlanVersion() {
+    READ_LOCKER(guard, _planProt.lock);
+    return _planVersion;
+  }
+
+  uint64_t getCurrentVersion() {
+    READ_LOCKER(guard, _currentProt.lock);
+    return _currentVersion;
+  }
 
  private:
 

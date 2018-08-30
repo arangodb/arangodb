@@ -48,14 +48,13 @@ class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
-                  ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
+                  RocksDBGeoIndex const* index,
                   geo::QueryParams&& params)
       : IndexIterator(collection, trx, index),
         _index(index),
-        _mmdr(mmdr),
         _near(std::move(params)) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->readOptions();
+    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() ==
@@ -97,26 +96,29 @@ class RDBNearIterator final : public IndexIterator {
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
-          if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+          bool result = true; // this is updated by the callback
+          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            geo::FilterType const ft = _near.filterType();
+            if (ft != geo::FilterType::NONE) {  // expensive test
+              geo::ShapeContainer const& filter = _near.filterShape();
+              TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false;
+                return;
+              }
+            }
+            cb(gdoc.token, doc);  // return result
+            result = true;
+          })) {
             return false;
           }
-          VPackSlice doc(_mmdr->vpack());
-          geo::FilterType const ft = _near.filterType();
-          if (ft != geo::FilterType::NONE) {  // expensive test
-            geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
-            geo::ShapeContainer test;
-            Result res = _index->shape(doc, test);
-            TRI_ASSERT(res.ok());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
-              return false;
-            }
-          }
-          cb(gdoc.token, doc);  // return result
-          return true;
+          return result;
         },
         limit);
   }
@@ -128,16 +130,21 @@ class RDBNearIterator final : public IndexIterator {
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
-            if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+            bool result = true; // this is updated by the callback
+            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false;
+              }
+            })) {
               return false;
             }
-            geo::ShapeContainer test;
-            Result res = _index->shape(VPackSlice(_mmdr->vpack()), test);
-            TRI_ASSERT(res.ok());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
+            if (!result) {
               return false;
             }
           }
@@ -227,16 +234,17 @@ class RDBNearIterator final : public IndexIterator {
 
  private:
   RocksDBGeoIndex const* _index;
-  ManagedDocumentResult* _mmdr;
   geo_index::NearUtils<CMP> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
-                                     LogicalCollection* collection,
-                                     VPackSlice const& info,
-                                     std::string const& typeName)
+RocksDBGeoIndex::RocksDBGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -347,7 +355,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -382,10 +390,12 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
 
   if (params.ascending) {
     return new RDBNearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   } else {
     return new RDBNearIterator<geo_index::DocumentsDescending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   }
 }
 

@@ -31,22 +31,23 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace arangodb {
 
 static LanguageFeature* Instance = nullptr;
 
 LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Language"),
       _locale(),
-      _binaryPath(server->getBinaryPath()),
+      _binaryPath(server.getBinaryPath()),
       _icuDataPtr(nullptr) {
   Instance = this;
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 LanguageFeature::~LanguageFeature() {
@@ -168,8 +169,8 @@ void LanguageFeature::start() {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
-
-
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "using default language '" << languageName << "'";
 }
+
+} // arangodb

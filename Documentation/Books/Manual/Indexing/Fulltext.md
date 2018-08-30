@@ -43,7 +43,6 @@ only be included in the index if it is a string. When indexing the contents of a
 attribute, an object member value will only be included in the index if it is a string.
 Other data types are ignored and not indexed.
 
-Currently, fulltext indexes are not yet supported with the RocksDB storage engine. Thus the function `FULLTEXT()` will be unavailable when using this storage engine. To use fulltext indexes, please use the MMFiles storage engine for the time being.
 
 Accessing Fulltext Indexes from the Shell
 -----------------------------------------

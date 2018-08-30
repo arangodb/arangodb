@@ -39,6 +39,7 @@
 #include "Transaction/Methods.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -81,7 +82,7 @@ struct IResearchQueryOrSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQueryOrSetup(): server(nullptr, nullptr) {
+  IResearchQueryOrSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -95,23 +96,24 @@ struct IResearchQueryOrSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -132,13 +134,26 @@ struct IResearchQueryOrSetup {
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    analyzers->emplace(
+      "test_analyzer",
+      "TestAnalyzer",
+      "abc",
+      irs::flags{ irs::frequency::type(), irs::position::type() } // required for PHRASE
+    ); // cache analyzer
+
+    analyzers->emplace(
+      "test_csv_analyzer",
+      "TestDelimAnalyzer",
+      ","
+    ); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryOrSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
@@ -208,8 +223,8 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-      "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
-      "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
+      "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\":\"id\" },"
+      "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"storeValues\":\"id\" }"
       "}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -225,7 +240,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("properties").get("links");
+    auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -289,7 +304,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'A' OR d.name == 'Q' SORT d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'A' OR d.name == 'Q' SORT d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -318,7 +333,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'X' OR d.same == 'xyz' SORT BM25(d) DESC, TFIDF(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'X' OR d.same == 'xyz' SORT BM25(d) DESC, TFIDF(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -371,7 +386,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'K' OR d.value <= 100 OR d.duplicated == 'abcd' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'K' OR d.value <= 100 OR d.duplicated == 'abcd' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -410,7 +425,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'A' OR d.name == 'Q' OR d.same != 'xyz' SORT d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'A' OR d.name == 'Q' OR d.same != 'xyz' SORT d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -447,7 +462,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'F' OR EXISTS(d.duplicated) SORT BM25(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'F' OR EXISTS(d.duplicated) SORT BM25(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -495,7 +510,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT TFIDF(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -533,7 +548,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -566,7 +581,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC LIMIT 3 RETURN d"
+      "FOR d IN testView SEARCH d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC LIMIT 3 RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -613,7 +628,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -655,7 +670,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'v', 1, 'z'), 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'v', 1, 'z'), 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

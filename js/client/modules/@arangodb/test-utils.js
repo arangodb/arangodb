@@ -581,7 +581,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
   let result;
   try {
     result = JSON.parse(fs.read(jsonFN));
@@ -695,7 +695,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir);
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
 
   let result = {
     total: 0,
@@ -726,7 +726,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     }
   }
 
-  fs.remove(jsonFN);
+  if (fs.exists(jsonFN)) fs.remove(jsonFN);
   fs.remove(tmpname);
   return result;
 }

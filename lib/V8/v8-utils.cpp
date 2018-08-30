@@ -948,23 +948,35 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
+          std::string json;
+          basics::StringBuffer const& sb = response->getBody();
+          StringRef body(sb.c_str(), sb.length());
+          
+          bool found = false;
+          std::string content = response->getHeaderField(StaticStrings::ContentTypeHeader, found);
+          if (found && content.find(StaticStrings::MimeTypeVPack) != std::string::npos) {
+            VPackValidator validator;
+            validator.validate(sb.data(), sb.length()); // throws on error
+            json.assign(VPackSlice(sb.data()).toJson());
+            body = StringRef(json);
+          }
+
           if (outfile.size() > 0) {
             // save outfile
-            FileUtils::spit(outfile, response->getBody());
+            FileUtils::spit(outfile, body.data(), body.length());
           } else {
             // set "body" attribute in result
-            const StringBuffer& sb = response->getBody();
-
             if (returnBodyAsBuffer) {
               V8Buffer* buffer =
-                  V8Buffer::New(isolate, sb.c_str(), sb.length());
+              V8Buffer::New(isolate, body.data(), body.length());
               v8::Local<v8::Object> bufferObject =
-                  v8::Local<v8::Object>::New(isolate, buffer->_handle);
+              v8::Local<v8::Object>::New(isolate, buffer->_handle);
               result->Set(TRI_V8_ASCII_STRING(isolate, "body"), bufferObject);
             } else {
               result->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_STD_STRING(isolate, sb));
             }
           }
+         
         } catch (...) {
         }
       }
@@ -2325,7 +2337,7 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
   tv.tv_usec = 0;
   FD_ZERO(&fds);
   FD_SET(STDIN_FILENO, &fds);
-  select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+  select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
   hasData = FD_ISSET(STDIN_FILENO, &fds);
 #endif
   

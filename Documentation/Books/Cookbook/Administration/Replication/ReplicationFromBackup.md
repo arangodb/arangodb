@@ -16,7 +16,7 @@ First of all you have to start the master server, using a command like the above
 arangod --server.endpoint tcp://master.domain.org:8529
 ```
 
-Depending on your storage-engine you also want to adjust the following options:
+Depending on your storage engine you also want to adjust the following options:
 
 For MMFiles:
 

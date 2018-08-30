@@ -92,7 +92,6 @@ void RestEdgesHandler::readCursor(
   cursor->all(cb);
 }
 
-
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
@@ -261,13 +260,12 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.openArray();
 
   auto collection = trx->documentCollection();
-  ManagedDocumentResult mmdr;
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&] (LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(trx.get(), token, mmdr)) {
-        resultBuilder.add(VPackSlice(mmdr.vpack()));
-      }
+      collection->readDocumentWithCallback(trx.get(), token, [&resultBuilder](LocalDocumentId const&, VPackSlice doc) {
+        resultBuilder.add(doc);
+      });
       scannedIndex++;
       // Mark edges we find
       foundTokens.emplace(token);
@@ -412,13 +410,12 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.openArray();
 
   auto collection = trx->documentCollection();
-  ManagedDocumentResult mmdr;
   std::unordered_set<LocalDocumentId> foundTokens;
   auto cb = [&] (LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
-      if (collection->readDocument(trx.get(), token, mmdr)) {
-        resultBuilder.add(VPackSlice(mmdr.vpack()));
-      }
+      collection->readDocumentWithCallback(trx.get(), token, [&resultBuilder](LocalDocumentId const&, VPackSlice doc) {
+        resultBuilder.add(doc);
+      });
       scannedIndex++;
       // Mark edges we find
       foundTokens.emplace(token);

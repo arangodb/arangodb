@@ -137,9 +137,12 @@ void markAsNonNull(arangodb::aql::AstNode const* op, arangodb::aql::AstNode cons
 // logical collection because it could be gone!
 
 Index::Index(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse)
+    bool unique,
+    bool sparse
+)
     : _iid(iid),
       _collection(collection),
       _fields(fields),
@@ -149,8 +152,11 @@ Index::Index(
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
-Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-             VPackSlice const& slice)
+Index::Index(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    VPackSlice const& slice
+)
     : _iid(iid),
       _collection(collection),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
@@ -180,6 +186,8 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
       return 5;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return 6;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
+      return 7;
     default:
       return 42; /* OPST_CIRCUS */
   }
@@ -453,12 +461,11 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
 /// @brief return a contextual string for logging
 std::string Index::context() const {
-  TRI_ASSERT(_collection);
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection->vocbase().name() << "/"
-         << _collection->name() << ", unique: " << (_unique ? "true" : "false")
+         << ", collection: " << _collection.vocbase().name() << "/"
+         << _collection.name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
 
@@ -611,7 +618,6 @@ double Index::selectivityEstimate(StringRef const* extra) const {
     return 1.0;
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return 0;
 }
 
 /// @brief default implementation for implicitlyUnique
@@ -637,11 +643,6 @@ void Index::batchInsert(
 /// @brief default implementation for drop
 int Index::drop() {
   // do nothing
-  return TRI_ERROR_NO_ERROR;
-}
-
-// called after the collection was truncated
-int Index::afterTruncate() {
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -746,10 +747,12 @@ bool Index::canUseConditionPart(
             other->isNullValue()) {
           // != null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
                    !other->isNullValue()) {
           // >= non-null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
 
         if (other->isNullValue() &&
@@ -761,6 +764,7 @@ bool Index::canUseConditionPart(
             return false;
           }
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
 
         if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -772,6 +776,8 @@ bool Index::canUseConditionPart(
               return false;
             }
           }
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
       } else {
         // !other->isConstant()
@@ -799,21 +805,25 @@ bool Index::canUseConditionPart(
     return false;
   }
 
-  // test if the reference variable is contained on both side of the expression
+  // test if the reference variable is contained on both sides of the expression
   std::unordered_set<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
-      if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
-          variables.find(reference) != variables.end()) {
-        variables.clear();
-        arangodb::aql::Ast::getReferencedVariables(other, variables);
-      }
+    if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+        variables.find(reference) != variables.end()) {
+      variables.clear();
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   } else {
     // a.b == value  OR  a.b IN values
-    arangodb::aql::Ast::getReferencedVariables(other, variables);
+    if (!other->isConstant()) {
+      // don't look for referenced variables if we only access a 
+      // constant value (there will be no variables then...)
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   }
 
   if (variables.find(reference) != variables.end()) {
@@ -932,6 +942,33 @@ void Index::expandInSearchValues(VPackSlice const base,
       }
     }
   }
+}
+
+bool Index::covers(std::unordered_set<std::string> const& attributes) const {
+  // check if we can use covering indexes
+  if (_fields.size() < attributes.size()) {
+    // we will not be able to satisfy all requested projections with this index
+    return false;
+  }
+
+  std::string result;
+  size_t i = 0;
+  for (size_t j = 0; j < _fields.size(); ++j) {
+    bool found = false;
+    result.clear();
+    TRI_AttributeNamesToString(_fields[j], result, false);
+    for (auto const& it : attributes) {
+      if (result == it) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
 }
 
 void Index::warmup(arangodb::transaction::Methods*,

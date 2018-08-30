@@ -92,7 +92,7 @@ ${ARANGOD} \
 
 start() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+      ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
       sleep 1
@@ -117,7 +117,7 @@ start() {
 
 startTerminal() {
     if [ "$1" == "dbserver" ]; then
-      ROLE="PRIMARY"
+      ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
       ROLE="COORDINATOR"
     fi

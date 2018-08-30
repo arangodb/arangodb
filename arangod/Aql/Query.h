@@ -36,6 +36,7 @@
 #include "Aql/QueryString.h"
 #include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/types.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
@@ -47,6 +48,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace transaction {
 class Context;
@@ -55,6 +57,10 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+}
+
+namespace graph {
+class Graph;
 }
 
 namespace aql {
@@ -74,7 +80,7 @@ enum QueryPart { PART_MAIN, PART_DEPENDENT };
 class Query {
 
  private:
-   enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+  enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
  private:
   Query(Query const&) = delete;
@@ -108,6 +114,14 @@ class Query {
   TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
+  
+/// @brief whether or not the query is killed
+  bool killed() const;
+
+  /// @brief set the query to killed
+  void kill();
+
+  void setExecutionTime();
 
   QueryString const& queryString() const { return _queryString; }
 
@@ -142,12 +156,6 @@ class Query {
 
   /// @brief return the current runtime of the query
   double runTime() const { return runTime(TRI_microtime()); }
-
-  /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
-
-  /// @brief set the query to killed
-  inline void killed(bool) { _killed = true; }
 
   /// @brief the part of the query
   inline QueryPart part() const { return _part; }
@@ -232,8 +240,6 @@ class Query {
   /// @brief inject the engine
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
 
-  void releaseEngine();
-
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
 
@@ -279,7 +285,7 @@ class Query {
   std::string getStateString() const;
 
   /// @brief look up a graph in the _graphs collection
-  Graph const* lookupGraphByName(std::string const& name);
+  graph::Graph const* lookupGraphByName(std::string const& name);
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
@@ -288,47 +294,14 @@ class Query {
 
   QueryExecutionState::ValueType state() const { return _state; }
 
-  /// @brief continueAfterPause is to be called on the query object to
-  /// continue execution in this query part, if the query got paused
-  /// because it is waiting for network responses. The idea is that a
-  /// RemoteBlock that does an asynchronous cluster-internal request can
-  /// register a callback with the asynchronous request and then return
-  /// with the result `ExecutionState::WAITING`, which will bubble up
-  /// the stack and eventually lead to a suspension of the work on the
-  /// RestHandler. In the callback function one can first store the
-  /// results in the RemoteBlock object and can then call this method on
-  /// the query.
-  /// This will lead to the following: The original request that lead to
-  /// the network communication will be rescheduled on the ioservice and
-  /// continues its execution where it left off.
-  void continueAfterPause() {
-    TRI_ASSERT(!hasHandler());
-    _continueCallback();
+  /// @brief return the query's shared state
+  std::shared_ptr<SharedQueryState> sharedState() const { 
+    return _sharedState;
   }
-
-  std::function<void()> continueHandler() {
-    TRI_ASSERT(hasHandler());
-    return _continueCallback;
-  }
-
-  bool hasHandler() {
-    return _hasHandler;
-  }
-
-  /// @brief setter for the continue callback:
-  ///        We can either have a handler or a callback
-  void setContinueCallback(std::function<void()> const& cb) {
-    _continueCallback = cb;
-    _hasHandler = false;
-  }
-
-  /// @brief setter for the continue handler:
-  ///        We can either have a handler or a callback
-  void setContinueHandler(std::function<void()> const& handler) {
-    _continueCallback = handler;
-    _hasHandler = true;
-  }
-
+  
+  /// @brief pass-thru a resolver object from the transaction context
+  CollectionNameResolver const& resolver();
+  
  private:
   /// @brief initializes the query
   void init();
@@ -338,8 +311,6 @@ class Query {
   /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
   ExecutionPlan* preparePlan();
-
-  void setExecutionTime();
 
   /// @brief log a query
   void log();
@@ -356,18 +327,18 @@ class Query {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query. Synchronous variant,
-  //         will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int, VPackBuilder* statsBuilder = nullptr) noexcept;
+  /// @brief cleanup plan and engine for current query. synchronous variant,
+  /// will block this thread in WAITING case.
+  void cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int, VPackBuilder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
-
+  
   /// @brief returns the next query id
-  static TRI_voc_tick_t NextId();
+  static TRI_voc_tick_t nextId();
 
  public:
   constexpr static uint64_t DontCache = 0;
@@ -392,7 +363,7 @@ class Query {
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
-  std::unordered_map<std::string, Graph*> _graphs;
+  std::unordered_map<std::string, std::unique_ptr<graph::Graph>> _graphs;
 
   /// @brief the actual query string
   QueryString _queryString;
@@ -460,49 +431,19 @@ class Query {
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
 
-  /// @brief a callback function which is used to implement continueAfterPause.
-  /// Typically, the RestHandler using the Query object will put a closure
-  /// in here, which continueAfterPause simply calls.
-  std::function<void()> _continueCallback;
-
-  /// @brief decide if the _continueCallback needs to be pushed onto the ioservice
-  ///        or if it has to be executed in this thread.
-  bool _hasHandler;
-
   /// Create the result in this builder. It is also used to determine
   /// if we are continuing the query or of we called
   std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
 
-  /// Options for _resultBuilder. Optimally, it's lifetime should be linked to
+  /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
   std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
 
   /// Track in which phase of execution we are, in order to implement repeatability.
   ExecutionPhase _executionPhase;
 
-  /// Temporary Section only used during the development of
-  /// async AQL
-  /// TODO REMOVE
- private:
-  basics::ConditionVariable _tempWaitForAsyncResponse;
-  bool _wasNotified = false;
-
- public:
-  void tempSignalAsyncResponse() {
-    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
-    _wasNotified = true;
-    guard.signal();
-  }
-
-  /// TODO This has to stay for a backwards-compatible AQL HTTP API (hasMore).
-  /// So it needs to be renamed.
-  void tempWaitForAsyncResponse() {
-    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
-    if (!_wasNotified) {
-      _tempWaitForAsyncResponse.wait();
-    }
-    _wasNotified = false;
-  }
+  /// @brief shared state 
+  std::shared_ptr<SharedQueryState> _sharedState;
 };
 
 }

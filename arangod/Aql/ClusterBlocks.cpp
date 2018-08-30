@@ -198,7 +198,8 @@ class MinElementSorting final : public SortingStrategy, public OurLessThan {
       arangodb::transaction::Methods* trx,
       std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
       std::vector<SortRegister>& sortRegisters) noexcept
-    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
+    : OurLessThan(trx, gatherBlockBuffer, sortRegisters),
+      _blockPos(nullptr) {
   }
 
   virtual ValueType nextValue() override {
@@ -774,12 +775,9 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   }
 
   std::string shardId;
-  bool usesDefaultShardingAttributes;
-  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collInfo = _collection->getCollection();
 
-  int res = clusterInfo->getResponsibleShard(collInfo.get(), value, true,
-      shardId, usesDefaultShardingAttributes);
+  int res = collInfo->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -793,13 +791,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief create a new document key, argument is unused here
-#ifndef USE_ENTERPRISE
-std::string DistributeBlock::createKey(VPackSlice) const {
-  auto collInfo = _collection->getCollection();
-  return collInfo->keyGenerator()->generate();
+/// @brief create a new document key
+std::string DistributeBlock::createKey(VPackSlice input) const {
+  return _collection->getCollection()->createKey(input);
 }
-#endif
 
 arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
   DEBUG_BEGIN_BLOCK();
@@ -928,8 +923,7 @@ Result RemoteBlock::sendAsyncRequest(
 
   ++_engine->_stats.requests;
   std::shared_ptr<ClusterCommCallback> callback =
-      std::make_shared<WakeupQueryCallback>(dynamic_cast<ExecutionBlock*>(this),
-                                            _engine->getQuery());
+      std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
   cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
@@ -1132,7 +1126,6 @@ std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-
   traceGetSomeBegin(atMost);
 
   if (_lastError.fail()) {
@@ -1183,6 +1176,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  traceGetSomeEnd(nullptr, ExecutionState::WAITING);
   return {ExecutionState::WAITING, nullptr};
 
   // cppcheck-suppress style
@@ -1872,7 +1866,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   bool aqlValueSet = false;
   if(out) {
     if(!outDocument.isNone()){
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), outDocument);
     } else {
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
     }
@@ -1881,7 +1875,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   if(OLD) {
     TRI_ASSERT(opOptions.returnOld);
     if(!oldDocument.isNone()){
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), oldDocument);
     } else {
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
     }
@@ -1890,7 +1884,7 @@ bool SingleRemoteOperationBlock::getOne(arangodb::aql::AqlItemBlock* aqlres,
   if(NEW) {
     TRI_ASSERT(opOptions.returnNew);
     if(!newDocument.isNone()){
-      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), newDocument);
     } else {
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
     }

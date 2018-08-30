@@ -132,8 +132,9 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final: public arangodb::DBServerLogicalView,
-                           public arangodb::FlushTransaction {
+class IResearchView final
+  : public arangodb::LogicalViewStorageEngine,
+    public arangodb::FlushTransaction {
  public:
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -171,9 +172,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
-  ///        also remove 'cid' from the persisted list of tracked collection IDs
+  /// @param unlink remove 'cid' from the persisted list of tracked collection
+  ///        IDs
   ////////////////////////////////////////////////////////////////////////////////
-  int drop(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid, bool unlink = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief acquire locks on the specified 'cid' during read-transactions
@@ -284,19 +286,19 @@ class IResearchView final: public arangodb::DBServerLogicalView,
 
  protected:
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief drop this IResearch View
-  ///////////////////////////////////////////////////////////////////////////////
-  arangodb::Result dropImpl() override;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  void getPropertiesVPack(
+  virtual arangodb::Result appendVelocyPackDetailed(
     arangodb::velocypack::Builder& builder,
     bool forPersistence
   ) const override;
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief drop this IResearch View
+  ///////////////////////////////////////////////////////////////////////////////
+  arangodb::Result dropImpl() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)

@@ -72,9 +72,7 @@ GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
       SocketTask(scheduler, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
       _server(server),
-      _auth(nullptr) {
-  _auth = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+      _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -161,16 +159,16 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
                                        << "\",\"" << source << "\"";
   }
-  
+
   std::string const& path = req.requestPath();
-  
+
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
     addResponse(*res, nullptr);
     return RequestFlow::Abort;
   }
-  
+
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
   ServerState::Mode mode = ServerState::mode();
@@ -187,7 +185,15 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
           }
       break;
     }
-    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::REDIRECT: {
+      bool found = false;
+      std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
+      if (StringUtils::boolean(val)) {
+        break; // continue with auth check
+      }
+      // intentional fallthrough
+      [[gnu::fallthrough]];
+    }
     case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&
           path.find("/_admin/cluster/health") == std::string::npos &&
@@ -248,8 +254,9 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
   }
-
-  // TODO add server ID on coordinators ?
+  if (mode == ServerState::Mode::REDIRECT) {
+    res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
 }
 
 /// Push this request into the execution pipeline
@@ -467,8 +474,8 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   auto self = shared_from_this();
 
   if (jobId != nullptr) {
+    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
     *jobId = handler->handlerId();
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(

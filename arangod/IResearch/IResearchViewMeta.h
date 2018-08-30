@@ -51,59 +51,76 @@ NS_BEGIN(iresearch)
 /// @brief metadata describing the IResearch view
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewMeta {
-  struct CommitMeta {
-    class ConsolidationPolicy {
-     public:
-      struct Hash {
-        size_t operator()(ConsolidationPolicy const& value) const;
-      };
-
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief enum of possible consolidation policy thresholds
-      ////////////////////////////////////////////////////////////////////////////////
-      enum class Type {
-        BYTES, // {threshold} > segment_bytes / (all_segment_bytes / #segments)
-        BYTES_ACCUM, // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-        COUNT, // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
-        FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
-      };
-
-      ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
-      ConsolidationPolicy(ConsolidationPolicy const& other);
-      ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
-      ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
-      ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
-      bool operator==(ConsolidationPolicy const& other) const noexcept;
-      static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
-      irs::index_writer::consolidation_policy_t const& policy() const noexcept;
-      size_t segmentThreshold() const noexcept;
-      float threshold() const noexcept;
-      Type type() const noexcept;
-
-     private:
-      irs::index_writer::consolidation_policy_t _policy;
-      size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
-      float _threshold; // consolidation policy threshold
-      Type _type;
+  class ConsolidationPolicy {
+   public:
+    struct Hash {
+      size_t operator()(ConsolidationPolicy const& value) const noexcept;
     };
 
-    typedef std::vector<ConsolidationPolicy> ConsolidationPolicies;
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief enum of possible consolidation policy thresholds
+    ////////////////////////////////////////////////////////////////////////////////
+    enum class Type {
+      BYTES, // {threshold} > segment_bytes / (all_segment_bytes / #segments)
+      BYTES_ACCUM, // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+      COUNT, // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+      FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+    };
 
-    size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-    size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-    ConsolidationPolicies _consolidationPolicies;
+    ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
+    ConsolidationPolicy(ConsolidationPolicy const& other);
+    ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
+    ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
+    ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
+    bool operator==(ConsolidationPolicy const& other) const noexcept;
+    bool operator!=(ConsolidationPolicy const& other) const noexcept;
+    static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
 
-    bool operator==(CommitMeta const& other) const noexcept;
-    bool operator!=(CommitMeta const& other) const noexcept;
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief initialize ConsolidationPolicy with values from a JSON definition
+    /// @return success or set 'errorField' to the specific field with the error
+    ///         on failure state is undefined
+    ////////////////////////////////////////////////////////////////////////////
+    bool init(
+      arangodb::velocypack::Slice const& slice,
+      std::string& errorField,
+      ConsolidationPolicy const& defaults
+    ) noexcept;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief fill and return a JSON definition of a ConsolidationPolicy object
+    /// @return success or set TRI_set_errno(...) and return false
+    ////////////////////////////////////////////////////////////////////////////
+    bool json(arangodb::velocypack::Builder& builder) const;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return the iresearch policy instance or false if not initialized
+    ////////////////////////////////////////////////////////////////////////////
+    irs::index_writer::consolidation_policy_t const& policy() const noexcept;
+
+    size_t segmentThreshold() const noexcept;
+    float threshold() const noexcept;
+    Type type() const noexcept;
+
+   private:
+    friend struct IResearchViewMeta; // for IResearchViewMeta::init(...) to modify '_policy'
+    irs::index_writer::consolidation_policy_t _policy;
+    size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
+    float _threshold; // consolidation policy threshold
+    Type _type;
   };
 
   struct Mask {
-    bool _commit;
+    bool _cleanupIntervalStep;
+    bool _consolidationIntervalMsec;
+    bool _consolidationPolicy;
     bool _locale;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  CommitMeta _commit;
+  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
+  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
   std::locale _locale; // locale used for ordering processed attribute names
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
@@ -222,7 +239,7 @@ struct IResearchViewMetaState {
     std::string& errorField,
     IResearchViewMetaState const& defaults = DEFAULT(),
     Mask* mask = nullptr
-  ) noexcept;
+  );
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object
@@ -258,4 +275,5 @@ struct IResearchViewMetaState {
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

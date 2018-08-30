@@ -13,7 +13,7 @@ then returns the server response.
 
 **Arguments**
 
-* **properties**: `Object` (optional)
+- **properties**: `Object` (optional)
 
   For more information on the _properties_ object, see
   [the HTTP API documentation for creating collections](../../../..//HTTP/Collection/Creating.html).
@@ -22,9 +22,9 @@ then returns the server response.
 
 ```js
 const db = new Database();
-const collection = db.collection('potatos');
+const collection = db.collection('potatoes');
 await collection.create()
-// the document collection "potatos" now exists
+// the document collection "potatoes" now exists
 
 // -- or --
 
@@ -43,7 +43,7 @@ Tells the server to load the collection into memory.
 
 **Arguments**
 
-* **count**: `boolean` (Default: `true`)
+- **count**: `boolean` (Default: `true`)
 
   If set to `false`, the return value will not include the number of documents
   in the collection (which may speed up the process).
@@ -80,7 +80,7 @@ Replaces the properties of the collection.
 
 **Arguments**
 
-* **properties**: `Object`
+- **properties**: `Object`
 
   For information on the _properties_ argument see
   [the HTTP API for modifying collections](../../../..//HTTP/Collection/Modifying.html).
@@ -152,11 +152,11 @@ Deletes the collection from the database.
 
 **Arguments**
 
-* **properties**: `Object` (optional)
+- **properties**: `Object` (optional)
 
   An object with the following properties:
 
-  * **isSystem**: `Boolean` (Default: `false`)
+  - **isSystem**: `Boolean` (Default: `false`)
 
     Whether the collection should be dropped even if it is a system collection.
 

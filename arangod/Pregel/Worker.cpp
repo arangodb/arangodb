@@ -174,7 +174,8 @@ void Worker<V, E, M>::setupWorker() {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->post(
-                    [this, callback] { _graphStore->loadShards(&_config, callback); });
+        [this, callback] { _graphStore->loadShards(&_config, callback); },
+        false);
   }
 }
 
@@ -344,7 +345,7 @@ void Worker<V, E, M>::_startProcessing() {
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
-    });
+    }, false);
     start = end;
     end = end + delta;
     if (total < end + delta) {  // swallow the rest
@@ -413,7 +414,7 @@ bool Worker<V, E, M>::_processVertices(
   }
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
-  if (TRI_UNLIKELY(!_writeCache)) {  // ~Worker was called
+  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
     LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
     return false;
   }
@@ -721,7 +722,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _workerAggregators->serializeValues(package);
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
-  });
+    }, false);
 }
 
 template <typename V, typename E, typename M>
@@ -747,7 +748,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     scheduler->post([path, message] {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
-    });
+    }, false);
   } else {
     std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl =

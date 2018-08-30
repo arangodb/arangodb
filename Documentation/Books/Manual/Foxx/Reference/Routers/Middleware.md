@@ -1,9 +1,17 @@
 Middleware
 ==========
 
-Middleware in Foxx refers to functions that can be mounted like routes and can manipulate the request and response objects before and after the route itself is invoked. They can also be used to control access or to provide common logic like logging etc. Unlike routes, middleware is mounted with the `use` method like a router.
+Middleware in Foxx refers to functions that can be mounted like routes and can
+manipulate the request and response objects before and after the route itself
+is invoked. They can also be used to control access or to provide common logic
+like logging etc. Unlike routes, middleware is mounted with the `use` method
+like a router.
 
-Instead of a function the `use` method can also accept an object with a `register` function that will take a parameter `endpoint`, the middleware will be mounted at and returns the actual middleware function. This allows manipulating the endpoint before creating the middleware (e.g. to document headers, request bodies, path parameters or query parameters).
+Instead of a function the `use` method can also accept an object with a
+`register` function that will take a parameter `endpoint`, the middleware will
+be mounted at and returns the actual middleware function. This allows
+manipulating the endpoint before creating the middleware (e.g. to document
+headers, request bodies, path parameters or query parameters).
 
 **Examples**
 

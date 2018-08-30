@@ -35,16 +35,18 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 PrivilegeFeature::PrivilegeFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Privilege"),
       _numericUid(0), _numericGid(0) {
   setOptional(true);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -191,3 +193,5 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
   }
 #endif
 }
+
+} // arangodb

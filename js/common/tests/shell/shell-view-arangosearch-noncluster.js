@@ -51,8 +51,7 @@ function ViewSuite () {
       try {
         db._createView("", "arangosearch", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -64,8 +63,7 @@ function ViewSuite () {
       try {
         db._createView("abc");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -77,8 +75,7 @@ function ViewSuite () {
       try {
         db._createView("abc", "", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -90,8 +87,7 @@ function ViewSuite () {
       try {
         db._createView("abc", "bogus", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -104,8 +100,7 @@ function ViewSuite () {
         db._createView("abc", "arangosearch", {});
         db._createView("abc", "arangosearch", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
         var abc = db._view("abc");
         abc.drop();
@@ -121,8 +116,7 @@ function ViewSuite () {
         var v = db._createView("def", "arangosearch", {});
         v.rename("abc");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
         var abc = db._view("abc");
         abc.drop();
@@ -139,8 +133,7 @@ function ViewSuite () {
         var v = db._createView("abc", "arangosearch", {});
         v.rename("@bc!");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
         var abc = db._view("abc");
         abc.drop();
@@ -159,11 +152,11 @@ function ViewSuite () {
     /// @brief modify with unacceptable properties
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingModifyUnacceptable : function () {
-      var abc = db._createView("abc", "arangosearch", { "commit": { "commitIntervalMsec": 17 } });
+      var abc = db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 17 });
       assertEqual(abc.name(), "abc");
-      assertEqual(abc.properties().commit.commitIntervalMsec, 17);
-      abc.properties({"bogus": "junk", "commit": { "commitIntervalMsec": 7 } });
-      assertEqual(abc.properties().commit.commitIntervalMsec, 7);
+      assertEqual(abc.properties().consolidationIntervalMsec, 17);
+      abc.properties({ "bogus": "junk", "consolidationIntervalMsec": 7 });
+      assertEqual(abc.properties().consolidationIntervalMsec, 7);
       abc.drop();
     },
 
@@ -173,30 +166,28 @@ function ViewSuite () {
     testAddDrop : function () {
       db._dropView("abc");
       db._dropView("def");
-      db._createView("abc", "arangosearch", { "commit": { "commitIntervalMsec": 10 } });
-      db._createView("def", "arangosearch", { "commit": { "commitIntervalMsec": 3 } });
+      db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 10 });
+      db._createView("def", "arangosearch", { "consolidationIntervalMsec": 3 });
       var abc = db._view("abc");
       var def = db._view("def");
       var propA = abc.properties();
       var propD = def.properties();
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(propA.commit.commitIntervalMsec, 10);
+      assertEqual(propA.consolidationIntervalMsec, 10);
       assertEqual(def.name(), "def");
       assertEqual(def.type(), "arangosearch");
-      assertEqual(propD.commit.commitIntervalMsec, 3);
+      assertEqual(propD.consolidationIntervalMsec, 3);
       abc.drop();
       def.drop();
       try {
         abc = db._view("abc");
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
       try {
         def = db._view("def");
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
@@ -231,20 +222,20 @@ function ViewSuite () {
     /// @brief modify properties
     ////////////////////////////////////////////////////////////////////////////
     testModifyProperties : function () {
-      var abc = db._createView("abc", "arangosearch", { "commit": { "commitIntervalMsec": 10 } });
+      var abc = db._createView("abc", "arangosearch", { "consolidationIntervalMsec": 10 });
       var props = abc.properties();
 
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.commit.commitIntervalMsec, 10);
+      assertEqual(props.consolidationIntervalMsec, 10);
 
-      abc.properties({ "commit": { "commitIntervalMsec": 7 } });
+      abc.properties({ "consolidationIntervalMsec": 7 });
       abc = db._view("abc");
       props = abc.properties();
 
       assertEqual(abc.name(), "abc");
       assertEqual(abc.type(), "arangosearch");
-      assertEqual(props.commit.commitIntervalMsec, 7);
+      assertEqual(props.consolidationIntervalMsec, 7);
 
       abc.drop();
     },

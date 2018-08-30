@@ -60,7 +60,7 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMF
 /// @brief open an existing logfile
 MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, MMFilesWalLogfile::IdType id,
                                                    bool wasCollected, bool ignoreErrors) {
-  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors));
+  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors, false));
 
   if (df == nullptr) {
     int res = TRI_errno();

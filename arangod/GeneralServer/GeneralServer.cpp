@@ -24,8 +24,6 @@
 
 #include "GeneralServer.h"
 
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/exitcodes.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
@@ -33,17 +31,10 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/Task.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-GeneralServer::~GeneralServer() { _listenTasks.clear(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

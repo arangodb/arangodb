@@ -65,17 +65,17 @@ class Cursor {
  public:
   CursorId id() const { return _id; }
 
-  size_t batchSize() const { return _batchSize; }
+  inline size_t batchSize() const { return _batchSize; }
 
-  bool hasCount() const { return _hasCount; }
+  inline bool hasCount() const { return _hasCount; }
 
-  double ttl() const { return _ttl; }
+  inline double ttl() const { return _ttl; }
 
-  double expires() const { return _expires; }
+  inline double expires() const { return _expires; }
 
-  bool isUsed() const { return _isUsed; }
+  inline bool isUsed() const { return _isUsed; }
 
-  bool isDeleted() const { return _isDeleted; }
+  inline bool isDeleted() const { return _isDeleted; }
 
   void deleted() { _isDeleted = true; }
 
@@ -108,7 +108,7 @@ class Cursor {
    *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
   virtual std::pair<aql::ExecutionState, Result> dump(
-      velocypack::Builder& result, std::function<void()>& continueHandler) = 0;
+      velocypack::Builder& result, std::function<void()> const&) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in this thread.

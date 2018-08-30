@@ -95,12 +95,6 @@ void TRI_PrintBacktrace();
 /// @brief logs a backtrace in log level warning
 void TRI_LogBacktrace();
 
-/// @brief initialize the debugging
-void TRI_InitializeDebugging();
-
-/// @brief shutdown the debugging
-void TRI_ShutdownDebugging();
-
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging();
 void TRI_FlushDebugging(char const* file, int line, char const* message);

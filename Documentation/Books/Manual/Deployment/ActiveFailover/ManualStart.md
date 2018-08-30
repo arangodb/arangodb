@@ -6,7 +6,7 @@ An ArangoDB _Active Failover_ setup consists of several running _tasks_ or _proc
 This section describes how to start an _Active Failover_ by manually starting all
 the needed processes.
 
-Before continuing, be sure to read the [Architecture](../../Scalability/ActiveFailover/Architecture.md)
+Before continuing, be sure to read the [Architecture](../../Architecture/DeploymentModes/ActiveFailover/Architecture.md)
 section to get a basic understanding of the underlying architecture and the involved
 roles in an ArangoDB  Active Failover setup.
 
@@ -22,7 +22,7 @@ with 3 _Agents_, and two single server instances.
 We will assume that all processes runs on the same machine (127.0.0.1). Such scenario
 should be used for testing only.
 
-### Agency
+### Local Test Agency
 
 To start up an _Agency_ you first have to activate it. This is done by providing
 the option `--agency.activate true`.
@@ -67,7 +67,7 @@ arangod --server.endpoint tcp://0.0.0.0:5003 \
 	--database.directory agent3 &
 ```
 
-### Single Server Instances
+### Single Server Test Instances
 
 To start the two single server instances, you can use the following commands:
 
@@ -121,7 +121,7 @@ If we use:
 
 then the commands you have to use are reported in the following subparagraphs.
 
-### Agency  
+### Agency
  
 On 192.168.1.1:
 

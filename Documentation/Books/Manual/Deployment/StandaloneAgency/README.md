@@ -174,5 +174,5 @@ curl -L localhost:8529/_api/agency/write -d '[[{"foo":["bar","baz","qux"]}]]'
 
 are equivalent for example and will create and fill an array at `/foo`. Here, again, the outermost array is the container for the transaction arrays.
 
-A complete guide of the API can be found in the [API section](../../HTTP/Agency/index.html).
+A complete guide of the API can be found in the [API section](../../../HTTP/Agency/index.html).
 
