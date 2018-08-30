@@ -2027,8 +2027,14 @@
             } else {
               $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
             }
-          } else {
-            $('#json-switch').addClass('active').css('display', 'inline');
+            $('#json-switch').css('display', 'inline');
+
+            // fallback
+            if (result.fallback && (result.fallback === 'geo' || result.fallback === 'geotable')) {
+              $('#geo-switch').addClass('disabled').css('display', 'inline').css('opacity', '0.5');
+              $('#geo-switch').addClass('tippy').attr('title', 'No internet collection. Map is not available.');
+              arangoHelper.createTooltips();
+            }
           }
 
           var appendSpan = function (value, icon, css) {
@@ -2598,7 +2604,7 @@
 
       if (!found) {
       // if all check fails, then just display as json
-        if (result.length === geojson) {
+        if (result.length !== 0 && result.length === geojson) {
           toReturn.defaultType = 'geo';
         } else {
           toReturn.defaultType = 'json';
@@ -2607,13 +2613,14 @@
 
       if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
         if (!window.activeInternetConnection) {
+          // mark the type we wanted to render
+          toReturn.fallback = toReturn.defaultType;
+
           if (toReturn.defaultType === 'geo') {
             toReturn.defaultType = 'json';
           } else {
             toReturn.defaultType = 'table';
           }
-          // notify user
-          arangoHelper.arangoMessage('Map', 'No internet connection available. Not able to render the map. Falling back to: ' + toReturn.defaultType);
         }
       }
 
