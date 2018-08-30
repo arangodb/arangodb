@@ -169,17 +169,20 @@ bool CreateCollection::first() {
             << _result;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
 
-      _feature.storeShardError(database, collection, shard,
-        _description.get(SERVER_ID), _result);
-
       _result.reset(TRI_ERROR_FAILED, error.str());
     }
 
-  } catch (std::exception const& e) { // Guard failed?
+  } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
+    _result.reset(TRI_ERROR_FAILED, error.str());
+
+  }
+
+  if (_result.fail()) {
+    _feature.storeShardError(database, collection, shard,
+        _description.get(SERVER_ID), _result);
   }
 
   notify();
