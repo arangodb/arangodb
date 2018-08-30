@@ -1,6 +1,10 @@
 v3.3.15 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5941 if using breath first search in traversals uniqueness checks
+  on path (vertices and edges) have not been applied. In SmartGraphs the checks
+  have been executed properly.
+
 * improved error messages when managing Foxx services
 
   Install/replace/upgrade will now provide additional information when an error
