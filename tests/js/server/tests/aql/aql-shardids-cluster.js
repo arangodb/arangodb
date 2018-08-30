@@ -788,7 +788,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    testInnerOuterSame7 : function () {
+    testInnerOuterSameIndex7 : function () {
       dropIndexes(collectionByKey);
       collectionByKey.ensureHashIndex(shardKey);
 
