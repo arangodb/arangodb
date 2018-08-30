@@ -67,7 +67,8 @@ let hasDistributeNode = function(nodes) {
 
 let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
   return nodes.filter(function(node) {
-    return node.type === typeName;
+    return node.type === typeName &&
+           node.collection == collection.name();
   }).every(function(node) {
     return (collection.shards().indexOf(node.restrictedTo) !== -1);
   });
@@ -531,7 +532,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
@@ -553,7 +554,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 

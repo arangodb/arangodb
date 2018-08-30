@@ -169,15 +169,13 @@ class CollectionVariableTracker final
   void processModificationNode(arangodb::aql::ExecutionNode const* en) {
     auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
     auto collection = node->collection();
-    auto outVariableOld = node->getOutVariableOld();
-    if (nullptr != outVariableOld) {
-      processSetter<NodeType>(node, outVariableOld);
-      _collectionVariables[collection].emplace(outVariableOld);
-    }
-    auto outVariableNew = node->getOutVariableNew();
-    if (nullptr != outVariableNew) {
-      processSetter<NodeType>(node, outVariableNew);
-      _collectionVariables[collection].emplace(outVariableNew);
+    std::vector<arangodb::aql::Variable const*> outVariables{
+        node->getOutVariableOld(), node->getOutVariableNew()};
+    for (auto outVariable : outVariables) {
+      if (nullptr != outVariable) {
+        processSetter<NodeType>(node, outVariable);
+        _collectionVariables[collection].emplace(outVariable);
+      }
     }
   }
 
@@ -4595,7 +4593,6 @@ void arangodb::aql::restrictToSingleShardRule(
             }
           }
         }
-        break;
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
         auto collection = ::getCollection(current);
@@ -4614,7 +4611,6 @@ void arangodb::aql::restrictToSingleShardRule(
             ::restrictToShard(current, shardId);
           }
         }
-        break;
       } else if (currentType == ExecutionNode::UPSERT ||
                  currentType == ExecutionNode::REMOTE ||
                  currentType == ExecutionNode::DISTRIBUTE ||
