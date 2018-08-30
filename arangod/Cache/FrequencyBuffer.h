@@ -112,8 +112,8 @@ private:
   //////////////////////////////////////////////////////////////////////////////
   void purgeRecord(T record) {
     for (size_t i = 0; i < _capacity; i++) {
-      if (_cmp(_buffer[i], record)) {
-        _buffer[i].store(_empty, std::memory_order_relaxed);
+      if (_cmp(_buffer[i].load(), record)) {
+        _buffer[i].compare_exchange_strong(record, _empty);
       }
     }
   }

@@ -67,8 +67,8 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& 
       _slotsPerBucket(slotsPerBucket),
       _insertsTotal(),
       _insertEvictions(),
-      _migrateRequestTime(std::chrono::steady_clock::now()),
-      _resizeRequestTime(std::chrono::steady_clock::now()) {
+      _migrateRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()),
+      _resizeRequestTime(std::chrono::steady_clock::now().time_since_epoch().count()) {
   _tableShrdPtr->setTypeSpecifics(_bucketClearer, _slotsPerBucket);
   _tableShrdPtr->enable();
   if (_enableWindowedStats) {
@@ -211,24 +211,22 @@ void Cache::destroy(std::shared_ptr<Cache> cache) {
 }
 
 void Cache::requestGrow() {
-  if (isShutdown() || !_taskLock.readLock(Cache::triesFast)) {
-    return;
-  }
   // fail fast if inside banned window
-  if (std::chrono::steady_clock::now() <= _resizeRequestTime) {
-    _taskLock.unlockRead();
+  if (isShutdown() ||
+      std::chrono::steady_clock::now().time_since_epoch().count() <=
+        _resizeRequestTime.load()) {
     return;
   }
-  _taskLock.unlockRead();
 
   if (_taskLock.writeLock(Cache::triesSlow)) {
-    if (std::chrono::steady_clock::now() > _resizeRequestTime) {
+    if (std::chrono::steady_clock::now().time_since_epoch().count() >
+          _resizeRequestTime.load()) {
       _metadata.readLock();
       bool ok = !_metadata.isResizing();
       _metadata.readUnlock();
       if (ok) {
-        std::tie(ok, _resizeRequestTime) =
-            _manager->requestGrow(this);
+        auto result = _manager->requestGrow(this);
+        _resizeRequestTime.store(result.second.time_since_epoch().count());
       }
     }
     _taskLock.writeUnlock();
@@ -236,18 +234,16 @@ void Cache::requestGrow() {
 }
 
 void Cache::requestMigrate(uint32_t requestedLogSize) {
-  if (isShutdown() || !_taskLock.readLock(Cache::triesFast)) {
-    return;
-  }
   // fail fast if inside banned window
-  if (std::chrono::steady_clock::now() <= _migrateRequestTime) {
-    _taskLock.unlockRead();
+  if (isShutdown() ||
+      std::chrono::steady_clock::now().time_since_epoch().count() <=
+        _migrateRequestTime.load()) {
     return;
   }
-  _taskLock.unlockRead();
 
   if (_taskLock.writeLock(Cache::triesGuarantee)) {
-    if (std::chrono::steady_clock::now() > _migrateRequestTime) {
+    if (std::chrono::steady_clock::now().time_since_epoch().count() >
+          _migrateRequestTime.load()) {
       cache::Table* table = _table.load(std::memory_order_relaxed);
       TRI_ASSERT(table != nullptr);
 
@@ -255,8 +251,8 @@ void Cache::requestMigrate(uint32_t requestedLogSize) {
       bool ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
       _metadata.readUnlock();
       if (ok) {
-        std::tie(ok, _migrateRequestTime) =
-            _manager->requestMigrate(this, requestedLogSize);
+        auto result = _manager->requestMigrate(this, requestedLogSize);
+        _migrateRequestTime.store(result.second.time_since_epoch().count());
       }
     }
     _taskLock.writeUnlock();

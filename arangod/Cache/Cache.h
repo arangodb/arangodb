@@ -183,8 +183,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
                                                          // inserts, migrate
 
   // times to wait until requesting is allowed again
-  Manager::time_point _migrateRequestTime;
-  Manager::time_point _resizeRequestTime;
+  std::atomic<Manager::time_point::rep> _migrateRequestTime;
+  std::atomic<Manager::time_point::rep> _resizeRequestTime;
 
   // friend class manager and tasks
   friend class FreeMemoryTask;

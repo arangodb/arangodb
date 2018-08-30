@@ -325,6 +325,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
 
 void Manager::unregisterCache(uint64_t id) {
   _lock.writeLock();
+  _accessStats.purgeRecord(id);
   auto it = _caches.find(id);
   if (it == _caches.end()) {
     _lock.writeUnlock();
