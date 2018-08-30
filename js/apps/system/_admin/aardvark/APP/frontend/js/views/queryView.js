@@ -2638,6 +2638,14 @@
       var found = this.aqlEditor.find(text);
 
       if (!found && pos) {
+        try {
+          row = parseInt(row);
+          if (row > 0) {
+            row = row - 1;
+          }
+        } catch (ignore) {
+        }
+
         this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
         this.aqlEditor.selection.selectLine();
       }
