@@ -68,6 +68,62 @@ std::string getSingleShardId(
     arangodb::aql::Collection const* collection,
     arangodb::aql::Variable const* collectionVariable = nullptr);
 
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  switch (node->getType()) {
+    case EN::ENUMERATE_COLLECTION:
+      return ExecutionNode::castTo<
+                 arangodb::aql::EnumerateCollectionNode const*>(node)
+          ->collection();
+    case EN::INDEX:
+      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
+          ->collection();
+    case EN::TRAVERSAL:
+    case EN::SHORTEST_PATH:
+      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
+          ->collection();
+    default:
+      // note: modification nodes are not covered here yet
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "node type does not have a collection");
+  }
+}
+
+arangodb::aql::Variable const* getOutVariable(
+    arangodb::aql::ExecutionNode const* node) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  switch (node->getType()) {
+    case EN::CALCULATION:
+      return ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(node)
+          ->outVariable();
+    default: {
+      auto const* n =
+          dynamic_cast<arangodb::aql::DocumentProducingNode const*>(node);
+      if (n != nullptr) {
+        return n->outVariable();
+      }
+      // note: modification nodes are not covered here yet
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "node type does not have an out variable");
+    }
+  }
+}
+
+void restrictToShard(arangodb::aql::ExecutionNode* node, std::string shardId) {
+  auto* n = dynamic_cast<arangodb::aql::CollectionAccessingNode*>(node);
+  if (n != nullptr) {
+    return n->restrictToShard(shardId);
+  }
+  // note: modification nodes are not covered here yet
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "node type cannot be restricted to a single shard");
+}
+
 struct PairHash {
   template <class T1, class T2>
   size_t operator()(std::pair<T1, T2> const& pair) const {
@@ -94,8 +150,9 @@ class CollectionVariableTracker final
 
  private:
   template <class NodeType>
-  void processSetter(NodeType const* node,
+  void processSetter(arangodb::aql::ExecutionNode const* en,
                      arangodb::aql::Variable const* outVariable) {
+    auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
     try {
       auto inputVariables = node->getVariablesUsedHere();
       for (auto var : inputVariables) {
@@ -145,22 +202,15 @@ class CollectionVariableTracker final
 
     switch (en->getType()) {
       case EN::CALCULATION: {
-        auto node =
-            ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(en);
-        auto outVariable = node->outVariable();
-        processSetter<arangodb::aql::CalculationNode>(node, outVariable);
+        auto outVariable = ::getOutVariable(en);
+        processSetter<arangodb::aql::CalculationNode>(en, outVariable);
         break;
       }
 
       case EN::INDEX:
       case EN::ENUMERATE_COLLECTION: {
-        auto collection = ExecutionNode::castTo<
-                              arangodb::aql::CollectionAccessingNode const*>(en)
-                              ->collection();
-        auto variable =
-            ExecutionNode::castTo<arangodb::aql::DocumentProducingNode const*>(
-                en)
-                ->outVariable();
+        auto collection = ::getCollection(en);
+        auto variable = ::getOutVariable(en);
 
         // originates the collection variable, direct dependence
         try {
@@ -360,12 +410,8 @@ class RestrictToSingleShardChecker final
   }
 
   void handleIndexNode(arangodb::aql::ExecutionNode const* en) {
-    auto collection = arangodb::aql::ExecutionNode::castTo<
-                          arangodb::aql::CollectionAccessingNode const*>(en)
-                          ->collection();
-    auto variable = arangodb::aql::ExecutionNode::castTo<
-                        arangodb::aql::DocumentProducingNode const*>(en)
-                        ->outVariable();
+    auto collection = ::getCollection(en);
+    auto variable = ::getOutVariable(en);
     auto shardId = ::getSingleShardId(_plan, en, collection, variable);
     if (shardId.empty()) {
       if (_shardsUsed[variable].empty()) {
@@ -381,10 +427,7 @@ class RestrictToSingleShardChecker final
   }
 
   void handleSourceNode(arangodb::aql::ExecutionNode const* en) {
-    auto variable = arangodb::aql::ExecutionNode::castTo<
-                        arangodb::aql::DocumentProducingNode const*>(en)
-                        ->outVariable();
-
+    auto variable = ::getOutVariable(en);
     // now move all shards for this variable to the cleared list
     _shardsCleared[variable] = std::move(_shardsUsed[variable]);
   }
@@ -396,8 +439,8 @@ void findShardKeyInComparison(arangodb::aql::AstNode const* root,
                               arangodb::velocypack::Builder& builder) {
   using arangodb::aql::AstNode;
   using arangodb::aql::Variable;
-  using arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ;
-  TRI_ASSERT(root->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+  TRI_ASSERT(root->type ==
+             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ);
 
   AstNode const* value = nullptr;
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> pair;
@@ -433,38 +476,37 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
                                arangodb::aql::Variable const* inputVariable,
                                std::unordered_set<std::string>& toFind,
                                arangodb::velocypack::Builder& builder) {
-  using arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ;
-  using arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND;
-  using arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR;
-
   if (root == nullptr) {
     return;
   }
 
-  if (root->type == NODE_TYPE_OPERATOR_NARY_OR) {
+  if (root->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR) {
     if (root->numMembers() != 1) {
       return;
     }
     root = root->getMember(0);
-    if (root == nullptr || root->type != NODE_TYPE_OPERATOR_NARY_AND) {
+    if (root == nullptr ||
+        root->type != arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
       return;
     }
 
     for (size_t i = 0; i < root->numMembers(); ++i) {
       if (root->getMember(i) != nullptr &&
-          root->getMember(i)->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+          root->getMember(i)->type ==
+              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
         findShardKeyInComparison(root->getMember(i), inputVariable, toFind,
                                  builder);
       }
     }
-  } else if (root->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+  } else if (root->type ==
+             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
     findShardKeyInComparison(root, inputVariable, toFind, builder);
   }
 }
 
 // static node types used by some optimizer rules
-// having them statically available avoids having to build the vectors over and
-// over for each AQL query
+// having them statically available avoids having to build the vectors over
+// and over for each AQL query
 std::vector<arangodb::aql::ExecutionNode::NodeType> const
     removeUnnecessaryCalculationsNodeTypes{
         arangodb::aql::ExecutionNode::CALCULATION,
@@ -503,48 +545,12 @@ int indexOf(std::vector<std::string> const& haystack,
   return -1;
 }
 
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node) {
-  using EN = arangodb::aql::ExecutionNode;
-  using arangodb::aql::ExecutionNode;
-
-  switch (node->getType()) {
-    case EN::ENUMERATE_COLLECTION:
-      return ExecutionNode::castTo<
-                 arangodb::aql::EnumerateCollectionNode const*>(node)
-          ->collection();
-    case EN::INDEX:
-      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
-          ->collection();
-    case EN::TRAVERSAL:
-    case EN::SHORTEST_PATH:
-      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
-          ->collection();
-    default:
-      // note: modification nodes are not covered here yet
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "node type does not have a collection");
-  }
-}
-
-arangodb::aql::Variable const* getOutVariable(
-    arangodb::aql::ExecutionNode const* node) {
-  auto const* n =
-      dynamic_cast<arangodb::aql::DocumentProducingNode const*>(node);
-  if (n != nullptr) {
-    return n->outVariable();
-  }
-  // note: modification nodes are not covered here yet
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "node type does not have an out variable");
-}
-
 /// @brief find the single shard id for the node to restrict an operation to
 /// this will check the conditions of an IndexNode or a data-modification node
-/// (excluding UPSERT) and check if all shard keys are used in it. If all shard
-/// keys are present and their values are fixed (constants), this function will
-/// try to figure out the target shard. If the operation cannot be restricted to
-/// a single shard, this function will return an empty string
+/// (excluding UPSERT) and check if all shard keys are used in it. If all
+/// shard keys are present and their values are fixed (constants), this
+/// function will try to figure out the target shard. If the operation cannot
+/// be restricted to a single shard, this function will return an empty string
 std::string getSingleShardId(
     arangodb::aql::ExecutionPlan const* plan,
     arangodb::aql::ExecutionNode const* node,
@@ -622,8 +628,8 @@ std::string getSingleShardId(
         return std::string();
       }
 
-      // the lookup value is a string, and the only shard key is _key: so we can
-      // use it
+      // the lookup value is a string, and the only shard key is _key: so we
+      // can use it
       builder.add(VPackValue(arangodb::StaticStrings::KeyString));
       n->toVelocyPackValue(builder);
       toFind.clear();
@@ -4592,26 +4598,20 @@ void arangodb::aql::restrictToSingleShardRule(
         break;
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
-        auto collection =
-            ExecutionNode::castTo<CollectionAccessingNode const*>(current)
-                ->collection();
-        auto collectionVariable =
-            ExecutionNode::castTo<DocumentProducingNode const*>(current)
-                ->outVariable();
+        auto collection = ::getCollection(current);
+        auto collectionVariable = ::getOutVariable(current);
         std::string shardId = finder.getShard(collectionVariable);
 
         if (finder.isSafeForOptimization(collectionVariable) &&
             !shardId.empty()) {
           wasModified = true;
-          ExecutionNode::castTo<CollectionAccessingNode*>(current)
-              ->restrictToShard(shardId);
+          ::restrictToShard(current, shardId);
         } else if (finder.isSafeForOptimization(collection)) {
           auto& shards = modificationRestrictions[collection];
           if (shards.size() == 1) {
             wasModified = true;
             shardId = *shards.begin();
-            ExecutionNode::castTo<CollectionAccessingNode*>(current)
-                ->restrictToShard(shardId);
+            ::restrictToShard(current, shardId);
           }
         }
         break;
