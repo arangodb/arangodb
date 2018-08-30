@@ -26,6 +26,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -34,6 +35,48 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @return a collection exists in database or a wildcard was specified
+////////////////////////////////////////////////////////////////////////////////
+arangodb::Result existsCollection(
+    std::string const& database, std::string const& collection
+) {
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
+
+  if (!databaseFeature) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL, "failure to find feature 'Database'"
+    );
+  }
+
+  static const std::string wildcard("*");
+
+  if (wildcard == database) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  auto* vocbase = databaseFeature->lookupDatabase(database);
+
+  if (!vocbase) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  if (wildcard == collection) {
+    return arangodb::Result(); // wildcard always matches
+  }
+
+  return !arangodb::CollectionNameResolver(*vocbase).getCollection(collection)
+    ? arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
+    : arangodb::Result()
+    ;
+}
+
+}
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -340,18 +383,33 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     // update database / collection permissions
     std::string const& name = suffixes[0];
+
     if (suffixes[1] == "database") {
       // update a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+
       if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+
         return RestStatus::DONE;
+      }
+
+      // validate that the collection is present
+      if (suffixes.size() > 3) {
+        auto res = existsCollection(db, coll);
+
+        if (!res.ok()) {
+          generateError(res);
+
+          return RestStatus::DONE;
+        }
       }
 
       if (!body.isObject() ||
           !body.get("grant").isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+
         return RestStatus::DONE;
       }
 
@@ -360,7 +418,9 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
       // contains response in case of success
       VPackBuilder b;
+
       b(VPackValue(VPackValueType::Object));
+
       Result r = um->updateUser(name, [&](auth::User& entry) {
         if (coll.empty()) {
           entry.grantDatabase(db, lvl);
@@ -369,14 +429,15 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
           entry.grantCollection(db, coll, lvl);
           b(db + "/" + coll, VPackValue(convertFromAuthLevel(lvl)))();
         }
-        return TRI_ERROR_NO_ERROR;
+
+          return TRI_ERROR_NO_ERROR;
       });
+
       if (r.ok()) {
         generateUserResult(ResponseCode::OK, b);
       } else {
         generateError(r);
       }
-
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
       if (!canAccessUser(name)) {
@@ -495,9 +556,22 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       // revoke a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
+
       if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+
         return RestStatus::DONE;
+      }
+
+      // validate that the collection is present
+      if (suffixes.size() > 3) {
+        auto res = existsCollection(db, coll);
+
+        if (!res.ok()) {
+          generateError(res);
+
+          return RestStatus::DONE;
+        }
       }
 
       Result r = um->updateUser(user, [&](auth::User& entry) {
@@ -506,8 +580,10 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
         } else {
           entry.removeCollection(db, coll);
         }
+
         return TRI_ERROR_NO_ERROR;
       });
+
       if (r.ok()) {
         VPackBuilder b;
         b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(

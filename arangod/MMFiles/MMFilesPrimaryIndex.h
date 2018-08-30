@@ -192,7 +192,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,

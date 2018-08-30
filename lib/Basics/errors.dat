@@ -309,7 +309,7 @@ ERROR_USER_NOT_FOUND,1703,"user not found","Will be raised when a user name is u
 ERROR_USER_CHANGE_PASSWORD,1704,"user must change his password","Will be raised when the user must change his password."
 ERROR_USER_EXTERNAL,1705,"user is external","Will be raised when the user is authenicated by an external server."
 
-################################################################################
+###############################################################################
 ## Service management errors (legacy)
 ## These have been superceded by the Foxx management errors in public APIs.
 ################################################################################
@@ -487,3 +487,12 @@ ERROR_SUPERVISION_GENERAL_FAILURE,20501,"general supervision failure","General s
 ERROR_DISPATCHER_IS_STOPPING,21001,"dispatcher stopped","Will be returned if a shutdown is in progress."
 ERROR_QUEUE_UNKNOWN,21002,"named queue does not exist","Will be returned if a queue with this name does not exist."
 ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with this name is full."
+
+################################################################################
+## Maintenance errors
+################################################################################
+
+ERROR_ACTION_ALREADY_REGISTERED,6001,"maintenance action already registered","Action with this description has been registered already"
+ERROR_ACTION_OPERATION_UNABORTABLE,6002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"
+ERROR_ACTION_UNFINISHED,6003,"maintenance action still processing","This maintenance action is still processing"
+ERROR_NO_SUCH_ACTION,6004,"no such maintenance action","No such maintenance action exists"

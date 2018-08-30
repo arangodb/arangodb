@@ -291,6 +291,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"LAST", ".", flags, &Functions::Last});
   add({"NTH", ".,.", flags, &Functions::Nth});
   add({"POSITION", ".,.|.", flags, &Functions::Position});
+  // CONTAINS_ARRAY is an alias for POSITION
+  addAlias("CONTAINS_ARRAY", "POSITION");
   add({"PUSH", ".,.|.", flags, &Functions::Push});
   add({"APPEND", ".,.|.", flags, &Functions::Append});
   add({"POP", ".", flags, &Functions::Pop});
@@ -386,7 +388,7 @@ void AqlFunctionFeature::addDateFunctions() {
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
-  // common flags for all these functions
+  // common flags for most of these functions
   auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer);
 
   // misc functions
@@ -396,7 +398,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", flags, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
-  add({"V8", ".", flags}); // only native function without a C++ implementation
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)}); // only native function without a C++ implementation
 
   // special flags:
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail}); // not deterministic and not cacheable

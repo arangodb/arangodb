@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EngineInfoContainerCoordinator.h"
-
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ClusterNodes.h"

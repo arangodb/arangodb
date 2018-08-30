@@ -46,6 +46,11 @@ RETURN APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArrayAppend_2
 
+## CONTAINS_ARRAY()
+
+This is an alias for [POSITION()](#position).
+
+
 ## COUNT()
 
 This is an alias for [LENGTH()](#length).

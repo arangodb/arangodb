@@ -83,6 +83,25 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
     return;
   }
 
+  // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+  try {
+    arangodb::velocypack::Builder viewBuilder;
+
+    viewBuilder.openObject();
+
+    auto res = view->toVelocyPack(viewBuilder, true, false);
+
+    if (!res.ok()) {
+      generateError(res);
+
+      return; // skip view
+    }
+  } catch(...) {
+    generateError(arangodb::Result(TRI_ERROR_INTERNAL));
+
+    return; // skip view
+  }
+
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
@@ -264,6 +283,25 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return;
       }
 
+      // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+      try {
+        arangodb::velocypack::Builder viewBuilder;
+
+        viewBuilder.openObject();
+
+        auto res = view->toVelocyPack(viewBuilder, true, false);
+
+        if (!res.ok()) {
+          generateError(res);
+
+          return; // skip view
+        }
+      } catch(...) {
+        generateError(arangodb::Result(TRI_ERROR_INTERNAL));
+
+        return; // skip view
+      }
+
       auto newNameStr = newName.copyString();
       int res = _vocbase.renameView(view, newNameStr);
 
@@ -434,6 +472,19 @@ void RestViewHandler::getViews() {
       if (!canUse(auth::Level::RO, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
       //if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
         continue; // skip views that are not authorised to be read
+      }
+
+      // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+      try {
+        arangodb::velocypack::Builder viewBuilder;
+
+        viewBuilder.openObject();
+
+        if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+          continue; // skip view
+        }
+      } catch(...) {
+        continue; // skip view
       }
 
       arangodb::velocypack::Builder viewBuilder;

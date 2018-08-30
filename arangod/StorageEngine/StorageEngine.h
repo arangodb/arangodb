@@ -125,7 +125,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  virtual char const* typeName() const { return _typeName.c_str(); }
+  virtual std::string const& typeName() const { return _typeName; }
 
   // inventory functionality
   // -----------------------
@@ -179,6 +179,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // the return values will be the usual  TRI_ERROR_* codes.
 
   virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
+
+  /// @brief return a list of the currently open WAL files
+  virtual std::vector<std::string> currentWalFiles() const = 0;
 
   virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
                           bool writeShutdownFile = false) = 0;

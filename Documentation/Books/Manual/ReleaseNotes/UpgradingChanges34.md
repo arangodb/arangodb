@@ -7,8 +7,24 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 The following incompatible changes have been made in ArangoDB 3.4:
 
 
-Supported platforms
--------------------
+Release packages
+----------------
+
+The official ArangoDB release packages for Linux are now built as static executables
+linked with the [musl libc](https://www.musl-libc.org/) standard library. For Linux,
+there are release packages for the Debian-based family of Linux distributions (.deb), 
+and packages for RedHat-based distributions (.rpm). There are no specialized binaries 
+for the individual Linux distributions nor for their individual subversions. 
+
+The release packages are intended to be reasonably portable (see minimum supported
+architectures below) and should run on a variety of different Linux distributions and
+versions.
+
+Release packages are provided for Windows and MacOS as well.
+
+
+Supported architectures
+-----------------------
 
 The minimum supported architecture for the official release packages of ArangoDB is
 now the Nehalem architecture.
@@ -39,6 +55,23 @@ platform: linux
 Note that to get even more target-specific optimizations, it is possible for end
 users to compile ArangoDB on their own with compiler optimizations tailored to the
 target environment.
+
+
+Target host requirements
+------------------------
+
+When the ArangoDB service is started on a Linux host, it will switch to user 
+`arangodb` and group `arangodb` at some point during the startup process.
+This user and group are created during ArangoDB package installation as usual. 
+
+However, if either the group `arangodb` or the user `arangodb` cannot be found in
+the target hosts local `/etc/group` or `/etc/passwd` storage (for example, 
+because system users and groups are stored centrally using NIS, LDAP etc.), then 
+the underlying group-lookup implementation used by ArangoDB will always consult 
+the local nscd (name-service cache daemon) for this. Effectively this requires
+a running nscd instance on hosts that ArangoDB is installed on and that do store
+the operating system users in a place other than the host-local `/etc/group` and
+`/etc/passwd`.
 
 
 Storage engine
@@ -216,6 +249,12 @@ APIs:
 - if authentication is turned on, requests to databases by users with insufficient 
   access rights will be answered with HTTP 401 (Forbidden) instead of HTTP 404 (Not found).
 
+- the REST handler for user permissions at `/_api/user` will now return HTTP 404
+  (Not found) when trying to grant or revoke user permissions for a non-existing
+  collection.
+
+  This affects the HTTP PUT calls to the endpoint `/_api/user/<user>/<database>/<collection>` 
+  for collections that do not exist.
 
 The following APIs have been added or augmented:
 
@@ -399,6 +438,38 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   `PASSTHRU` is intended to be used for internal testing only. Should end users use
   this AQL function in any query and need a wrapper to make query parts non-deterministic,
   the `NOOPT` AQL function can stand in as a non-deterministic variant of `PASSTHRU`
+
+- the AQL query optimizer will by default now create at most 128 different execution
+  plans per AQL query. In previous versions the maximum number of plans was 192.
+
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  but there are some cases in which it creates multiple competing plans. More plans
+  can lead to better optimized queries, however, plan creation has its costs. The
+  more plans are created and shipped through the optimization pipeline, the more
+  time will be spent in the optimizer.
+  To make the optimizer better cope with some edge cases, the maximum number of plans
+  to create is now strictly enforced and was lowered compared to previous versions of
+  ArangoDB.
+
+  Note that this default maximum value can be adjusted globally by setting the startup 
+  option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+  `maxNumberOfPlans` option.
+
+- When creating query execution plans for a query, the query optimizer was fetching
+  the number of documents of the underlying collections in case multiple query
+  execution plans were generated. The optimizer used these counts as part of its 
+  internal decisions and execution plan costs calculations. 
+
+  Fetching the number of documents of a collection can have measurable overhead in a
+  cluster, so ArangoDB 3.4 now caches the "number of documents" that are referred to
+  when creating query execution plans. This may save a few roundtrips in case the
+  same collections are frequently accessed using AQL queries. 
+
+  The "number of documents" value was not and is not supposed to be 100% accurate 
+  in this stage, as it is used for rough cost estimates only. It is possible however
+  that when explaining an execution plan, the "number of documents" estimated for
+  a collection is using a cached stale value, and that the estimates change slightly
+  over time even if the underlying collection is not modified.
   
 
 Usage of V8
@@ -657,3 +728,10 @@ removed in future versions of ArangoDB:
   will still work and automatically be rewritten by the AQL query optimizer 
   to the above forms. However, AQL queries using the deprecated AQL functions
   should eventually be adjusted.
+
+* using the `arangoimp` binary instead of `arangoimport` 
+
+  `arangoimp` has been renamed to `arangoimport` for consistency in ArangoDB
+  3.4, and `arangoimp` is just a symbolic link to `arangoimport` now.
+  `arangoimp` is there for compatibility only, but client scripts should 
+  eventually be migrated to use `arangoimport` instead.

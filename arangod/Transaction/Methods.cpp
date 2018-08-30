@@ -288,8 +288,8 @@ std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex()
 
 /// @brief IndexHandle toVelocyPack method passthrough
 void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder, bool withFigures) const {
-  _index->toVelocyPack(builder, withFigures, false);
+    arangodb::velocypack::Builder& builder, unsigned flags) const {
+  _index->toVelocyPack(builder, flags);
 }
 
 TRI_vocbase_t& transaction::Methods::vocbase() const {
@@ -1420,8 +1420,6 @@ OperationResult transaction::Methods::document(
 OperationResult transaction::Methods::documentCoordinator(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1440,7 +1438,6 @@ OperationResult transaction::Methods::documentCoordinator(
     *this,
     value,
     options,
-    std::move(headers),
     responseCode,
     errorCounter,
     resultBody
@@ -1667,8 +1664,11 @@ OperationResult transaction::Methods::insertLocal(
       res = collection->replace( this, value, documentResult, options
                                , resultMarkerTick, needsLock, previousRevisionId
                                , previousDocumentResult);
-      if(res.ok()){
-         revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
+      if(res.ok() && !options.silent){
+        // If we are silent, then revisionId will not be looked at further
+        // down. In the silent case, documentResult is empty, so nobody
+        // must actually look at it!
+        revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
       }
     }
 
@@ -2793,6 +2793,12 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return countCoordinator(collectionName, type);
+  }
+
+  if (type == CountType::Detailed) {
+    // we are a single-server... we cannot provide detailed per-shard counts,
+    // so just downgrade the request to a normal request
+    type = CountType::Normal;
   }
 
   return countLocal(collectionName, type);

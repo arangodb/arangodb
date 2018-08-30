@@ -146,11 +146,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
 
   resp.writeHeader(&buffer);
   buffer.appendText(body);
-
-  if (_invokeCallbacks) {
-    // FIXME TODO should be done in a separate thread since some callbacks aquire non-recursive mutexes
-    _store->notifyObservers();
-  }
+  _store->notifyObservers();
 }
 
 void GeneralClientConnectionAgencyMock::response(
@@ -184,6 +180,7 @@ void GeneralClientConnectionAgencyMock::request(char const* data, size_t length)
   std::string const request(data, length);
 
   if (_trace) {
+    std::cerr << "Request()" << std::endl;
     std::cerr << request << std::endl;
   }
 

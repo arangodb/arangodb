@@ -32,33 +32,6 @@
 
 #include <deque>
 
-#if 0
-
-#define DEBUG_BEGIN_BLOCK() try {  //
-#define DEBUG_END_BLOCK()                                                     \
-  }                                                                           \
-  catch (arangodb::basics::Exception const& ex) {                             \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
-              << ":" << ex.what();                                            \
-    throw;                                                                    \
-  }                                                                           \
-  catch (std::exception const& ex) {                                          \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
-              << ": " << ex.what();                                           \
-    throw;                                                                    \
-  }                                                                           \
-  catch (...) {                                                               \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
-    throw;                                                                    \
-  }  //
-
-#else
-
-#define DEBUG_BEGIN_BLOCK()  //
-#define DEBUG_END_BLOCK()    //
-
-#endif
-
 namespace arangodb {
 struct ClusterCommResult;
 
@@ -100,9 +73,6 @@ class ExecutionBlock {
     _dependencies.emplace_back(ep); 
     _dependencyPos = _dependencies.end();
   }
-
-  /// @brief get all dependencies
-  std::vector<ExecutionBlock*> getDependencies() const { return _dependencies; }
 
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
@@ -176,10 +146,12 @@ class ExecutionBlock {
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
+    return inheritRegisters(src, dst, row, 0); 
+  }
 
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t,
-                        size_t);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t srcRow,
+                        size_t dstRow);
 
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if

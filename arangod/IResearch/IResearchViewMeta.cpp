@@ -34,46 +34,36 @@
 
 NS_LOCAL
 
+const std::string POLICY_BYTES = "bytes"; // {threshold} > segment_bytes / (all_segment_bytes / #segments)
+const std::string POLICY_BYTES_ACCUM = "bytes_accum"; // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+const std::string POLICY_COUNT = "count"; // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+const std::string POLICY_FILL = "fill"; // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+
 NS_END
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-size_t IResearchViewMeta::ConsolidationPolicy::Hash::operator()(
-    IResearchViewMeta::ConsolidationPolicy const& value
-) const noexcept {
-  auto segmentThreshold = value.segmentThreshold();
-  auto threshold = value.threshold();
-  auto type = value.type();
-
-  return std::hash<decltype(segmentThreshold)>{}(segmentThreshold)
-    ^ std::hash<decltype(threshold)>{}(threshold)
-    ^ std::hash<size_t>{}(size_t(type))
-    ;
-}
-
 IResearchViewMeta::ConsolidationPolicy::ConsolidationPolicy(
-    IResearchViewMeta::ConsolidationPolicy::Type type,
+    std::string const& type,
     size_t segmentThreshold,
     float threshold
-): _segmentThreshold(segmentThreshold), _threshold(threshold), _type(type) {
-  switch (type) {
-   case Type::BYTES:
+): _segmentThreshold(segmentThreshold),
+   _threshold(threshold),
+   _type(type) {
+  // set up the underlying policy for known types, else policy == false
+  if (POLICY_BYTES == type) {
+    // {threshold} > segment_bytes / (all_segment_bytes / #segments)
     _policy = irs::index_utils::consolidate_bytes(_threshold);
-    break;
-   case Type::BYTES_ACCUM:
+  } else if (POLICY_BYTES_ACCUM == type) {
+    // {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
     _policy = irs::index_utils::consolidate_bytes_accum(_threshold);
-    break;
-   case Type::COUNT:
+  } else if (POLICY_COUNT == type) {
+    // {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
     _policy = irs::index_utils::consolidate_count(_threshold);
-    break;
-   case Type::FILL:
-    _policy = irs::index_utils::consolidate_fill(_threshold);
-    break;
-   default:
-    // internal logic error here!!! do not know how to initialize policy
-    // should have a case for every declared type
-    throw std::runtime_error(std::string("internal error, unsupported consolidation type '") + arangodb::basics::StringUtils::itoa(size_t(_type)) + "'");
+  } else if (POLICY_FILL == type) {
+    // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+    _policy = irs::index_utils::consolidate_fill(threshold);
   }
 }
 
@@ -131,37 +121,6 @@ bool IResearchViewMeta::ConsolidationPolicy::operator!=(
   return !(*this == other);
 }
 
-/*static*/ const IResearchViewMeta::ConsolidationPolicy& IResearchViewMeta::ConsolidationPolicy::DEFAULT(
-    IResearchViewMeta::ConsolidationPolicy::Type type
-) {
-  switch (type) {
-    case Type::BYTES:
-    {
-      static const ConsolidationPolicy policy(type, 300, 0.85f);
-      return policy;
-    }
-  case Type::BYTES_ACCUM:
-    {
-      static const ConsolidationPolicy policy(type, 300, 0.85f);
-      return policy;
-    }
-  case Type::COUNT:
-    {
-      static const ConsolidationPolicy policy(type, 300, 0.85f);
-      return policy;
-    }
-  case Type::FILL:
-    {
-      static const ConsolidationPolicy policy(type, 300, 0.85f);
-      return policy;
-    }
-  default:
-    // internal logic error here!!! do not know how to initialize policy
-    // should have a case for every declared type
-    throw std::runtime_error(std::string("internal error, unsupported consolidation type '") + arangodb::basics::StringUtils::itoa(size_t(type)) + "'");
-  }
-}
-
 bool IResearchViewMeta::ConsolidationPolicy::init(
     arangodb::velocypack::Slice const& slice,
     std::string& errorField,
@@ -171,7 +130,7 @@ bool IResearchViewMeta::ConsolidationPolicy::init(
     return false;
   }
 
-  Type policyType;
+  std::string policyType;
 
   {
     // optional string enum
@@ -188,22 +147,7 @@ bool IResearchViewMeta::ConsolidationPolicy::init(
         return false;
       }
 
-      static const std::unordered_map<std::string, Type> policies = {
-        { "bytes", Type::BYTES },
-        { "bytes_accum", Type::BYTES_ACCUM },
-        { "count", Type::COUNT },
-        { "fill", Type::FILL },
-      };
-
-      auto itr = policies.find(field.copyString());
-
-      if (itr == policies.end()) {
-        errorField = fieldName;
-
-        return false;
-      }
-
-      policyType = itr->second;
+      policyType = field.copyString();
     }
   }
 
@@ -262,7 +206,15 @@ bool IResearchViewMeta::ConsolidationPolicy::init(
     }
   }
 
-  *this = ConsolidationPolicy(policyType, segmentThreshold, threshold);
+  auto policy = ConsolidationPolicy(policyType, segmentThreshold, threshold);
+
+  if (!policy.policy()) {
+    errorField = "type";
+
+    return false;
+  }
+
+  *this = std::move(policy);
 
   return true;
 }
@@ -274,23 +226,9 @@ bool IResearchViewMeta::ConsolidationPolicy::json(
     return false;
   }
 
-  struct ConsolidationPolicyHash { size_t operator()(Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
-  static const std::unordered_map<Type, std::string, ConsolidationPolicyHash> policies = {
-    { Type::BYTES, "bytes" },
-    { Type::BYTES_ACCUM, "bytes_accum" },
-    { Type::COUNT, "count" },
-    { Type::FILL, "fill" },
-  };
-
-  auto itr = policies.find(_type);
-
-  if (itr == policies.end()) {
-    return true; // ignore invalid policies
-  }
-
   builder.add("segmentThreshold", arangodb::velocypack::Value(_segmentThreshold));
   builder.add("threshold", arangodb::velocypack::Value(_threshold));
-  builder.add("type", arangodb::velocypack::Value(itr->second));
+  builder.add("type", toValuePair(_type));
 
   return true;
 }
@@ -307,7 +245,7 @@ float IResearchViewMeta::ConsolidationPolicy::threshold() const noexcept {
   return _threshold;
 }
 
-IResearchViewMeta::ConsolidationPolicy::Type IResearchViewMeta::ConsolidationPolicy::type() const noexcept {
+std::string const& IResearchViewMeta::ConsolidationPolicy::type() const noexcept {
   return _type;
 }
 
@@ -321,7 +259,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 IResearchViewMeta::IResearchViewMeta()
   : _cleanupIntervalStep(10),
     _consolidationIntervalMsec(60 * 1000),
-    _consolidationPolicy(ConsolidationPolicy::DEFAULT(ConsolidationPolicy::Type::BYTES_ACCUM)),
+    _consolidationPolicy(POLICY_BYTES_ACCUM, 300, 0.85f),
     _locale(std::locale::classic()) {
 }
 

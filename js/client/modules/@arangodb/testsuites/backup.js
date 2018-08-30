@@ -44,7 +44,7 @@ const log = (text) => {
   print(`${CYAN}${Date()}: Backup - ${text}${RESET}`);
 };
 const makePath = (name) => {
-  return tu.makePathUnix(`js/server/tests/backup/${name}`);
+  return tu.makePathUnix(tu.pathForTesting(`server/tests/backup/${name}`));
 };
 
 const isAlive = (info, options) => {
@@ -60,10 +60,10 @@ const syssys = 'systemsystem';
 const sysNoSys = 'systemnosystem';
 
 const testPaths = {
-  'BackupNoAuthSysTests': ['js/server/tests/backup/backup-system-incl-system.js'],
-  'BackupNoAuthNoSysTests': ['js/server/tests/backup/backup-system-excl-system.js'],
-  'BackupAuthSysTests': ['js/server/tests/backup/backup-system-incl-system.js'],
-  'BackupAuthNoSysTests': ['js/server/tests/backup/backup-system-excl-system.js']
+  'BackupNoAuthSysTests': [tu.pathForTesting('server/tests/backup/backup-system-incl-system.js')],
+  'BackupNoAuthNoSysTests': [tu.pathForTesting('server/tests/backup/backup-system-excl-system.js')],
+  'BackupAuthSysTests': [tu.pathForTesting('server/tests/backup/backup-system-incl-system.js')],
+  'BackupAuthNoSysTests': [tu.pathForTesting('server/tests/backup/backup-system-excl-system.js')]
 };
 
 const failPreStartMessage = (msg) => {
@@ -83,11 +83,12 @@ const generateDumpData = (options) => {
   if (dumpPath !== undefined) {
     return dumpPath;
   }
-  const auth = {
-    'server.authentication': 'false'
+  const conf = {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann'
   };
-
-  let instanceInfo = pu.startInstance('tcp', options, auth, 'backup');
+  
+  let instanceInfo = pu.startInstance('tcp', options, conf, 'backup');
 
   if (instanceInfo === false) {
     return failPreStartMessage('failed to start dataGenerator server!');
@@ -97,7 +98,7 @@ const generateDumpData = (options) => {
   let path = '';
 
   try {
-    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), auth);
+    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), {});
     if (!setup.status === true || !isAlive(instanceInfo, options)) {
       log('Setup failed');
       setup.failed = 1;
@@ -133,6 +134,7 @@ const generateDumpData = (options) => {
     log('Shutting down dump server');
 
     if (isAlive(instanceInfo, options)) {
+      options['server.jwt-secret'] = 'haxxmann';
       pu.shutdownInstance(instanceInfo, options);
     }
     log('done.');

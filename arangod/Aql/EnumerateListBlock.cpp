@@ -51,7 +51,6 @@ EnumerateListBlock::~EnumerateListBlock() {}
 
 std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -65,12 +64,10 @@ std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor
   _inflight = 0;
 
   return res;
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 EnumerateListBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
   traceGetSomeBegin(atMost);
   if (_done) {
     TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -169,11 +166,9 @@ EnumerateListBlock::getSome(size_t atMost) {
   clearRegisters(res.get());
   traceGetSomeEnd(res.get(), getHasMoreState());
   return {getHasMoreState(), std::move(res)};
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();  
   if (_done) {
     size_t skipped = _inflight;
     _inflight = 0;
@@ -237,18 +232,15 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
   size_t skipped = _inflight;
   _inflight = 0;
   return {getHasMoreState(), skipped};
-  DEBUG_END_BLOCK();  
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index
 AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
-  DEBUG_BEGIN_BLOCK();  
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   return inVarReg.at(_trx, _index++, mustDestroy, true);
-  DEBUG_END_BLOCK();  
 }
 
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {

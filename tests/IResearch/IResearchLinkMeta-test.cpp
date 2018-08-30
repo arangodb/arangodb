@@ -45,14 +45,14 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -110,6 +110,7 @@ struct IResearchLinkMetaSetup {
       std::string name = ftr->name();
       features.emplace(name, std::make_pair(ftr, start));
     };
+    arangodb::application_features::ApplicationFeature* tmpFeature;
 
     buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
     buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
@@ -123,14 +124,12 @@ struct IResearchLinkMetaSetup {
     buildFeatureEntry(new arangodb::DatabaseFeature(server), false);
     buildFeatureEntry(new arangodb::ShardingFeature(server), false);
     buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
-
-    // We need this feature to be added now in order to create the system database
-    arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
-
+    buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
+    arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
       buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE

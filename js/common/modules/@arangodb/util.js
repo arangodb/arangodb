@@ -108,7 +108,9 @@ exports.codeFrame = function (e, basePath, withColor = internal.COLOR_OUTPUT) {
         highlightCode: withColor,
         forceColor: withColor
       });
-      const location = `@ ${ctx.fileName}:${ctx.lineNumber}:${ctx.columnNumber}\n`;
+      const location = `@ ${
+        basePath ? ctx.fileName.slice(basePath.length + 1) : ctx.fileName
+      }:${ctx.lineNumber}:${ctx.columnNumber}\n`;
       return (withColor ? chalk.grey(location) : location) + frame;
     }
   } catch (e) {}

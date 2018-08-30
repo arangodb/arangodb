@@ -465,6 +465,26 @@ setting the option `--query.tracking` to *false*.
 The default value is *10.0*.
 
 
+### Limiting the number of query execution plans created by the AQL optimizer
+
+`--query.optimizer-max-plans value`
+
+By setting *value* it can be controlled how many different query execution plans
+the AQL query optimizer will generate at most for any given AQL query. Normally
+the AQL query optimizer will generate a single execution plan per AQL query, but
+there are some cases in which it creates multiple competing plans. More plans
+can lead to better optimized queries, however, plan creation has its costs. The
+more plans are created and shipped through the optimization pipeline, the more
+time will be spent in the optimizer.
+Lowering *value* will make the optimizer stop creating additional plans when it
+has already created enough plans.
+Note that this setting controls the default maximum number of plans to create. The
+value can still be adjusted on a per-query basis by setting the *maxNumberOfPlans*
+attribute when running a query.
+
+The default value is *128*.
+
+
 ### Throw collection not loaded error
 
 `--database.throw-collection-not-loaded-error flag`

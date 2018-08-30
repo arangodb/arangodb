@@ -181,7 +181,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const 
   {
     VPackArrayBuilder guard(&builder);
     for (auto& index : _indexes) {
-      index.toVelocyPack(builder, false);
+      index.toVelocyPack(builder, Index::SERIALIZE_ESTIMATES);
     }
   }
   builder.add(VPackValue("condition"));
@@ -229,9 +229,10 @@ IndexNode::~IndexNode() {}
 
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
-double IndexNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double const dependencyCost = _dependencies.at(0)->getCost(incoming);
+CostEstimate IndexNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  size_t incoming = estimate.estimatedNrItems;
+
   transaction::Methods* trx = _plan->getAst()->query()->trx();
   // estimate for the number of documents in the collection. may be outdated...
   size_t const itemsInCollection = _collection->count(trx);
@@ -263,8 +264,9 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     }
   }
 
-  nrItems = incoming * totalItems;
-  return dependencyCost + incoming * totalCost;
+  estimate.estimatedNrItems *= totalItems;
+  estimate.estimatedCost += incoming * totalCost;
+  return estimate;
 }
 
 /// @brief getVariablesUsedHere, returning a vector
