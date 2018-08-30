@@ -337,7 +337,7 @@ The following sorting methods are available:
 You can sort documents by simply specifying arbitrary values or expressions, as
 you do in other places.
 
-### Best Matching 25 Algorithm
+### `BM25()`
 
 `BM25(doc, k, b)`
 
@@ -350,7 +350,7 @@ algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). See the [`BM25()` section
 in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.md) for
 details.
 
-### Term Frequency – Inverse Document Frequency Algorithm
+### `TFIDF()`
 
 `TFIDF(doc, withNorms)`
 
