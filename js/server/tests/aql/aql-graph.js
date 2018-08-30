@@ -912,7 +912,59 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(actual.length, 6);
       assertEqual(actual, [ "BC","BD","CA","CA","EC","EF" ]);
-    }
+    },
+
+    testPathUniqueVertices : function () {
+      // Only depth 2 can yield results
+      // Depth 3 will return to the startVertex (A)
+      // and thereby is non-unique and will be excluded
+      const query = `WITH ${vn}
+      FOR v, e, p IN 2..4 OUTBOUND "${center}" ${en}
+        OPTIONS {bfs: true, uniqueVertices: "path"}
+        LET keys = CONCAT(p.vertices[*]._key)
+        SORT keys RETURN keys`;
+
+      const actual = getQueryResults(query);
+
+      const expected = [
+        "AEC",
+        "AEF",
+        "ABC",
+        "ABD"
+      ].sort();
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual, expected);
+    },
+
+    testPathUniqueEdges : function () {
+      // Only depth 4 and 5 can yield results
+      // Depth 6 will have to reuse an edge (A->E or A->B)
+      // and thereby is non-unique and will be excluded
+      // uniqueEdges: path is the default
+      const query = `WITH ${vn}
+      FOR v, e, p IN 4..7 OUTBOUND "${center}" ${en}
+        OPTIONS {bfs: true}
+        LET keys = CONCAT(p.vertices[*]._key)
+        SORT keys RETURN keys`;
+
+      const actual = getQueryResults(query);
+
+      const expected = [
+        "AECAB",
+        "AECAD",
+        "AECAF",
+        "AECABC",
+        "AECABD",
+        "ABCAE",
+        "ABCAD",
+        "ABCAF",
+        "ABCAEC",
+        "ABCAEF"
+      ].sort();
+      assertEqual(actual.length, expected.length);
+      assertEqual(actual, expected);
+    },
+
   };
 }
 
