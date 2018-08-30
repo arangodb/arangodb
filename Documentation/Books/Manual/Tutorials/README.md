@@ -23,7 +23,7 @@ Deployment
   Starting an ArangoDB Cluster or database the easy way
 
 - [Datacenter to datacenter Replication](DC2DC/README.md):
-  A tutorial about the ArangoSync DC2DC solution
+  A tutorial about the _ArangoSync_ DC2DC solution
 
 - [Kubernetes](Kubernetes/README.md):
   Start ArangoDB on Kubernetes in 5 minutes
@@ -32,7 +32,7 @@ Deployment
   Start DC2DC between two ArangoDB clusters running in Kubernetes 
   
 - [Monitor ArangoDB](https://www.arangodb.com/tutorials/monitoring-collectd-prometheus-grafana/):
-  Set up a monitoring system for ArangoDB using collectd, Prometheus and Grafana
+  Set up a monitoring system for ArangoDB using _collectd_, _Prometheus_ and _Grafana_
 
 
 Graphs
