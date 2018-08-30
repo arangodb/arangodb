@@ -25,8 +25,8 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/SystemDatabaseFeature.h".h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -69,10 +69,12 @@ void ScriptFeature::start() {
 
 int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   bool ok = false;
-
-  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
   V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
+    V8DealerFeature::DEALER->enterContext(database.get(), true);
 
   if (context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";

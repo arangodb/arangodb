@@ -229,7 +229,6 @@ DatabaseFeature::DatabaseFeature(
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _throwCollectionNotLoadedError(false),
-      _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -340,7 +339,7 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (systemDatabase() == nullptr) {
+  if (!lookupDatabase(TRI_VOC_SYSTEM_DATABASE)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "No _system database found in database directory. Cannot start!";
     FATAL_ERROR_EXIT();
@@ -844,11 +843,6 @@ void DatabaseFeature::inventory(VPackBuilder& result,
   result.close();
 }
 
-void DatabaseFeature::useSystemDatabase() {
-  TRI_vocbase_t* result = useDatabase(TRI_VOC_SYSTEM_DATABASE);
-  TRI_ASSERT(result != nullptr);
-}
-
 TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
@@ -956,20 +950,18 @@ void DatabaseFeature::enumerateDatabases(
 }
 
 void DatabaseFeature::updateContexts() {
-  TRI_ASSERT(_vocbase != nullptr);
+  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  TRI_ASSERT(vocbase);
 
   V8DealerFeature* dealer =
   ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
   if (!dealer->isEnabled()) {
     return;
   }
 
-  useSystemDatabase();
-
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
-
-  auto vocbase = _vocbase;
 
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,
@@ -1156,12 +1148,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           << database->name() << "' failed: " << ex.what();
           FATAL_ERROR_EXIT();
         }
-      }
-
-      if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
-        // found the system database
-        TRI_ASSERT(_vocbase == nullptr);
-        _vocbase = database;
       }
 
       newLists->_databases.insert(std::make_pair(database->name(), database));

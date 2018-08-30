@@ -33,8 +33,8 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -799,11 +799,11 @@ void Agent::activateAgency() {
 
 /// Load persistent state called once
 void Agent::load() {
-
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-  auto vocbase = database->systemDatabase();
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  arangodb::SystemDatabaseFeature::ptr vocbase =
+    sysDbFeature ? sysDbFeature->use() : nullptr;
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
   if (vocbase == nullptr) {
@@ -818,7 +818,8 @@ void Agent::load() {
     // setPersistedState method, which acquires _outputLock and _waitForCV.
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
-    if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
+
+    if (!_state.loadCollections(vocbase.get(), queryRegistry, _config.waitForSync())) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
           << "Failed to load persistent state on startup.";
       FATAL_ERROR_EXIT();
@@ -839,7 +840,7 @@ void Agent::load() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
 
-  _constituent.start(vocbase, queryRegistry);
+  _constituent.start(vocbase.get(), queryRegistry);
   persistConfiguration(term());
 
   if (_config.supervision()) {

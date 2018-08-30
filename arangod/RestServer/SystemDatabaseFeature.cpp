@@ -59,7 +59,7 @@ void SystemDatabaseFeature::start() {
   >("Database");
 
   if (feature) {
-    _vocbase.store(feature->systemDatabase());
+    _vocbase.store(feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
 
     return;
   }
