@@ -1,3 +1,4 @@
+/* global test */
 "use strict";
 const { expect } = require("chai");
 const { getReadableName } = require("@arangodb/foxx/manager-utils");
