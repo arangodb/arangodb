@@ -100,16 +100,18 @@ void ActionBase::notify() {
 }
 
 
-bool ActionBase::matches(
-  std::unordered_map<std::string, std::string> const& options) const {
-  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
-    << "Worker options " << options << " don't match action " << *this;
-  return _options == options;
+bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
+  if (labels.find(FAST_TRACK) != labels.end() &&
+    _labels.find(FAST_TRACK) == _labels.end()) {
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+      << " cannot run in fast track " << *this;
+    return false;
+  }
+  return true;
 }
 
 bool ActionBase::fastTrack() const {
-  auto const& it = _options.find(FAST_TRACK);
-  return (it != _options.end()) ? it->second == "true" : false;
+  return _labels.find(FAST_TRACK) != _labels.end();
 }
 
 

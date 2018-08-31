@@ -32,9 +32,9 @@ namespace maintenance {
 
 MaintenanceWorker::MaintenanceWorker(
   arangodb::MaintenanceFeature& feature,
-  std::unordered_map<std::string, std::string> const& options) 
+  std::unordered_set<std::string> const& labels) 
   : Thread("MaintenanceWorker"), _feature(feature), _curAction(nullptr),
-    _loopState(eFIND_ACTION), _directAction(false), _options(options) {
+    _loopState(eFIND_ACTION), _directAction(false), _labels(labels) {
 
   return;
   
@@ -59,7 +59,7 @@ void MaintenanceWorker::run() {
 
     switch(_loopState) {
       case eFIND_ACTION:
-        _curAction = _feature.findReadyAction(_options);
+        _curAction = _feature.findReadyAction(_labels);
         more = (bool)_curAction;
         break;
 

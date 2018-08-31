@@ -133,9 +133,9 @@ public:
 
   /// @brief Return pointer to next ready action, or nullptr
   std::shared_ptr<maintenance::Action> findReadyAction(
-    std::unordered_map<std::string, std::string> const& options =
-    std::unordered_map<std::string, std::string>());
-
+    std::unordered_set<std::string> const& options =
+    std::unordered_set<std::string>());
+  
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
   uint64_t nextActionId() {return _nextActionId++;};

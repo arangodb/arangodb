@@ -117,8 +117,7 @@ bool Action::next() {
   return _action->next();
 }
 
-bool Action::matches(
-  std::unordered_map<std::string,std::string> const& worker) const {
+bool Action::matches(std::unordered_set<std::string> const& worker) const {
   TRI_ASSERT(_action != nullptr);
   return _action->matches(worker);
 }

@@ -198,7 +198,8 @@ class ActionBase {
   std::chrono::system_clock::time_point getDoneTime() const
     {return std::chrono::system_clock::time_point() + _actionDone.load(); }
 
-  bool matches(std::unordered_map<std::string,std::string> const& options) const;
+  /// @brief check if worker lables match ours
+  bool matches(std::unordered_set<std::string> const& options) const;
   
   std::string const static FAST_TRACK; 
 
@@ -211,7 +212,7 @@ protected:
 
   ActionDescription _description;
 
-  std::unordered_map<std::string, std::string> _options;
+  std::set<std::string> _labels;
 
   uint64_t _hash;
   std::string _clientId;
@@ -232,11 +233,9 @@ protected:
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
   std::atomic<uint64_t> _progress;
-
-  Result _result;
-
   
-
+  Result _result;
+  
 }; // class ActionBase
 
 } // namespace maintenance

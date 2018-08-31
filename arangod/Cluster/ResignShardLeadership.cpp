@@ -53,7 +53,7 @@ ResignShardLeadership::ResignShardLeadership(
 
   std::stringstream error;
   
-  _options[FAST_TRACK] = "true";
+  _labels.emplace(FAST_TRACK);
 
   if (!desc.has(DATABASE)) {
     error << "database must be specified";

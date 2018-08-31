@@ -38,8 +38,8 @@ class MaintenanceWorker : public Thread {
   
   MaintenanceWorker(
     MaintenanceFeature& feature,
-    std::unordered_map<std::string, std::string> const& options =
-    std::unordered_map<std::string, std::string>());
+    std::unordered_set<std::string> const& labels =
+    std::unordered_set<std::string>());
   
   MaintenanceWorker(
     MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
@@ -83,7 +83,7 @@ protected:
 
   Result _lastResult;
 
-  const std::unordered_map<std::string,std::string> _options;
+  const std::unordered_set<std::string> _labels;
 
 private:
   MaintenanceWorker(MaintenanceWorker const &) = delete;

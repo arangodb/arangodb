@@ -119,12 +119,13 @@ void MaintenanceFeature::start() {
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
 
     // First worker will be available only to fast track
-    std::unordered_map<std::string, std::string> special {
-      {ActionBase::FAST_TRACK, "true"}};
+    std::unordered_set<std::string> labels {};
+    if (loop == 0) {
+      labels.emplace(ActionBase::FAST_TRACK);
+    }
     
-    auto newWorker = (loop == 0) ? 
-      std::make_unique<maintenance::MaintenanceWorker>(*this, special) :
-      std::make_unique<maintenance::MaintenanceWorker>(*this);
+    auto newWorker =  
+      std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
     
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
@@ -403,7 +404,7 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 
 
 std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
-  std::unordered_map<std::string, std::string> const& options) {
+  std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while(!_isShuttingDown && !ret_ptr) {
@@ -415,9 +416,11 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
         auto state = (*loop)->getState();
         if (state == maintenance::READY) {
-          if ((*loop)->matches(options)) {
+          if ((*loop)->matches(labels)) {
             ret_ptr=*loop;
             ret_ptr->setState(maintenance::EXECUTING);
+          } else {
+            continue;
           }
         } else if ((*loop)->done()) {
           loop = _actionRegistry.erase(loop);
