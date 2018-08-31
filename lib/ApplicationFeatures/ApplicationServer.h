@@ -168,6 +168,11 @@ class ApplicationServer {
     return feature;
   }
 
+  template<typename T>
+  static T* getFeature() {
+    return getFeature<T>(T::name());
+  }
+
   // returns the feature with the given name if known and enabled
   // throws otherwise
   template <typename T>
