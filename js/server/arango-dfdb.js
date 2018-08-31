@@ -499,7 +499,7 @@ function main (argv) {
   printf("\n");
   
   if (!internal.db._engine().supports.dfdb) {
-    printf("\ndfdb is not usable with this storage engine.\n");
+    printf("\narango-dfdb is not intended to be used with this storage engine (" + internal.db._engine().name + ").\n");
     return;
   }
 

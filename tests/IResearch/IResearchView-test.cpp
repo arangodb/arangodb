@@ -3063,7 +3063,7 @@ SECTION("test_transaction_snapshot") {
       opts
     );
     CHECK(nullptr == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
     CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::FindOrCreate));
     CHECK((nullptr != snapshot));
@@ -3158,7 +3158,7 @@ SECTION("test_transaction_snapshot") {
     REQUIRE(state);
     CHECK((true == viewImpl->apply(trx)));
     CHECK((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndCreate);
+    auto* snapshot = viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::SyncAndReplace);
     CHECK(snapshot == viewImpl->snapshot(trx, arangodb::iresearch::IResearchView::Snapshot::Find));
     CHECK((nullptr != snapshot));
     CHECK((2 == snapshot->live_docs_count()));

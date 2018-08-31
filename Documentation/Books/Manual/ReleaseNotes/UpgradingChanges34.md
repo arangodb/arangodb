@@ -249,6 +249,12 @@ APIs:
 - if authentication is turned on, requests to databases by users with insufficient 
   access rights will be answered with HTTP 401 (Forbidden) instead of HTTP 404 (Not found).
 
+- the REST handler for user permissions at `/_api/user` will now return HTTP 404
+  (Not found) when trying to grant or revoke user permissions for a non-existing
+  collection.
+
+  This affects the HTTP PUT calls to the endpoint `/_api/user/<user>/<database>/<collection>` 
+  for collections that do not exist.
 
 The following APIs have been added or augmented:
 
@@ -598,9 +604,23 @@ Client tools
 
 The client tool _arangoimp_ has been renamed to _arangoimport_ for consistency.
   
-Release packages will still install arangoimp as a symlink to arangoimport, 
-so user scripts invoking arangoimp do not need to be changed to work with
-ArangoDB 3.4.
+Release packages will still install _arangoimp_ as a symlink to _arangoimport_, 
+so user scripts invoking _arangoimp_ do not need to be changed to work with
+ArangoDB 3.4. However, user scripts invoking _arangoimp_ should eventually be 
+changed to use _arangoimport_ instead, as that will be the long-term supported 
+way of running imports.
+
+The tools _arangodump_ and _arangorestore_ will now by default work with two
+threads when extracting data from a server or loading data back into a server resp.
+The number of threads to use can be adjusted for both tools by adjusting the
+`--threads` parameter when invoking them. This change is noteworthy because in
+previous versions of ArangoDB both tools were single-threaded and only processed
+one collection at a time, while starting with ArangoDB 3.4 by default they will 
+process two collections at a time, with the intended benefit of completing their
+work faster. However, this may create higher load on servers than in previous
+versions of ArangoDB. If the load produced by _arangodump_ or _arangorestore_ is
+higher than desired, please consider setting their `--threads` parameter to a 
+value of `1` when invoking them.
 
 In the ArangoShell, the undocumented JavaScript module `@arangodb/actions` has
 been removed. This module contained the methods `printRouting` and `printFlatRouting`,
@@ -722,3 +742,10 @@ removed in future versions of ArangoDB:
   will still work and automatically be rewritten by the AQL query optimizer 
   to the above forms. However, AQL queries using the deprecated AQL functions
   should eventually be adjusted.
+
+* using the `arangoimp` binary instead of `arangoimport` 
+
+  `arangoimp` has been renamed to `arangoimport` for consistency in ArangoDB
+  3.4, and `arangoimp` is just a symbolic link to `arangoimport` now.
+  `arangoimp` is there for compatibility only, but client scripts should 
+  eventually be migrated to use `arangoimport` instead.
