@@ -48,8 +48,6 @@ function SynchronousReplicationWithViewSuite () {
   var cinfo;
   var ccinfo;
   var shards;
-  // FIXME: remove it after issue #2900 of planning is fixed
-  var useView = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for the system collections
@@ -197,7 +195,7 @@ function SynchronousReplicationWithViewSuite () {
 
     viewOperations("assert", null, function assert() {
       assertEqual(
-        viewOperations("query", { query: "FOR d IN @@vn COLLECT WITH COUNT into iCount RETURN iCount",
+        viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} COLLECT WITH COUNT into iCount RETURN iCount",
         bind: '{ "@vn" : name }' }).toArray()[0], 1); } );
 
     if (healing.place === 1) { healFailure(healing); }
@@ -206,7 +204,7 @@ function SynchronousReplicationWithViewSuite () {
     var doc = c.document(id._key);
     assertEqual(12, doc.Hallo);
     viewOperations("assert", null, function assert() {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo == 12 RETURN d.Hallo", bind: '{ "@vn" : name }' }).toArray();
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo == 12 OPTIONS {waitForSync: true} RETURN d.Hallo", bind: '{ "@vn" : name }' }).toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0], 12);
     });
@@ -218,7 +216,7 @@ function SynchronousReplicationWithViewSuite () {
     assertEqual(3, c.count());
     assertEqual(2, ids.length);
     viewOperations("assert", null, function assert() {
-      var result = viewOperations("query", { query: "FOR d IN @@vn RETURN d", bind: '{ "@vn" : name }' }).toArray();
+      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", bind: '{ "@vn" : name }' }).toArray();
       assertEqual(result.length, 3);
     });
 
@@ -232,7 +230,7 @@ function SynchronousReplicationWithViewSuite () {
     viewOperations("assert", null, function assert(inFilter = ids) {
       var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
                                                     + inFilter.map(e => "'" + e._key + "'").join(",") 
-                                                    + "] SORT d._key RETURN d", 
+                                                    + "] OPTIONS {waitForSync: true} SORT d._key RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(13, result[0].Hallo);
@@ -251,7 +249,7 @@ function SynchronousReplicationWithViewSuite () {
     doc = c.document(id._key);
     assertEqual(100, doc.Hallo);
     viewOperations("assert", null, function assert(inFilter = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' RETURN d",
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' OPTIONS {waitForSync: true} RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(1, result.length);
       assertEqual(100, result[0].Hallo);
@@ -272,7 +270,7 @@ function SynchronousReplicationWithViewSuite () {
     viewOperations("assert", null, function assert(inFilter = ids) {
       var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
                                                     + inFilter.map(e => "'" + e._key + "'").join(",") 
-                                                    + "] SORT d._key RETURN d", 
+                                                    + "] OPTIONS {waitForSync: true} SORT d._key RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(101, result[0].Hallo);
@@ -292,7 +290,7 @@ function SynchronousReplicationWithViewSuite () {
     assertEqual(100, doc.Hallo);
     assertEqual(105, doc.Hallox);
     viewOperations("assert", null, function assert(inFilter = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' RETURN d", 
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(1, result.length);
       assertEqual(100, result[0].Hallo);
@@ -316,7 +314,7 @@ function SynchronousReplicationWithViewSuite () {
     viewOperations("assert", null, function assert(inFilter = ids) {
       var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
                                                     + inFilter.map(e => "'" + e._key + "'").join(",") 
-                                                    + "] SORT d._key RETURN d", 
+                                                    + "] OPTIONS {waitForSync: true} SORT d._key RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(101, result[0].Hallo);
@@ -337,7 +335,7 @@ function SynchronousReplicationWithViewSuite () {
     assertEqual(3, docs.length);
     assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], docs);
     viewOperations("assert", null, function assert() {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo > 0 SORT d.Hallo RETURN {'Hallo': d.Hallo}", 
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo > 0 OPTIONS {waitForSync: true} SORT d.Hallo RETURN {'Hallo': d.Hallo}", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(3, result.length);
       assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
@@ -365,7 +363,7 @@ function SynchronousReplicationWithViewSuite () {
 
     assertEqual(2, c.count());
     viewOperations("assert", null, function assert(doc = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn  RETURN d", 
+      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(undefined, result.find(e => e._key === doc));
@@ -384,7 +382,7 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(docs[0].error);
     assertTrue(docs[1].error);
     viewOperations("assert", null, function assert(doc = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn  RETURN d", 
+      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(0, result.length);
     });
@@ -397,8 +395,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
   function viewOperations(type, options = null, exec = null) {
     // check if arangosearch views are supported and could be used
-    // FIXME: remove useView check after issue #2900 of planning is fixed
-    if (useView === true && db._views() !== 0) {
+    if (db._views() !== 0) {
       var name = (typeof options !== "undefined" && options != null && options.hasOwnProperty("name")) ? options.name : "vn";
       
       var checkArgument = (parameter, argument = null, type = "object") => {
@@ -430,9 +427,9 @@ function SynchronousReplicationWithViewSuite () {
             if (checkArgument(options, "bind")) {
               var binded;
               eval("binded = " + options.bind );
-              return db._query(options.query, binded, { waitForSync: true });
+              return db._query(options.query, binded);
             } else {
-              return db._query(options.query, null, { waitForSync: true });
+              return db._query(options.query);
             }
           } else {
             return null;
