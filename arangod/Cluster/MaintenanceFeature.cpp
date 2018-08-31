@@ -415,13 +415,9 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
 
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
         auto state = (*loop)->getState();
-        if (state == maintenance::READY) {
-          if ((*loop)->matches(labels)) {
-            ret_ptr=*loop;
-            ret_ptr->setState(maintenance::EXECUTING);
-          } else {
-            continue;
-          }
+        if (state == maintenance::READY && (*loop)->matches(labels)) {
+          ret_ptr=*loop;
+          ret_ptr->setState(maintenance::EXECUTING);
         } else if ((*loop)->done()) {
           loop = _actionRegistry.erase(loop);
         } else {
