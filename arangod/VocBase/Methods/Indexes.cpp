@@ -97,6 +97,10 @@ Result Indexes::getIndex(LogicalCollection const* collection,
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                  bool withFigures, VPackBuilder& result) {
 
+  unsigned flags = Index::SERIALIZE_ESTIMATES;
+  if (withFigures) {
+    flags |= Index::SERIALIZE_FIGURES;
+  }
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(collection);
@@ -113,14 +117,10 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    unsigned flags = Index::SERIALIZE_ESTIMATES;
-    if (withFigures) {
-      flags |= Index::SERIALIZE_FIGURES;
-    }
     c->getIndexesVPack(tmpInner, flags);
 
     tmp.openArray();
-    for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
+    for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
       auto id = StringRef(s.get("id"));
       auto found = std::find_if(estimates.begin(),
                                 estimates.end(),
@@ -128,7 +128,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                   return id == v.first;
                                 }
                                );
-      if(found == estimates.end()){
+      if (found == estimates.end()) {
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
@@ -162,7 +162,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.openArray(true);
 
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-      idx->toVelocyPack(tmp, Index::SERIALIZE_FIGURES | Index::SERIALIZE_ESTIMATES);
+      idx->toVelocyPack(tmp, flags);
     }
     tmp.close();
     trx.finish(res);

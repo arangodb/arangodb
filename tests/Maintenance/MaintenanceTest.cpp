@@ -653,7 +653,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       auto cb =
         node.second(dbname).children().begin()->second->toBuilder();
       auto collection = cb.slice();
-      auto colname = collection.get(NAME).copyString();
+      auto shname = collection.get(NAME).copyString();
 
       (*node.second(dbname).children().begin()->second)(prop) =
         v.slice();
@@ -669,7 +669,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       for (auto const& action : actions) {
 
         REQUIRE(action.name() == "UpdateCollection");
-        REQUIRE(action.get("collection") == colname);
+        REQUIRE(action.get("shard") == shname);
         REQUIRE(action.get("database") == dbname);
         auto const props = action.properties();
 
@@ -707,8 +707,8 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         REQUIRE(actions.size() == 1);
         for (auto const& action : actions) {
           REQUIRE(action.name() == "UpdateCollection");
-          REQUIRE(action.has("collection"));
-          REQUIRE(action.get("collection") == collection("name").getString());
+          REQUIRE(action.has("shard"));
+          REQUIRE(action.get("shard") == collection("name").getString());
           REQUIRE(action.get("localLeader").empty());
         }
       }
