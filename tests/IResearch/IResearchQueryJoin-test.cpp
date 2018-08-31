@@ -325,9 +325,9 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
-  arangodb::LogicalCollection* logicalCollection3{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
 
   // add collection_1
   {
@@ -416,7 +416,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 
@@ -482,9 +482,9 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
-  arangodb::LogicalCollection* logicalCollection3{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
 
   // add collection_1
   {
@@ -566,7 +566,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 

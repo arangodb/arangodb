@@ -1186,8 +1186,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 /// this means that the system will assign a new collection id automatically
 /// using a cid of > 0 is supported to import dumps from other servers etc.
 /// but the functionality is not advertised
-arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
-    VPackSlice parameters) {
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
+    arangodb::velocypack::Slice parameters
+) {
   // check that the name does not contain any strange characters
   if (!IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -1224,7 +1225,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     DatabaseFeature::DATABASE->versionTracker()->track("create collection");
   }
 
-  return collection.get();
+  return collection;
 }
 
 /// @brief unloads a collection
@@ -2068,21 +2069,17 @@ void TRI_vocbase_t::processCollections(
   }
 }
 
-std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
+std::vector<std::shared_ptr<arangodb::LogicalCollection>> TRI_vocbase_t::collections(
     bool includeDeleted
 ) {
-  std::vector<arangodb::LogicalCollection*> collections;
-
-  {
     RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-    if (includeDeleted) {
-      // return deleted collections as well. the cleanup thread needs them
-      collections.reserve(_collections.size());
 
-      for (auto const& it : _collections) {
-        collections.emplace_back(it.get());
-      }
-    } else {
+    if (includeDeleted) {
+      return _collections; // create copy
+    }
+
+    std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+
       collections.reserve(_dataSourceById.size());
 
       for (auto& entry: _dataSourceById) {
@@ -2099,10 +2096,8 @@ std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
         auto collection = std::static_pointer_cast<arangodb::LogicalCollection>(entry.second);
 #endif
 
-        collections.emplace_back(collection.get());
+        collections.emplace_back(collection);
       }
-    }
-  }
 
   return collections;
 }

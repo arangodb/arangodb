@@ -131,12 +131,13 @@ bool UpdateCollection::first() {
   auto const& props = properties();
 
   try {
-
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-
     Result found = methods::Collections::lookup(
-      vocbase, shard, [&](LogicalCollection& coll) {
+      vocbase,
+      shard,
+      [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+        TRI_ASSERT(coll);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Updating local collection " + shard;
 
@@ -144,8 +145,8 @@ bool UpdateCollection::first() {
         // resignation case is not handled here, since then
         // ourselves does not appear in shards[shard] but only
         // "_" + ourselves.
-        handleLeadership(coll, localLeader, plannedLeader);
-        _result = Collections::updateProperties(&coll, props);
+        handleLeadership(*coll, localLeader, plannedLeader);
+        _result = Collections::updateProperties(coll.get(), props);
 
         if (!_result.ok()) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE) << "failed to update properties"
@@ -161,17 +162,20 @@ bool UpdateCollection::first() {
             << "in database " + database;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+
       return false;
     }
   } catch (std::exception const& e) {
     std::stringstream error;
+
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+
     return false;
   }
 
   notify();
-  return false;
 
+  return false;
 }
