@@ -20,23 +20,55 @@ SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDI
 for script in $SCRIPTS; do
   base=$(basename "$script")
 
-  (
-    echo "#!/bin/bash"
-    echo
-    echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
-    echo
+  if test base == "arangodb"; then
+  cat > "${ROOTDIR}/$base.$$" <<-'EOF'
+#!/bin/sh
+me=$(realpath $0)
+program=$(basename $me)
+installation=$(dirname $(dirname $me))
+executable=$installation/opt/arangodb/bin/$program
+if [ -x $executable ] ; then
+  exec $executable --server.arangod=$installation/usr/sbin/arangod --server.js-dir=$installation/usr/share/arangodb3/js "$@"
+fi
+echo "Could not find executable!"
+exit 1
+EOF
+  else
+    (
+      echo "#!/bin/bash"
+      echo
+      echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
+      echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
-  ) > "${ROOTDIR}/$base.$$"
+      echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
+    ) > "${ROOTDIR}/$base.$$"
+  fi
 
   chmod 755 "${ROOTDIR}/$base.$$"
   mv "${ROOTDIR}/$base.$$" "${ROOTDIR}/$base"
 done
 
+PIDFILE="/var/tmp/arangod.pid"
+
+if [ -f "${PIDFILE}" ];  then
+result=$(
+/usr/bin/osascript -s so <<-EOF
+tell application "System Events"
+  activate
+  display dialog "PID File ${PIDFILE} exists, server already running. Press OK to try to start the server anyhow."
+end tell
+EOF
+)
+
+  if echo "$result" | grep -Fq "User canceled";  then
+    exit 0
+  fi
+fi
+
 if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
     STORAGE_ENGINE=$(
         /usr/bin/osascript <<-EOF
-set issueList to {"auto", "mmfiles", "rocksdb"}
+set issueList to {"auto", "rocksdb", "mmfiles"}
 set selectedIssue to {choose from list issueList}
 return selectedIssue
 EOF
@@ -70,25 +102,6 @@ fi
 
 # start the server
 
-PIDFILE="${HOMEDIR}@INC_CPACK_ARANGO_PID_DIR@/arangod.pid"
-
-if [ -f "${PIDFILE}" ];  then
-result=$(
-/usr/bin/osascript -s so <<-EOF
-tell application "System Events"
-  activate
-  display dialog "PID File ${PIDFILE} exists, server already running. Press OK to try to start the server anyhow."
-end tell
-EOF
-)
-
-  if echo "$result" | grep -Fq "User canceled";  then
-    exit 0
-  fi
-fi
-
-
-test -d "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@" || mkdir "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@"
 "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --daemon --pid-file "${PIDFILE}"
 
 # create some information for the user
@@ -126,9 +139,4 @@ EOF
 # start safari and open web ui
 
 sleep 10;
-/usr/bin/osascript <<-EOF
-tell application "Safari"
-  open location "http://127.0.0.1:8529/"
-  activate
-end tell
-EOF
+open "http://127.0.0.1:8529/"
