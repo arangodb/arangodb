@@ -21,3 +21,8 @@ APIs
 * the REST API for retrieving a single index at endpoint GET `/_api/index/<indexname>` will current
   succeed for indexes used internally for links of views. These requests will return a notfound error in 
   a later version.
+
+MoveShards
+----------
+
+* moving shards for views might fail
