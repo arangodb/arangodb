@@ -10,6 +10,16 @@ View
 
 Returns the view with the given name or null if no such view exists.
 
+    @startDocuBlockInline viewDatabaseGet
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseGet}
+    ~ db._createView("example", "arangosearch", {});
+      | view = db._view("example");
+      // or, alternatively
+      view = db["example"]
+    ~ db._dropView("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseGet
+
 `db._view(view-identifier)`
 
 Returns the view with the given identifier or null if no such view exists.
