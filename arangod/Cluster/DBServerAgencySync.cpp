@@ -83,8 +83,8 @@ Result getLocalCollections(VPackBuilder& collections) {
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
-        std::string const colname = collection->name();
-        if (colname.front() != '_') {
+        if (!collection->system()) {
+          std::string const colname = collection->name();
           collections.add(VPackValue(colname));
           VPackObjectBuilder col(&collections);
           collection->toVelocyPack(collections,true,false);
