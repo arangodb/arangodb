@@ -76,7 +76,7 @@ function IResearchLinkSuite () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
       var view = db._createView("badView", "arangosearch", meta);
       var links = view.properties().links;
-      assertEqual(links['testCollection'], undefined);
+      assertNotEqual(links['testCollection'], undefined);
       view.drop();
     },
 
@@ -98,11 +98,7 @@ function IResearchLinkSuite () {
       assertEqual(links['testCollection'], undefined);
 
       view.drop();
-      try {
-        view = db._view('testView');
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view('testView'));
     }
 
   };

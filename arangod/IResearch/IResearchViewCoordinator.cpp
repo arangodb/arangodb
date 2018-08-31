@@ -358,17 +358,6 @@ bool IResearchViewCoordinator::emplace(
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (arangodb::ExecContext::CURRENT) {
-      // check existing links
-      for (auto& entry: view->_collections) {
-        auto collection =
-          engine->getCollection(vocbase.name(), std::to_string(entry.first));
-
-        if (collection
-            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
-          return nullptr;
-        }
-      }
-
       // check new links
       if (info.hasKey(StaticStrings::LinksField)) {
         for (arangodb::velocypack::ObjectIterator itr(info.get(StaticStrings::LinksField)); itr.valid(); ++itr) {

@@ -336,8 +336,19 @@ SECTION("test_defaults") {
     REQUIRE((false == !logicalView));
     std::set<TRI_voc_cid_t> cids;
     logicalView->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    CHECK((0 == cids.size()));
-    CHECK((true == logicalCollection->getIndexes().empty()));
+    CHECK((1 == cids.size()));
+    CHECK((false == logicalCollection->getIndexes().empty()));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    logicalView->toVelocyPack(builder, true, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
+    CHECK((true == tmpSlice.hasKey("testCollection")));
   }
 
   // view definition with links
