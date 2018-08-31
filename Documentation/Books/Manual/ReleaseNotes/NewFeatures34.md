@@ -893,8 +893,10 @@ will not require as many V8 contexts as previous versions.
 This should reduce problems with servers running out of available V8 contexts or
 using a lot of memory just for keeping V8 contexts around.
 
-As a consequence, ArangoDB agency nodes in 3.4 will now turn off the V8 JavaScript
-engine at startup automatically.
+As a consequence, ArangoDB agency and database server nodes in an ArangoDB 3.4 
+cluster will now turn off the V8 JavaScript engine at startup entirely and automatically.
+The V8 engine will still be enabled on cluster coordinators, single server and
+active failover instances. 
 
 
 Foxx

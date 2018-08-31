@@ -3473,7 +3473,38 @@ var cutByResolution = function (str) {
 
         </div> <% }); %> </div>
 
-  </div></script><script id="viewsView.ejs" type="text/template"><div class="contentDiv" id="">
+  </div></script><script id="viewsView.ejs" type="text/template"><div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="viewsSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="viewsSearchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+          <a id="viewsToggle" class="headerButton">
+            <span class="icon_arangodb_settings2" title="Settings"></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="viewsDropdown2" class="headerDropdown">
+    <div id="viewsDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="viewsSortDesc">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="contentDiv" id="">
     <div id="viewsThumbnailsIn" class="tileList pure-u">
       <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
@@ -3495,10 +3526,8 @@ var cutByResolution = function (str) {
   </div></script><script id="viewView.ejs" type="text/template"><div class="innerContent">
     <div id="propertiesEditor" class="document-editor"></div>
     <div class="bottomButtonBar">
-      <button id="savePropertiesButton" class="button-close pull-right" disabled>Save</button>
-      <button id="renameViewButton" class="button-warning pull-right">Rename</button>
-      <button id="deleteViewButton" class="button-danger pull-right">Delete</button>
+      <button id="savePropertiesButton" class="button-close pull-right" disabled>Save</button> <% if (!window.frontendConfig.isCluster) { %> <button id="renameViewButton" class="button-warning pull-right">Rename</button> <% } %> <button id="deleteViewButton" class="button-danger pull-right">Delete</button>
     </div>
   </div></script><script id="warningList.ejs" type="text/template"> <% if (warnings.length > 0) { %> <div>
       <ul> <% console.log(warnings); _.each(warnings, function(w) { console.log(w);%> <li><b><%=w.code%></b>: <%=w.message%></li> <% }); %> </ul>
-    </div> <% } %> </script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1535574555808"></script><script src="app.js?version=1535574555808"></script></body></html>
+    </div> <% } %> </script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1535673424538"></script><script src="app.js?version=1535673424538"></script></body></html>

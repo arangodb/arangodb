@@ -11,6 +11,10 @@ devel
 
 * upgraded bundled Snappy compression library to 1.1.7
 
+* fixed issue #5941 if using breath first search in traversals uniqueness checks
+  on path (vertices and edges) have not been applied. In SmartGraphs the checks
+  have been executed properly.
+
 * improved error messages when managing Foxx services
 
   Install/replace/upgrade will now provide additional information when an error
