@@ -10,7 +10,7 @@ All DDL operations on Views can be done via JavaScript or REST calls. The DDL
 syntax follows the well established ArangoDB guidelines and thus is very
 similar between the [JavaScript interface for views
 ](../../DataModeling/Views/README.md) and the [HTTP interface for views
-](../../../HTTP/Views/README.md). This article uses the JavaScript syntax.
+](../../../HTTP/Views/index.html). This article uses the JavaScript syntax.
 
 Assume the following collections were initially defined in a database using
 the following commands:

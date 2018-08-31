@@ -437,7 +437,7 @@ you do in other places.
 
 Sorts documents using the [**Best Matching 25**
 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). See the [`BM25()` section
-in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.md) for
+in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.html) for
 details.
 
 ### TFIDF()
@@ -450,7 +450,7 @@ details.
 
 Sorts documents using the [**term frequency–inverse document frequency**
 algorithm](https://en.wikipedia.org/wiki/TF-IDF). See the [`TFIDF()` section in
-ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.md) for
+ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.html) for
 details.
 
 
