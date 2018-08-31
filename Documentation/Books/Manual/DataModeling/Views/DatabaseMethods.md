@@ -33,16 +33,9 @@ Get a view by name:
 
     @startDocuBlockInline viewDatabaseNameKnown
     @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseNameKnown}
-      db._view("demo");
+      db._view("demoView");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock viewDatabaseNameKnown
-
-Get a view by id:
-
-```
-arangosh> db._view(123456);
-[ArangoView 123456, "demo"]
-```
 
 Unknown view:
 
@@ -60,24 +53,33 @@ Create
 
 `db._createView(view-name, view-type, view-properties)`
 
-*view-type* must be one of the supported [View Types](README.md)
-
-*view-properties* view configuration specific to each view-type
-
 Creates a new view named *view-name* of type *view-type* with properties
-*view-properties*. If the view name already exists or if the name format is
-invalid, an error is thrown. For more information on valid view names please
-refer to the [naming conventions](../NamingConventions/README.md).
+*view-properties*.
 
-**Examples**
+*view-name* is a string and the name of the view. No view or collection with the
+same name may already exist in the current database. For more information on
+valid view names please refer to the [naming conventions
+](../NamingConventions/README.md).
 
-Create a view:
+*view-type* must be the string `"arangosearch"`, as it is currently the only
+supported view type.
 
-```
-arangosh> v = db._createView("example", \<view-type\>, \<view-properties\>);
-arangosh> v.properties();
-arangosh> db._dropView("example");
-```
+*view-properties* is an optional object containing view configuration specific
+to each view-type. Currently, only ArangoSearch Views are supported. See
+[ArangoSearch View definition
+](../../Views/ArangoSearch/DetailedOverview.md#view-definitionmodification) for
+details.
+
+**Example**
+
+    @startDocuBlockInline viewDatabaseCreate
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseCreate}
+      v = db._createView("example", "arangosearch");
+      v.properties()
+      db._dropView("example")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseCreate
+
 
 All Views
 ---------
