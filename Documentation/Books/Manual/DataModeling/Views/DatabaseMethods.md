@@ -70,7 +70,7 @@ to each view-type. Currently, only ArangoSearch Views are supported. See
 ](../../Views/ArangoSearch/DetailedOverview.md#view-definitionmodification) for
 details.
 
-**Example**
+**Examples**
 
     @startDocuBlockInline viewDatabaseCreate
     @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseCreate}
@@ -93,13 +93,15 @@ Returns all views of the given database.
 
 **Examples**
 
-Query views:
+List all views:
 
-```
-arangosh> db._createView("example", \<view-type\>, \<view-properties\>);
-arangosh> db._views();
-arangosh> db._dropView("example");
-```
+    @startDocuBlockInline viewDatabaseList
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseList}
+    ~ db._createView("exampleView", "arangosearch");
+      db._views();
+    ~ db._dropView("exampleView");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseList
 
 Drop
 ----
@@ -120,9 +122,10 @@ thrown if there is no such view.
 
 Drop a view:
 
-```
-arangosh> db._createView("example", \<view-type\>, \<view-properties\>);
-arangosh> v = db._view("example");
-arangosh> db._dropView("example");
-arangosh> v;
-```
+    @startDocuBlockInline viewDatabaseDrop
+    @EXAMPLE_ARANGOSH_OUTPUT{viewDatabaseDrop}
+      db._createView("exampleView", "arangosearch");
+      db._dropView("exampleView");
+      db._view("exampleView");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock viewDatabaseDrop
