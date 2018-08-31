@@ -81,8 +81,10 @@ EOF
     sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ARANGOD_CONF}"
 else
     if "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --database.check-version true; then
+        rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
         echo "database doesn't need an upgrade."
     else
+        rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
         UPGRADE_DB=$(/usr/bin/osascript<<END
 tell application "System Events"
 activate
@@ -93,6 +95,7 @@ END
         if test "${UPGRADE_DB}" == "Yes"; then
             echo "Updating the database ..."
             "${ROOTDIR}/arangod" --database.auto-upgrade -c "${ARANGOD_CONF}"
+            rm -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/LOCK" # FIXME
         else
             echo "Can't continue with not updated database."
             exit 1
