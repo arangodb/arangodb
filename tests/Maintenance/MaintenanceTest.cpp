@@ -784,10 +784,10 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
       if (actions.size() != 1) {
         std::cout << actions << std::endl;
       }
-      REQUIRE(actions.size() == 1);
-      REQUIRE(actions.front().name() == "ResignShardLeadership");
+      REQUIRE(actions.size() == 2);
+      REQUIRE(actions.front().name() == "UpdateCollection");
       REQUIRE(actions.front().get(DATABASE) == dbname);
-      REQUIRE(actions.front().get(SHARD) == shname);
+      //     REQUIRE(actions.front().get(SHARD) == shname);
     }
 
   }
