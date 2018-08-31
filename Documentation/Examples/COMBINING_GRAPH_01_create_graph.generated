@@ -1,5 +1,6 @@
 arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"routeplanner"</span>);
+<<<<<<< HEAD
 arangosh&gt; <span class="hljs-keyword">var</span> bonn=[<span class="hljs-number">7.0998</span>, <span class="hljs-number">50.7340</span>];
 arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN germanCity 
 ........&gt;             FILTER GEO_DISTANCE(@bonn, startCity) &lt; @radius
@@ -32,3 +33,5 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN germanCity
     ] 
   } 
 ]
+=======
+>>>>>>> 679c6904f4f84635a026d402cc4157d968108642

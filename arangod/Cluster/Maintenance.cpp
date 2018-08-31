@@ -400,8 +400,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
         for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) { // for each shard in plan collection
           if (shard.value.isArray()) {
             for (auto const& dbs : VPackArrayIterator(shard.value)) { // for each db server with that shard
-              // We only care for shards, where we find our own ID
-              if (dbs.isEqualString(serverId)) {
+              // We only care for shards, where we find us as "serverId" or "_serverId"
+              if (dbs.isEqualString(serverId) ||
+                  dbs.isEqualString(UNDERSCORE+serverId)) {
                 // at this point a shard is in plan, we have the db for it
                 handlePlanShard(
                   cprops, ldb, dbname, pcol.key.copyString(),
