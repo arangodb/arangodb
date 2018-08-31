@@ -950,15 +950,15 @@ void DatabaseFeature::enumerateDatabases(
 }
 
 void DatabaseFeature::updateContexts() {
-  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
-  TRI_ASSERT(vocbase);
-
   V8DealerFeature* dealer =
   ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   if (!dealer->isEnabled()) {
     return;
   }
+
+  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  TRI_ASSERT(vocbase);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
