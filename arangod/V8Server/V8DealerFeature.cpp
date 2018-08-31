@@ -174,8 +174,13 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY) {
+  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY &&
+      (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr))) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
     _enableJS = false;
   }
   
@@ -790,9 +795,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      bool contextLimitNotExceeded =
-        ((_contexts.size() + _nrInflightContexts < _nrMaxContexts) ||
-         (forceContext == ANY_CONTEXT_OR_PRIORITY && (_contexts.size() + _nrInflightContexts <= _nrMaxContexts)));
+      bool const contextLimitNotExceeded = (_contexts.size() + _nrInflightContexts < _nrMaxContexts);
       
       if (contextLimitNotExceeded &&
           _dynamicContextCreationBlockers == 0 && 
@@ -1328,8 +1331,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   return context.release();
 }
 
-V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
+V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
+
   return {
     _contexts.size(),
     _busyContexts.size(),
