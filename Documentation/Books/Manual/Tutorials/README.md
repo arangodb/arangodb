@@ -4,7 +4,7 @@ Tutorials
 - [CRUD](https://www.arangodb.com/tutorials/arangodb-crud/):
   Document CRUD (Create, Read, Update, Delete) with AQL and HTTP API
 
-- [AQL](../../AQL/Tutorial/README.html):
+- [AQL](../../AQL/Tutorial/index.html):
   Introduction to ArangoDB's query language AQL
  
 - [Geo Queries](https://www.arangodb.com/using-arangodb-geo-index-cursor-via-aql/):
