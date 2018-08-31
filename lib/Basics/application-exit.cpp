@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-#include "Basics/CleanupFunctions.cpp"
+#include "Basics/CleanupFunctions.h"
 
 static void defaultExitFunction(int, void*);
 
