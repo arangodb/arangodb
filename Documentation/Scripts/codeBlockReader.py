@@ -149,12 +149,16 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
       else:
         shortable = True
 
-    if blockType == "AQL":
+    if blockType == "AQL" or blockType == "EXPLAIN":
       if line.startswith("@Q"): # query part
         blockCount = 0
         aqlState = AQL_STATE_QUERY
-        short += "<strong>Query:</strong>\n<pre>\n"
-        longText += "<strong>Query:</strong>\n<pre>\n"
+        if blockType == "EXPLAIN":
+          short += "<strong>Explain Query:</strong>\n<pre>\n"
+          longText += "<strong>Explain Query:</strong>\n<pre>\n"
+        else:
+          short += "<strong>Query:</strong>\n<pre>\n"
+          longText += "<strong>Query:</strong>\n<pre>\n"
         continue # skip this line - it is only here for this.
       elif line.startswith("@B"): # bind values part
         short += "</pre>\n<strong>Bind Values:</strong>\n<pre>\n"
@@ -164,7 +168,10 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
         continue # skip this line - it is only here for this.
       elif line.startswith("@R"): # result part
         shortable = True
-        longText += "</pre>\n<strong>Results:</strong>\n<pre>\n"
+        if blockType == "EXPLAIN":
+          longText += "</pre>\n<strong>Explain output:</strong>\n<pre>\n"
+        else:
+          longText += "</pre>\n<strong>Query results:</strong>\n<pre>\n"
         blockCount = 0
         aqlState = AQL_STATE_RESULT
         continue # skip this line - it is only here for this.
@@ -209,7 +216,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   else:
     fh.write(unicode("<div id=\"%s\">\n" % longTag))
 
-  if blockType != "AQL":
+  if blockType != "AQL" and blockType != "EXPLAIN":
     fh.write(unicode("<pre>\n"))
   fh.write(unicode("%s" % longText))
   fh.write(unicode("</pre>\n"))
@@ -221,6 +228,8 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
       hideText = u"hide response body"
     elif blockType == "AQL":
       hideText = u"hide query result"
+    elif blockType == "EXPLAIN":
+        hideText = u"hide explain output"
     else:
       hideText = u"hide"
     fh.write(unicode('<div id="%s_collapse" onclick="%s" class="example_show_button">%s</div>' % (
@@ -232,7 +241,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
     
   if shortable:    
     fh.write(unicode("<div id=\"%s\" onclick=\"%s\">\n" % (shortTag, shortToggle)))
-    if blockType != "AQL":
+    if blockType != "AQL" and blockType != "EXPLAIN":
       fh.write(unicode("<pre>\n"))
     fh.write(unicode("%s" % short))
 
@@ -242,6 +251,8 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
       fh.write(unicode("</pre><div class=\"example_show_button\">show response body</div>\n"))
     elif blockType == "AQL":
       fh.write(unicode("</pre><div class=\"example_show_button\">show query result</div>\n"))
+    elif blockType == "EXPLAIN":
+      fh.write(unicode("</pre><div class=\"example_show_button\">show explain output</div>\n"))
     else:
       fh.write(unicode("</pre><div class=\"example_show_button\">show</div>\n"))
       
@@ -268,6 +279,10 @@ def fetch_comments(dirpath, forceDokuBlockContent):
         file_comments = file_content(filepath, forceDokuBlockContent)
         for comment in file_comments:
           fh.write(unicode("\n<!-- filename: %s -->\n" % filepath))
+          explain = False
+          for _com in comment:
+            if "@EXPLAIN{TRUE}" in _com:
+              explain = True
           for _com in comment:
             _text = re.sub(r"//(/)+\s*\n", "<br />\n", _com) # place in temporary brs...
             _text = re.sub(r"///+(\s+\s+)([-\*\d])", r"  \2", _text)
@@ -287,7 +302,10 @@ def fetch_comments(dirpath, forceDokuBlockContent):
                   elif "@EXAMPLE_ARANGOSH_RUN" in _text:
                     blockType = "curl"
                   elif "@EXAMPLE_AQL" in _text:
-                    blockType = "AQL"
+                    if explain:
+                      blockType = "EXPLAIN"
+                    else:
+                      blockType = "AQL"
 
                   shouldIgnoreLine = True
                   try:
