@@ -27,6 +27,9 @@
 #include <velocypack/velocypack-aliases.h>
 #include <boost/algorithm/clamp.hpp>
 
+#include <chrono>
+#include <thread>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Result.h"
@@ -485,6 +488,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       jobData.stats.totalBatches++;
       result = ::sendRestoreData(httpClient, jobData.options, cname,
                                  buffer.begin(), length);
+      jobData.stats.totalSent += length;
+
       if (result.fail()) {
         if (jobData.options.force) {
           LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
@@ -640,14 +645,16 @@ arangodb::Result processInputDirectory(
       }
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
-    
-    LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
-    // Step 2: recreate all views
-    for (VPackBuilder viewDefinition : views) {
-      LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
-      Result res = ::restoreView(httpClient, options, viewDefinition.slice());
-      if (res.fail()) {
-        return res;
+   
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
+      // Step 2: recreate all views
+      for (VPackBuilder const& viewDefinition : views) {
+        LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
+        Result res = ::restoreView(httpClient, options, viewDefinition.slice());
+        if (res.fail()) {
+          return res;
+        }
       }
     }
     
@@ -668,11 +675,45 @@ arangodb::Result processInputDirectory(
       stats.totalCollections++;
 
       // now let the index and data restoration happen async+parallel
-      jobQueue.queueJob(std::move(jobData));
+      if (!jobQueue.queueJob(std::move(jobData))) {
+        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
+      }
     }
 
     // wait for all jobs to finish, then check for errors
+    if (options.progress) {
+      LOG_TOPIC(INFO, Logger::RESTORE) << "# Dispatched " << stats.totalCollections << " job(s) to " << options.threadCount << " worker(s)";
+
+      double start = TRI_microtime();
+
+      while (true) {
+        if (jobQueue.isQueueEmpty() && jobQueue.allWorkersIdle()) {
+          // done
+          break;
+        }
+        
+        double now = TRI_microtime();
+        if (now - start >= 5.0) {
+          // returns #queued jobs, #workers total, #workers busy
+          auto queueStats = jobQueue.statistics();
+          // periodically report current status, but do not spam user
+          LOG_TOPIC(INFO, Logger::RESTORE)
+              << "# Progress: restored " << (stats.totalCollections - std::get<0>(queueStats) - std::get<2>(queueStats))
+              << " of " << stats.totalCollections << " collection(s), read " << stats.totalRead << " byte(s) from datafiles, "
+              << "sent " << stats.totalBatches << " batch(es) of " << stats.totalSent << " byte(s) total size"
+              << ", queued jobs: " << std::get<0>(queueStats) << ", workers: " << std::get<1>(queueStats);
+          start = now;
+        }
+       
+        // don't sleep for too long, as we want to quickly terminate
+        // when the gets empty
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      }
+    }
+
+    // should instantly return
     jobQueue.waitForIdle();
+
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
       return firstError;
@@ -713,6 +754,18 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   }
+ 
+  if (jobData.options.progress) {         
+    VPackSlice const parameters = jobData.collection.get("parameters");
+    std::string const cname = arangodb::basics::VelocyPackHelper::getStringValue(
+        parameters, "name", "");
+    int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        parameters, "type", 2);
+    std::string const collectionType(type == 2 ? "document" : "edge");
+    LOG_TOPIC(INFO, arangodb::Logger::RESTORE)
+                << "# Successfully restored " << collectionType << " collection '" << cname << "'";
+  }
+
   return result;
 }
 
@@ -958,12 +1011,16 @@ void RestoreFeature::start() {
 
   if (_options.progress) {
     LOG_TOPIC(INFO, Logger::RESTORE)
-        << "# Connected to ArangoDB '" << httpClient->getEndpointSpecification()
+        << "Connected to ArangoDB '" << httpClient->getEndpointSpecification()
         << "'";
   }
 
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
+      
+  if (_options.progress) {
+    LOG_TOPIC(INFO, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
+  }
 
   // run the actual restore
   try {
@@ -989,9 +1046,9 @@ void RestoreFeature::start() {
     if (_options.importData) {
       LOG_TOPIC(INFO, Logger::RESTORE)
           << "Processed " << _stats.totalCollections
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s, "
           << "read " << _stats.totalRead << " byte(s) from datafiles, "
-          << "sent " << _stats.totalBatches << " batch(es)";
+          << "sent " << _stats.totalBatches << " batch(es) of " << _stats.totalSent << " byte(s) total size";
     } else if (_options.importStructure) {
       LOG_TOPIC(INFO, Logger::RESTORE)
           << "Processed " << _stats.totalCollections
