@@ -95,4 +95,4 @@ Drop the view:
     ~ db._drop("colA");
     ~ db._drop("colB");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock viewUsage_0x
+    @endDocuBlock viewUsage_08
