@@ -1436,44 +1436,13 @@ void Agent::lead() {
   // Then we will copy the _readDB to the _spearhead and start service.
 }
 
+
 // How long back did I take over leadership, result in seconds
 int64_t Agent::leaderFor() const {
   return std::chrono::duration_cast<std::chrono::duration<int64_t>>(
     std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
 
-// Notify inactive pool members of configuration change()
-void Agent::notifyInactive() const {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
-
-  std::unordered_map<std::string, std::string> pool = _config.pool();
-  std::string path = "/_api/agency_priv/inform";
-
-  Builder out;
-  {
-    VPackObjectBuilder o(&out);
-    out.add("term", VPackValue(term()));
-    out.add("id", VPackValue(id()));
-    out.add("active", _config.activeToBuilder()->slice());
-    out.add("pool", _config.poolToBuilder()->slice());
-    out.add("min ping", VPackValue(_config.minPing()));
-    out.add("max ping", VPackValue(_config.maxPing()));
-    out.add("timeoutMult", VPackValue(_config.timeoutMult()));
-  }
-
-  std::unordered_map<std::string, std::string> headerFields;
-  for (auto const& p : pool) {
-    if (p.first != id()) {
-      cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
-                       path, std::make_shared<std::string>(out.toJson()),
-                       headerFields, nullptr, 1.0, true);
-    }
-  }
-}
 
 void Agent::updatePeerEndpoint(query_t const& message) {
   VPackSlice slice = message->slice();
@@ -1509,7 +1478,6 @@ void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
   if (_config.updateEndpoint(id, ep)) {
     if (!challengeLeadership()) {
       persistConfiguration(term());
-      notifyInactive();
     }
   }
 
