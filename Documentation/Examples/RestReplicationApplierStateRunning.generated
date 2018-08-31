@@ -6,31 +6,30 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"state"</span> : { 
-    <span class="hljs-string">"running"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"phase"</span> : <span class="hljs-string">"shutdown"</span>, 
+    <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"phase"</span> : <span class="hljs-string">"running"</span>, 
     <span class="hljs-string">"lastAppliedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastProcessedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">""</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-31T04:02:38Z"</span>, 
+      <span class="hljs-string">"message"</span> : <span class="hljs-string">"fetching master state information"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
     <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">2</span>, 
-    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalResyncs"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 
-      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1402</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-29T20:28:10Z"</span>, 
-      <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"got invalid response from master at tcp://127.0.0.1:8529 for URL /_api/replication/logger-state?serverId=263182000041356: HTTP 401: Unauthorized - {\"error\":true,\"errorNum\":11,\"errorMessage\":\"not authorized to execute this request\",\"code\":401}"</span> 
+      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-29T20:28:10Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-31T04:02:38Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.0-preview.3"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"263182000041356"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.0-preview.4"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"111943650935797"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

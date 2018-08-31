@@ -10,7 +10,7 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR i IN 1..100
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.04889559745788574</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0013833045959472656</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }
