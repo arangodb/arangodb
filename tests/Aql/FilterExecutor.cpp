@@ -29,36 +29,52 @@
 #include "Aql/FilterExecutor.h"
 #include "Aql/BlockFetcherInterfaces.h"
 
+#include "BlockFetcherHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-
 
 namespace arangodb {
 namespace tests {
 namespace aql {
-class NoLineFetcher : public SingleRowFetcher {
- public:
-  NoLineFetcher() : SingleRowFetcher() {}
-  ~NoLineFetcher() = default;
-
-  std::pair<ExecutionState, AqlItemRow const*> fetchRow() override {
-    return {ExecutionState::DONE, nullptr};
-  };
-};
 
 SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
   std::unique_ptr<AqlItemRow> result;
 
-  GIVEN("upstream does not create rows") {
+  GIVEN("there are no rows upstream") {
+    VPackBuilder input;
 
-    NoLineFetcher fetcher;
-    FilterExecutor testee(fetcher);
+    WHEN("the producer does not wait") {
+      SingleRowFetcherHelper fetcher(input.steal(), false);
+      FilterExecutor testee(fetcher);
 
-    THEN("the executor should return DONE with nullptr") {
-      std::tie(state, result) = testee.produceRow();
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(result == nullptr);
+      THEN("the executor should return DONE with nullptr") {
+        std::tie(state, result) = testee.produceRow();
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(result == nullptr);
+      }
+    }
+
+    WHEN("the producer waits") {
+      SingleRowFetcherHelper fetcher(input.steal(), true);
+      FilterExecutor testee(fetcher);
+
+      THEN("the executor should first return WAIT with nullptr") {
+        std::tie(state, result) = testee.produceRow();
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(result == nullptr);
+
+        AND_THEN("the executor should return DONE with nullptr") {
+          std::tie(state, result) = testee.produceRow();
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(result == nullptr);
+        }
+      }
+
     }
   }
 }
