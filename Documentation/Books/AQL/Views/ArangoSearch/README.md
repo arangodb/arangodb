@@ -109,7 +109,7 @@ set to `true`, which it is not by default, arrays behave differently. Namely
 they behave like a disjunctive superposition of their values - this is best
 shown with an example.
 
-With `trackLiistPositions: false`, which is the default, and given a document
+With `trackListPositions: false`, which is the default, and given a document
 `doc` containing
 
 ```js
@@ -136,7 +136,38 @@ doc.attr[0] == 'valueX'
 
 would work as usual.
 
+### Comparing analyzed fields
 
+As described in [value analysis](#arangosearch-value-analysis), when a field is
+processed by a specific analyzer, comparison tests are done per word.  For
+example, given the field `text` is analyzed with `"text_en"` and contains the
+string `"a quick brown fox jumps over the lazy dog"`, the following expression
+will be true:
+
+```js
+ANALYZER(d.text == 'fox', "text_en")
+```
+
+Note also, that the words analyzed in the text are stemmed, so this is also
+true:
+
+```js
+ANALYZER(d.text == 'jump', "text_en")
+```
+
+So a comparison will actually test if a word is contained in the text. With
+`trackListPositions: false`, this means for arrays if the word is contained in
+any element of the array. For example, given
+
+```js
+d.text = [ "a quick", "brown fox", "jumps over the", "lazy dog"]
+```
+
+the following will be true:
+
+```js
+ANALYZER(d.text == 'jump', "text_en")
+```
 
 ArangoSearch value analysis
 ---------------------------
@@ -195,12 +226,14 @@ The supported AQL context functions are:
 
 `ANALYZER(search-expression, analyzer)`
 
-Override analyzer in a context of **search-expression** with another one, denoted
-by a specified **analyzer** argument, making it available for search functions.
+Override analyzer in a context of **search-expression** with another one,
+denoted by a specified **analyzer** argument, making it available for search
+functions.
 
 - *search-expression* - any valid search expression
-- *analyzer* - string with the analyzer to imbue, i.e. *"text_en"* or one of the other
-  [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer to imbue, i.e. *"text_en"* or one of the
+  other [available string
+  analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
 By default, context contains `Identity` analyzer.
 
@@ -245,8 +278,9 @@ Match documents where the **doc.someAttr** exists in the document
  and is of the specified type.
 
 - *doc.someAttr* - the path of the attribute to exist in the document
-- *analyzer* - string with the analyzer used, i.e. *"text_en"* or one of the other
-  [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer used, i.e. *"text_en"* or one of the
+  other [available string
+  analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 - *type* - data type as string; one of:
     - **bool**
     - **boolean**
@@ -254,55 +288,82 @@ Match documents where the **doc.someAttr** exists in the document
     - **null**
     - **string**
 
-In case if **analyzer** isn't specified, current context analyzer (e.g. specified by
-`ANALYZER` function) will be used.
+In case if **analyzer** isn't specified, current context analyzer (e.g.
+specified by `ANALYZER` function) will be used.
 
 ### PHRASE()
 
 ```
-PHRASE(attribute-name, 
+PHRASE(doc.someAttr, 
        phrasePart [, skipTokens, phrasePart [, ... skipTokens, phrasePart]]
        [, analyzer])
 ```
 
 Search for a phrase in the referenced attributes. 
 
-The phrase can be expressed as an arbitrary number of *phraseParts* separated by *skipToken* number of tokens.
+The phrase can be expressed as an arbitrary number of *phraseParts* separated by
+*skipToken* number of tokens.
 
-- *attribute-name* - the path of the attribute to compare against in the document
-- *phrasePart* - a string to search in the token stream; may consist of several words; will be split using the specified *analyzer*
+- *doc.someAttr* - the path of the attribute to compare against in the document
+- *phrasePart* - a string to search in the token stream; may consist of several
+  words; will be split using the specified *analyzer*
 - *skipTokens* number of words or tokens to treat as wildcards
-- *analyzer* - string with the analyzer used, i.e. *"text_en"* or one of the other
-  [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* - string with the analyzer used, i.e. *"text_en"* or one of the
+  other [available string analyzers
+  ](../../../Manual/Views/ArangoSearch/Analyzers.html)
+
+For example, given a document `doc` containing the text `"Lorem ipsum dolor sit
+amet, consectetur adipiscing elit"`, the following expression will be `true`:
+
+```js
+PHRASE(doc.text, "ipsum", 1, "sit", 2, "adipiscing", "text_de")
+```
+
+Specifying deep attributes like `doc.some.deep.attr` is also allowed. The
+attribute has to be processed by the view as specified in the link.
 
 ### STARTS_WITH()
 
-`STARTS_WITH(attribute-name, prefix)`
+`STARTS_WITH(doc.someAttr, prefix)`
 
-Match the value of the **attribute-name** that starts with **prefix**
+Match the value of the **doc.someAttr** that starts with **prefix**
 
-- *attribute-name* - the path of the attribute to compare against in the document
+- *doc.someAttr* - the path of the attribute to compare against in the document
 - *prefix* - a string to search at the start of the text
+
+Specifying deep attributes like `doc.some.deep.attr` is also allowed. The
+attribute has to be processed by the view as specified in the link.
 
 ### TOKENS()
 
 `TOKENS(input, analyzer)`
 
-Split the **input** string with the help of the specified **analyzer** into an Array.
-The resulting Array can i.e. be used in subsequent `FILTER` or `SEARCH` statements with the **IN** operator.
-This can be used to better understand how the specific analyzer is going to behave.
+Split the **input** string with the help of the specified **analyzer** into an
+Array.  The resulting Array can i.e. be used in subsequent `FILTER` or `SEARCH`
+statements with the **IN** operator.  This can be used to better understand how
+the specific analyzer is going to behave.
 - *input* string to tokenize
-- *analyzer* one of the [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* one of the [available string
+  analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
 ### MIN_MATCH()
 
 `MIN_MATCH(search-expression, [..., search-expression], min-match-count)`
 
-Match documents where at least **min-match-count** of the specified **search-expression**s
-are satisfied.
+Match documents where at least **min-match-count** of the specified
+**search-expression**s are satisfied.
 
 - *search-expression* - any valid search expression
-- *min-match-count* - minimum number of search-expressions that should be satisfied
+- *min-match-count* - minimum number of search-expressions that should be
+  satisfied
+
+For example,
+
+```js
+MIN_MATCH(doc.text == 'quick', doc.text == 'brown', doc.text == 'fox', 2)
+```
+
+if `doc.text`, as analyzed by the current analyzer, contains
 
 #### Searching examples
 
