@@ -22,7 +22,12 @@ APIs
   succeed for indexes used internally for links of views. These requests will return a notfound error in 
   a later version.
 
-MoveShards
-----------
+Cluster
+-------
 
 * moving shards for views might fail
+
+Windows
+-------
+
+* Upgrading from 3.3 does not yet work
