@@ -895,9 +895,8 @@ jsunity.run(function MovingShardsWithViewSuite_nodata() {
   return MovingShardsWithViewSuite({ useData: false });
 });
 
-// FIXME: uncomment it after issue #2907 of planning is fixed
-/*jsunity.run(function MovingShardsWithViewSuite_data() {
+jsunity.run(function MovingShardsWithViewSuite_data() {
   return MovingShardsWithViewSuite({ useData: true });
-});*/
+});
 
 return jsunity.done();

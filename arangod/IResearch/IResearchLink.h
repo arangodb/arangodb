@@ -109,7 +109,7 @@ class IResearchLink {
   ///        elements are appended to an existing object
   /// @return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder, bool forPersistence) const;
+  bool json(arangodb::velocypack::Builder& builder) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is loaded into memory
