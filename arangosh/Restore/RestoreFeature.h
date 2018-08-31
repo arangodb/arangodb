@@ -99,6 +99,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     std::atomic<uint64_t> totalBatches{0};
     std::atomic<uint64_t> totalSent{0};
     std::atomic<uint64_t> totalCollections{0};
+    std::atomic<uint64_t> restoredCollections{0};
     std::atomic<uint64_t> totalRead{0};
   };
 

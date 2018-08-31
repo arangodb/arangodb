@@ -440,14 +440,18 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   }
+  
+  int64_t const fileSize =  TRI_SizeFile(datafile->path().c_str());
 
   if (jobData.options.progress) {
     LOG_TOPIC(INFO, Logger::RESTORE) << "# Loading data into " << collectionType
-                                     << " collection '" << cname << "'...";
+                                     << " collection '" << cname << "', data size: " << fileSize << " byte(s)";
   }
 
-  buffer.clear();
+  int64_t numReadForThisCollection = 0;
+  int64_t numReadSinceLastReport = 0;
 
+  buffer.clear();
   while (true) {
     if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
       result = {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
@@ -462,6 +466,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
     // we read something
     buffer.increaseLength(numRead);
     jobData.stats.totalRead += (uint64_t)numRead;
+    numReadForThisCollection += numRead;
+    numReadSinceLastReport += numRead;
 
     if (buffer.length() < jobData.options.chunkSize && numRead > 0) {
       continue;  // still continue reading
@@ -500,6 +506,17 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       }
 
       buffer.erase_front(length);
+      
+      if (jobData.options.progress && 
+          fileSize > 0 && 
+          numReadSinceLastReport > 1024 * 1024 * 8) {
+        // report every 8MB of transferred data
+        LOG_TOPIC(INFO, Logger::RESTORE) << "# Still loading data into " << collectionType
+                                         << " collection '" << cname << "', " 
+                                         << numReadForThisCollection << " of " << fileSize 
+                                         << " byte(s) restored (" << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)"; 
+        numReadSinceLastReport = 0;
+      }
     }
 
     if (numRead == 0) {  // EOF
@@ -698,9 +715,9 @@ arangodb::Result processInputDirectory(
           auto queueStats = jobQueue.statistics();
           // periodically report current status, but do not spam user
           LOG_TOPIC(INFO, Logger::RESTORE)
-              << "# Progress: restored " << (stats.totalCollections - std::get<0>(queueStats) - std::get<2>(queueStats))
+              << "# Worker progress summary: restored " << stats.restoredCollections
               << " of " << stats.totalCollections << " collection(s), read " << stats.totalRead << " byte(s) from datafiles, "
-              << "sent " << stats.totalBatches << " batch(es) of " << stats.totalSent << " byte(s) total size"
+              << "sent " << stats.totalBatches << " data batch(es) of " << stats.totalSent << " byte(s) total size"
               << ", queued jobs: " << std::get<0>(queueStats) << ", workers: " << std::get<1>(queueStats);
           start = now;
         }
@@ -754,6 +771,8 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   }
+    
+  ++jobData.stats.restoredCollections;
  
   if (jobData.options.progress) {         
     VPackSlice const parameters = jobData.collection.get("parameters");
@@ -1045,13 +1064,13 @@ void RestoreFeature::start() {
 
     if (_options.importData) {
       LOG_TOPIC(INFO, Logger::RESTORE)
-          << "Processed " << _stats.totalCollections
+          << "Processed " << _stats.restoredCollections
           << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s, "
           << "read " << _stats.totalRead << " byte(s) from datafiles, "
-          << "sent " << _stats.totalBatches << " batch(es) of " << _stats.totalSent << " byte(s) total size";
+          << "sent " << _stats.totalBatches << " data batch(es) of " << _stats.totalSent << " byte(s) total size";
     } else if (_options.importStructure) {
       LOG_TOPIC(INFO, Logger::RESTORE)
-          << "Processed " << _stats.totalCollections
+          << "Processed " << _stats.restoredCollections
           << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s";
     }
   }
