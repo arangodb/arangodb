@@ -195,7 +195,7 @@ auto batchSlice<UpdateDoc>::fromVPack(VPackSlice slice) -> OperationData<UpdateD
       VPackSlice const& updateDocument = maybeDatum.get().find("updateDocument")->second;
       if (pattern.hasKey(::arangodb::StaticStrings::KeyString)) {
         VPackSlice key = pattern.get(::arangodb::StaticStrings::KeyString);
-        rv_vec.emplace_back(PatternWithKeyAndDoc{key.copyString(), pattern, updateDocument});
+        rv_vec.emplace_back( PatternWithKeyAndDoc{key.copyString(), pattern, updateDocument});
       } else {
         return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
       }

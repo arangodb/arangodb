@@ -44,9 +44,20 @@ struct PatternWithKeyAndDoc {
   VPackSlice document;
 };
 
-struct ReadDoc : public PatternWithKeyAndDoc{};
-struct UpdateDoc : public PatternWithKeyAndDoc{};
-struct ReplaceDoc : public PatternWithKeyAndDoc{};
+struct ReadDoc : public PatternWithKeyAndDoc{
+  template<typename ...Args> ReadDoc(Args&& ...args)
+    : PatternWithKeyAndDoc{std::forward<Args>(args)...}{}
+};
+
+struct UpdateDoc : public PatternWithKeyAndDoc{
+  template<typename ...Args> UpdateDoc(Args&& ...args)
+    : PatternWithKeyAndDoc{std::forward<Args>(args)...}{}
+};
+
+struct ReplaceDoc : public PatternWithKeyAndDoc{
+  template<typename ...Args> ReplaceDoc(Args&& ...args)
+    : PatternWithKeyAndDoc{std::forward<Args>(args)...}{}
+};
 
 struct UpsertDoc {
   std::string key;
