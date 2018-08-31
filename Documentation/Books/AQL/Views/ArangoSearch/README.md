@@ -65,7 +65,7 @@ Then, a search on `someAttr` yields the following result:
 ```js
 FOR doc IN myView
   SEARCH doc.someAttr == 'One'
-    RETURN doc
+  RETURN doc
 ```
 ```js
 [ { someAttr: 'One', anotherAttr: 'One' } ]
@@ -76,7 +76,7 @@ While a search on `anotherAttr` yields an empty result:
 ```js
 FOR doc IN myView
   SEARCH doc.anotherAttr == 'One'
-    RETURN doc
+  RETURN doc
 ```
 ```js
 []
@@ -126,7 +126,7 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
 
     FOR doc IN someCollection
       FILTER doc.word IN TOKENS('a quick brown fox', 'text_en')
-      RETRUN doc
+      RETURN doc
 
 ArangoSearch filters
 --------------------
