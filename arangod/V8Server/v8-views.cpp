@@ -59,34 +59,38 @@ bool canUse(
             );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieves a view from a V8 argument
+////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(
+    TRI_vocbase_t& vocbase,
+    v8::Handle<v8::Value> const val
+) {
+  // number
+  if (val->IsNumber() || val->IsNumberObject()) {
+    uint64_t id = TRI_ObjectToUInt64(val, true);
+
+    return vocbase.lookupView(id);
+  }
+
+  return vocbase.lookupView(TRI_ObjectToString(val));
+}
+
 }
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(
-    TRI_vocbase_t* vocbase, v8::Handle<v8::Value> const val) {
-  // number
-  if (val->IsNumber() || val->IsNumberObject()) {
-    uint64_t id = TRI_ObjectToUInt64(val, true);
-    return vocbase->lookupView(id);
-  }
-
-  return vocbase->lookupView(TRI_ObjectToString(val));
-}
-
+////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for views
+////////////////////////////////////////////////////////////////////////////////
 static void WeakViewCallback(
-    const v8::WeakCallbackInfo<v8::Persistent<v8::External>>& data) {
+    const v8::WeakCallbackInfo<std::shared_ptr<arangodb::LogicalView>>& data
+) {
   auto isolate = data.GetIsolate();
-  auto persistent = data.GetParameter();
-  auto myView = v8::Local<v8::External>::New(isolate, *persistent);
-  auto v = static_cast<std::shared_ptr<LogicalView>*>(myView->Value());
-
-  TRI_ASSERT(v != nullptr);
-  LogicalView* view = v->get();
-  TRI_ASSERT(view != nullptr);
-
+  auto* viewPtr = data.GetParameter();
+  TRI_ASSERT(viewPtr && *viewPtr);
+  auto& view = *viewPtr;
   TRI_GET_GLOBALS();
 
   v8g->decreaseActiveExternals();
@@ -94,23 +98,27 @@ static void WeakViewCallback(
   // decrease the reference-counter for the database
   TRI_ASSERT(!view->vocbase().isDangling());
 
-// find the persistent handle
+  auto itr = v8g->JSViews.find(view.get()); // find the persistent handle
+
 #if ARANGODB_ENABLE_MAINTAINER_MODE
-  auto const& it = v8g->JSViews.find(view);
-  TRI_ASSERT(it != v8g->JSViews.end());
+  TRI_ASSERT(itr != v8g->JSViews.end());
 #endif
 
   // dispose and clear the persistent handle
-  v8g->JSViews[view].Reset();
-  v8g->JSViews.erase(view);
+  itr->second.Reset();
+  v8g->JSViews.erase(itr);
 
   view->vocbase().release();
-  delete v;  // delete the shared_ptr on the heap
+  delete viewPtr; // delete the shared_ptr on the heap
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalView
-v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
-                                std::shared_ptr<arangodb::LogicalView> view) {
+////////////////////////////////////////////////////////////////////////////////
+v8::Handle<v8::Object> WrapView(
+    v8::Isolate* isolate,
+    std::shared_ptr<arangodb::LogicalView> const& view
+) {
   v8::EscapableHandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
@@ -118,11 +126,11 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
   v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance();
 
   if (!result.IsEmpty()) {
-    // create a new shared_ptr on the heap
-    result->SetInternalField(SLOT_CLASS_TYPE,
-                             v8::Integer::New(isolate, WRP_VOCBASE_VIEW_TYPE));
-
     auto const& it = v8g->JSViews.find(view.get());
+
+    result->SetInternalField(
+      SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_VIEW_TYPE)
+    );
 
     if (it == v8g->JSViews.end()) {
       // increase the reference-counter for the database
@@ -130,17 +138,19 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
       view->vocbase().forceUse();
 
       try {
-        auto v = new std::shared_ptr<arangodb::LogicalView>(view);
-        auto externalView = v8::External::New(isolate, v);
+        // create a new shared_ptr on the heap
+        auto* viewPtr = new std::shared_ptr<arangodb::LogicalView>(view);
+        auto externalView = v8::External::New(isolate, viewPtr);
+        auto& persistent = v8g->JSViews[view.get()];
 
-        result->SetInternalField(SLOT_CLASS, v8::External::New(isolate, v));
-
+        result->SetInternalField(
+          SLOT_CLASS, v8::External::New(isolate, viewPtr)
+        );
         result->SetInternalField(SLOT_EXTERNAL, externalView);
-
-        v8g->JSViews[view.get()].Reset(isolate, externalView);
-        v8g->JSViews[view.get()].SetWeak(&v8g->JSViews[view.get()],
-                                         WeakViewCallback,
-                                         v8::WeakCallbackType::kFinalizer);
+        persistent.Reset(isolate, externalView);
+        persistent.SetWeak(
+          viewPtr, WeakViewCallback, v8::WeakCallbackType::kFinalizer
+        );
         v8g->increaseActiveExternals();
       } catch (...) {
         view->vocbase().release();
@@ -148,10 +158,13 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
       }
     } else {
       auto myView = v8::Local<v8::External>::New(isolate, it->second);
-      result->SetInternalField(SLOT_CLASS,
-                               v8::External::New(isolate, myView->Value()));
+
+      result->SetInternalField(
+        SLOT_CLASS, v8::External::New(isolate, myView->Value())
+      );
       result->SetInternalField(SLOT_EXTERNAL, myView);
     }
+
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     result->ForceSet(_IdKey,
@@ -369,7 +382,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> val = args[0];
-  auto view = GetViewFromArgument(&vocbase, val);
+  auto view = GetViewFromArgument(vocbase, val);
 
   if (view == nullptr) {
     TRI_V8_RETURN_NULL();

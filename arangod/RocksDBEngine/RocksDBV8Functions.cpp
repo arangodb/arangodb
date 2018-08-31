@@ -133,15 +133,15 @@ static void JS_RecalculateCounts(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
+    args.Holder(), WRP_VOCBASE_COL_TYPE
+  );
 
-  if (collection == nullptr) {
+  if (!collection || !*collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto physical = toRocksDBCollection(*collection);
+  auto* physical = toRocksDBCollection(**collection);
 
   v8::Handle<v8::Value> result = v8::Number::New(
       isolate, static_cast<double>(physical->recalculateCounts()));
@@ -155,15 +155,15 @@ static void JS_CompactCollection(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
+    args.Holder(), WRP_VOCBASE_COL_TYPE
+  );
 
-  if (collection == nullptr) {
+  if (!collection || !*collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  RocksDBCollection* physical = toRocksDBCollection(*collection);
+  auto* physical = toRocksDBCollection(**collection);
   physical->compact();
 
   TRI_V8_RETURN_UNDEFINED();
@@ -175,15 +175,15 @@ static void JS_EstimateCollectionSize(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                                   WRP_VOCBASE_COL_TYPE);
+  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
+    args.Holder(), WRP_VOCBASE_COL_TYPE
+  );
 
-  if (collection == nullptr) {
+  if (!collection || !*collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  RocksDBCollection* physical = toRocksDBCollection(*collection);
+  auto* physical = toRocksDBCollection(**collection);
   VPackBuilder builder;
   physical->estimateSize(builder);
 

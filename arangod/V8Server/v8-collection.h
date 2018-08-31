@@ -42,9 +42,9 @@ void ReleaseCollection(arangodb::LogicalCollection const* collection);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections in a cluster
 ////////////////////////////////////////////////////////////////////////////////
-
-std::vector<arangodb::LogicalCollection*> GetCollectionsCluster(
-  TRI_vocbase_t* vocbase);
+std::vector<std::shared_ptr<arangodb::LogicalCollection>> GetCollections(
+  TRI_vocbase_t& vocbase
+);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
@@ -62,7 +62,9 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Object> WrapCollection(
-    v8::Isolate* isolate, arangodb::LogicalCollection const* collection);
+  v8::Isolate* isolate,
+  std::shared_ptr<arangodb::LogicalCollection> const& collection
+);
 
 void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, 

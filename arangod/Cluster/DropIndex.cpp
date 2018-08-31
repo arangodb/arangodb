@@ -94,26 +94,34 @@ bool DropIndex::first() {
 
     // FIXMEMAINTENANCE: Why doing the actual work in a callback?
     Result found = methods::Collections::lookup(
-      vocbase, collection, [&](LogicalCollection& coll) {
+      vocbase,
+      collection,
+      [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+        TRI_ASSERT(coll);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Dropping local index " + collection + "/" + id;
-        _result = Indexes::drop(&coll, index.slice());
-      });
+        _result = Indexes::drop(coll.get(), index.slice());
+      }
+    );
 
     if (found.fail()) {
       std::stringstream error;
+
       error << "failed to lookup local collection " << collection
             << "in database " + database;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_INDEX_NOT_FOUND, error.str());
+
       return false;
     }
 
   } catch (std::exception const& e) {
     std::stringstream error;
+
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+
     return false;
   }
 
