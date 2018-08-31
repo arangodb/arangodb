@@ -3329,53 +3329,6 @@ Result MMFilesCollection::replace(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-<<<<<<< HEAD
-=======
-  uint8_t const* vpack = previous.vpack();
-  LocalDocumentId const oldDocumentId = previous.localDocumentId();
-
-  VPackSlice oldDoc(vpack);
-  TRI_voc_rid_t oldRevisionId =
-      transaction::helpers::extractRevFromDocument(oldDoc);
-  prevRev = oldRevisionId;
-
-  // Check old revision:
-  if (!options.ignoreRevs) {
-    TRI_voc_rid_t expectedRev = 0;
-    if (newSlice.isObject()) {
-      expectedRev = TRI_ExtractRevisionId(newSlice);
-    }
-    int res = checkRevision(trx, expectedRev, prevRev);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
-    }
-  }
-
-  // merge old and new values
-  TRI_voc_rid_t revisionId;
-  transaction::BuilderLeaser builder(trx);
-  res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder.get(),
-                            options.isRestore, revisionId);
-
-  if (res.fail()) {
-    return res;
-  }
-
-  if (options.recoveryData == nullptr) {
-    if (_isDBServer) {
-      // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(
-            _logicalCollection,
-            oldDoc,
-            builder->slice(),
-            false
-        )) {
-        return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-      }
-    }
-  }
-
->>>>>>> origin/devel
   // create marker
   MMFilesCrudMarker replaceMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
