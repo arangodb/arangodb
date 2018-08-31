@@ -116,8 +116,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   );
   std::string translateCollectionName(std::string const& dbName, std::string const& collectionName);
 
-  void useSystemDatabase();
-  TRI_vocbase_t* systemDatabase() const { return _vocbase; }
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
@@ -163,7 +161,6 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _ignoreDatafileErrors;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
-  TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
   std::atomic<DatabasesLists*> _databasesLists;
