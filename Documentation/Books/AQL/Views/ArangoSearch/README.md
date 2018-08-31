@@ -211,8 +211,8 @@ with common AQL filters and operators, e.g.:
 - *<*
 - *>*
 - *!=*
-- *IN <ARRAY>*
-- *IN <RANGE>*
+- *IN \<ARRAY\>*
+- *IN \<RANGE\>*
 
 However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the search and sort stages.
@@ -365,7 +365,7 @@ MIN_MATCH(doc.text == 'quick', doc.text == 'brown', doc.text == 'fox', 2)
 
 if `doc.text`, as analyzed by the current analyzer, contains
 
-#### Searching examples
+### Searching examples
 
 to match documents which have a 'name' attribute
 
@@ -548,8 +548,8 @@ details.
 `TFIDF(doc, withNorms)`
 
 - *doc* (document): must be emitted by `FOR doc IN someView`
-- *withNorms* (bool, _optional_): specifying whether norms should be used via
-  **with-norms**, the default is _false_
+- *withNorms* (bool, _optional_): specifying whether scores should be
+  normalized, the default is _false_
 
 Sorts documents using the [**term frequency–inverse document frequency**
 algorithm](https://en.wikipedia.org/wiki/TF-IDF). See the [`TFIDF()` section in
