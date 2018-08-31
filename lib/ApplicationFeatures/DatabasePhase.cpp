@@ -52,6 +52,7 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
   startsAfter("RocksDBRecoveryManager");
   startsAfter("ServerId");
   startsAfter("StorageEngine");
+  startsAfter("SystemDatabase");
   startsAfter("TransactionManager");
   startsAfter("ViewTypes");
 }
