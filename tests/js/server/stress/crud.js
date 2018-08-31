@@ -26,7 +26,7 @@
 
 const internal = require('internal');
 const fs = require('fs');
-const tasks = require('org/arangodb/tasks');
+const tasks = require('@arangodb/tasks');
 
 const _ = require('lodash');
 
@@ -295,7 +295,7 @@ exports.createDeleteUpdateParallel = function (opts) {
   print('Starting', n, 'worker');
 
   const cmd = function (params) {
-    require('./' + pathForTesting('server/tests/stress/crud')).createDeleteUpdateRaw(params);
+    require('./' + pathForTesting('server/stress/crud')).createDeleteUpdateRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {
