@@ -62,7 +62,7 @@ void MaintenanceFeature::init() {
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
 
   // these parameters might be updated by config and/or command line options
-  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() / 4 + 1);
+  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() / 4 + 2);
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
 } // MaintenanceFeature::init
@@ -90,9 +90,9 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
-  if (_maintenanceThreadsMax < 2) {
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Need at least 2 maintenance-threads";
-    _maintenanceThreadsMax = 2;
+  if (_maintenanceThreadsMax < 3) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Need at least 3 maintenance-threads";
+    _maintenanceThreadsMax = 3;
   } else if (_maintenanceThreadsMax >= 64) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "maintenance-threads limited to 64";
     _maintenanceThreadsMax = 64;

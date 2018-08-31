@@ -117,9 +117,9 @@ bool Action::next() {
   return _action->next();
 }
 
-bool Action::matches(std::unordered_set<std::string> const& worker) const {
+bool Action::matches(std::unordered_set<std::string> const& labels) const {
   TRI_ASSERT(_action != nullptr);
-  return _action->matches(worker);
+  return _action->matches(labels);
 }
 
 arangodb::Result Action::result() {
