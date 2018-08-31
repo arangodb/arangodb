@@ -637,7 +637,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, Index::SERIALIZE_BASICS);
+  getIndexesVPack(result, Index::makeFlags());
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
@@ -689,9 +689,9 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   // Indexes
   result.add(VPackValue("indexes"));
-  unsigned flags = Index::SERIALIZE_BASICS;
+  unsigned flags = Index::makeFlags();
   if (forPersistence) {
-    flags |= Index::SERIALIZE_OBJECTID;
+    flags = Index::makeFlags(Index::Serialize::ObjectId);
   }
   getIndexesVPack(result, flags);
 

@@ -80,7 +80,8 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   size_t memory() const override;
 
-  void toVelocyPack(velocypack::Builder&, unsigned flags) const override;
+  void toVelocyPack(velocypack::Builder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 

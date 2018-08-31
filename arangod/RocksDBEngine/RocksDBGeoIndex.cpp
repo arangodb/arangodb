@@ -255,7 +255,8 @@ RocksDBGeoIndex::RocksDBGeoIndex(
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
+                                   std::underlying_type<Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);

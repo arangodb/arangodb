@@ -174,13 +174,13 @@ static void JS_GetIndexesVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  bool withFigures = false;
-  if (args.Length() > 0) {
-    withFigures = TRI_ObjectToBoolean(args[0]);
+  auto flags = Index::makeFlags(Index::Serialize::Estimates);
+  if (args.Length() > 0 && TRI_ObjectToBoolean(args[0])) {
+    flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
   }
 
   VPackBuilder output;
-  Result res = methods::Indexes::getAll(collection, withFigures, output);
+  Result res = methods::Indexes::getAll(collection, flags, /*skipLinks*/true, output);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

@@ -81,8 +81,9 @@ Result Indexes::getIndex(LogicalCollection const* collection,
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
+  
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, false, tmp);
+  Result res = Indexes::getAll(collection, Index::makeFlags(), false, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
       if (index.get("id").compareString(name) == 0) {
@@ -94,8 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
+/// @brief get all indexes, skips view links
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
-                                 bool withFigures, VPackBuilder& result) {
+                                 std::underlying_type<Index::Serialize>::type flags,
+                                 bool skipLinks,
+                                 VPackBuilder& result) {
 
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
@@ -113,11 +117,13 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    unsigned flags = Index::SERIALIZE_ESTIMATES;
-    if (withFigures) {
-      flags |= Index::SERIALIZE_FIGURES;
-    }
+#ifdef USE_IRESEARCH
+    c->getIndexesVPack(tmpInner, flags, [skipLinks](arangodb::Index const* idx) {
+      return !skipLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    });
+#else
     c->getIndexesVPack(tmpInner, flags);
+#endif
 
     tmp.openArray();
     for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
@@ -160,9 +166,14 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     auto indexes = collection->getIndexes();
 
     tmp.openArray(true);
-
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-      idx->toVelocyPack(tmp, Index::SERIALIZE_FIGURES | Index::SERIALIZE_ESTIMATES);
+#ifdef USE_IRESEARCH
+      if (skipLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        continue;
+      }
+#endif
+      idx->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Figures,
+                                              Index::Serialize::Estimates));
     }
     tmp.close();
     trx.finish(res);
@@ -234,7 +245,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
           merge.close();
 
           merge.add("selectivityEstimate", VPackValue(selectivity / 2));
-          if (withFigures) {
+          if (Index::hasFlag(flags, Index::Serialize::Figures)) {
             merge.add("figures", VPackValue(VPackValueType::Object));
             merge.add("memory", VPackValue(memory));
             if (useCache) {
@@ -300,7 +311,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   VPackBuilder tmp;
   try {
-    idx->toVelocyPack(tmp, Index::SERIALIZE_ESTIMATES);
+    idx->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Estimates));
   } catch (...) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
   }

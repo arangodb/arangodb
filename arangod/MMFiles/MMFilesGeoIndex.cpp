@@ -232,7 +232,7 @@ MMFilesGeoIndex::MMFilesGeoIndex(
 size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, uint8_t flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
