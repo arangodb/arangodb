@@ -77,7 +77,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
       _useFSync(rocksDBDefaults.use_fsync),
       _skipCorrupted(false),
       _dynamicLevelBytes(true),
-      _enableStatistics(false) {
+      _enableStatistics(false),
+      _useFileLogging(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
                                                      std::min(TRI_numberProcessors(), (size_t)8)));
@@ -257,6 +258,10 @@ void RocksDBOptionFeature::collectOptions(
       "that way RocksDB's compaction is doing sequential instead of random "
       "reads.",
       new UInt64Parameter(&_compactionReadaheadSize));
+  
+  options->addHiddenOption("--rocksdb.use-file-logging",
+                           "use a file-base logger for RocksDB's own logs",
+                           new BooleanParameter(&_useFileLogging));
 
   options->addHiddenOption("--rocksdb.wal-recovery-skip-corrupted",
                            "skip corrupted records in WAL recovery",
