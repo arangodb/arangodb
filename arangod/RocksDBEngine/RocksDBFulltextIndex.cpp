@@ -86,7 +86,7 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 
 /// @brief return a VelocyPack representation of the index
 void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
-                                        std::underlying_type<Serialize>::type flags) const {
+                  std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(

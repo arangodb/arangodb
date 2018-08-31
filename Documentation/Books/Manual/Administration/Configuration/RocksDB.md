@@ -240,3 +240,20 @@ have been executed without the *waitForSync* attribute.
 
 Note: this option is not supported on Windows platforms. Setting the option to
 a value greater 0 will produce a startup warning.
+
+`--rocksdb.use-file-logging`
+
+When set to *true*, enables writing of RocksDB's own informational LOG files into 
+RocksDB's database directory.
+
+This option is turned off by default, but can be enabled for debugging RocksDB
+internals and performance.
+
+`--rocksdb.debug-logging`
+
+When set to *true*, enables verbose logging of RocksDB's actions into the logfile
+written by ArangoDB (if option `--rocksdb.use-file-logging` is off) or RocksDB's
+own log (if option `--rocksdb.use-file-logging` is on).
+
+This option is turned off by default, but can be enabled for debugging RocksDB
+internals and performance.

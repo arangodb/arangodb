@@ -126,7 +126,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   TRI_idx_iid_t iid = oldIndex->id();
 
   VPackBuilder oldDesc;
-  oldIndex->toVelocyPack(oldDesc, Index::makeFlags(););
+  oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
   VPackBuilder overw;
 
   overw.openObject();

@@ -245,7 +245,8 @@ size_t MMFilesEdgeIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
   // hard-coded
