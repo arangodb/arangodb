@@ -9,7 +9,97 @@ to the ArangoDB user.
 They provide the capability to:
 * evaluate together documents located in different collections
 * search documents based on AQL boolean expressions and functions
-* sort the result set based on how closely each document matched the search 
+* sort the result set based on how closely each document matched the search
+
+Overview and Pitfalls
+---------------------
+
+Looking up documents in an ArangoSearch View is done via the `FOR` keyword:
+
+```js
+FOR doc IN someView
+  ...
+```
+
+`FOR` operations over ArangoSearch Views have an additional, optional, `SEARCH`
+keyword:
+
+```js
+FOR doc IN someView
+  SEARCH searchExpression
+```
+
+### `SEARCH`
+
+`SEARCH` expressions look a lot like `FILTER` operations, but have some noteable
+differences and pitfalls.
+
+First of all, filters and functions in `SEARCH`, when applied to documents
+_emitted from an ArangoSearch View_, work _only_ on attributes linked in the
+view! For example, given a collection `myCol` with the following documents:
+
+```js
+[
+  { someAttr: 'One', anotherAttr: 'One' },
+  { someAttr: 'Two', anotherAttr: 'Two' }
+]
+```
+
+with a view, where `someAttr` is indexed by the following view `myView`:
+
+```js
+{
+  "type": "arangosearch",
+  "links": {
+    "myCol": {
+      "fields": {
+        "someAttr": {}
+      }
+    }
+  }
+}
+```
+
+Then, a search on `someAttr` yields the following result:
+
+```js
+FOR doc IN myView
+  SEARCH doc.someAttr == 'One'
+    RETURN doc
+```
+```js
+[ { someAttr: 'One', anotherAttr: 'One' } ]
+```
+
+While a search on `anotherAttr` yields an empty result:
+
+```js
+FOR doc IN myView
+  SEARCH doc.anotherAttr == 'One'
+    RETURN doc
+```
+```js
+[]
+```
+
+- This only applies to the expression after the `SEARCH` keyword.
+- This only applies to tests regarding documents emitted from a view. Other
+  tests are not affected.
+
+### `SORT`
+
+The document search via the `SEARCH` keyword and the sorting via the
+ArangoSearch functions, namely `BM25()` and `TFIDF()`, are closely intertwined.
+The query given in the `SEARCH` expression is not only used to filter documents,
+but also is used with the sorting functions to decide which document matches
+the query best. Other documents in the view also affect this decision.
+
+Therefore the ArangoSearch sorting functions can work _only_ on documents
+emitted from a view, as both the corresponding `SEARCH` expression and the view
+itself are consulted in order to sort the results.
+
+The `BOOST()` function, described below, can be used to fine-tune the resulting
+ranking by weighing sub-expressions in `SEARCH` differently.
 
 ArangoSearch value analysis
 ---------------------------
@@ -60,7 +150,7 @@ However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the search and sort stages.
 
 Note, that SEARCH statement is meant to be treated as a part of the 
-expression, but not as an individual statement in contrast to FILTER
+expression, but not as an individual statement in contrast to FILTER.
 
 The supported AQL context functions are:
 
@@ -337,7 +427,7 @@ The following sorting methods are available:
 You can sort documents by simply specifying arbitrary values or expressions, as
 you do in other places.
 
-### `BM25()`
+### BM25()
 
 `BM25(doc, k, b)`
 
@@ -350,7 +440,7 @@ algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). See the [`BM25()` section
 in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.md) for
 details.
 
-### `TFIDF()`
+### TFIDF()
 
 `TFIDF(doc, withNorms)`
 
