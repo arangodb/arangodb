@@ -111,37 +111,44 @@ var createRoutePlannerGraph = function () {
     _key: 'Berlin',
     population: 3000000,
     isCapital: true,
-    'type': 'Point',
-    'coordinates': [13.3833, 52.5167]
-  });
+    geometry: {
+      'type': 'Point',
+      'coordinates': [13.3833, 52.5167]
+    }});
   var cologne = g.germanCity.save({
     _key: 'Cologne',
     population: 1000000,
     isCapital: false,
-    'type': 'Point',
-    'coordinates': [6.9528, 50.9364]
-  });
+    geometry: {
+      'type': 'Point',
+      'coordinates': [6.9528, 50.9364]
+    }});
   var hamburg = g.germanCity.save({
     _key: 'Hamburg',
     population: 1000000,
     isCapital: false,
-    'type': 'Point',
-    'coordinates': [10.0014, 53.5653]
-  });
+    geometry: {
+      'type': 'Point',
+      'coordinates': [10.0014, 53.5653]
+    }});
   var lyon = g.frenchCity.save({
     _key: 'Lyon',
     population: 80000,
     isCapital: false,
-    'type': 'Point',
-    'coordinates': [4.8400, 45.7600]});
+    geometry: {
+      'type': 'Point',
+      'coordinates': [4.8400, 45.7600]
+    }});
   var paris = g.frenchCity.save({
     _key: 'Paris',
     population: 4000000,
     isCapital: true,
-    'type': 'Point',
-    'coordinates': [2.3508, 48.8567]});
-  g.germanCity.ensureIndex({ type: "geo", fields: [ "coordinates" ], geoJson:true });
-  g.frenchCity.ensureIndex({ type: "geo", fields: [ "coordinates" ], geoJson:true });
+    geometry: {
+      'type': 'Point',
+      'coordinates': [2.3508, 48.8567]
+    }});
+  g.germanCity.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true });
+  g.frenchCity.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true });
   g.germanHighway.save(berlin._id, cologne._id, {distance: 850});
   g.germanHighway.save(berlin._id, hamburg._id, {distance: 400});
   g.germanHighway.save(hamburg._id, cologne._id, {distance: 500});

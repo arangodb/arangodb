@@ -1,8 +1,0 @@
-arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN germanCity
-........&gt;             FILTER GEO_DISTANCE(@bonn, startCity) &lt; @radius
-........&gt;              LET oneCity = (FOR v, e, p IN 1..1 OUTBOUND startCity
-........&gt;                GRAPH 'routeplanner' RETURN v)
-........&gt;              return {startCity: startCity._key, connectedCities: oneCity}`</span>,
-........&gt;   { <span class="hljs-attr">bonn</span>: bonn, <span class="hljs-attr">radius</span>: <span class="hljs-number">400000</span> }
-........&gt; ).toArray();
-[ ]
