@@ -101,6 +101,43 @@ itself are consulted in order to sort the results.
 The `BOOST()` function, described below, can be used to fine-tune the resulting
 ranking by weighing sub-expressions in `SEARCH` differently.
 
+### Arrays and trackListPositions
+
+Unless [**trackListPositions**
+](../../../Manual/Views/ArangoSearch/DetailedOverview.html#link-properties) is
+set to `true`, which it is not by default, arrays behave differently. Namely
+they behave like a disjunctive superposition of their values - this is best
+shown with an example.
+
+With `trackLiistPositions: false`, which is the default, and given a document
+`doc` containing
+
+```js
+{ attr: [ 'valueX', 'valueY', 'valueZ' ] }
+```
+
+in a `SEARCH` clause, the expression
+
+```js
+doc.attr == 'valueX'
+```
+
+will be true, as will be
+
+```js
+doc.attr == 'valueY'
+```
+
+and `== valueZ`. With `trackListPositions: true`,
+
+```js
+doc.attr[0] == 'valueX'
+```
+
+would work as usual.
+
+
+
 ArangoSearch value analysis
 ---------------------------
 
@@ -131,8 +168,8 @@ e.g. to match docs with 'word == quick' OR 'word == brown' OR 'word == fox'
 ArangoSearch filters
 --------------------
 
-The basic ArangoSearch functionality can be accessed via SEARCH statement with 
-common AQL filters and operators, e.g.:
+The basic ArangoSearch functionality can be accessed via the `SEARCH` statement
+with common AQL filters and operators, e.g.:
 
 - *AND*
 - *OR*
@@ -149,8 +186,8 @@ common AQL filters and operators, e.g.:
 However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the search and sort stages.
 
-Note, that SEARCH statement is meant to be treated as a part of the 
-expression, but not as an individual statement in contrast to FILTER.
+Note, that `SEARCH` statement, in contrast to `FILTER`, is meant to be treated
+as a part of the `FOR` operation, not as an individual statement.
 
 The supported AQL context functions are:
 
@@ -183,26 +220,31 @@ The supported search functions are:
 
 ### EXISTS()
 
-Note: Will only match **attribute-name** values that have been processed with
-the link property **storeValues** set to anything other than **none**.
+Note: Will only match values when the specified attribute has been processed
+with the link property **storeValues** set to anything other than **none**.
 
-`EXISTS(attribute-name)`
+`EXISTS(doc.someAttr)`
 
-Match documents where the attribute **attribute-name** exists in the document.
+Match documents **doc** where the attribute **someAttr** exists in the document.
 
-`EXISTS(attribute-name, "analyzer" [, analyzer])`
+This also works with sub-attributes, e.g.
 
-Match documents where the **attribute-name** exists in the document and
-was indexed by the specified **analyzer**.
-In case if **analyzer** isn't specified, current context analyzer (e.g. specified by
-`ANALYZER` function) will be used.
+`EXISTS(doc.someAttr.anotherAttr)`
 
-`EXISTS(attribute-name, type)`
+as long as the field is processed by the view with **storeValues** not **none**.
 
-Match documents where the **attribute-name** exists in the document
+`EXISTS(doc.someAttr, "analyzer", analyzer)`
+
+Match documents where **doc.someAttr** exists in the document _and_ was indexed
+by the specified **analyzer**.  **analyzer** is optional and defaults to the
+current context analyzer (e.g. specified by `ANALYZER` function).
+
+`EXISTS(doc.someAttr, type)`
+
+Match documents where the **doc.someAttr** exists in the document
  and is of the specified type.
 
-- *attribute-name* - the path of the attribute to exist in the document
+- *doc.someAttr* - the path of the attribute to exist in the document
 - *analyzer* - string with the analyzer used, i.e. *"text_en"* or one of the other
   [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 - *type* - data type as string; one of:
