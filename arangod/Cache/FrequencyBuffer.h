@@ -104,16 +104,19 @@ private:
   //////////////////////////////////////////////////////////////////////////////
   void insertRecord(T record) {
     // we do not care about the order in which threads insert their values
-    _buffer[basics::SharedPRNG::rand() & _mask].store(record, std::memory_order_relaxed);
+    _buffer[basics::SharedPRNG::rand() & _mask].store(
+        record, std::memory_order_relaxed);
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Remove all occurrences of the specified event record.
   //////////////////////////////////////////////////////////////////////////////
   void purgeRecord(T record) {
     for (size_t i = 0; i < _capacity; i++) {
-      if (_cmp(_buffer[i].load(), record)) {
-        _buffer[i].compare_exchange_strong(record, _empty);
+      auto tmp = _buffer[i].load(std::memory_order_relaxed);
+      if (_cmp(tmp, record)) {
+        _buffer[i].compare_exchange_strong(tmp, _empty,
+                                           std::memory_order_relaxed);
       }
     }
   }
