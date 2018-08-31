@@ -68,7 +68,7 @@ let hasDistributeNode = function(nodes) {
 let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
   return nodes.filter(function(node) {
     return node.type === typeName &&
-           node.collection == collection.name();
+           node.collection === collection.name();
   }).every(function(node) {
     return (collection.shards().indexOf(node.restrictedTo) !== -1);
   });
