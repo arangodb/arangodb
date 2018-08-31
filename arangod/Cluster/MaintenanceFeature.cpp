@@ -42,7 +42,7 @@ using namespace arangodb::maintenance;
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Maintenance"),
     _forceActivation(false),
-    _maintenanceThreadsMax(2) { 
+    _maintenanceThreadsMax(2) {
   // the number of threads will be adjusted later. it's just that we want to initialize all members properly
 
   // this feature has to know the role of this server in its `start`. The role
@@ -62,7 +62,7 @@ void MaintenanceFeature::init() {
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
 
   // these parameters might be updated by config and/or command line options
-  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() / 4 + 1);
+  _maintenanceThreadsMax = (std::max)(2, static_cast<int32_t>(TRI_numberProcessors() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
 } // MaintenanceFeature::init
@@ -106,7 +106,7 @@ void MaintenanceFeature::prepare() {
 
 void MaintenanceFeature::start() {
   auto serverState = ServerState::instance();
-  
+
   // _forceActivation is set by the catch tests
   if (!_forceActivation &&
       (serverState->isAgent() || serverState->isSingleServer())) {
@@ -114,7 +114,7 @@ void MaintenanceFeature::start() {
       << " for single-server or agents.";
     return ;
   }
-  
+
   // start threads
   for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
     auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
