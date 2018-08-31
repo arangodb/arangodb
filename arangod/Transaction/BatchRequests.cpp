@@ -1,6 +1,7 @@
 #include "BatchRequests.h"
 #include <unordered_map>
 #include "Transaction/Methods.h"
+#include "Basics/StaticStrings.h"
 
 namespace arangodb {
 namespace batch {
@@ -60,53 +61,17 @@ boost::optional<Operation> stringToBatch(std::string const& op) {
 }
 
 using AttributeSet = arangodb::basics::VelocyPackHelper::AttributeSet;
+using AttributeMap = arangodb::basics::VelocyPackHelper::AttributeMap;
 
-
-//ResultT<OperationOptions>
-//optionsFromVelocypack(VPackSlice const optionsSlice
-//                     ,AttributeSet const& required
-//                     ,AttributeSet const& optional
-//                     ,AttributeSet const& deprecated
-//                     ){
-//  Result res = expectedAttributes(optionsSlice, required, optional, deprecated);
-//  if (res.fail()) { return prefixResultMessage(res, "Error occured while pasing options for batchDocumentOperation: "); }
-//  OperationOptions options = createOperationOptions(optionsSlice);
-//  return ResultT<OperationOptions>::success(std::move(options));
-//};
-//
-//
-//static ResultT<BatchRequest> fromVelocypack(VPackSlice const slice, batch::Operation batchOp) {
-//
-//    AttributeSet required = {"data"};
-//    AttributeSet optional = {"options"};
-//    AttributeSet deprecated;
-//
-//    auto const maybeAttributes = expectedAttributes(slice, required, optional, deprecated);
-//    if(maybeAttributes.fail()){ return {maybeAttributes}; }
-//
-//    ////////////////////////////////////////////////////////////////////////////////////////
-//    // data
-//    VPackSlice const dataSlice = slice.get("data"); // data is requuired
-//
-//    required.clear();
-//    optional.clear();
-//    deprecated.clear();
-//
+//    DATUM
 //    required.insert("pattern");
 //
 //    switch (batchOp) {
 //      case batch::Operation::READ:
-//      case batch::Operation::REMOVE:
 //        break;
 //      case batch::Operation::INSERT:
 //        required.clear();
 //        required.insert("insertDocument");
-//        break;
-//      case batch::Operation::REPLACE:
-//        required.insert("replaceDocument");
-//        break;
-//      case batch::Operation::UPDATE:
-//        required.insert("updateDocument");
 //        break;
 //      case batch::Operation::UPSERT:
 //        required.insert("insertDocument");
@@ -118,16 +83,8 @@ using AttributeSet = arangodb::basics::VelocyPackHelper::AttributeSet;
 //        break;
 //    }
 //
-//    auto maybeData = CheckAttributesInVelocypackArray(dataSlice, required, optional, deprecated);
-//    if (maybeData.fail()) {
-//      return prefixResultMessage(maybeData, "When parsing attribute 'data'");
-//    }
-//
-//    ////////////////////////////////////////////////////////////////////////////////////////
-//    // options
+//    OPTIONS
 //    OperationOptions options;
-//
-//    if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
 //      required = {};
 //      optional = {"oneTransactionPerDOcument", "checkGraphs", "graphName"};
 //      // mergeObjects "ignoreRevs"  "isRestore" keepNull?!
@@ -136,44 +93,208 @@ using AttributeSet = arangodb::basics::VelocyPackHelper::AttributeSet;
 //        case batch::Operation::READ:
 //          optional.insert("graphName");
 //          break;
-//        case batch::Operation::UPDATE:
-//          optional.insert("keepNull"); // please fall through
 //        case batch::Operation::INSERT:
 //        case batch::Operation::UPSERT:
 //        case batch::Operation::REPSERT:
-//        case batch::Operation::REPLACE:
 //          optional.insert("returnNew"); // please fall through
-//        case batch::Operation::REMOVE:
-//          optional.insert("waitForSync");
 //          optional.insert("returnOld");
+//          optional.insert("waitForSync");
 //          optional.insert("silent");
 //          break;
 //      }
-//      VPackSlice const optionsSlice = slice.get("options");
-//
-//      auto const maybeOptions = optionsFromVelocypack(optionsSlice, required, optional, deprecated);
-//      if (maybeOptions.fail()) {
-//        return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
-//      }
-//      options = maybeOptions.get();
-//    }
-//
-//    // create
-//    return BatchRequest(slice, std::move(options), batchOp);
-//  }
-//}
 
+using VT = velocypack::ValueType;
+using VH = basics::VelocyPackHelper;
 
-// request parsing and verification
 auto batchSlice<RemoveDoc>::fromVPack(VPackSlice slice) -> OperationData<RemoveDoc> {
-  return {TRI_ERROR_ARANGO_VALIDATION_FAILED};
+  AttributeSet required = { {"data", VT::Array} };
+  AttributeSet optional = { {"options", VT::Object} } ;
+  AttributeSet deprecated;
+
+  auto const maybeAttributes = VH::expectedAttributes(slice, required, optional, deprecated, true);
+  if(maybeAttributes.fail()){ return {maybeAttributes}; }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // data
+  VPackSlice const& dataSlice = maybeAttributes.get().find("data")->second; //will not fail
+
+  required.clear();
+  optional.clear();
+  deprecated.clear();
+
+
+  std::vector<RemoveDoc> rv_vec;
+  for (auto const& datum : VPackArrayIterator(dataSlice) ){
+    if(!datum.hasKey("pattern")){
+      return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
+    } else {
+      VPackSlice pattern = datum.get("pattern");
+      if (pattern.hasKey(::arangodb::StaticStrings::KeyString)) {
+        VPackSlice key = pattern.get(::arangodb::StaticStrings::KeyString);
+        rv_vec.emplace_back(RemoveDoc{key.copyString(), pattern});
+      } else {
+        return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // options
+  OperationOptions options;
+  if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
+    required.clear();
+    optional = { {"oneTransactionPerDOcument", VT::Bool}
+               , {"checkGraphs", VT::Bool}
+               , {"graphName", VT::String}
+               , {"waitForSync", VT::Bool}
+               , {"returnOld", VT::Bool}
+               , {"silent", VT::Bool}
+               };
+
+    VPackSlice const optionsSlice = slice.get("options");
+
+    auto const maybeOptions = VH::expectedAttributes(optionsSlice, required, optional, deprecated, true);
+    if (maybeOptions.fail()) {
+      return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
+    } else {
+      options = createOperationOptions(optionsSlice);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // result
+  return OperationData<RemoveDoc>::success({rv_vec, options});
 }
+
 auto batchSlice<UpdateDoc>::fromVPack(VPackSlice slice) -> OperationData<UpdateDoc> {
-  return {TRI_ERROR_ARANGO_VALIDATION_FAILED};
+  AttributeSet required = { {"data", VT::Array} };
+  AttributeSet optional = { {"options", VT::Object} } ;
+  AttributeSet deprecated;
+
+  auto const maybeAttributes = VH::expectedAttributes(slice, required, optional, deprecated, true);
+  if(maybeAttributes.fail()){ return {maybeAttributes}; }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // data
+  VPackSlice const& dataSlice = maybeAttributes.get().find("data")->second; //will not fail
+
+  required.clear();
+  optional.clear();
+  deprecated.clear();
+
+  required.insert({"updateDocument", VT::Object});
+  required.insert({"pattern", VT::Object});
+
+  std::vector<UpdateDoc> rv_vec;
+  for (auto const& datum : VPackArrayIterator(dataSlice) ){
+    auto const& maybeDatum = VH::expectedAttributes(datum, required, optional, deprecated, true);
+    if(maybeDatum.fail()){
+      return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
+    } else {
+      VPackSlice const& pattern = maybeDatum.get().find("pattern")->second;
+      VPackSlice const& updateDocument = maybeDatum.get().find("updateDocument")->second;
+      if (pattern.hasKey(::arangodb::StaticStrings::KeyString)) {
+        VPackSlice key = pattern.get(::arangodb::StaticStrings::KeyString);
+        rv_vec.emplace_back(PatternWithKeyAndDoc{key.copyString(), pattern, updateDocument});
+      } else {
+        return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // options
+  OperationOptions options;
+  if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
+    required.clear();
+    optional = { {"oneTransactionPerDOcument", VT::Bool}
+               , {"checkGraphs", VT::Bool}
+               , {"graphName", VT::String}
+               , {"keepNull", VT::Bool}
+               , {"waitForSync", VT::Bool}
+               , {"returnNew", VT::Bool}
+               , {"returnOld", VT::Bool}
+               , {"silent", VT::Bool}
+               };
+
+    VPackSlice const optionsSlice = slice.get("options");
+
+    auto const maybeOptions = VH::expectedAttributes(optionsSlice, required, optional, deprecated, true);
+    if (maybeOptions.fail()) {
+      return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
+    } else {
+      options = createOperationOptions(optionsSlice);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // result
+  return OperationData<UpdateDoc>::success({rv_vec, options});
 }
 
 auto batchSlice<ReplaceDoc>::fromVPack(VPackSlice slice) -> OperationData<ReplaceDoc> {
-  return {TRI_ERROR_ARANGO_VALIDATION_FAILED};
+  AttributeSet required = { {"data", VT::Array} };
+  AttributeSet optional = { {"options", VT::Object} } ;
+  AttributeSet deprecated;
+
+  auto const maybeAttributes = VH::expectedAttributes(slice, required, optional, deprecated, true);
+  if(maybeAttributes.fail()){ return {maybeAttributes}; }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // data
+  VPackSlice const& dataSlice = maybeAttributes.get().find("data")->second; //will not fail
+
+  required.clear();
+  optional.clear();
+  deprecated.clear();
+
+  required.insert({"replaceDocument", VT::Object});
+  required.insert({"pattern", VT::Object});
+
+  std::vector<ReplaceDoc> rv_vec;
+  for (auto const& datum : VPackArrayIterator(dataSlice) ){
+    auto const& maybeDatum = VH::expectedAttributes(datum, required, optional, deprecated, true);
+    if(maybeDatum.fail()){
+      return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
+    } else {
+      VPackSlice const& pattern = maybeDatum.get().find("pattern")->second;
+      VPackSlice const& updateDocument = maybeDatum.get().find("replaceDocument")->second;
+      if (pattern.hasKey(::arangodb::StaticStrings::KeyString)) {
+        VPackSlice key = pattern.get(::arangodb::StaticStrings::KeyString);
+        rv_vec.emplace_back(PatternWithKeyAndDoc{key.copyString(), pattern, updateDocument});
+      } else {
+        return { TRI_ERROR_ARANGO_VALIDATION_FAILED };
+      }
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // options
+  OperationOptions options;
+  if(maybeAttributes.get().find("options") != maybeAttributes.get().end()) {
+    required.clear();
+    optional = { {"oneTransactionPerDOcument", VT::Bool}
+               , {"checkGraphs", VT::Bool}
+               , {"graphName", VT::String}
+               , {"waitForSync", VT::Bool}
+               , {"returnNull", VT::Bool}
+               , {"returnOld", VT::Bool}
+               , {"silent", VT::Bool}
+               };
+
+    VPackSlice const optionsSlice = slice.get("options");
+
+    auto const maybeOptions = VH::expectedAttributes(optionsSlice, required, optional, deprecated, true);
+    if (maybeOptions.fail()) {
+      return prefixResultMessage(maybeOptions, "When parsing attribute 'options'");
+    } else {
+      options = createOperationOptions(optionsSlice);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////////////
+  // result
+  return OperationData<ReplaceDoc>::success({rv_vec, options});
 }
 
 // execute

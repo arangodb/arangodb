@@ -1096,14 +1096,30 @@ Result VelocyPackHelper::expectedType(VPackValueType expected, VPackValueType go
   return Result{TRI_ERROR_ARANGO_VALIDATION_FAILED, err.str()};
 }
 
+ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expectedAttributes(VPackArrayIterator it,
+    AttributeSet const& required, AttributeSet const& optional, AttributeSet const& deprecated,
+    bool checkTypes){
+    // this is not cheap!
+  AttributeVec rv;
+
+  for(auto const& slice : it){
+    auto maybeAttributes = expectedAttributes(slice, required, optional, deprecated, checkTypes);
+    if (maybeAttributes.fail()) { return maybeAttributes.copy_result(); };
+    rv.emplace_back(std::move(maybeAttributes.get()));
+  }
+
+  return ResultT<AttributeVec>::success(rv);
+}
+
 // should be an official VelocyPack helper when finished
-ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expectedAttributes(VPackSlice slice,
+ResultT<arangodb::basics::VelocyPackHelper::AttributeMap> VelocyPackHelper::expectedAttributes(VPackSlice slice,
     AttributeSet const& required, AttributeSet const& optional, AttributeSet const& deprecated,
     bool checkTypes){
 
   using AttributeSet = arangodb::basics::VelocyPackHelper::AttributeSet;
   using AttributeVec = arangodb::basics::VelocyPackHelper::AttributeVec;
-  AttributeVec rv;
+  using AttributeMap = arangodb::basics::VelocyPackHelper::AttributeMap;
+  AttributeMap rv;
 
   auto result = expectedType(VPackValueType::Object, slice.type());
   if(result.fail()){
@@ -1140,7 +1156,7 @@ ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expe
           return {check};
         }
       }
-      rv.push_back(std::pair<std::string,VPackSlice const>(std::move(key),it.value));
+      rv.emplace(std::pair<std::string,VPackSlice const>(std::move(key),it.value));
       continue;
     }
     else if (contains(deprecated, key, matched)) {
@@ -1151,7 +1167,7 @@ ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expe
           return {check};
         }
       }
-      rv.push_back(std::pair<std::string,VPackSlice const>(std::move(key),it.value));
+      rv.emplace(std::pair<std::string,VPackSlice const>(std::move(key),it.value));
       continue;
     } else {
       std::stringstream err;
@@ -1185,7 +1201,7 @@ ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expe
     }
   }
 
-  return ResultT<AttributeVec>::success(rv);
+  return ResultT<AttributeMap>::success(rv);
 }
 
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
