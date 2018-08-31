@@ -198,17 +198,24 @@ SECTION("test_collection_auth") {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+  std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+  auto isolate = std::shared_ptr<v8::Isolate>(
+    v8::Isolate::New(isolateParams),
+    [](v8::Isolate* p)->void {
+      p->LowMemoryNotification(); // garbage collection
+      p->Dispose();
+    }
+  );
   REQUIRE((nullptr != isolate));
   v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
   v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-  auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = vocbase;
-  TRI_InitV8Users(context, vocbase, v8g, isolate.get());
+  TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
 
   auto arangoUsers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance();
   auto fn_grantCollection = arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"));
