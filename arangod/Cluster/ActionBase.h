@@ -212,7 +212,7 @@ protected:
 
   ActionDescription _description;
 
-  std::set<std::string> _labels;
+  std::unordered_set<std::string> _labels;
 
   uint64_t _hash;
   std::string _clientId;
