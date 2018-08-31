@@ -83,14 +83,15 @@ void RestCollectionHandler::handleCommandGet() {
     builder.openArray();
     methods::Collections::enumerate(
       &_vocbase,
-      [&](LogicalCollection& coll)->void {
+      [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+        TRI_ASSERT(coll);
         ExecContext const* exec = ExecContext::CURRENT;
         bool canUse = exec == nullptr
-                      || exec->canUseCollection(coll.name(), auth::Level::RO);
+                      || exec->canUseCollection(coll->name(), auth::Level::RO);
 
-        if (canUse && (!excludeSystem || !coll.system())) {
+        if (canUse && (!excludeSystem || !coll->system())) {
           // We do not need a transaction here
-          methods::Collections::Context ctxt(_vocbase, coll);
+          methods::Collections::Context ctxt(_vocbase, *coll);
 
           collectionRepresentation(builder, ctxt,
                                    /*showProperties*/ false,
@@ -131,16 +132,18 @@ void RestCollectionHandler::handleCommandGet() {
   Result found = methods::Collections::lookup(
     &_vocbase,
     name,
-    [&](LogicalCollection& coll)->void {
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
-          if (!coll.isLocal()) {
+          if (!coll->isLocal()) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
 
           bool withRevisions = _request->parsedValue("withRevisions", false);
           bool withData = _request->parsedValue("withData", false);
-          auto result = coll.checksum(withRevisions, withData);
+          auto result = coll->checksum(withRevisions, withData);
 
           if (result.ok()) {
             VPackObjectBuilder obj(&builder, true);
@@ -149,34 +152,53 @@ void RestCollectionHandler::handleCommandGet() {
             obj->add("revision", result.slice().get("revision"));
 
             // We do not need a transaction here
-            methods::Collections::Context ctxt(_vocbase, coll);
+            methods::Collections::Context ctxt(_vocbase, *coll);
 
-            collectionRepresentation(builder, coll, /*showProperties*/ false,
-                                     /*showFigures*/ false, /*showCount*/ false,
-                                     /*detailedCount*/ true);
+            collectionRepresentation(
+              builder,
+              *coll,
+              /*showProperties*/ false,
+              /*showFigures*/ false,
+              /*showCount*/ false,
+              /*detailedCount*/ true
+            );
           } else {
             skipGenerate = true;
             this->generateError(result);
           }
         } else if (sub == "figures") {
           // /_api/collection/<identifier>/figures
-          collectionRepresentation(builder, coll, /*showProperties*/ true,
-                                   /*showFigures*/ true, /*showCount*/ true,
-                                   /*detailedCount*/ false);
+          collectionRepresentation(
+            builder,
+            *coll,
+            /*showProperties*/ true,
+            /*showFigures*/ true,
+            /*showCount*/ true,
+            /*detailedCount*/ false
+          );
         } else if (sub == "count") {
           // /_api/collection/<identifier>/count
           bool details = _request->parsedValue("details", false);
-          collectionRepresentation(builder, coll, /*showProperties*/ true,
-                                   /*showFigures*/ false, /*showCount*/ true,
-                                   /*detailedCount*/ details);
+          collectionRepresentation(
+            builder,
+            *coll,
+            /*showProperties*/ true,
+            /*showFigures*/ false,
+            /*showCount*/ true,
+            /*detailedCount*/ details
+          );
         } else if (sub == "properties") {
           // /_api/collection/<identifier>/properties
-          collectionRepresentation(builder, coll, /*showProperties*/ true,
-                                   /*showFigures*/ false, /*showCount*/ false,
-                                   /*detailedCount*/ true);
+          collectionRepresentation(
+            builder,
+            *coll,
+            /*showProperties*/ true,
+            /*showFigures*/ false,
+            /*showCount*/ false,
+            /*detailedCount*/ true
+          );
         } else if (sub == "revision") {
-
-          methods::Collections::Context ctxt(_vocbase, coll);
+          methods::Collections::Context ctxt(_vocbase, *coll);
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
           auto res =
@@ -202,11 +224,18 @@ void RestCollectionHandler::handleCommandGet() {
           }
 
           VPackObjectBuilder obj(&builder, true);  // need to open object
-          collectionRepresentation(builder, coll, /*showProperties*/ true,
-                                   /*showFigures*/ false, /*showCount*/ false,
-                                   /*detailedCount*/ true);
+
+          collectionRepresentation(
+            builder,
+            *coll,
+            /*showProperties*/ true,
+            /*showFigures*/ false,
+            /*showCount*/ false,
+            /*detailedCount*/ true
+          );
+
           auto shards = ClusterInfo::instance()->getShardList(
-            std::to_string(coll.planId())
+            std::to_string(coll->planId())
           );
           VPackArrayBuilder arr(&builder, "shards", true);
 
@@ -290,10 +319,11 @@ void RestCollectionHandler::handleCommandPost() {
     parameters,
     waitForSyncReplication,
     enforceReplicationFactor,
-    [&](LogicalCollection& coll)->void {
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
       collectionRepresentation(
         builder,
-        coll.name(),
+        coll->name(),
         /*showProperties*/ true,
         /*showFigures*/ false,
         /*showCount*/ false,
@@ -334,9 +364,11 @@ void RestCollectionHandler::handleCommandPut() {
   Result found = methods::Collections::lookup(
     &_vocbase,
     name,
-    [&](LogicalCollection& coll)->void {
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+
         if (sub == "load") {
-          res = methods::Collections::load(_vocbase, &coll);
+          res = methods::Collections::load(_vocbase, coll.get());
 
           if (res.ok()) {
             bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
@@ -347,12 +379,12 @@ void RestCollectionHandler::handleCommandPut() {
         } else if (sub == "unload") {
           bool flush = _request->parsedValue("flush", false);
 
-          if (flush &&
-              coll.status() == TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED) {
+          if (flush
+              && TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED == coll->status()) {
             EngineSelectorFeature::ENGINE->flushWal(false, false, false);
           }
 
-          res = methods::Collections::unload(&_vocbase, &coll);
+          res = methods::Collections::unload(&_vocbase, coll.get());
 
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ false,
@@ -367,34 +399,38 @@ void RestCollectionHandler::handleCommandPut() {
           _request->value("isSynchronousReplication");
 
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::EXCLUSIVE);
+        SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::EXCLUSIVE);
         trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
         trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
         res = trx.begin();
 
         if (res.ok()) {
-          auto result = trx.truncate(coll.name(), opts);
+          auto result = trx.truncate(coll->name(), opts);
 
           res = trx.finish(result.result);
         }
 
         if (res.ok()) {
-          if (!coll.isLocal()) { // ClusterInfo::loadPlan eventually updates status
-            coll.setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
-          }
+            if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
+              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+            }
 
-            collectionRepresentation(builder, coll, /*showProperties*/ false,
-                                     /*showFigures*/ false, /*showCount*/ false,
-                                     /*detailedCount*/ true);
+            collectionRepresentation(
+              builder,
+              *coll,
+              /*showProperties*/ false,
+              /*showFigures*/ false,
+              /*showCount*/ false,
+              /*detailedCount*/ true
+            );
           }
-
         } else if (sub == "properties") {
           std::vector<std::string> keep = {"doCompact",         "journalSize",
                                            "waitForSync",       "indexBuckets",
                                            "replicationFactor", "cacheEnabled"};
           VPackBuilder props = VPackCollection::keep(body, keep);
 
-          res = methods::Collections::updateProperties(&coll, props.slice());
+          res = methods::Collections::updateProperties(coll.get(), props.slice());
 
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ true,
@@ -410,7 +446,7 @@ void RestCollectionHandler::handleCommandPut() {
           }
 
           std::string const newName = newNameSlice.copyString();
-          res = methods::Collections::rename(&coll, newName, false);
+          res = methods::Collections::rename(coll.get(), newName, false);
 
           if (res.ok()) {
             collectionRepresentation(builder, newName, /*showProperties*/ false,
@@ -420,13 +456,13 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
-          SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::WRITE);
+          SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::WRITE);
 
           res = trx.begin();
 
           if (res.ok()) {
             auto result =
-              trx.rotateActiveJournal(coll.name(), OperationOptions());
+              trx.rotateActiveJournal(coll->name(), OperationOptions());
 
             res = trx.finish(result.result);
           }
@@ -435,7 +471,7 @@ void RestCollectionHandler::handleCommandPut() {
           builder.add("result", VPackValue(true));
           builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
-          res = methods::Collections::warmup(_vocbase, coll);
+          res = methods::Collections::warmup(_vocbase, *coll);
 
           VPackObjectBuilder obj(&builder, true);
 
@@ -474,12 +510,16 @@ void RestCollectionHandler::handleCommandDelete() {
   Result found = methods::Collections::lookup(
     &_vocbase,
     name,
-    [&](LogicalCollection& coll)->void {
-      auto cid = std::to_string(coll.id());
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+
+      auto cid = std::to_string(coll->id());
       VPackObjectBuilder obj(&builder, true);
 
       obj->add("id", VPackValue(cid));
-      res = methods::Collections::drop(&_vocbase, &coll, allowDropSystem, -1.0);
+      res = methods::Collections::drop(
+        &_vocbase, coll.get(), allowDropSystem, -1.0
+      );
     }
   );
 
@@ -503,9 +543,11 @@ void RestCollectionHandler::collectionRepresentation(
   Result r = methods::Collections::lookup(
     &_vocbase,
     name,
-    [&](LogicalCollection& coll)->void {
-      collectionRepresentation(builder, coll, showProperties, showFigures,
-                               showCount, detailedCount);
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+      collectionRepresentation(
+        builder, *coll, showProperties, showFigures, showCount, detailedCount
+      );
     }
   );
 

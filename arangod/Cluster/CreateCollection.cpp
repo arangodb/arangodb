@@ -153,15 +153,18 @@ bool CreateCollection::first() {
     
     _result = Collections::create(
       vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
-      [=](LogicalCollection& col) {
+      [=](std::shared_ptr<LogicalCollection> const& col)->void {
+        TRI_ASSERT(col);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
         << "/" << shard << " successfully created";
-        col.followers()->setTheLeader(leader);
+        col->followers()->setTheLeader(leader);
+
         if (leader.empty()) {
-          col.followers()->clear();
+          col->followers()->clear();
         }
-      });
-    
+      }
+    );
+
     if (_result.fail()) {
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard
@@ -183,22 +186,24 @@ bool CreateCollection::first() {
 
       // Steal buffer for maintenance feature
       _feature.storeShardError(database, collection, shard, eb.steal());
-      
+
       _result.reset(TRI_ERROR_FAILED, error.str());
       // FIXMEMAINTENANCE: notify here?
+
       return false;
     }
-    
   } catch (std::exception const& e) { // Guard failed?
     std::stringstream error;
+
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
     // FIXMEMAINTENANCE: notify here?
+
     return false;
   }
 
   notify();
-  return false;
 
+  return false;
 }

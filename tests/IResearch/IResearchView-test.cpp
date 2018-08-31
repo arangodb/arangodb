@@ -328,7 +328,7 @@ SECTION("test_defaults") {
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"links\": { \"testCollection\": {} } }");
 
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
     CHECK((true == !vocbase.lookupView("testView")));
     CHECK((true == logicalCollection->getIndexes().empty()));
@@ -347,7 +347,7 @@ SECTION("test_defaults") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -389,7 +389,7 @@ SECTION("test_defaults") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -494,7 +494,7 @@ SECTION("test_drop") {
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   CHECK((nullptr != logicalCollection));
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((true == logicalCollection->getIndexes().empty()));
@@ -523,7 +523,7 @@ SECTION("test_drop_with_link") {
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   CHECK((nullptr != logicalCollection));
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((true == logicalCollection->getIndexes().empty()));
@@ -588,7 +588,7 @@ SECTION("test_drop_collection") {
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   REQUIRE((false == !logicalCollection));
   auto logicalView = vocbase.createView(viewCreateJson->slice());
   REQUIRE((false == !logicalView));
@@ -1802,7 +1802,7 @@ SECTION("test_query") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
 
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     std::vector<std::string> collections{ logicalCollection->name() };
     auto logicalView = vocbase.createView(createJson->slice());
     CHECK((false == !logicalView));
@@ -1892,7 +1892,7 @@ SECTION("test_query") {
     >("Flush");
     REQUIRE(feature);
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1968,7 +1968,7 @@ SECTION("test_register_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice());
     REQUIRE((false == !logicalView));
@@ -2024,7 +2024,7 @@ SECTION("test_register_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson0->slice());
     REQUIRE((false == !logicalView));
@@ -2103,7 +2103,7 @@ SECTION("test_register_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson1->slice());
     REQUIRE((false == !logicalView));
@@ -2214,7 +2214,7 @@ SECTION("test_unregister_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -2313,7 +2313,7 @@ SECTION("test_unregister_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -2408,7 +2408,7 @@ SECTION("test_unregister_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -2437,7 +2437,7 @@ SECTION("test_unregister_link") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
 
     {
       auto createJson = arangodb::velocypack::Parser::fromJson("{}");
@@ -2524,7 +2524,7 @@ SECTION("test_tracked_cids") {
     s.engine.views.clear();
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
@@ -2552,7 +2552,7 @@ SECTION("test_tracked_cids") {
     auto updateJson0 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
     auto updateJson1 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
@@ -2640,7 +2640,7 @@ SECTION("test_tracked_cids") {
     s.engine.views.clear();
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
@@ -2666,7 +2666,7 @@ SECTION("test_tracked_cids") {
     auto updateJson0 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { } } }");
     auto updateJson1 = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
     REQUIRE((false == !logicalView));
@@ -2704,9 +2704,9 @@ SECTION("test_transaction_registration") {
   auto collectionJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* logicalCollection0 = vocbase.createCollection(collectionJson0->slice());
+  auto logicalCollection0 = vocbase.createCollection(collectionJson0->slice());
   REQUIRE((nullptr != logicalCollection0));
-  auto* logicalCollection1 = vocbase.createCollection(collectionJson1->slice());
+  auto logicalCollection1 = vocbase.createCollection(collectionJson1->slice());
   REQUIRE((nullptr != logicalCollection1));
   auto logicalView = vocbase.createView(viewJson->slice());
   REQUIRE((false == !logicalView));
@@ -3299,7 +3299,7 @@ SECTION("test_update_overwrite") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
@@ -3449,9 +3449,9 @@ SECTION("test_update_overwrite") {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collectionJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
-    auto* logicalCollection0 = vocbase.createCollection(collectionJson0->slice());
+    auto logicalCollection0 = vocbase.createCollection(collectionJson0->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collectionJson1->slice());
+    auto logicalCollection1 = vocbase.createCollection(collectionJson1->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -3624,7 +3624,7 @@ SECTION("test_update_overwrite") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -3734,7 +3734,7 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -3815,7 +3815,7 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -3848,7 +3848,7 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -3908,9 +3908,9 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto logicalCollection0 = vocbase.createCollection(collection0Json->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto logicalCollection1 = vocbase.createCollection(collection1Json->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -3976,9 +3976,9 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto logicalCollection0 = vocbase.createCollection(collection0Json->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto logicalCollection1 = vocbase.createCollection(collection1Json->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -4043,7 +4043,7 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -4103,9 +4103,9 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto logicalCollection0 = vocbase.createCollection(collection0Json->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto logicalCollection1 = vocbase.createCollection(collection1Json->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -4171,9 +4171,9 @@ SECTION("test_update_overwrite") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto logicalCollection0 = vocbase.createCollection(collection0Json->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto logicalCollection1 = vocbase.createCollection(collection1Json->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -4373,7 +4373,7 @@ SECTION("test_update_partial") {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
@@ -4545,7 +4545,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -4608,7 +4608,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -4698,7 +4698,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -4869,7 +4869,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -4941,7 +4941,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -5132,7 +5132,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -5198,7 +5198,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -5313,7 +5313,7 @@ SECTION("test_update_partial") {
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto view = vocbase.createView(createJson->slice());
     REQUIRE((false == !view));
@@ -5424,7 +5424,7 @@ SECTION("test_update_partial") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62 }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -5505,7 +5505,7 @@ SECTION("test_update_partial") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -5538,7 +5538,7 @@ SECTION("test_update_partial") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -5598,9 +5598,9 @@ SECTION("test_update_partial") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": {} } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto logicalCollection0 = vocbase.createCollection(collection0Json->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto logicalCollection1 = vocbase.createCollection(collection1Json->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
@@ -5666,9 +5666,9 @@ SECTION("test_update_partial") {
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection1\": null } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto logicalCollection0 = vocbase.createCollection(collection0Json->slice());
     REQUIRE((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto logicalCollection1 = vocbase.createCollection(collection1Json->slice());
     REQUIRE((nullptr != logicalCollection1));
     auto logicalView = vocbase.createView(viewCreateJson->slice());
     REQUIRE((false == !logicalView));
