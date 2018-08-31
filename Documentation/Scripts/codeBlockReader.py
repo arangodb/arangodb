@@ -223,15 +223,15 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   if shortable:
     hideText=""
     if blockType == "arangosh":
-      hideText = u"hide execution results"
+      hideText = u"Hide execution results"
     elif blockType == "curl":
-      hideText = u"hide response body"
+      hideText = u"Hide response body"
     elif blockType == "AQL":
-      hideText = u"hide query result"
+      hideText = u"Hide query result"
     elif blockType == "EXPLAIN":
-        hideText = u"hide explain output"
+        hideText = u"Hide explain output"
     else:
-      hideText = u"hide"
+      hideText = u"Hide"
     fh.write(unicode('<div id="%s_collapse" onclick="%s" class="example_show_button">%s</div>' % (
       utag,
       longToggle,
@@ -246,15 +246,15 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
     fh.write(unicode("%s" % short))
 
     if blockType == "arangosh":
-      fh.write(unicode("</pre><div class=\"example_show_button\">show execution results</div>\n"))
+      fh.write(unicode("</pre><div class=\"example_show_button\">Show execution results</div>\n"))
     elif blockType == "curl":
-      fh.write(unicode("</pre><div class=\"example_show_button\">show response body</div>\n"))
+      fh.write(unicode("</pre><div class=\"example_show_button\">Show response body</div>\n"))
     elif blockType == "AQL":
-      fh.write(unicode("</pre><div class=\"example_show_button\">show query result</div>\n"))
+      fh.write(unicode("</pre><div class=\"example_show_button\">Show query result</div>\n"))
     elif blockType == "EXPLAIN":
-      fh.write(unicode("</pre><div class=\"example_show_button\">show explain output</div>\n"))
+      fh.write(unicode("</pre><div class=\"example_show_button\">Show explain output</div>\n"))
     else:
-      fh.write(unicode("</pre><div class=\"example_show_button\">show</div>\n"))
+      fh.write(unicode("</pre><div class=\"example_show_button\">Show</div>\n"))
       
     fh.write(unicode("</div>\n"))
 
