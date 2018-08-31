@@ -198,6 +198,8 @@ class ActionBase {
   std::chrono::system_clock::time_point getDoneTime() const
     {return std::chrono::system_clock::time_point() + _actionDone.load(); }
 
+  bool matches(std::unordered_map<std::string,std::string> const& options) const;
+  
   std::string const static FAST_TRACK; 
 
 protected:
@@ -209,7 +211,7 @@ protected:
 
   ActionDescription _description;
 
-  std::map<std::string, std::string> _options;
+  std::unordered_map<std::string, std::string> _options;
 
   uint64_t _hash;
   std::string _clientId;

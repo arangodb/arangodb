@@ -100,6 +100,13 @@ void ActionBase::notify() {
 }
 
 
+bool ActionBase::matches(
+  std::unordered_map<std::string, std::string> const& options) const {
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "Worker options " << options << " don't match action " << *this;
+  return _options == options;
+}
+
 bool ActionBase::fastTrack() const {
   auto const& it = _options.find(FAST_TRACK);
   return (it != _options.end()) ? it->second == "true" : false;

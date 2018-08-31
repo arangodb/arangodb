@@ -83,7 +83,7 @@ protected:
 
   Result _lastResult;
 
-  std::unordered_map<std::string,std::string> _options;
+  const std::unordered_map<std::string,std::string> _options;
 
 private:
   MaintenanceWorker(MaintenanceWorker const &) = delete;

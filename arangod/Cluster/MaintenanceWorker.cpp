@@ -59,7 +59,7 @@ void MaintenanceWorker::run() {
 
     switch(_loopState) {
       case eFIND_ACTION:
-        _curAction = _feature.findReadyAction();
+        _curAction = _feature.findReadyAction(_options);
         more = (bool)_curAction;
         break;
 

@@ -402,7 +402,8 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 } // MaintenanceFeature::findActionIdNoLock
 
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
+  std::unordered_map<std::string, std::string> const& options) {
   std::shared_ptr<Action> ret_ptr;
 
   while(!_isShuttingDown && !ret_ptr) {
@@ -414,8 +415,10 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
         auto state = (*loop)->getState();
         if (state == maintenance::READY) {
-          ret_ptr=*loop;
-          ret_ptr->setState(maintenance::EXECUTING);
+          if ((*loop)->matches(options)) {
+            ret_ptr=*loop;
+            ret_ptr->setState(maintenance::EXECUTING);
+          }
         } else if ((*loop)->done()) {
           loop = _actionRegistry.erase(loop);
         } else {
