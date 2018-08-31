@@ -1105,7 +1105,8 @@ ResultT<arangodb::basics::VelocyPackHelper::AttributeVec> VelocyPackHelper::expe
   for(auto const& slice : it){
     auto maybeAttributes = expectedAttributes(slice, required, optional, deprecated, checkTypes);
     if (maybeAttributes.fail()) { return maybeAttributes.copy_result(); };
-    rv.emplace_back(std::move(maybeAttributes.get()));
+    AttributeMap& map = maybeAttributes.get();
+    rv.push_back(std::move(map));
   }
 
   return ResultT<AttributeVec>::success(rv);
@@ -1116,9 +1117,6 @@ ResultT<arangodb::basics::VelocyPackHelper::AttributeMap> VelocyPackHelper::expe
     AttributeSet const& required, AttributeSet const& optional, AttributeSet const& deprecated,
     bool checkTypes){
 
-  using AttributeSet = arangodb::basics::VelocyPackHelper::AttributeSet;
-  using AttributeVec = arangodb::basics::VelocyPackHelper::AttributeVec;
-  using AttributeMap = arangodb::basics::VelocyPackHelper::AttributeMap;
   AttributeMap rv;
 
   auto result = expectedType(VPackValueType::Object, slice.type());

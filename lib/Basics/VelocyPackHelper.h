@@ -461,7 +461,7 @@ class VelocyPackHelper {
 
   using AttributeSet = std::unordered_map<std::string, VPackValueType>;
   using AttributeMap = std::unordered_map<std::string, VPackSlice const>;
-  using AttributeVec = std::vector<std::pair<std::string, AttributeMap const>>;
+  using AttributeVec = std::vector<AttributeMap>;
 
   static  ResultT<AttributeMap> expectedAttributes(VPackSlice slice,
       AttributeSet const& required, AttributeSet const& optional, AttributeSet const& deprecated,
