@@ -307,7 +307,7 @@ MERGE_RECURSIVE(
 `PARSE_IDENTIFIER(documentHandle) → parts`
 
 Parse a [document handle](../../Manual/Appendix/Glossary.html#document-handle) and return its
-individual parts a separate attributes.
+individual parts as separate attributes.
 
 This function can be used to easily determine the
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) and key of a given document.
