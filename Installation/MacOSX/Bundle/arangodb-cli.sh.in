@@ -20,15 +20,15 @@ SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDI
 for script in $SCRIPTS; do
   base=$(basename "$script")
 
-  if test base == "arangodb"; then
+  if test $base == "arangodb"; then
   cat > "${ROOTDIR}/$base.$$" <<-'EOF'
 #!/bin/sh
 me=$(realpath $0)
 program=$(basename $me)
-installation=$(dirname $(dirname $me))
+installation=$(dirname $me)
 executable=$installation/opt/arangodb/bin/$program
 if [ -x $executable ] ; then
-  exec $executable --server.arangod=$installation/usr/sbin/arangod --server.js-dir=$installation/usr/share/arangodb3/js "$@"
+  exec $executable --server.arangod=$installation/opt/arangodb/sbin/arangod --server.js-dir=$installation/opt/arangodb/share/arangodb3/js "$@"
 fi
 echo "Could not find executable!"
 exit 1
