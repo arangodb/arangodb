@@ -182,6 +182,11 @@ static VPackBuilder compareIndexes(
           }
           if (!haveError) {
             builder.add(pindex);
+          } else {
+            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+              << "Previous failure exists for index " << planIdS << " on shard "
+              << dbname << "/" << shname << " for central " << dbname << "/"
+              << collname <<"- skipping";
           }
         }
       }
@@ -209,17 +214,19 @@ void handlePlanShard(
     bool leading = lcol.get(LEADER).copyString().empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
+    auto fullShardLabel = dbname + "/" + colname + "/" + shname;
+
     // If comparison has brought any updates
     if (properties->slice() != VPackSlice::emptyObjectSlice()
         || leading != shouldBeLeading) {
 
-      if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
+      if (errors.shards.find(fullShardLabel) ==
           errors.shards.end()) {
         actions.emplace_back(
           ActionDescription(
-            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
-            {LEADER, shouldBeLeading ? std::string() : leaderId},
-            {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
+            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, colname},
+            {SHARD, shname}, {LEADER, shouldBeLeading ? std::string() : leaderId},
+            {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
             properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -236,12 +243,15 @@ void handlePlanShard(
       auto difference = compareIndexes(dbname, colname, shname,
           pindexes, lindexes, errors, indis);
 
+      // Index errors are checked in `compareIndexes`. THe loop below only
+      // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
         for (auto const& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(
             ActionDescription({{NAME, "EnsureIndex"}, {DATABASE, dbname},
                 {COLLECTION, colname}, {TYPE, index.get(TYPE).copyString()},
-                {FIELDS, index.get(FIELDS).toJson()}, {SHARD, shname}, {ID, index.get(ID).copyString()}},
+                {FIELDS, index.get(FIELDS).toJson()}, {SHARD, shname},
+                {ID, index.get(ID).copyString()}},
               std::make_shared<VPackBuilder>(index)));
         }
       }

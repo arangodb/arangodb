@@ -97,7 +97,7 @@ CreateCollection::CreateCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-    
+
 }
 
 
@@ -120,23 +120,23 @@ bool CreateCollection::first() {
 
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-    
+
     auto cluster =
       ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    
+
     bool waitForRepl =
       (props.hasKey(WAIT_FOR_SYNC_REPL) &&
        props.get(WAIT_FOR_SYNC_REPL).isBool()) ?
       props.get(WAIT_FOR_SYNC_REPL).getBool() :
       cluster->createWaitsForSyncReplication();
-    
+
     bool enforceReplFact =
       (props.hasKey(ENF_REPL_FACT) &&
        props.get(ENF_REPL_FACT).isBool()) ?
       props.get(ENF_REPL_FACT).getBool() : true;
-    
+
     TRI_col_type_e type = static_cast<TRI_col_type_e>(props.get(TYPE).getNumber<uint32_t>());
-    
+
     VPackBuilder docket;
     { VPackObjectBuilder d(&docket);
       for (auto const& i : VPackObjectIterator(props)) {
@@ -152,7 +152,7 @@ bool CreateCollection::first() {
       }
       docket.add("planId", VPackValue(collection));
     }
-    
+
     _result = Collections::create(
       vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
       [=](LogicalCollection& col) {
@@ -163,7 +163,7 @@ bool CreateCollection::first() {
           col.followers()->clear();
         }
       });
-    
+
     if (_result.fail()) {
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard
@@ -171,33 +171,20 @@ bool CreateCollection::first() {
             << _result;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
 
-      // Error report for phaseTwo
-      VPackBuilder eb;
-      { VPackObjectBuilder o(&eb);
-        eb.add("error", VPackValue(true));
-        eb.add("errorMessage", VPackValue(_result.errorMessage()));
-        eb.add("errorNum", VPackValue(_result.errorNumber()));
-        eb.add(VPackValue("indexes"));
-        { VPackArrayBuilder a(&eb); } // []
-        eb.add(VPackValue("servers"));
-        {VPackArrayBuilder a(&eb);    // [serverId]
-          eb.add(VPackValue(_description.get(SERVER_ID))); }}
-
-      // Steal buffer for maintenance feature
-      _feature.storeShardError(database, collection, shard, eb.steal());
-      
       _result.reset(TRI_ERROR_FAILED, error.str());
-      // FIXMEMAINTENANCE: notify here?
-      return false;
     }
-    
-  } catch (std::exception const& e) { // Guard failed?
+
+  } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
-    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
-    // FIXMEMAINTENANCE: notify here?
-    return false;
+    _result.reset(TRI_ERROR_FAILED, error.str());
+
+  }
+
+  if (_result.fail()) {
+    _feature.storeShardError(database, collection, shard,
+        _description.get(SERVER_ID), _result);
   }
 
   notify();

@@ -212,6 +212,7 @@ protected:
 
   ActionDescription _description;
 
+  // @brief optional labels for matching to woker labels
   std::unordered_set<std::string> _labels;
 
   uint64_t _hash;

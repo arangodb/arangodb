@@ -45,7 +45,7 @@ DropCollection::DropCollection(
   _labels.emplace(FAST_TRACK);
 
   if (!d.has(COLLECTION)) {
-    error << "collection must be specified. "; 
+    error << "collection must be specified. ";
   }
   TRI_ASSERT(d.has(COLLECTION));
 
@@ -102,5 +102,5 @@ bool DropCollection::first() {
 
   notify();
   return false;
-  
+
 }

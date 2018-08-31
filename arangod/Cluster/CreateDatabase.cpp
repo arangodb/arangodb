@@ -55,7 +55,7 @@ CreateDatabase::CreateDatabase(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-  
+
 }
 
 CreateDatabase::~CreateDatabase() {};
@@ -71,37 +71,27 @@ bool CreateDatabase::first() {
   try {
 
     DatabaseGuard guard("_system");
-    
+
     // Assertion in constructor makes sure that we have DATABASE.
     _result = Databases::create(_description.get(DATABASE), users, properties());
     if (!_result.ok()) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "CreateDatabase: failed to create database " << database << ": " << _result;
 
-      VPackBuilder eb;
-      { VPackObjectBuilder b(&eb);
-        eb.add(NAME, VPackValue(database));
-        eb.add("error", VPackValue(true));
-        eb.add("errorNum", VPackValue(_result.errorNumber()));
-        eb.add("errorMessage", VPackValue(_result.errorMessage())); }
-
-      _feature.storeDBError(database, eb.steal());
-      // FIXMEMAINTENANCE: notify here?
-      return false;
+      _feature.storeDBError(database, _result);
+    } else {
+      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+        << "CreateDatabase: database  " << database << " created";
     }
-    
-    LOG_TOPIC(INFO, Logger::MAINTENANCE)
-      << "CreateDatabase: database  " << database << " created";
-    
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
-    // FIXMEMAINTENANCE: notify here?
-    return false;
+    _feature.storeDBError(database, _result);
   }
 
+  // notify always, either error or success
   notify();
   return false;
 

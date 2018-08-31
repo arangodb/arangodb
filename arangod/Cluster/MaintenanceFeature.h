@@ -114,11 +114,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
 protected:
   std::shared_ptr<maintenance::Action> createAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description);
+
+  void registerAction(
+    std::shared_ptr<maintenance::Action> action, bool executeNow);
+
+  std::shared_ptr<maintenance::Action> createAndRegisterAction(
     std::shared_ptr<maintenance::ActionDescription> const & description,
     bool executeNow);
-
-  void createAction(
-    std::shared_ptr<maintenance::Action> action, bool executeNow);
 
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
@@ -214,6 +217,11 @@ public:
     std::string const& database, std::string const& collection,
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error);
 
+  arangodb::Result storeShardError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& serverId,
+    arangodb::Result const& failure);
+
   /**
    * @brief get all pending shard errors
    *
@@ -252,6 +260,9 @@ public:
    */
   arangodb::Result storeDBError (
     std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error);
+
+  arangodb::Result storeDBError (
+    std::string const& database, Result const& failure);
 
   /**
    * @brief get all pending shard errors
