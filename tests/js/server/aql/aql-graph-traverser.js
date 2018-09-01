@@ -2510,7 +2510,7 @@ function complexFilteringSuite () {
       assertEqual(cursor.count(), 3);
       assertEqual(cursor.toArray(), ['B', 'C', 'F']);
       var stats = cursor.getExtra().stats;
-      require('internal').print(JSON.stringify(stats))
+      require('internal').print(JSON.stringify(stats));
       assertEqual(stats.writesExecuted, 6);
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
