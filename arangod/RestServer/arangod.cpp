@@ -181,7 +181,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new EnvironmentFeature(server));
     server.addFeature(new FileDescriptorsFeature(server));
     server.addFeature(new FlushFeature(server));
-    server.addFeature(new FortuneFeature(&server));
+    server.addFeature(new FortuneFeature(server));
     server.addFeature(new FoxxQueuesFeature(server));
     server.addFeature(new FrontendFeature(server));
     server.addFeature(new GeneralServerFeature(server));

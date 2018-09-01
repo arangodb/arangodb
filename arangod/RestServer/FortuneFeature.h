@@ -28,7 +28,7 @@
 namespace arangodb {
 class FortuneFeature final : public application_features::ApplicationFeature {
  public:
-  explicit FortuneFeature(application_features::ApplicationServer*);
+  explicit FortuneFeature(application_features::ApplicationServer&);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

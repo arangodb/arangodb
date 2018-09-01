@@ -59,7 +59,7 @@ static char const* cookies[] = {
 } // namespace
 
 FortuneFeature::FortuneFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Fortune"), _fortune(false) {
   startsAfter("Bootstrap");
 }
@@ -76,6 +76,6 @@ void FortuneFeature::start() {
 
   uint32_t r = RandomGenerator::interval(sizeof(::cookies) / sizeof(::cookies)[0]);
   if (strlen(::cookies[r]) > 0) {
-    LOG_TOPIC(WARN, Logger::FIXME) << ::cookies[r];
+    LOG_TOPIC(INFO, Logger::FIXME) << ::cookies[r];
   }
 }
