@@ -60,8 +60,8 @@ function optimizerIndexesTestSuite () {
 
     testSameResultsConstAccess : function () {
       var bind = { doc : { key: "test1" } };
-      var q1 = `RETURN (FOR item IN UnitTestsCollection FILTER (@doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
-      var q2 = `LET doc = @doc RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`; 
+      var q1 = `RETURN (FOR item IN UnitTestsCollection FILTER (@doc.key == item._key) LIMIT 1 RETURN item)[0]`;
+      var q2 = `LET doc = @doc RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`;
       var q3 = `LET doc = { key: "test1" } RETURN (FOR item IN UnitTestsCollection FILTER (doc.key == item._key) LIMIT 1 RETURN item)[0]`;
 
       var results = AQL_EXECUTE(q1, bind);
@@ -1025,15 +1025,15 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSubqueries : function () {
-      var query = "LET a = (FOR x IN " + c.name() + " FILTER x._key == 'test1' RETURN x._key) " + 
-                  "LET b = (FOR x IN " + c.name() + " FILTER x._key == 'test2' RETURN x._key) " + 
-                  "LET c = (FOR x IN " + c.name() + " FILTER x._key == 'test3' RETURN x._key) " + 
-                  "LET d = (FOR x IN " + c.name() + " FILTER x._key == 'test4' RETURN x._key) " + 
-                  "LET e = (FOR x IN " + c.name() + " FILTER x._key == 'test5' RETURN x._key) " + 
-                  "LET f = (FOR x IN " + c.name() + " FILTER x._key == 'test6' RETURN x._key) " + 
-                  "LET g = (FOR x IN " + c.name() + " FILTER x._key == 'test7' RETURN x._key) " + 
-                  "LET h = (FOR x IN " + c.name() + " FILTER x._key == 'test8' RETURN x._key) " + 
-                  "LET i = (FOR x IN " + c.name() + " FILTER x._key == 'test9' RETURN x._key) " + 
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x._key == 'test1' RETURN x._key) " +
+                  "LET b = (FOR x IN " + c.name() + " FILTER x._key == 'test2' RETURN x._key) " +
+                  "LET c = (FOR x IN " + c.name() + " FILTER x._key == 'test3' RETURN x._key) " +
+                  "LET d = (FOR x IN " + c.name() + " FILTER x._key == 'test4' RETURN x._key) " +
+                  "LET e = (FOR x IN " + c.name() + " FILTER x._key == 'test5' RETURN x._key) " +
+                  "LET f = (FOR x IN " + c.name() + " FILTER x._key == 'test6' RETURN x._key) " +
+                  "LET g = (FOR x IN " + c.name() + " FILTER x._key == 'test7' RETURN x._key) " +
+                  "LET h = (FOR x IN " + c.name() + " FILTER x._key == 'test8' RETURN x._key) " +
+                  "LET i = (FOR x IN " + c.name() + " FILTER x._key == 'test9' RETURN x._key) " +
                   "LET j = (FOR x IN " + c.name() + " FILTER x._key == 'test10' RETURN x._key) " +
                   "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
@@ -1076,15 +1076,15 @@ function optimizerIndexesTestSuite () {
 
     testMultipleSubqueriesMultipleIndexes : function () {
       c.ensureHashIndex("value"); // now we have a hash and a skiplist index
-      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " + 
-                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " + 
-                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " + 
-                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " + 
-                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " + 
-                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " + 
-                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " + 
-                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " + 
-                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " + 
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " +
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " +
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " +
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " +
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " +
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " +
                   "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
                   "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
@@ -1133,15 +1133,15 @@ function optimizerIndexesTestSuite () {
     testMultipleSubqueriesHashIndexes : function () {
       c.dropIndex(c.getIndexes()[1]); // drop skiplist index
       c.ensureHashIndex("value");
-      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " + 
-                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " + 
-                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " + 
-                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " + 
-                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " + 
-                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " + 
-                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " + 
-                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " + 
-                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " + 
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 RETURN x._key) " +
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 RETURN x._key) " +
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 RETURN x._key) " +
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 RETURN x._key) " +
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 RETURN x._key) " +
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 RETURN x._key) " +
                   "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 RETURN x._key) " +
                   "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
@@ -1321,16 +1321,16 @@ function optimizerIndexesTestSuite () {
 
     testSubqueryMadness : function () {
       c.ensureHashIndex("value"); // now we have a hash and a skiplist index
-      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
-                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " + 
+      var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET d = (FOR x IN " + c.name() + " FILTER x.value == 4 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET e = (FOR x IN " + c.name() + " FILTER x.value == 5 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET f = (FOR x IN " + c.name() + " FILTER x.value == 6 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET g = (FOR x IN " + c.name() + " FILTER x.value == 7 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET h = (FOR x IN " + c.name() + " FILTER x.value == 8 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET i = (FOR x IN " + c.name() + " FILTER x.value == 9 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
+                  "LET j = (FOR x IN " + c.name() + " FILTER x.value == 10 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "RETURN [ a, b, c, d, e, f, g, h, i, j ]";
 
       var explain = AQL_EXPLAIN(query);
@@ -1429,15 +1429,15 @@ function optimizerIndexesTestSuite () {
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a ] RETURN i.value", [ 35 ] ],
         [ "FOR i IN " + c.name() + " FILTER i._key IN [ NOOPT('test35') ] RETURN i.value", [ 35 ] ],
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, a, a ] RETURN i.value", [ 35 ] ],
-        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ 'test35', 'test36' ] RETURN i.value", [ 35, 36 ] ], 
-        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test-9') FOR i IN " + c.name() + " FILTER i._key IN [ b, b, a, b, c ] RETURN i.value", [ 35, 36 ] ], 
-        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
-        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a ] || i._key IN [ b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
-        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37'), d = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c, d ] || i._key IN [ a, b, c, d ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ 'test35', 'test36' ] RETURN i.value", [ 35, 36 ] ],
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test-9') FOR i IN " + c.name() + " FILTER i._key IN [ b, b, a, b, c ] RETURN i.value", [ 35, 36 ] ],
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c ] RETURN i.value", [ 35, 36, 37 ] ],
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a ] || i._key IN [ b, c ] RETURN i.value", [ 35, 36, 37 ] ],
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37'), d = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c, d ] || i._key IN [ a, b, c, d ] RETURN i.value", [ 35, 36, 37 ] ],
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a RETURN i.value", [ 35 ] ],
         [ "LET a = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == a RETURN i.value", [ 35 ] ],
-        [ "LET a = NOOPT('test35'), b = NOOPT('test36') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b RETURN i.value", [ 35, 36 ] ], 
-        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37'), d = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b || i._key == c || i._key == d RETURN i.value", [ 35, 36, 37 ] ] 
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b RETURN i.value", [ 35, 36 ] ],
+        [ "LET a = NOOPT('test35'), b = NOOPT('test36'), c = NOOPT('test37'), d = NOOPT('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b || i._key == c || i._key == d RETURN i.value", [ 35, 36, 37 ] ]
       ];
 
       queries.forEach(function(query) {
@@ -3774,7 +3774,99 @@ function optimizerIndexesMultiCollectionTestSuite () {
       assertNotEqual(-1, idx, query); // index used for inner query
       assertEqual("skiplist", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
       assertEqual(-1, subNodeTypes.indexOf("SortNode"), query); // must not have sort node for inner query
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testPreventMoveFilterPastModify1 : function () {
+      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = `
+        FOR i IN ${c1.name()}
+          FOR j IN ${c2.name()}
+            UPDATE j WITH { tick: i } in ${c2.name()}
+            FILTER i.value == 1
+          RETURN [i, NEW]
+      `;
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index
+      assertNotEqual(-1, nodeTypes.indexOf("FilterNode"), query); // post filter
+    },
+
+    testPreventMoveFilterPastModify2 : function () {
+      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = `
+        FOR i IN ${c1.name()}
+          FOR j IN ${c2.name()}
+            UPDATE j WITH { tick: i } in ${c2.name()}
+            FILTER j.value == 1
+          RETURN [i, NEW]
+      `;
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index
+      assertNotEqual(-1, nodeTypes.indexOf("FilterNode"), query); // post filter
+    },
+
+    testPreventMoveSortPastModify1 : function () {
+      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = `
+        FOR i IN ${c1.name()}
+          FOR j IN ${c2.name()}
+            UPDATE j WITH { tick: i } in ${c2.name()}
+            SORT i.value
+          RETURN [i, NEW]
+      `;
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // post filter
+    },
+
+    testPreventMoveSortPastModify2 : function () {
+      c1.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = `
+        FOR i IN ${c1.name()}
+          FOR j IN ${c2.name()}
+            UPDATE j WITH { tick: i } in ${c2.name()}
+            SORT NEW.value
+          RETURN [i, NEW]
+      `;
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // post filter
+    },
 
   };
 }
