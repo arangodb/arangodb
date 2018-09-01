@@ -265,6 +265,25 @@ function dumpAuthentication (options) {
 }
 
 function dumpEncrypted (options) {
+  // test is only meaningful in the enterprise version
+  let skip = true;
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      skip = false;
+    }
+  }
+
+  if (skip) {
+    print('skipping dump_encrypted test');
+    return {
+      dump_encrypted: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
   let c = getClusterStrings(options);
 
   let afterServerStart = function(instanceInfo) {
@@ -292,15 +311,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['dump'] = dump;
   defaultFns.push('dump');
 
-  // only register the encryption tests in the enterprise version
-  let version = {};
-  if (global.ARANGODB_CLIENT_VERSION) {
-    version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      testFns['dump_encrypted'] = dumpEncrypted;
-      defaultFns.push('dump_encrypted');
-    }
-  }
+  testFns['dump_encrypted'] = dumpEncrypted;
+  defaultFns.push('dump_encrypted');
 
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
