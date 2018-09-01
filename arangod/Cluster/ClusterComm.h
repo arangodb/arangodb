@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,6 +176,8 @@ struct ClusterCommResult {
   ServerID serverID;     // the actual server ID of the recipient, can be empty
   std::string endpoint;  // the actual endpoint of the recipient, always set
   std::string errorMessage;
+  // error code as returned by the other side in "errorNum" attribute
+  int errorCode;
   ClusterCommOpStatus status;
   bool dropped;  // this is set to true, if the operation
                  // is dropped whilst in state CL_COMM_SENDING
@@ -205,6 +207,7 @@ struct ClusterCommResult {
   ClusterCommResult()
       : coordTransactionID(0),
         operationID(0),
+        errorCode(TRI_ERROR_NO_ERROR),
         status(CL_COMM_BACKEND_UNAVAILABLE),
         dropped(false),
         single(false),
@@ -228,6 +231,7 @@ struct ClusterCommResult {
 
   void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
     errorMessage = TRI_errno_string(errorCode);
+    this->errorCode = errorCode;
     switch (errorCode) {
       case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
@@ -254,6 +258,7 @@ struct ClusterCommResult {
 
   void fromResponse(std::unique_ptr<GeneralResponse> response) {
     sendWasComplete = true;
+    errorCode = TRI_ERROR_NO_ERROR;
     // mop: simulate the old behaviour where the original request
     // was sent to the recipient and was simply accepted. Then the backend would
     // do its work and send a request to the target containing the result of
@@ -288,6 +293,15 @@ struct ClusterCommResult {
     // result was available in different status code situations :S
     if (single) {
       status = result->wasHttpError() ? CL_COMM_ERROR : CL_COMM_SENT;
+      if (status == CL_COMM_ERROR) {
+        try {
+          auto body = result->getBodyVelocyPack(VPackOptions());
+          if (body->slice().isObject() && body->slice().hasKey("errorMessage")) {
+            errorMessage = body->slice().get("errorMessage").copyString();
+            errorCode = body->slice().get("errorNum").getNumber<int>();
+          }
+        } catch (...) {}
+      }
     } else {
       // mop: actually it will never be an ERROR here...this is and was a dirty
       // hack :S
@@ -348,12 +362,16 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
+  static std::unordered_map<std::string, std::string> const noHeaders;
+  static std::string const noBody;
+  static std::shared_ptr<std::string const> const sharedNoBody;
+
   std::string destination;
   rest::RequestType requestType;
   std::string path;
+  ClusterCommResult result;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::unordered_map<std::string, std::string>> headerFields;
-  ClusterCommResult result;
   bool done;
 
   ClusterCommRequest() : done(false) {}
@@ -378,10 +396,33 @@ struct ClusterCommRequest {
         headerFields(std::move(headers)),
         done(false) {}
 
-
+  /// @brief "safe" accessor for header
+  std::unordered_map<std::string, std::string> const& getHeaders() const {
+    if (headerFields == nullptr) {
+      return noHeaders;
+    }
+    return *headerFields;
+  }
+  
   void setHeaders(
       std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
+  }
+ 
+  /// @brief "safe" accessor for body 
+  std::string const& getBody() const {
+    if (body == nullptr) {
+      return noBody;
+    }
+    return *body;
+  }
+  
+  /// @brief "safe" accessor for body 
+  std::shared_ptr<std::string const> getBodyShared() const {
+    if (body == nullptr) {
+      return sharedNoBody;
+    }
+    return body;
   }
 };
 

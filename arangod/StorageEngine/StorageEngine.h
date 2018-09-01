@@ -70,7 +70,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // create the storage engine
   StorageEngine(
-      application_features::ApplicationServer* server,
+      application_features::ApplicationServer& server,
       std::string const& engineName,
       std::string const& featureName,
       std::unique_ptr<IndexFactory>&& indexFactory
@@ -82,11 +82,9 @@ class StorageEngine : public application_features::ApplicationFeature {
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
 
+    startsAfter("BasicsPhase");
     startsAfter("CacheManager");
-    startsAfter("DatabasePath");
-    startsAfter("FileDescriptors");
     startsBefore("StorageEngine");
-    startsAfter("Temp");
     startsAfter("TransactionManager");
     startsAfter("ViewTypes");
   }
@@ -127,7 +125,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  virtual char const* typeName() const { return _typeName.c_str(); }
+  virtual std::string const& typeName() const { return _typeName; }
 
   // inventory functionality
   // -----------------------
@@ -182,7 +180,8 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
 
-  virtual void waitForSyncTimeout(double maxWait) = 0;
+  /// @brief return a list of the currently open WAL files
+  virtual std::vector<std::string> currentWalFiles() const = 0;
 
   virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
                           bool writeShutdownFile = false) = 0;
@@ -327,9 +326,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // property changes and throw only then, so that subsequent operations will not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeView" returns
-  virtual void changeView(
+  virtual arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
   ) = 0;
@@ -343,7 +341,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // and throw only then, so that subsequent view creation requests will not fail.
   // the WAL entry for the view creation will be written *after* the call
   // to "createCview" returns
-  virtual void createView(
+  virtual arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -355,20 +353,6 @@ class StorageEngine : public application_features::ApplicationFeature {
      TRI_vocbase_t& vocbase,
      LogicalView const& view,
      VPackBuilder& builder
-  ) = 0;
-
-  // asks the storage engine to persist the view.
-  // After this call the view is persisted over recovery.
-  virtual arangodb::Result persistView(
-      TRI_vocbase_t& vocbase,
-      arangodb::LogicalView const& view
-  ) = 0;
-
-  // asks the storage engine to persist renaming of a view
-  virtual arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
   ) = 0;
 
   // asks the storage engine to drop the specified view and persist the
@@ -393,22 +377,6 @@ class StorageEngine : public application_features::ApplicationFeature {
     LogicalView& view
   ) noexcept = 0;
 
-  // asks the storage engine to create an index as specified in the VPack
-  // Slice object and persist the creation info. The database id, collection id
-  // and index data are passed in the Slice object. Note that this function
-  // is not responsible for inserting the individual documents into the index.
-  // If this operation fails somewhere in the middle, the storage engine is required
-  // to fully clean up the creation and throw only then, so that subsequent index
-  // creation requests will not fail.
-  // the WAL entry for the index creation will be written *after* the call
-  // to "createIndex" returns
-  virtual void createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-  ) = 0;
-
   // Returns the StorageEngine-specific implementation
   // of the IndexFactory. This is used to validate
   // information about indexes.
@@ -430,9 +398,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // AQL functions
   // -------------
-
-  /// @brief Add engine-specific AQL functions.
-  virtual void addAqlFunctions() {}
 
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules() {}

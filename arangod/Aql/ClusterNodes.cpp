@@ -22,14 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterNodes.h"
-#include "Aql/Ast.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
+#include "Aql/Ast.h"
 #include "Aql/ClusterBlocks.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
-#include "Aql/IndexNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
+#include "Aql/Query.h"
 #include "Transaction/Methods.h"
 
 #include <type_traits>
@@ -78,7 +79,7 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 
 }
 
-/// @brief constructor for RemoteNode 
+/// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
@@ -114,17 +115,18 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 }
 
 /// @brief estimateCost
-double RemoteNode::estimateCost(size_t& nrItems) const {
+CostEstimate RemoteNode::estimateCost() const {
   if (_dependencies.size() == 1) {
-    // This will usually be the case, however, in the context of the
-    // instantiation it is possible that there is no dependency...
-    double depCost = _dependencies[0]->estimateCost(nrItems);
-    return depCost + nrItems;  // we need to process them all
+    CostEstimate estimate = _dependencies[0]->getCost();
+    estimate.estimatedCost += estimate.estimatedNrItems;
+    return estimate;
   }
   // We really should not get here, but if so, do something bordering on
   // sensible:
-  nrItems = 1;
-  return 1.0;
+  CostEstimate estimate = CostEstimate::empty();
+  estimate.estimatedNrItems = 1;
+  estimate.estimatedCost = 1.0;
+  return estimate;
 }
 
 /// @brief construct a scatter node
@@ -190,9 +192,10 @@ void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
 }
 
 /// @brief estimateCost
-double ScatterNode::estimateCost(size_t& nrItems) const {
-  double const depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems * _clients.size();
+CostEstimate ScatterNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
+  return estimate;
 }
 
 /// @brief construct a distribute node
@@ -206,7 +209,7 @@ DistributeNode::DistributeNode(
     _createKeys(base.get("createKeys").getBoolean()),
     _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
     _allowSpecifiedKeys(false) {
-  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
+  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
   } else {
@@ -230,7 +233,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
                                         unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
-  
+
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
 
@@ -244,7 +247,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
   _variable->toVelocyPack(builder);
   builder.add(VPackValue("alternativeVariable"));
   _alternativeVariable->toVelocyPack(builder);
-  
+
   // legacy format, remove in 3.4
   builder.add("varId", VPackValue(static_cast<int>(_variable->id)));
   builder.add("alternativeVarId",
@@ -253,7 +256,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
   // And close it:
   builder.close();
 }
-  
+
 /// @brief getVariablesUsedHere, returning a vector
 std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
   std::vector<Variable const*> vars;
@@ -263,7 +266,7 @@ std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
   }
   return vars;
 }
-  
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
   vars.emplace(_variable);
@@ -271,9 +274,10 @@ void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& v
 }
 
 /// @brief estimateCost
-double DistributeNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems;
+CostEstimate DistributeNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }
 
 /*static*/ Collection const* GatherNode::findCollection(
@@ -373,7 +377,119 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 }
 
 /// @brief estimateCost
-double GatherNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  return depCost + nrItems;
+CostEstimate GatherNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
+}
+
+SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
+                                                     size_t id,
+                                                     NodeType mode,
+                                                     bool replaceIndexNode,
+                                                     std::string const& key,
+                                                     Collection const* collection,
+                                                     ModificationOptions const& options,
+                                                     Variable const* in,
+                                                     Variable const* out,
+                                                     Variable const* OLD,
+                                                     Variable const* NEW
+                                                     )
+  : ExecutionNode(plan, id)
+  , CollectionAccessingNode(collection)
+  , _replaceIndexNode(replaceIndexNode)
+  , _key(key)
+  , _mode(mode)
+  , _inVariable(in)
+  , _outVariable(out)
+  , _outVariableOld(OLD)
+  , _outVariableNew(NEW)
+  , _options(options)
+{
+  if (_mode == NodeType::INDEX) { //select
+    TRI_ASSERT(!_key.empty());
+    TRI_ASSERT(_inVariable== nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+    TRI_ASSERT(_outVariableOld == nullptr);
+    TRI_ASSERT(_outVariableNew == nullptr);
+  } else if (_mode == NodeType::REMOVE) {
+    TRI_ASSERT(!_key.empty());
+    TRI_ASSERT(_inVariable == nullptr);
+    TRI_ASSERT(_outVariable == nullptr);
+    TRI_ASSERT(_outVariableNew == nullptr);
+  } else if (_mode == NodeType::INSERT) {
+    TRI_ASSERT(_key.empty());
+    TRI_ASSERT(_outVariable == nullptr);
+  } else if (_mode == NodeType::UPDATE) {
+    TRI_ASSERT(_outVariable == nullptr);
+  } else if (_mode == NodeType::REPLACE) {
+    TRI_ASSERT(_outVariable == nullptr);
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+/// @brief creates corresponding SingleRemoteOperationNode
+std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<SingleRemoteOperationBlock>(&engine, this);
+}
+
+/// @brief toVelocyPack, for SingleRemoteOperationNode
+void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
+
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(nodes);
+
+  nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
+  nodes.add("replaceIndexNode", VPackValue(_replaceIndexNode));
+
+  if(!_key.empty()){
+    nodes.add("key", VPackValue(_key));
+  }
+
+  // add out variables
+  bool isAnyVarUsedLater = false;
+  if (_outVariableOld != nullptr) {
+    nodes.add(VPackValue("outVariableOld"));
+    _outVariableOld->toVelocyPack(nodes);
+    isAnyVarUsedLater |= isVarUsedLater(_outVariableOld);
+  }
+  if (_outVariableNew != nullptr) {
+    nodes.add(VPackValue("outVariableNew"));
+    _outVariableNew->toVelocyPack(nodes);
+    isAnyVarUsedLater |= isVarUsedLater(_outVariableNew);
+  }
+
+  if (_inVariable!= nullptr) {
+    nodes.add(VPackValue("inVariable"));
+    _inVariable->toVelocyPack(nodes);
+  }
+
+  if (_outVariable != nullptr) {
+    nodes.add(VPackValue("outVariable"));
+    _outVariable->toVelocyPack(nodes);
+    isAnyVarUsedLater |= isVarUsedLater(_outVariable);
+  }
+  nodes.add("producesResult", VPackValue(isAnyVarUsedLater));
+  nodes.add(VPackValue("modificationFlags"));
+  _options.toVelocyPack(nodes);
+
+  nodes.add("projections", VPackValue(VPackValueType::Array));
+  // TODO: support projections?
+  nodes.close();
+
+  // And close it:
+  nodes.close();
+}
+
+/// @brief estimateCost
+CostEstimate SingleRemoteOperationNode::estimateCost() const {
+  CostEstimate estimate = _dependencies[0]->getCost();
+  return estimate;
 }

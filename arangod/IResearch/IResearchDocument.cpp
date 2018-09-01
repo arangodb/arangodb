@@ -348,7 +348,7 @@ bool setStringValue(
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  arangodb::iresearch::kludge::mangleStringField(name, pool);
+  arangodb::iresearch::kludge::mangleStringField(name, *pool);
 
   // init stream
   auto analyzer = pool->get();
@@ -425,7 +425,8 @@ NS_BEGIN(iresearch)
 Field::Field(Field&& rhs)
   : _features(rhs._features),
     _analyzer(std::move(rhs._analyzer)),
-    _name(std::move(rhs._name)) {
+    _name(std::move(rhs._name)),
+    _storeValues(std::move(rhs._storeValues)) {
   rhs._features = nullptr;
 }
 
@@ -434,6 +435,7 @@ Field& Field::operator=(Field&& rhs) {
     _features = rhs._features;
     _analyzer = std::move(rhs._analyzer);
     _name = std::move(rhs._name);
+    _storeValues = std::move(rhs._storeValues);
     rhs._features = nullptr;
   }
 
@@ -524,6 +526,8 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
 bool FieldIterator::setRegularAttribute(IResearchLinkMeta const& context) {
   auto const value = topValue().value;
 
+  _value._storeValues = context._storeValues;
+
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
@@ -568,7 +572,7 @@ void FieldIterator::next() {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::unmangleStringField(name, *prev);
+    arangodb::iresearch::kludge::demangleStringField(name, **prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, name, _value, *_begin)) {

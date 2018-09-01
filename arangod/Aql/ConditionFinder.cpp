@@ -40,32 +40,36 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
     case EN::RETURN:
     case EN::TRAVERSAL:
     case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+    {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
+    }
 
-    case EN::LIMIT:
-      // LIMIT invalidates the sort expression we already found
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::UPSERT:
+    case EN::LIMIT: {
+      // LIMIT or modification invalidates the sort expression we already found
       _sorts.clear();
       _filters.clear();
       break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
       std::vector<Variable const*> invars(en->getVariablesUsedHere());
@@ -177,41 +181,44 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 bool ConditionFinder::handleFilterCondition(
     ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
   bool foundCondition = false;
+
   for (auto& it : _variableDefinitions) {
-    if (_filters.find(it.first) != _filters.end()) {
-      // a variable used in a FILTER
-      AstNode* var = const_cast<AstNode*>(it.second);
-      if (!var->canThrow() && var->isDeterministic() && var->isSimple()) {
-        // replace all variables inside the FILTER condition with the
-        // expressions represented by the variables
-        var = it.second->clone(_plan->getAst());
+    if (_filters.find(it.first) == _filters.end()) {
+      continue;
+    }
 
-        auto func = [&](AstNode* node) -> AstNode* {
-          if (node->type == NODE_TYPE_REFERENCE) {
-            auto variable = static_cast<Variable*>(node->getData());
+    // a variable used in a FILTER
+    AstNode* var = const_cast<AstNode*>(it.second);
+    if (var->isDeterministic() && var->isSimple()) {
+      // replace all variables inside the FILTER condition with the
+      // expressions represented by the variables
+      var = it.second->clone(_plan->getAst());
 
-            if (variable != nullptr) {
-              auto setter = _plan->getVarSetBy(variable->id);
+      auto func = [&](AstNode* node) -> AstNode* {
+        if (node->type == NODE_TYPE_REFERENCE) {
+          auto variable = static_cast<Variable*>(node->getData());
 
-              if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                auto s = ExecutionNode::castTo<CalculationNode*>(setter);
-                auto filterExpression = s->expression();
-                AstNode* inNode = filterExpression->nodeForModification();
-                if (!inNode->canThrow() && inNode->isDeterministic() &&
-                    inNode->isSimple()) {
-                  return inNode;
-                }
+          if (variable != nullptr) {
+            auto setter = _plan->getVarSetBy(variable->id);
+
+            if (setter != nullptr && setter->getType() == EN::CALCULATION) {
+              auto s = ExecutionNode::castTo<CalculationNode*>(setter);
+              auto filterExpression = s->expression();
+              AstNode* inNode = filterExpression->nodeForModification();
+              if (inNode->isDeterministic() && inNode->isSimple()) {
+                return inNode;
               }
             }
           }
-          return node;
-        };
+        }
+        return node;
+      };
 
-        var = Ast::traverseAndModify(var, func);
-      }
-      condition->andCombine(var);
-      foundCondition = true;
+      var = Ast::traverseAndModify(var, func);
     }
+
+    condition->andCombine(var);
+    foundCondition = true;
   }
 
   // normalize the condition
@@ -241,7 +248,6 @@ bool ConditionFinder::handleFilterCondition(
     // this means we can't use the index to restrict the results
     return false;
   }
-
   return true;
 }
 

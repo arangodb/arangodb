@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,8 +48,6 @@ RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
                                              GeneralResponse* response,
                                              Agent* agent)
     : RestBaseHandler(request, response), _agent(agent) {}
-
-bool RestAgencyPrivHandler::isDirect() const { return false; }
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to agency!";

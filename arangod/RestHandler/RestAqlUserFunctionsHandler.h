@@ -33,7 +33,7 @@ class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAqlUserFunctionsHandler"; }
-  bool isDirect() const override { return false; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
   RestStatus execute() override;
 };
 }

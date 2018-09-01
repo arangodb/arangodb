@@ -27,7 +27,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -88,20 +88,28 @@ LocalDocumentId RocksDBValue::documentId(std::string const& s) {
   return documentId(s.data(), s.size());
 }
 
-bool RocksDBValue::revisionId(rocksdb::Slice const& slice, TRI_voc_rid_t& id){
-  if(slice.size() == sizeof(LocalDocumentId::BaseType) + sizeof(TRI_voc_rid_t)){
+bool RocksDBValue::revisionId(rocksdb::Slice const& slice, TRI_voc_rid_t& id) {
+  if (slice.size() == sizeof(LocalDocumentId::BaseType) + sizeof(TRI_voc_rid_t)) {
     id = rocksutils::uint64FromPersistent(slice.data() + sizeof(LocalDocumentId::BaseType));
     return true;
   }
   return false;
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice){
+TRI_voc_rid_t RocksDBValue::revisionId(RocksDBValue const& value) {
   TRI_voc_rid_t id;
-  if(revisionId(slice, id)){
+  if (revisionId(rocksdb::Slice(value.string()), id)) {
     return id;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not receive revisionId from rocksdb::Slice");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not extract revisionId from rocksdb::Slice");
+}
+
+TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
+  TRI_voc_rid_t id;
+  if (revisionId(slice, id)) {
+    return id;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not extract revisionId from rocksdb::Slice");
 }
 
 StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {

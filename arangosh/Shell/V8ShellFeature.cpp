@@ -45,19 +45,24 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include <regex>
+
 extern "C" {
 #include <linenoise.h>
 }
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
 static std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
-V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
-                               std::string const& name)
+namespace arangodb {
+
+V8ShellFeature::V8ShellFeature(
+    application_features::ApplicationServer& server,
+    std::string const& name
+)
     : ApplicationFeature(server, "V8Shell"),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
@@ -69,7 +74,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   setOptional(false);
 
-  startsAfter("Logger");
+  startsAfter("BasicsPhase");
   startsAfter("Console");
   startsAfter("V8Platform");
 }
@@ -279,27 +284,19 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a Javascript variable SYS_ARANGO
-V8ClientConnection* V8ShellFeature::setup(
+std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
-  std::unique_ptr<V8ClientConnection> v8connection;
+  std::shared_ptr<V8ClientConnection> v8connection;
 
   ClientFeature* client = nullptr;
 
   if (createConnection) {
-    client = dynamic_cast<ClientFeature*>(server()->feature("Client"));
+    client = server()->getFeature<ClientFeature>("Client");
 
     if (client != nullptr && client->isEnabled()) {
-      auto jwtSecret = client->jwtSecret();
-
-      if (!jwtSecret.empty()) {
-        V8ClientConnection::setJwtSecret(jwtSecret);
-      }
-
-      auto connection = client->createConnection();
-      v8connection = std::make_unique<V8ClientConnection>(
-          connection, client->databaseName(), client->username(),
-          client->password(), client->requestTimeout());
+      v8connection = std::make_unique<V8ClientConnection>();
+      v8connection->connect(client);
     } else {
       client = nullptr;
     }
@@ -318,7 +315,7 @@ V8ClientConnection* V8ShellFeature::setup(
     *promptError = pe;
   }
 
-  return v8connection.release();
+  return v8connection;
 }
 
 int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
@@ -334,13 +331,12 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
-        [&v8connection]() { v8connection->setInterrupted(true); });
+        [v8connection]() { v8connection->setInterrupted(true); });
   }
 
   v8LineEditor.open(_console->autoComplete());
@@ -437,7 +433,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       // this will change the prompt for the next round
       promptError = true;
     }
-
+    
     if (v8connection != nullptr) {
       v8connection->setInterrupted(false);
     }
@@ -483,7 +479,6 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
   v8::Context::Scope context_scope{context};
 
   auto v8connection = setup(context, execute, positionals);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -562,10 +557,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   v8::Context::Scope context_scope{context};
 
   auto v8connection = setup(context, true, positionals);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
-
   for (auto const& script : strings) {
     v8::TryCatch tryCatch;
 
@@ -655,7 +648,8 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
 }
 
 bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
-                                  std::vector<std::string> const& positionals) {
+                                  std::vector<std::string> const& positionals,
+                                  std::string const& testFilter) {
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -667,8 +661,6 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   v8::Context::Scope context_scope{context};
 
   auto v8connection = setup(context, true, positionals);
-  std::unique_ptr<V8ClientConnection> guard(v8connection);
-
   bool ok = true;
 
   // set-up unit tests array
@@ -695,6 +687,9 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   // variables!!
   context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
                          v8::True(_isolate));
+
+  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
+                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter));
 
   // run tests
   auto input = TRI_V8_ASCII_STRING(
@@ -882,16 +877,6 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void V8ShellFeature::initGlobals() {
   auto context = _isolate->GetCurrentContext();
 
-  // set pretty print default
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "PRETTY_PRINT"),
-      v8::Boolean::New(_isolate, _console->prettyPrint()));
-
-  // add colors for print.js
-  TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING(_isolate, "COLOR_OUTPUT"),
-                               v8::Boolean::New(_isolate, _console->colors()));
-
   // string functions
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
@@ -913,13 +898,36 @@ void V8ShellFeature::initGlobals() {
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to get global context.  ";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "failed to get global context";
     FATAL_ERROR_EXIT();
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+  
+  // try to append the current version name to the startup directory,
+  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), ""); 
+  std::string versionedPath = basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
+
+  LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific startup-directory '" << versionedPath << "'";
+  if (basics::FileUtils::isDirectory(versionedPath)) {
+    // version-specific js path exists!
+    _startupDirectory = versionedPath;
+  }
+ 
+  for (auto& it : _moduleDirectory) { 
+    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
+
+    LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
+    if (basics::FileUtils::isDirectory(versionedPath)) {
+      // version-specific js path exists!
+      it = versionedPath;
+    }
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory << "', effective module-directory is " << _moduleDirectory;
 
   // initialize standard modules
   std::vector<std::string> directories;
@@ -1057,3 +1065,5 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
     }
   }
 }
+
+} // arangodb

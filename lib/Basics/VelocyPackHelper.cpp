@@ -770,14 +770,17 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::Null:
       return 0;
     case VPackValueType::Bool: {
-      bool left = lhs.getBoolean();
-      bool right = rhs.getBoolean();
-      if (left == right) {
+      TRI_ASSERT(lhs.isBoolean());
+      TRI_ASSERT(rhs.isBoolean());
+      bool left = lhs.isTrue();
+      if (left == rhs.isTrue()) {
         return 0;
       }
       if (!left) {
+        TRI_ASSERT(rhs.isTrue());
         return -1;
       }
+      TRI_ASSERT(rhs.isFalse());
       return 1;
     }
     case VPackValueType::Double:
@@ -997,50 +1000,6 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   *reinterpret_cast<double*>(p + 1) = value;
 #endif  
 }
-
-#ifndef USE_ENTERPRISE
-uint64_t VelocyPackHelper::hashByAttributes(
-    VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, std::string const& key) {
-  uint64_t hash = TRI_FnvHashBlockInitial();
-  error = TRI_ERROR_NO_ERROR;
-  slice = slice.resolveExternal();
-  if (slice.isObject()) {
-    for (auto const& attr : attributes) {
-      VPackSlice sub = slice.get(attr).resolveExternal();
-      VPackBuilder temporaryBuilder;
-      if (sub.isNone()) {
-        if (attr == StaticStrings::KeyString && !key.empty()) {
-          temporaryBuilder.add(VPackValue(key));
-          sub = temporaryBuilder.slice();
-        } else {
-          if (!docComplete) {
-            error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-          }
-          // Null is equal to None/not present
-          sub = VPackSlice::nullSlice();
-        }
-      }
-      hash = sub.normalizedHash(hash);
-    }
-  } else if (slice.isString() && attributes.size() == 1 &&
-             attributes[0] == StaticStrings::KeyString) {
-    arangodb::StringRef subKey(slice);
-    size_t pos = subKey.find('/');
-    if (pos != std::string::npos) {
-      // We have an _id. Split it.
-      subKey = subKey.substr(pos + 1);
-      VPackBuilder temporaryBuilder;
-      temporaryBuilder.add(VPackValuePair(subKey.data(), subKey.length(), VPackValueType::String));
-      VPackSlice tmp = temporaryBuilder.slice();
-      hash = tmp.normalizedHash(hash);
-    } else {
-      hash = slice.normalizedHash(hash);
-    }
-  }
-  return hash;
-}
-#endif
 
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {
   if (input.isExternal()) {

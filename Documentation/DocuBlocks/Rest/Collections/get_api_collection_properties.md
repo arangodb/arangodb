@@ -27,7 +27,8 @@ This is achieved by forcing a load of the underlying collection.
 
 - *keyOptions*: JSON object which contains key generation options:
   - *type*: specifies the type of the key generator. The currently
-    available generators are *traditional* and *autoincrement*.
+    available generators are *traditional*, *autoincrement*, *uuid*
+    and *padded*.
   - *allowUserKeys*: if set to *true*, then it is allowed to supply
     own key values in the *_key* attribute of a document. If set to
     *false*, then the key generator is solely responsible for
@@ -46,6 +47,8 @@ In a cluster setup, the result will also contain the following attributes:
   determine the target shard for documents.
 
 - *replicationFactor*: contains how many copies of each shard are kept on different DBServers.
+
+- *shardingStrategy*: the sharding strategy selected for the collection.
 
 @RESTRETURNCODES
 

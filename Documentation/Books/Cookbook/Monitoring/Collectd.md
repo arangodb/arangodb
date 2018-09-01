@@ -9,7 +9,9 @@ The ArangoDB web interface shows a nice summary of the current state. I want to 
 Solution
 --------
 
-[Collectd](http://collectd.org) is an excellent tool to gather all kinds of metrics from a system and deliver it to a central monitoring like [Graphite](http://graphite.wikidot.com/screen-shots) and / or [Nagios](http://www.nagios.org/).
+[Collectd](http://collectd.org) is an excellent tool to gather all kinds of metrics from a system,
+and deliver it to a central monitoring like [Graphite](http://graphite.wikidot.com/screen-shots)
+and / or [Nagios](http://www.nagios.org/).
 
 ### Ingredients
 
@@ -20,7 +22,8 @@ For this recipe you need to install the following tools:
 
 ### Configuring collectd
 
-For aggregating the values we will use the [cURL-JSON plug-in](https://collectd.org/wiki/index.php/Plugin:cURL-JSON). We will store the values using the [Round-Robin-Database writer](https://collectd.org/wiki/index.php/RRD)(RRD) which `kcollectd` can later on present to you.
+For aggregating the values we will use the [cURL-JSON plug-in](https://collectd.org/wiki/index.php/Plugin:cURL-JSON).
+We will store the values using the [Round-Robin-Database writer](https://collectd.org/wiki/index.php/RRD)(RRD) which `kcollectd` can later on present to you.
 
 We assume your `collectd` comes from your distribution and reads its config from `/etc/collectd/collectd.conf`. Since this file tends to become pretty unreadable quickly, we use the `include` mechanism:
 
@@ -337,7 +340,7 @@ We will inspect the syslog to revalidate nothing went wrong:
 
 Now we start `kcollectd` to view the values in the RRD file:
 
-![Kcollectd screenshot](/assets/MonitoringWithCollectd/KCollectdJson.png)
+![Kcollectd screenshot](../assets/MonitoringWithCollectd/KCollectdJson.png)
 
 Since we started putting values in just now, we need to choose 'last hour' and zoom in a little more to inspect the values.
 

@@ -25,19 +25,21 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
+
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/JobQueue.h"
+#include "Scheduler/Scheduler.h"
+#include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
-  
-enum class RestStatus { DONE, WAITING, FAIL};
+
+enum class RestStatus { DONE, WAITING, FAIL };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
   friend class GeneralCommTask;
-  
+
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -49,8 +51,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual ~RestHandler();
 
  public:
+  void assignHandlerId();
   uint64_t handlerId() const { return _handlerId; }
-  bool needsOwnThread() const { return _needsOwnThread; }
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
@@ -65,33 +67,33 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics* stealStatistics() {
     return _statistics.exchange(nullptr);
   }
-  
+
   void setStatistics(RequestStatistics* stat);
 
-  /// Execute the rest handler state machine
-  void continueHandlerExecution() {
-    TRI_ASSERT(_state == HandlerState::PAUSED);
-    runHandlerStateMachine();
-  }
-  
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
     TRI_ASSERT(_state == HandlerState::PREPARE);
     _callback = std::move(cb);
     runHandlerStateMachine();
   }
-  
- public:
-  /// @brief rest handler name
-  virtual char const* name() const = 0;
-  /// @brief allow execution on the network thread
-  virtual bool isDirect() const = 0;
-  /// @brief priority of this request
-  virtual size_t queue() const { return JobQueue::STANDARD_QUEUE; }
 
-  virtual void prepareExecute() {}
+  /// Execute the rest handler state machine
+  void continueHandlerExecution();
+
+  /// @brief forwards the request to the appropriate server
+  bool forwardRequest();
+
+ public:
+  // rest handler name for debugging and logging
+  virtual char const* name() const = 0;
+
+  // what lane to use for this request
+  virtual RequestLane lane() const = 0;
+
+  virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
-  virtual void finalizeExecute() {}
+  virtual RestStatus continueExecute() { return RestStatus::DONE; }
+  virtual void shutdownExecute(bool isFinalized) noexcept {}
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
@@ -103,22 +105,41 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual void handleError(basics::Exception const&) = 0;
 
  protected:
-  
+
+  /// @brief determines the possible forwarding target for this request
+  ///
+  /// This method will be called to determine if the request should be
+  /// forwarded to another server, and if so, which server. If it should be
+  /// handled by this server, the method should return 0. Otherwise, this
+  /// method should return a valid (non-zero) short ID (TransactionID) for the
+  /// target server.
+  virtual uint32_t forwardingTarget() { return 0; }
+
   void resetResponse(rest::ResponseCode);
-  
+
+  void generateError(rest::ResponseCode, int, std::string const&);
+
+  // generates an error
+  void generateError(rest::ResponseCode, int);
+
+  // generates an error
+  void generateError(arangodb::Result const&);
+
  private:
-  
-  enum class HandlerState { PREPARE, EXECUTE, PAUSED, FINALIZE, DONE, FAILED };
-  
+
+  enum class HandlerState { PREPARE, EXECUTE, PAUSED, CONTINUED, FINALIZE, DONE, FAILED };
+
   void runHandlerStateMachine();
-  
-  int prepareEngine();
-  int executeEngine();
-  int finalizeEngine();
+
+  void prepareEngine();
+  /// @brief Executes the RestHandler
+  ///        May set the state to PAUSED, FINALIZE or FAILED
+  ///        If isContinue == true it will call continueExecute()
+  ///        otherwise execute() will be called
+  void executeEngine(bool isContinue);
+  void shutdownEngine();
 
  protected:
-  uint64_t const _handlerId;
-
   std::atomic<bool> _canceled;
 
   std::unique_ptr<GeneralRequest> _request;
@@ -127,9 +148,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<RequestStatistics*> _statistics;
 
  private:
-  bool _needsOwnThread = false;
+  uint64_t _handlerId;
+
   HandlerState _state;
   std::function<void(rest::RestHandler*)> _callback;
+
+  mutable Mutex _executionMutex;
 };
 
 }

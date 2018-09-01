@@ -33,17 +33,20 @@ class LogicalCollection;
 
 class ClusterIndex : public Index {
  public:
-  ClusterIndex(TRI_idx_iid_t, LogicalCollection*, ClusterEngineType engineType,
-               Index::IndexType type, arangodb::velocypack::Slice const&);
+  ClusterIndex(
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
+    ClusterEngineType engineType,
+    Index::IndexType type,
+    arangodb::velocypack::Slice const& info
+  );
 
- public:
   ~ClusterIndex();
 
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
-  
+
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder, bool withFigures,
-                    bool forPersistence) const override;
+  void toVelocyPack(velocypack::Builder& builder, unsigned flags) const override;
 
   IndexType type() const override { return _indexType; }
 
@@ -72,7 +75,7 @@ class ClusterIndex : public Index {
   size_t memory() const override { return 0; }
 
   int drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
-  int afterTruncate() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+  void afterTruncate() override { }
 
   bool hasCoveringIterator() const override;
 

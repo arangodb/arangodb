@@ -192,7 +192,7 @@ void ensureLink(
 
   json.openObject();
 
-  if (!link->json(json, false)) {
+  if (!link->json(json)) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failed to generate jSON definition for link '" << iid
         << "' to the collection '" << cid
@@ -202,13 +202,11 @@ void ensureLink(
 
   json.close();
 
-  static std::vector<std::string> const EMPTY;
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(*vocbase),
-    col.get(),
+    *col,
     arangodb::AccessMode::Type::EXCLUSIVE
   );
-
   auto res = trx.begin();
   bool created;
 
@@ -353,11 +351,11 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       return;
     }
 
-    auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
+    auto docId = RocksDBKey::documentId(key);
     auto doc = RocksDBValue::data(value);
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()),
-      coll.get(),
+      *coll,
       arangodb::AccessMode::Type::WRITE
     );
 
@@ -396,10 +394,10 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
       return;
     }
 
-    auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
+    auto docId = RocksDBKey::documentId(key);
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(coll->vocbase()),
-      coll.get(),
+      *coll,
       arangodb::AccessMode::Type::WRITE
     );
 

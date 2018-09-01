@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
+#include "Graph/Graph.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -475,6 +476,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
+}
+
+CostEstimate GraphNode::estimateCost() const {
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  size_t incoming = estimate.estimatedNrItems;
+  estimate.estimatedCost += incoming * _options->estimateCost(estimate.estimatedNrItems);
+  return estimate;
 }
 
 void GraphNode::addEngine(TraverserEngineID const& engine,

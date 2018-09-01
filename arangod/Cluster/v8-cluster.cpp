@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +30,8 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ShardDistributionReporter.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Sharding/ShardDistributionReporter.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -843,9 +843,7 @@ static void JS_GetResponsibleShardClusterInfo(
   auto collInfo = ci->getCollection(vocbase.name(), collectionId);
   bool usesDefaultShardingAttributes;
 
-  res = ClusterInfo::instance()->getResponsibleShard(
-      collInfo.get(), builder.slice(), documentIsComplete, shardId,
-      usesDefaultShardingAttributes);
+  res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete, shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -930,10 +928,10 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
     if (itr != serverAliases.end()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
-		  TRI_V8_STD_STRING(isolate, itr->second));
+                  TRI_V8_STD_STRING(isolate, itr->second));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "serverName"),
-		  TRI_V8_STD_STRING(isolate, id));
+                  TRI_V8_STD_STRING(isolate, id));
     }
       
     l->Set((uint32_t)i, result);
@@ -1115,6 +1113,10 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
     if (!result.successful()) {
       THROW_AGENCY_EXCEPTION(result);
     }
+    result = comm.increment("Current/Version");
+    if (!result.successful()) {
+      THROW_AGENCY_EXCEPTION(result);
+    }
   }
   
   TRI_V8_TRY_CATCH_END
@@ -1155,27 +1157,6 @@ static void JS_JavaScriptPathServerState(
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
-
-#ifdef DEBUG_SYNC_REPLICATION
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set arangoserver state to initialized
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EnableSyncReplicationDebug(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("enableSyncReplicationDebug()");
-  }
-
-  ServerState::instance()->setInitialized();
-  ServerState::instance()->setId("repltest");
-  AgencyComm::syncReplDebug = true;
-  TRI_V8_TRY_CATCH_END
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the cluster is initialized
@@ -1234,26 +1215,6 @@ static void JS_RoleServerState(
       ServerState::roleToString(ServerState::instance()->getRole());
 
   TRI_V8_RETURN_STD_STRING(role);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the server id (used for testing)
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetIdServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setId(<id>)");
-  }
-
-  std::string const id = TRI_ObjectToString(args[0]);
-  ServerState::instance()->setId(id);
-
-  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1915,7 +1876,7 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
     options->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
     
-    std::string authorization = "bearer " + af->tokenCache()->jwtToken();
+    std::string authorization = "bearer " + af->tokenCache().jwtToken();
     v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
     headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
     
@@ -2107,18 +2068,12 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "javaScriptPath"),
                        JS_JavaScriptPathServerState);
-#ifdef DEBUG_SYNC_REPLICATION
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enableSyncReplicationDebug"),
-                       JS_EnableSyncReplicationDebug);
-#endif
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isCoordinator"),
                        JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "role"),
                        JS_RoleServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setId"),
-                       JS_SetIdServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setRole"),
                        JS_SetRoleServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "redetermineRole"),

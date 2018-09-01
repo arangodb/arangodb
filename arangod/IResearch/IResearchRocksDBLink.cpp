@@ -37,7 +37,9 @@ NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchRocksDBLink::IResearchRocksDBLink(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection
+)
     : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
@@ -51,7 +53,7 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 }
 
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -68,26 +70,44 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 #endif
 
     return link && link->init(definition) ? ptr : nullptr;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, Logger::DEVEL)
+      << "caught exception while creating IResearch view RocksDB link '" << id << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view RocksDB link '" << id << "'" << e.what();
+      << "caught exception while creating IResearch view RocksDB link '" << id << "': " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
       << "caught exception while creating IResearch view RocksDB link '" << id << "'";
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
 }
 
-void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
-                                        bool withFigures,
-                                        bool forPersistence) const {
-  TRI_ASSERT(!builder.isOpenObject());
-  builder.openObject();
-  bool success = json(builder, forPersistence);
-  TRI_ASSERT(success);
+void IResearchRocksDBLink::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    unsigned int flags
+) const {
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failed to generate link definition for IResearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
 
-  if (withFigures) {
+  builder.openObject();
+
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to generate link definition for IResearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
+
+  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();
@@ -101,17 +121,19 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 
 void IResearchRocksDBLink::writeRocksWalMarker() {
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
-      Index::_collection->vocbase().id(),
-      Index::_collection->id(),
-      view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
-      Index::_iid);
-
+    Index::_collection.vocbase().id(),
+    Index::_collection.id(),
+    view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
+    Index::_iid
+  );
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;  // TODO: check which options would make sense
   auto db = rocksutils::globalRocksDB();
 
   batch.PutLogData(logValue.slice());
+
   auto status = rocksutils::convertStatus(db->Write(wo, &batch));
+
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }
@@ -121,5 +143,5 @@ NS_END      // iresearch
 NS_END  // arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

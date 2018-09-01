@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com//arangodb-helper/arangodb.git / docs/Manual/ -->
+<!-- don't edit here, its from https://@github.com/arangodb-helper/arangodb.git / docs/Manual/ -->
 # Starting an ArangoDB cluster or database the easy way
 
 Starting an ArangoDB cluster is complex. It involves starting various servers with
@@ -149,11 +149,15 @@ Note: When you restart the starter, it remembers the original `--starter.local` 
 
 ## Starting a cluster with datacenter to datacenter synchronization
 
+{% hint 'info' %}
+This feature is only available in the
+[**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
+{% endhint %}
+
 Datacenter to datacenter replication (DC2DC) requires a normal ArangoDB cluster in both data centers
 and one or more (`arangosync`) syncmasters & syncworkers in both data centers.
 The starter enables you to run these syncmasters & syncworkers in combination with your normal
 cluster.
-Note: Datacenter to datacenter replication is an ArangoDB Enterprise feature.
 
 To run a starter with DC2DC support you add the following arguments to the starters command line:
 

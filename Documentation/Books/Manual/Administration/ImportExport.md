@@ -1,7 +1,9 @@
 Import and Export
 =================
 
-Import and export can be done via the tools [_arangoimport_](../Programs/Arangoimport/README.md) and [_arangoexport_](../Programs/Arangoexport/README.md)
+Imports and exports can be done with the tools
+[_arangoimport_](../Programs/Arangoimport/README.md) and
+[_arangoexport_](../Programs/Arangoexport/README.md).
 
 <!-- Importing from files -->
 

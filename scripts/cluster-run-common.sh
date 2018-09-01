@@ -11,11 +11,12 @@ function help() {
   echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
   echo "     --log-level-agency   Log level (agency)  (string           default: )"
   echo "     --log-level-cluster  Log level (cluster) (string           default: )"
+  echo "  -l/--log-level          Log level           (string           default: )"
   echo "  -i/--interactive        Interactive mode    (C|D|R            default: '')"
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
-  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: false)"
+  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: true)"
   echo "  -q/--source-dir         ArangoDB source dir (default: .)"
   echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
   echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
@@ -68,6 +69,10 @@ while [[ -n "$1" ]]; do
       ;;
     -t|--transport)
       TRANSPORT=${2}
+      shift
+      ;;
+    -l|--log-level)
+      LOG_LEVEL=${2}
       shift
       ;;
     --log-level-agency)

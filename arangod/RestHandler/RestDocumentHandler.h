@@ -35,18 +35,15 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override final;
   char const* name() const override final { return "RestDocumentHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
- protected:
-  virtual TRI_col_type_e getCollectionType() const {
-    return TRI_COL_TYPE_DOCUMENT;
-  }
-
-  // creates a document
-  virtual bool createDocument();
+ private:
+  // inserts a document
+  bool insertDocument();
 
   // reads a single or all documents
   bool readDocument();
@@ -69,8 +66,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   // helper function for replace and update
   bool modifyDocument(bool);
 
-  // deletes a document
-  bool deleteDocument();
+  // removes a document
+  bool removeDocument();
 };
 }
 

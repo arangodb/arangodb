@@ -41,6 +41,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -53,6 +54,10 @@
 
 namespace {
 
+/// @brief fake client id we will send to the server. the server keeps
+/// track of all connected clients
+static uint64_t clientId = 0;
+
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
 
@@ -60,8 +65,8 @@ constexpr auto FeatureName = "Dump";
 constexpr uint64_t MinChunkSize = 1024 * 128;
 
 /// @brief maximum amount of data to fetch from server in a single batch
-constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 // NB: larger value may cause tcp issues (check exact limits)
+constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 
 /// @brief generic error for if server returns bad/unexpected json
 const arangodb::Result ErrorMalformedJsonResponse = {
@@ -104,19 +109,19 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
 
 /// @brief start a batch via the replication API
 std::pair<arangodb::Result, uint64_t> startBatch(
-    arangodb::httpclient::SimpleHttpClient& client, std::string DBserver) {
+    arangodb::httpclient::SimpleHttpClient& client, std::string const& DBserver) {
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::StringUtils::uint64;
 
-  static std::string const url = "/_api/replication/batch";
-  static std::string const body = "{\"ttl\":300}";
+  std::string url = "/_api/replication/batch?serverId=" + std::to_string(clientId);
+  std::string const body = "{\"ttl\":300}";
   std::string urlExt;
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::POST, url + urlExt,
+      client.request(arangodb::rest::RequestType::POST, url,
                      body.c_str(), body.size()));
   auto check = ::checkHttpResponse(client, response);
   if (check.fail()) {
@@ -140,19 +145,18 @@ std::pair<arangodb::Result, uint64_t> startBatch(
 
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
-                 std::string DBserver, uint64_t batchId) {
+                 std::string const& DBserver, uint64_t batchId) {
   using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string const url = "/_api/replication/batch/" + itoa(batchId);
-  static std::string const body = "{\"ttl\":300}";
-  std::string urlExt;
+  std::string url = "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + std::to_string(clientId);
+  std::string const body = "{\"ttl\":300}";
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::PUT, url + urlExt,
+      client.request(arangodb::rest::RequestType::PUT, url,
                      body.c_str(), body.size()));
   // ignore any return value
 }
@@ -163,14 +167,13 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   using arangodb::basics::StringUtils::itoa;
   TRI_ASSERT(batchId > 0);
 
-  std::string const url = "/_api/replication/batch/" + itoa(batchId);
-  std::string urlExt;
+  std::string url = "/_api/replication/batch/" + itoa(batchId) + "?serverId=" + std::to_string(clientId);
   if (!DBserver.empty()) {
-    urlExt = "?DBserver=" + DBserver;
+    url += "&DBserver=" + DBserver;
   }
 
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(arangodb::rest::RequestType::DELETE_REQ, url + urlExt,
+      client.request(arangodb::rest::RequestType::DELETE_REQ, url,
                      nullptr, 0));
   // ignore any return value
 
@@ -472,7 +475,7 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
       name{n},
       type{t} {}
 
-DumpFeature::DumpFeature(application_features::ApplicationServer* server,
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
                          int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
       _clientManager{Logger::DUMP},
@@ -480,12 +483,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Logger");
-
-#ifdef USE_ENTERPRISE
-  startsAfter("Encryption");
-#endif
+  startsAfter("BasicsPhase");
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -597,7 +595,7 @@ void DumpFeature::validateOptions(
 
 // dump data from server
 Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
-                            std::string& dbName) {
+                            std::string const& dbName) {
   Result result;
   uint64_t batchId;
   std::tie(result, batchId) = ::startBatch(client, "");
@@ -638,47 +636,23 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
-
-  // read the server's max tick value
-  std::string const tickString =
-      basics::VelocyPackHelper::getStringValue(body, "tick", "");
-  if (tickString == "") {
-    return ::ErrorMalformedJsonResponse;
-  }
-  LOG_TOPIC(INFO, Logger::DUMP)
-      << "Last tick provided by server is: " << tickString;
-
-  // set the local max tick value
-  uint64_t maxTick = basics::StringUtils::uint64(tickString);
-  // check if the user specified a max tick value
-  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
-    maxTick = _options.tickEnd;
+  
+  // get the view list
+  VPackSlice views = body.get("views");
+  if (!views.isArray()) {
+    views = VPackSlice::emptyArraySlice();
   }
 
-  try {
-    VPackBuilder meta;
-    meta.openObject();
-    meta.add("database", VPackValue(dbName));
-    meta.add("lastTickAtDumpStart", VPackValue(tickString));
-    meta.close();
-
-    // save last tick in file
-    auto file = _directory->writableFile("dump.json", true);
-    if (!::fileOk(file.get())) {
-      return ::fileError(file.get(), true);
-    }
-
-    std::string const metaString = meta.slice().toJson();
-    file->write(metaString.c_str(), metaString.size());
-    if (file->status().fail()) {
-      return file->status();
-    }
-  } catch (basics::Exception const& ex) {
-    return {ex.code(), ex.what()};
-  } catch (std::exception const& ex) {
-    return {TRI_ERROR_INTERNAL, ex.what()};
-  } catch (...) {
-    return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+  // Step 1. Store view definition files
+  Result res = storeDumpJson(body, dbName);
+  if (res.fail()) {
+    return res;
+  }
+  
+  // Step 2. Store view definition files
+  res = storeViews(views);
+  if (res.fail()) {
+    return res;
   }
 
   // create a lookup table for collections
@@ -688,7 +662,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::pair<std::string, bool>(_options.collections[i], true));
   }
 
-  // iterate over collections
+  // Step 3. iterate over collections, queue dump jobs
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -738,7 +712,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         std::to_string(cid), name, collectionType);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
-
+  
   // wait for all jobs to finish, then check for errors
   _clientTaskQueue.waitForIdle();
   {
@@ -752,7 +726,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
 }
 
 // dump data from cluster via a coordinator
-Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
+Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
+                                   std::string const& dbname) {
   // get the cluster inventory
   std::string const url =
       "/_api/replication/clusterInventory?includeSystem=" +
@@ -781,6 +756,24 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
   if (!collections.isArray()) {
     return ::ErrorMalformedJsonResponse;
   }
+  
+  // get the view list
+  VPackSlice views = body.get("views");
+  if (!views.isArray()) {
+    views = VPackSlice::emptyArraySlice();
+  }
+  
+  // Step 1. Store view definition files
+  Result res = storeDumpJson(body, dbname);
+  if (res.fail()) {
+    return res;
+  }
+  
+  // Step 2. Store view definition files
+  res = storeViews(views);
+  if (res.fail()) {
+    return res;
+  }
 
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
@@ -789,7 +782,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
         std::pair<std::string, bool>(_options.collections[i], true));
   }
 
-  // iterate over collections
+  // Step 3. iterate over collections
   for (auto const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -842,7 +835,7 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
           return {
               TRI_ERROR_INTERNAL,
               std::string("Collection ") + name +
-                  "'s shard distribution is based on a that of collection " +
+                  "'s shard distribution is based on that of collection " +
                   prototypeCollection +
                   ", which is not dumped along. You may dump the collection "
                   "regardless of the missing prototype collection by using "
@@ -870,6 +863,85 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
 
   return {TRI_ERROR_NO_ERROR};
 }
+  
+Result DumpFeature::storeDumpJson(VPackSlice const& body,
+                                  std::string const& dbName) const {
+  
+  // read the server's max tick value
+  std::string const tickString =
+  basics::VelocyPackHelper::getStringValue(body, "tick", "");
+  if (tickString == "") {
+    return ::ErrorMalformedJsonResponse;
+  }
+  LOG_TOPIC(INFO, Logger::DUMP)
+  << "Last tick provided by server is: " << tickString;
+  
+  // set the local max tick value
+  uint64_t maxTick = basics::StringUtils::uint64(tickString);
+  // check if the user specified a max tick value
+  if (_options.tickEnd > 0 && maxTick > _options.tickEnd) {
+    maxTick = _options.tickEnd;
+  }
+  
+  try {
+    VPackBuilder meta;
+    meta.openObject();
+    meta.add("database", VPackValue(dbName));
+    meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    meta.close();
+    
+    // save last tick in file
+    auto file = _directory->writableFile("dump.json", true);
+    if (!::fileOk(file.get())) {
+      return ::fileError(file.get(), true);
+    }
+    
+    std::string const metaString = meta.slice().toJson();
+    file->write(metaString.c_str(), metaString.size());
+    if (file->status().fail()) {
+      return file->status();
+    }
+  } catch (basics::Exception const& ex) {
+    return {ex.code(), ex.what()};
+  } catch (std::exception const& ex) {
+    return {TRI_ERROR_INTERNAL, ex.what()};
+  } catch (...) {
+    return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+  }
+  return {};
+}
+  
+Result DumpFeature::storeViews(VPackSlice const& views) const {
+  for (VPackSlice view : VPackArrayIterator(views)) {
+    auto nameSlice = view.get(StaticStrings::DataSourceName);
+    if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+      continue; // ignore
+    }
+    
+    try {
+      std::string fname = nameSlice.copyString();
+      fname.append(".view.json");
+      // save last tick in file
+      auto file = _directory->writableFile(fname, true);
+      if (!::fileOk(file.get())) {
+        return ::fileError(file.get(), true);
+      }
+      
+      std::string const viewString = view.toJson();
+      file->write(viewString.c_str(), viewString.size());
+      if (file->status().fail()) {
+        return file->status();
+      }
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      return {TRI_ERROR_INTERNAL, ex.what()};
+    } catch (...) {
+      return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+    }
+  }
+  return {};
+}
 
 void DumpFeature::reportError(Result const& error) {
   try {
@@ -884,11 +956,14 @@ void DumpFeature::reportError(Result const& error) {
 void DumpFeature::start() {
   _exitCode = EXIT_SUCCESS;
 
+  // generate a fake client id that we sent to the server
+  ::clientId = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
+
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
   _directory =
-      std::make_unique<ManagedDirectory>(_options.outputPath, true, true);
+      std::make_unique<ManagedDirectory>(_options.outputPath, !_options.overwrite, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_EXISTS:
@@ -954,13 +1029,13 @@ void DumpFeature::start() {
     if (!_options.clusterMode) {
       res = runDump(*httpClient, dbName);
     } else {
-      res = runClusterDump(*httpClient);
+      res = runClusterDump(*httpClient, dbName);
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught exception: " << ex.what();
     res = {TRI_ERROR_INTERNAL};
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Error: caught unknown exception";
+    LOG_TOPIC(ERR, Logger::FIXME) << "caught unknown exception";
     res = {TRI_ERROR_INTERNAL};
   }
 

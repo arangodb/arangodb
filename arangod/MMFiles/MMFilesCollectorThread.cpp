@@ -50,7 +50,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 
@@ -283,6 +282,7 @@ void MMFilesCollectorThread::forceStop() {
 
 /// @brief main loop
 void MMFilesCollectorThread::run() {
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   int counter = 0;
 
   while (true) {
@@ -291,7 +291,7 @@ void MMFilesCollectorThread::run() {
 
     try {
       // step 1: collect a logfile if any qualifies
-      if (!isStopping()) {
+      if (!isStopping() && !engine->isCompactionDisabled()) {
         // don't collect additional logfiles in case we want to shut down
         bool worked;
         int res = this->collectLogfiles(worked);
@@ -442,10 +442,16 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
 /// @brief step 2: process all still-queued collection operations
 int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
+  MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
+
   // always init result variable
   worked = false;
 
   TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
+    return TRI_ERROR_NO_ERROR;
+  }
+            
+  if (engine->isCompactionDisabled()) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -675,18 +681,14 @@ void MMFilesCollectorThread::processCollectionMarker(
     MMFilesSimpleIndexElement element = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (element) {
-      ManagedDocumentResult mmdr;
-      if (collection->readDocument(&trx, element.localDocumentId(), mmdr)) {
-        uint8_t const* vpack = mmdr.vpack();
-        if (vpack != nullptr) {
-          TRI_voc_rid_t currentRevision = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
-          if (revisionId == currentRevision) {
-            // make it point to datafile now
-            MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
-            wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false);
-          }
+      collection->readDocumentWithCallback(&trx, element.localDocumentId(), [&](LocalDocumentId const&, VPackSlice doc) {
+        TRI_voc_rid_t currentRevision = transaction::helpers::extractRevFromDocument(doc);
+        if (revisionId == currentRevision) {
+          // make it point to datafile now
+          MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
+          wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false);
         }
-      }
+      });
     }
 
     if (wasAdjusted) {
@@ -714,18 +716,14 @@ void MMFilesCollectorThread::processCollectionMarker(
     MMFilesSimpleIndexElement found = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
     if (found) {
-      ManagedDocumentResult mmdr;
-      if (collection->readDocument(&trx, found.localDocumentId(), mmdr)) {
-        uint8_t const* vpack = mmdr.vpack();
-        if (vpack != nullptr) {
-          TRI_voc_rid_t currentRevisionId = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
-          if (currentRevisionId > revisionId) {
-            // somebody re-created the document with a newer revision
-            dfi.numberDead++;
-            dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
-          }
+      collection->readDocumentWithCallback(&trx, found.localDocumentId(), [&](LocalDocumentId const&, VPackSlice doc) {
+        TRI_voc_rid_t currentRevisionId = transaction::helpers::extractRevFromDocument(doc);
+        if (currentRevisionId > revisionId) {
+          // somebody re-created the document with a newer revision
+          dfi.numberDead++;
+          dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
         }
-      }
+      });
     }
   }
 }
@@ -755,7 +753,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-    collection,
+    *collection,
     AccessMode::Type::WRITE
   );
 

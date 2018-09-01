@@ -80,7 +80,7 @@ Specify *true* and the query will be executed in a **streaming** fashion. The qu
 not stored on the server, but calculated on the fly. *Beware*: long-running queries will
 need to hold the collection locks for as long as the query cursor exists. 
 When set to *false* a query will be executed right away in its entirety. 
-In that case query results are either returned right away (if the resultset is small enough),
+In that case query results are either returned right away (if the result set is small enough),
 or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`). 
 It is advisable to *only* use this option on short-running queries or without exclusive locks 
 (write-locks on MMFiles).
@@ -102,7 +102,7 @@ per query plan node in sub-attribute *stats.nodes* of the *extra* return attribu
 Additionally the query plan is returned in the sub-attribute *extra.plan*.
 
 @RESTSTRUCT{satelliteSyncWait,post_api_cursor_opts,boolean,optional,}
-This *enterprise* parameter allows to configure how long a DBServer will have time
+This *Enterprise Edition* parameter allows to configure how long a DBServer will have time
 to bring the satellite collections involved in the query into sync.
 The default value is *60.0* (seconds). When the max time has been reached the query
 will be stopped.

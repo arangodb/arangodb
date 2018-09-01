@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -178,7 +178,7 @@ class Agent final : public arangodb::Thread,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Report a failed append entry call from AgentCallback
-  void reportFailed(std::string const& slaveId, size_t toLog);
+  void reportFailed(std::string const& slaveId, size_t toLog, bool sent = false);
 
   /// @brief Wait for slaves to confirm appended entries
   AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
@@ -240,7 +240,7 @@ class Agent final : public arangodb::Thread,
   query_t allLogs() const;
 
   /// @brief Last contact with followers
-  query_t lastAckedAgo() const;
+  void lastAckedAgo(Builder&) const;
 
   /// @brief Am I active agent
   bool active() const;
@@ -306,9 +306,6 @@ class Agent final : public arangodb::Thread,
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
-
-  /// @brief Notify inactive pool members of changes in configuration
-  void notifyInactive() const;
 
   /// @brief Leader election delegate
   Constituent _constituent;

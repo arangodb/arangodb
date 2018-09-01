@@ -52,8 +52,13 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
-  STORAGE_ENGINE=""
-else
+  #default engine is RocksDB
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+elif [ "$USE_ROCKSDB" == "0" ]; then 
+  #explicitly disable RocksDB engine, so use MMFiles
+  STORAGE_ENGINE="--server.storage-engine=mmfiles"
+else 
+  #any value other than "0" means RocksDB engine
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
 fi
 DEFAULT_REPLICATION=""
@@ -143,7 +148,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
-        --server.threads 16 \
         --log.file active/$port.log \
         --log.level $LOG_LEVEL_AGENCY \
         $STORAGE_ENGINE \
@@ -171,7 +175,6 @@ start() {
         --log.file active/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \
-        --server.threads 5 \
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path active/apps$PORT \

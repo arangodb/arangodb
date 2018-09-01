@@ -40,12 +40,15 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
  public:
   RocksDBGeoIndex() = delete;
 
-  RocksDBGeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                    velocypack::Slice const&, std::string const& typeName);
+  RocksDBGeoIndex(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+  );
 
   ~RocksDBGeoIndex() override {}
 
- public:
   IndexType type() const override {
     if ("geo1" == _typeName) {
       return TRI_IDX_TYPE_GEO1_INDEX;
@@ -73,8 +76,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&, bool, bool) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(velocypack::Builder&, unsigned flags) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
@@ -89,14 +91,6 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
-
-  /// @brief looks up all points within a given radius
-  void withinQuery(transaction::Methods*, double, double,
-                              double, std::string const&, VPackBuilder&) const;
-
-  /// @brief looks up the nearest points
-  void nearQuery(transaction::Methods*, double, double,
-                            size_t, std::string const&, VPackBuilder&) const;
 
  private:
   std::string const _typeName;

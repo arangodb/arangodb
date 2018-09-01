@@ -92,7 +92,7 @@ constexpr int TRI_ERROR_CANNOT_OVERWRITE_FILE                                   
 
 /// 17: ERROR_TYPE_ERROR
 /// "type error"
-/// Will be raised when a type error is unencountered.
+/// Will be raised when a type error is encountered.
 constexpr int TRI_ERROR_TYPE_ERROR                                              = 17;
 
 /// 18: ERROR_LOCK_TIMEOUT
@@ -172,6 +172,11 @@ constexpr int TRI_ERROR_CANNOT_READ_FILE                                        
 /// "incompatible server version"
 /// Will be raised when a server is running an incompatible version of ArangoDB.
 constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
+/// 36: ERROR_DISABLED
+/// "disabled"
+/// Will be raised when a requested resource is not enabled.
+constexpr int TRI_ERROR_DISABLED                                                = 36;
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
@@ -993,6 +998,11 @@ constexpr int TRI_ERROR_QUERY_SCRIPT                                            
 /// Will be raised when a number is outside the expected range.
 constexpr int TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE                               = 1504;
 
+/// 1505: ERROR_QUERY_INVALID_GEO_VALUE
+/// "invalid geo coordinate value"
+/// Will be raised when a geo index coordinate is invalid or out of range.
+constexpr int TRI_ERROR_QUERY_INVALID_GEO_VALUE                                 = 1505;
+
 /// 1510: ERROR_QUERY_VARIABLE_NAME_INVALID
 /// "variable name '%s' has an invalid format"
 /// Will be raised when an invalid variable name is used.
@@ -1136,11 +1146,6 @@ constexpr int TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              
 /// Will be raised when an AQL data-modification query contains an invalid
 /// options specification.
 constexpr int TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 = 1576;
-
-/// 1577: ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION
-/// "collection '%s' used as expression operand"
-/// Will be raised when a collection is used as an operand in an AQL expression.
-constexpr int TRI_ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION                     = 1577;
 
 /// 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
 /// "disallowed dynamic call to '%s'"
@@ -1507,6 +1512,27 @@ constexpr int TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           
 /// The requested graph has no edge collections.
 constexpr int TRI_ERROR_GRAPH_EMPTY                                             = 1940;
 
+/// 1941: ERROR_GRAPH_INTERNAL_DATA_CORRUPT
+/// "internal graph data corrupt"
+/// The _graphs collection contains invalid data.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT                             = 1941;
+
+/// 1942: ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET
+/// "edge collection already set"
+/// Tried to add an edge collection which is already defined.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              = 1942;
+
+/// 1943: ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST
+/// "malformed orphan list"
+/// the orphan list argument is malformed. It has to be an array of strings.
+constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      = 1943;
+
+/// 1944: ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT
+/// "edge definition collection is a document collection"
+/// the collection used as a relation is existing, but is a document
+/// collection, it cannot be used here.
+constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
@@ -1660,6 +1686,12 @@ constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
 
+/// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
+/// "smart graph attribute mismatch"
+/// The smart graph attribute of the given collection does not match the smart
+/// graph attribute of the graph.
+constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
+
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"
 /// General error during cluster repairs
@@ -1803,6 +1835,26 @@ constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
 constexpr int TRI_ERROR_QUEUE_FULL                                              = 21003;
+
+/// 6001: ERROR_ACTION_ALREADY_REGISTERED
+/// "maintenance action already registered"
+/// Action with this description has been registered already
+constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 6001;
+
+/// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
+/// "this maintenance action cannot be stopped"
+/// This maintenance action cannot be stopped once it is started
+constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
+
+/// 6003: ERROR_ACTION_UNFINISHED
+/// "maintenance action still processing"
+/// This maintenance action is still processing
+constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
+
+/// 6004: ERROR_NO_SUCH_ACTION
+/// "no such maintenance action"
+/// No such maintenance action exists
+constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
 
 
 /// register all errors for ArangoDB

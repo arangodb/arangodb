@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -557,7 +557,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
         pv.pop_back();
       }
       if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
-        copy(pv) = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        copy(pv) = arangodb::velocypack::Slice::emptyObjectSlice();
       }
     }
   }

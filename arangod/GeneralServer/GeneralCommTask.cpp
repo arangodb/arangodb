@@ -41,9 +41,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Job.h"
 #include "Scheduler/JobGuard.h"
-#include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
@@ -71,12 +69,10 @@ GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
     : Task(scheduler, "GeneralCommTask"),
-      SocketTask(scheduler, std::move(socket), std::move(info), keepAliveTimeout,
-                 skipSocketInit),
+      SocketTask(scheduler, std::move(socket), std::move(info),
+                 keepAliveTimeout, skipSocketInit),
       _server(server),
-      _auth(nullptr) {
-  _auth = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
+      _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -134,27 +130,97 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
-GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
-    GeneralRequest& req) {
-  if (!::resolveRequestContext(req)) {
+GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
+  
+  // Step 1: In the shutdown phase we simply return 503:
+  if (application_features::ApplicationServer::isStopping()) {
+    auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+    addResponse(*res, nullptr);
+    return RequestFlow::Abort;
+  }
+  
+  bool found;
+  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+  if (found) { // log request source in cluster for debugging
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
+    << "\",\"" << source << "\"";
+  }
+  
+  // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
+  std::string const& path = req.requestPath();
+  ServerState::Mode mode = ServerState::mode();
+  switch (mode) {
+    case ServerState::Mode::MAINTENANCE: {
+      // In the bootstrap phase, we would like that coordinators answer the
+      // following endpoints, but not yet others:
+      if ((!ServerState::instance()->isCoordinator() &&
+           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+           path.find("/_api/aql") == std::string::npos)) {
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+            std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+            addResponse(*res, nullptr);
+            return RequestFlow::Abort;
+          }
+      break;
+    }
+    case ServerState::Mode::REDIRECT: {
+      bool found = false;
+      std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
+      if (found && StringUtils::boolean(val)) {
+        break; // continue with auth check
+      }
+    }
+    // intentionally falls through
+    case ServerState::Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/cluster/health") == std::string::npos &&
+          path.find("/_admin/log") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_admin/server/availability") == std::string::npos &&
+          path.find("/_admin/status") == std::string::npos &&
+          path.find("/_admin/statistics") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          (mode == ServerState::Mode::TRYAGAIN ||
+           path.find("/_api/version") == std::string::npos) &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Redirect/Try-again: refused path: " << path;
+        std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
+        addResponse(*res, nullptr);
+        return RequestFlow::Abort;
+      }
+      break;
+    }
+    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::INVALID:
+      // no special handling required
+      break;
+  }
+  
+  // Step 3: Try to resolve vocbase and use
+  if (!::resolveRequestContext(req)) { // false if db not found
+    if (_auth->isActive()) {
+      // prevent guessing database names (issue #5030)
+      auth::Level lvl = auth::Level::NONE;
+      if (req.authenticated()) {
+        lvl = _auth->userManager()->databaseAuthLevel(req.user(), req.databaseName());
+      }
+      if (lvl == auth::Level::NONE) {
+        addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
+        return RequestFlow::Abort;
+      }
+    }
     addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-
+                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
 
-  // check source
-  bool found;
-  std::string const& source =
-      req.header(StaticStrings::ClusterCommSource, found);
-  if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
-                                       << "\",\"" << source << "\"";
-  }
-
-  // now check the authentication will determine if the user can access
+  // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
   const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
@@ -165,7 +231,8 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  
+
+  // Step 5: Update global HLC timestamp from authorized requests
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
@@ -182,13 +249,14 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
 
 /// Must be called from addResponse, before response is rendered
 void GeneralCommTask::finishExecution(GeneralResponse& res) const {
-  ServerState::Mode mode = ServerState::serverMode();
+  ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT ||
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
   }
-
-  // TODO add server ID on coordinators ?
+  if (mode == ServerState::Mode::REDIRECT) {
+    res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
 }
 
 /// Push this request into the execution pipeline
@@ -225,6 +293,13 @@ void GeneralCommTask::executeRequest(
     return;
   }
 
+  // forward to correct server if necessary
+  bool forwarded = handler->forwardRequest();
+  if (forwarded) {
+    addResponse(*handler->response(), handler->stealStatistics());
+    return;
+  }
+
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
     RequestStatistics::SET_ASYNC(statistics(messageId));
@@ -254,8 +329,7 @@ void GeneralCommTask::executeRequest(
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        request->contentTypeResponse(), messageId,
-                       TRI_ERROR_QUEUE_FULL,
-                       TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                       TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -339,6 +413,12 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
   addSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
+void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
+                                       rest::ContentType respType,
+                                       uint64_t messageId, int errorNum) {
+  addErrorResponse(code, respType, messageId, errorNum, TRI_errno_string(errorNum));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -347,64 +427,20 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  int const queuePrio = handler->queue();
-  bool isDirect = false;
-  bool isPrio = false;
-
-  // Strand implementations may cause everything to halt
-  // if we handle AQL snippets directly on the network thread
-  if (queuePrio == JobQueue::AQL_QUEUE) {
-    isPrio = true;
-  } else if (handler->isDirect()) {
-    isDirect = true;
-  } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _scheduler->shouldExecuteDirect()) {
-    isDirect = true;
-  } else if (ServerState::instance()->isDBServer()) {
-    isPrio = true;
-  } else if (handler->needsOwnThread()) {
-    isPrio = true;
-  }
-
-  if (isDirect && !allowDirectHandling()) {
-    isDirect = false;
-    isPrio = true;
-  }
-
-  if (isDirect) {
-    TRI_ASSERT(handler->queue() !=
-               JobQueue::AQL_QUEUE);  // not allowed with strands
-    handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
-                          std::move(handler));
-    return true;
-  }
-
+  auto const lane = handler->lane();
   auto self = shared_from_this();
 
-  if (isPrio) {
-    _scheduler->post([self, this, handler]() {
-      handleRequestDirectly(basics::ConditionalLocking::DoLock,
-                            std::move(handler));
-    });
-    return true;
-  }
+  bool ok = SchedulerFeature::SCHEDULER->queue(PriorityRequestLane(lane), [self, this, handler]() {
+    handleRequestDirectly(basics::ConditionalLocking::DoLock,
+                          std::move(handler));
+  });
 
-  // ok, we need to queue the request
-  LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
-  auto job = std::make_unique<Job>(
-      _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) {
-        handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
-      });
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                      handler->request()->contentTypeResponse(), messageId,
-                     TRI_ERROR_QUEUE_FULL,
-                     TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+                     TRI_ERROR_QUEUE_FULL);
   }
 
   return ok;
@@ -415,18 +451,18 @@ void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  handler->runHandler([this, doLock](rest::RestHandler* handler) {
+  auto self = shared_from_this();
+  handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
-    if (doLock) {
-      auto self = shared_from_this();
+    if (doLock || !_peer->runningInThisThread()) {
+      // Note that the latter is for the case that a handler was put to sleep
+      // and woke up in a different thread.
       auto h = handler->shared_from_this();
 
-      _peer->post([self, this, stat, h]() {
-        addResponse(*(h->response()), stat);
-      });
+      _peer->post(
+          [self, this, stat, h]() { addResponse(*(h->response()), stat); });
     } else {
-      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });
@@ -436,25 +472,23 @@ void GeneralCommTask::handleRequestDirectly(
 bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
   auto self = shared_from_this();
+
   if (jobId != nullptr) {
-    // use the handler id as identifier
+    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
     *jobId = handler->handlerId();
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+
     // callback will persist the response with the AsyncJobManager
-    auto job = std::make_unique<Job>(
-        _server, std::move(handler), [self](std::shared_ptr<RestHandler> h) {
-          h->runHandler([self](RestHandler* h) {
+    return SchedulerFeature::SCHEDULER->queue(
+        PriorityRequestLane(handler->lane()), [self, handler] {
+          handler->runHandler([](RestHandler* h) {
             GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
           });
         });
-    return SchedulerFeature::SCHEDULER->queue(std::move(job));
   } else {
     // here the response will just be ignored
-    auto job = std::make_unique<Job>(_server, std::move(handler),
-                                     [self](std::shared_ptr<RestHandler> h) {
-                                       h->runHandler([](RestHandler* h) {});
-                                     });
-    return SchedulerFeature::SCHEDULER->queue(std::move(job));
+    return SchedulerFeature::SCHEDULER->queue(
+      PriorityRequestLane(handler->lane()),
+        [self, handler] { handler->runHandler([](RestHandler*) {}); });
   }
 }
 
@@ -462,26 +496,25 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 /// @brief checks the access rights for a specified path
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode GeneralCommTask::canAccessPath(
-    GeneralRequest& request) const {
+rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
-  } else if (ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+  } else if (ServerState::isMaintenance()) {
     return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 
-  std::string const& path = request.requestPath();
-  std::string const& username = request.user();
-  rest::ResponseCode result = request.authenticated()
-                                  ? rest::ResponseCode::OK
-                                  : rest::ResponseCode::UNAUTHORIZED;
+  std::string const& path = req.requestPath();
+  std::string const& username = req.user();
+  rest::ResponseCode result = req.authenticated()
+                                ? rest::ResponseCode::OK
+                                : rest::ResponseCode::UNAUTHORIZED;
 
-  VocbaseContext* vc = static_cast<VocbaseContext*>(request.requestContext());
+  VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE &&
       !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(&request);
+    events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -491,11 +524,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!request.authenticated()) {
+  if (!req.authenticated()) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
-    ConnectionInfo const& ci = request.connectionInfo();
+    ConnectionInfo const& ci = req.connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_auth->authenticationUnixSockets()) {
@@ -528,7 +561,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
-      } else if (request.requestType() == RequestType::POST &&
+      } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call

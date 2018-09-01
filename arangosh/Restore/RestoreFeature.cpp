@@ -52,16 +52,31 @@ constexpr auto FeatureName = "Restore";
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(
     arangodb::httpclient::SimpleHttpClient& client,
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response,
+    char const* requestAction,
+    std::string const& originalRequest) {
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
-            "got invalid response from server: " + client.getErrorMessage()};
+        "got invalid response from server: '" +
+        client.getErrorMessage() + 
+        "' while executing '" +
+        requestAction +
+        "' with this payload: '" +
+        originalRequest +
+        "'"
+        };
   }
   if (response->wasHttpError()) {
-    return {TRI_ERROR_INTERNAL, "got invalid response from server: HTTP " +
-                                    itoa(response->getHttpReturnCode()) + ": " +
-                                    response->getHttpReturnMessage()};
+    return {TRI_ERROR_INTERNAL,
+        "got invalid response from server: HTTP " +
+        itoa(response->getHttpReturnCode()) + ": '" +
+        response->getHttpReturnMessage() + 
+        "' while executing '" +
+        requestAction +
+        "' with this payload: '" +
+        originalRequest +
+        "'"};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -83,7 +98,7 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
     return false;
   }
 
-  // Next we sort by colleciton type so that vertex collections are recreated
+  // Next we sort by collection type so that vertex collections are recreated
   // before edge, etc.
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
@@ -161,12 +176,12 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   if (returnCode == static_cast<int>(ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    auto res = ::checkHttpResponse(*httpClient, response);
+    auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
     return {TRI_ERROR_FORBIDDEN, res.errorMessage()};
   }
 
   // any other error
-  auto res = ::checkHttpResponse(*httpClient, response);
+  auto res = ::checkHttpResponse(*httpClient, response, "creating database", body);
   return {TRI_ERROR_INTERNAL, res.errorMessage()};
 }
 
@@ -182,7 +197,7 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
           << ", but no key information was specified to decrypt the dump";
       LOG_TOPIC(WARN, Logger::RESTORE)
           << "it is recommended to specify either "
-             "`--encryption.key-file` or `--encryption.key-generator` "
+             "`--encryption.keyfile` or `--encryption.key-generator` "
              "when invoking arangorestore with an encrypted dump";
     } else {
       LOG_TOPIC(INFO, Logger::RESTORE)
@@ -276,7 +291,7 @@ arangodb::Result sendRestoreCollection(
                                     httpClient.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring collection", body);
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -299,7 +314,7 @@ arangodb::Result sendRestoreIndexes(
                                     httpClient.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring indices", body);
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -324,7 +339,7 @@ arangodb::Result sendRestoreData(
                                     httpClient.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    return ::checkHttpResponse(httpClient, response);
+    return ::checkHttpResponse(httpClient, response, "restoring payload", "");
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -490,6 +505,31 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   return result;
 }
 
+/// @brief Restore the data for a given view
+arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
+                             arangodb::RestoreFeature::Options const& options,
+                             VPackSlice const& viewDefinition) {
+  using arangodb::httpclient::SimpleHttpResult;
+  
+  std::string url = "/_api/replication/restore-view?overwrite=" +
+    std::string(options.overwrite ? "true" : "false") +
+    "&force=" + std::string(options.force ? "true" : "false");
+
+  std::string const body = viewDefinition.toJson();
+  std::unique_ptr<SimpleHttpResult> response(httpClient.request(arangodb::rest::RequestType::PUT,
+                                                                url, body.c_str(), body.size()));
+  if (response == nullptr || !response->isComplete()) {
+    return {TRI_ERROR_INTERNAL, "got invalid response from server: '" +
+        httpClient.getErrorMessage() + "' while trying to restore view: '" +
+        body.c_str() + "'"};
+  }
+  if (response->wasHttpError()) {
+    return ::checkHttpResponse(httpClient, response, "restoring view", body);
+  }
+  
+  return {TRI_ERROR_NO_ERROR};
+}
+  
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
@@ -509,8 +549,9 @@ arangodb::Result processInputDirectory(
   }
   try {
     std::vector<std::string> const files = listFiles(options.inputPath);
-    std::string const suffix = std::string(".structure.json");
-    std::vector<VPackBuilder> collections;
+    std::string const collectionSuffix = std::string(".structure.json");
+    std::string const viewsSuffix = std::string(".view.json");
+    std::vector<VPackBuilder> collections, views;
 
     // Step 1 determine all collections to process
     {
@@ -518,16 +559,27 @@ arangodb::Result processInputDirectory(
       // files
       for (std::string const& file : files) {
         size_t const nameLength = file.size();
+        
+        if (nameLength > viewsSuffix.size() &&
+            file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
+          VPackBuilder fileContentBuilder = directory.vpackFromJsonFile(file);
+          VPackSlice const fileContent = fileContentBuilder.slice();
+          if (!fileContent.isObject()) {
+            return {TRI_ERROR_INTERNAL,
+              "could not read view file '" + directory.pathToFile(file) + "'"};
+          }
+          views.emplace_back(std::move(fileContentBuilder));
+          continue;
+        }
 
-        if (nameLength <= suffix.size() ||
-            file.substr(file.size() - suffix.size()) != suffix) {
+        if (nameLength <= collectionSuffix.size() ||
+            file.substr(file.size() - collectionSuffix.size()) != collectionSuffix) {
           // some other file
           continue;
         }
 
         // found a structure.json file
-        std::string name = file.substr(0, file.size() - suffix.size());
-
+        std::string name = file.substr(0, file.size() - collectionSuffix.size());
         if (!options.includeSystemCollections && name[0] == '_') {
           continue;
         }
@@ -588,8 +640,18 @@ arangodb::Result processInputDirectory(
       }
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
-
-    // Step 2: run the actual import
+    
+    LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
+    // Step 2: recreate all views
+    for (VPackBuilder viewDefinition : views) {
+      LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
+      Result res = ::restoreView(httpClient, options, viewDefinition.slice());
+      if (res.fail()) {
+        return res;
+      }
+    }
+    
+    // Step 3: run the actual import
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
 
@@ -615,6 +677,7 @@ arangodb::Result processInputDirectory(
     if (firstError.fail()) {
       return firstError;
     }
+    
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(
@@ -671,20 +734,17 @@ RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
                                  RestoreFeature::Stats& s, VPackSlice const& c)
     : directory{d}, feature{f}, options{o}, stats{s}, collection{c} {}
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
-                               int& exitCode)
+RestoreFeature::RestoreFeature(
+    application_features::ApplicationServer& server,
+    int& exitCode
+)
     : ApplicationFeature(server, RestoreFeature::featureName()),
       _clientManager{Logger::RESTORE},
       _clientTaskQueue{::processJob, ::handleJobResult},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("Client");
-  startsAfter("Logger");
-
-#ifdef USE_ENTERPRISE
-  startsAfter("Encryption");
-#endif
+  startsAfter("BasicsPhase");
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -781,8 +841,8 @@ void RestoreFeature::validateOptions(
     _options.chunkSize = 1024 * 128;
   }
 
-  auto clamped = boost::algorithm::clamp(_options.threadCount, 1,
-                                         4 * TRI_numberProcessors());
+  auto clamped = boost::algorithm::clamp(_options.threadCount, uint32_t(1),
+                                         uint32_t(4 * TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
@@ -910,11 +970,11 @@ void RestoreFeature::start() {
     result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
                                      _options, *_directory, _stats);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception " << ex.what();
+    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
     result = {TRI_ERROR_INTERNAL};
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
-        << "Error: caught unknown exception";
+        << "caught unknown exception";
     result = {TRI_ERROR_INTERNAL};
   }
 

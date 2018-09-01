@@ -50,9 +50,13 @@ std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 };
 
-ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           ClusterEngineType engineType, Index::IndexType itype,
-                           VPackSlice const& info)
+ClusterIndex::ClusterIndex(
+    TRI_idx_iid_t id,
+    LogicalCollection& collection,
+    ClusterEngineType engineType,
+    Index::IndexType itype,
+    arangodb::velocypack::Slice const& info
+)
     : Index(id, collection, info),
       _engineType(engineType),
       _indexType(itype),
@@ -71,10 +75,9 @@ void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 // ========== below is cluster schmutz ============
 
 /// @brief return a VelocyPack representation of the index
-void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                bool forPersistence) const {
+void ClusterIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexUnique, VPackValue(_unique));
   builder.add(StaticStrings::IndexSparse, VPackValue(_sparse));
 

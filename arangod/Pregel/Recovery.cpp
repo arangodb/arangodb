@@ -150,7 +150,7 @@ void RecoveryManager::updatedFailedServers() {
 
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->post([this, shard] { _renewPrimaryServer(shard); });
+      scheduler->post([this, shard] { _renewPrimaryServer(shard); }, false);
     }
   }
 }
@@ -175,7 +175,7 @@ void RecoveryManager::_renewPrimaryServer(ShardID const& shard) {
   do {
     std::shared_ptr<std::vector<ServerID>> servers =
         ci->getResponsibleServer(shard);
-    if (servers) {
+    if (servers && !servers->empty()) {
       ServerID const& nextPrimary = servers->front();
       if (currentPrimary->second != nextPrimary) {
         _primaryServers[shard] = nextPrimary;

@@ -33,8 +33,11 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
 namespace transaction {
+
 class Methods;
+
 }
 
 class LocalDocumentId;
@@ -46,12 +49,10 @@ struct OperationOptions;
 class Result;
 
 class PhysicalCollection {
- protected:
-  PhysicalCollection(LogicalCollection* collection,
-                     arangodb::velocypack::Slice const& info);
-
  public:
   virtual ~PhysicalCollection() = default;
+
+  virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
 
   // path to logical collection
   virtual std::string const& path() const = 0;
@@ -61,9 +62,6 @@ class PhysicalCollection {
   virtual arangodb::Result updateProperties(
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual arangodb::Result persistProperties() = 0;
-
-  virtual PhysicalCollection* clone(LogicalCollection*) const = 0;
-
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
@@ -104,7 +102,7 @@ class PhysicalCollection {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
                        
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+  void getIndexesVPack(velocypack::Builder&, unsigned flags,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
   
   /// @brief return the figures for a collection
@@ -133,6 +131,14 @@ class PhysicalCollection {
 
   virtual void truncate(transaction::Methods* trx,
                         OperationOptions& options) = 0;
+
+  /// @brief Defer a callback to be executed when the collection
+  ///        can be dropped. The callback is supposed to drop
+  ///        the collection and it is guaranteed that no one is using
+  ///        it at that moment.
+  virtual void deferDropCollection(
+    std::function<bool(LogicalCollection&)> const& callback
+  ) = 0;
 
   virtual LocalDocumentId lookupKey(
       transaction::Methods*, arangodb::velocypack::Slice const&) const = 0;
@@ -193,15 +199,12 @@ class PhysicalCollection {
                         TRI_voc_rid_t& prevRev,
                         TRI_voc_rid_t& revisionId) = 0;
 
-  /// @brief Defer a callback to be executed when the collection
-  ///        can be dropped. The callback is supposed to drop
-  ///        the collection and it is guaranteed that no one is using
-  ///        it at that moment.
-  virtual void deferDropCollection(
-      std::function<bool(LogicalCollection*)> callback) = 0;
-  
  protected:
-  
+  PhysicalCollection(
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
+
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
@@ -244,8 +247,7 @@ class PhysicalCollection {
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found) const;
 
- protected:
-  LogicalCollection* _logicalCollection;
+  LogicalCollection& _logicalCollection;
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;

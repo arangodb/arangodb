@@ -91,7 +91,6 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _ast(ast),
       _node(node),
       _type(UNPROCESSED),
-      _canThrow(true),
       _canRunOnDBServer(false),
       _isDeterministic(false),
       _willUseV8(false),
@@ -136,14 +135,9 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
       return executeSimpleExpression(_node, trx, mustDestroy, true);
     }
 
-    case ATTRIBUTE_SYSTEM: {
+    case ATTRIBUTE_ACCESS: {
       TRI_ASSERT(_accessor != nullptr);
-      return _accessor->getSystem(trx, ctx, mustDestroy);
-    }
-
-    case ATTRIBUTE_DYNAMIC: {
-      TRI_ASSERT(_accessor != nullptr);
-      return _accessor->getDynamic(trx, ctx, mustDestroy);
+      return _accessor->get(trx, ctx, mustDestroy);
     }
 
     case UNPROCESSED: {
@@ -163,7 +157,7 @@ void Expression::replaceVariables(
 
   _node = _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
 
-  if ((_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC) && _accessor != nullptr) {
+  if (_type == ATTRIBUTE_ACCESS && _accessor != nullptr) {
     _accessor->replaceVariable(replacements);
   } else {
     freeInternals();
@@ -200,8 +194,7 @@ void Expression::freeInternals() noexcept {
       _data = nullptr;
       break;
 
-    case ATTRIBUTE_SYSTEM:
-    case ATTRIBUTE_DYNAMIC: {
+    case ATTRIBUTE_ACCESS: {
       delete _accessor;
       _accessor = nullptr;
       break;
@@ -217,7 +210,7 @@ void Expression::freeInternals() noexcept {
 
 /// @brief reset internal attributes after variables in the expression were changed
 void Expression::invalidateAfterReplacements() {
-  if (_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC || _type == SIMPLE) {
+  if (_type == ATTRIBUTE_ACCESS || _type == SIMPLE) {
     freeInternals();
     // must even set back the expression type so the expression will be analyzed
     // again
@@ -329,7 +322,6 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 }
 
 void Expression::initConstantExpression() {
-  _canThrow = false;
   _canRunOnDBServer = true;
   _isDeterministic = true;
   _willUseV8 = false;
@@ -339,7 +331,6 @@ void Expression::initConstantExpression() {
 }
 
 void Expression::initSimpleExpression() {
-  _canThrow = _node->canThrow();
   _canRunOnDBServer = _node->canRunOnDBServer();
   _isDeterministic = _node->isDeterministic();
   _willUseV8 = _node->willUseV8();
@@ -378,12 +369,8 @@ void Expression::initSimpleExpression() {
   }
 
   // specialize the simple expression into an attribute accessor
-  _accessor = new AttributeAccessor(std::move(parts), v, dataIsFromCollection);
-  if (_accessor->isDynamic()) {
-    _type = ATTRIBUTE_DYNAMIC;
-  } else {
-    _type = ATTRIBUTE_SYSTEM;
-  }
+  _accessor = AttributeAccessor::create(std::move(parts), v, dataIsFromCollection);
+  _type = ATTRIBUTE_ACCESS;
 }
 
 /// @brief analyze the expression (determine its type etc.)
@@ -487,6 +474,9 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
+    case NODE_TYPE_COLLECTION:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type 'collection' is not supported in ArangoDB 3.4");
+
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -625,7 +615,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -658,7 +648,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   size_t const n = node->numMembers();
 
   if (n == 0) {
-    return AqlValue(VelocyPackHelper::EmptyObjectValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyObjectSlice());
   }
 
   // unordered map to make object keys unique afterwards
@@ -873,8 +863,8 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
-  auto guard = scopeGuard([&destroyParameters, &parameters, &n]() {
-    for (size_t i = 0; i < n; ++i) {
+  auto guard = scopeGuard([&destroyParameters, &parameters]() {
+    for (size_t i = 0; i < destroyParameters.size(); ++i) {
       if (destroyParameters[i]) {
         parameters[i].destroy();
       }
@@ -968,7 +958,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
   mustDestroy = false;
 
   {
-
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
@@ -1098,11 +1087,17 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
         // can use int64
         return AqlValue(AqlValueHintInt(-v));
       }
+    } else if (s.isUInt()) {
+      uint64_t v = s.getNumber<uint64_t>();
+      if (v <= uint64_t(INT64_MAX)) {
+        // can use int64 too
+        int64_t v = s.getNumber<int64_t>();
+        return AqlValue(AqlValueHintInt(-v));
+      }
     }
-    // fallthrouh intentional
+    // fallthrough intentional
   }
 
-  // TODO: handle integer values separately here
   bool failed = false;
   double value = operand.toDouble(trx, failed);
 
@@ -1431,7 +1426,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(VelocyPackHelper::EmptyArrayValue());
+    return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
   }
 
   // FILTER
@@ -1445,7 +1440,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
   }
 
@@ -1464,7 +1459,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
 
     VPackBuilder builder;
@@ -1506,7 +1501,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::EmptyArrayValue());
+      return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
 
     mustDestroy = localMustDestroy; // maybe we need to destroy...

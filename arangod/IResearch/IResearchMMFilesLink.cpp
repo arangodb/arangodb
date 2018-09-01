@@ -33,7 +33,7 @@ NS_BEGIN(iresearch)
 
 IResearchMMFilesLink::IResearchMMFilesLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
 ): Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
    IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -46,7 +46,7 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 }
 
 /*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -61,12 +61,18 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
     #endif
 
     return link && link->init(definition) ? ptr : nullptr;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, Logger::DEVEL)
+      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "'" << e.what();
+      << "caught exception while creating IResearch view MMFiles link '" << id << "': " << e.what();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
       << "caught exception while creating IResearch view MMFiles link '" << id << "'";
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -74,15 +80,25 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 
 void IResearchMMFilesLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPersistence
+    unsigned int flags
 ) const {
-  TRI_ASSERT(!builder.isOpenObject());
-  builder.openObject();
-  bool success = json(builder, forPersistence);
-  TRI_ASSERT(success);
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
 
-  if (withFigures) {
+  builder.openObject();
+
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
+
+  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();

@@ -52,8 +52,13 @@ if [ "$POOLSZ" == "" ] ; then
 fi
 
 if [ -z "$USE_ROCKSDB" ] ; then
-  STORAGE_ENGINE=""
-else
+  #default engine is RocksDB
+  STORAGE_ENGINE="--server.storage-engine=rocksdb"
+elif [ "$USE_ROCKSDB" == "0" ]; then 
+  #explicitly disable RocksDB engine, so use MMFiles
+  STORAGE_ENGINE="--server.storage-engine=mmfiles"
+else 
+  #any value other than "0" means RocksDB engine
   STORAGE_ENGINE="--server.storage-engine=rocksdb"
 fi
 DEFAULT_REPLICATION=""
@@ -75,8 +80,8 @@ if (( $NRAGENTS % 2 == 0)) ; then
 fi
 
 SFRE=1.0
-COMP=2000
-KEEP=1000
+COMP=500
+KEEP=2000
 if [ -z "$ONGOING_PORTS" ] ; then
   CO_BASE=$(( $PORT_OFFSET + 8530 ))
   DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -145,10 +150,10 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
-        --server.threads 16 \
         --log.file cluster/$port.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -158,7 +163,7 @@ done
 start() {
 
     if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
+        ROLE="DBSERVER"
     elif [ "$1" == "coordinator" ]; then
         ROLE="COORDINATOR"
     fi
@@ -189,6 +194,7 @@ start() {
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

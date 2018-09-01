@@ -120,14 +120,13 @@ class ExecutionPlan {
   /// @brief invalidate all cost estimations in the plan
   inline void invalidateCost() {
     TRI_ASSERT(_root != nullptr);
-    return _root->invalidateCost();
+    _root->invalidateCost();
   }
 
   /// @brief get the estimated cost . . .
-  inline double getCost() {
+  CostEstimate getCost() {
     TRI_ASSERT(_root != nullptr);
-    size_t nrItems;
-    return _root->getCost(nrItems);
+    return _root->getCost();
   }
 
   /// @brief returns true if a plan is so simple that optimizations would
@@ -192,7 +191,7 @@ class ExecutionPlan {
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
-  void unlinkNode(ExecutionNode*, bool = false);
+  void unlinkNode(ExecutionNode*, bool allowUnlinkingRoot = false);
 
   /// @brief register a node with the plan
   ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>);
@@ -261,19 +260,22 @@ class ExecutionPlan {
   /// and adding plan specific options.
   ModificationOptions createModificationOptions(AstNode const*);
 
-public:
+ public:
   /// @brief parses modification options form an AST node
   static ModificationOptions parseModificationOptions(AstNode const*);
 
-private:
+ private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 
   /// @brief adds "previous" as dependency to "plan", returns "plan"
   ExecutionNode* addDependency(ExecutionNode*, ExecutionNode*);
 
-  /// @brief create an execution plan element from an AST FOR node
+  /// @brief create an execution plan element from an AST FOR (non-view) node
   ExecutionNode* fromNodeFor(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST FOR (view) node
+  ExecutionNode* fromNodeForView(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST TRAVERAL node
   ExecutionNode* fromNodeTraversal(ExecutionNode*, AstNode const*);

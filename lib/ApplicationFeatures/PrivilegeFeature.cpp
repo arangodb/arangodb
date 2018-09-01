@@ -35,16 +35,18 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 PrivilegeFeature::PrivilegeFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Privilege"),
       _numericUid(0), _numericGid(0) {
   setOptional(true);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -99,8 +101,9 @@ void PrivilegeFeature::extractPrivileges() {
       if (g != nullptr) {
         gidNumber = g->gr_gid;
       } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot convert groupname '" << _gid
-                   << "' to numeric gid";
+                   << "' to numeric gid: " << TRI_last_error();
         FATAL_ERROR_EXIT();
       }
 #else
@@ -191,3 +194,5 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
   }
 #endif
 }
+
+} // arangodb

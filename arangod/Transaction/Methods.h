@@ -29,6 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
 #include "Utils/OperationResult.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -47,44 +48,32 @@
 namespace arangodb {
 
 namespace basics {
-
 struct AttributeName;
 class StringBuffer;
-
 }
 
 namespace velocypack {
-
 class Builder;
-
 }
 
 namespace aql {
-
 class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
-
 }
 
 namespace rest {
-
 enum class ResponseCode;
-
 }
 
 namespace traverser {
-
 class BaseEngine;
-
 }
 
 namespace transaction {
-
 class Context;
 struct Options;
-
 }
 
 /// @brief forward declarations
@@ -110,8 +99,7 @@ class Methods {
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;
-    void toVelocyPack(arangodb::velocypack::Builder& builder,
-                      bool withFigures) const;
+    void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
     bool operator==(IndexHandle const& other) const {
       return other._index.get() == _index.get();
     }
@@ -343,7 +331,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  virtual OperationResult count(std::string const& collectionName, bool details);
+  virtual OperationResult count(std::string const& collectionName, CountType type);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -406,6 +394,29 @@ class Methods {
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
                                 AccessMode::Type) const;
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shardName shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shardName) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shardName shard the shard name
+   */
+  void setLockedShard(std::string const& shardName);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
@@ -511,9 +522,12 @@ class Methods {
  protected:
 
   OperationResult countCoordinator(std::string const& collectionName,
-                                   bool details, bool sendNoLockHeader);
+                                   CountType type);
 
-  OperationResult countLocal(std::string const& collectionName);
+  OperationResult countCoordinatorHelper(
+      std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, CountType type);
+
+  OperationResult countLocal(std::string const& collectionName, CountType type);
 
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,

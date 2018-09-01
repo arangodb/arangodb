@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,7 +77,7 @@ class Store;
 /// Nodes are are always constructed as element and can become an array through
 /// assignment operator.
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
-/// optimisation by avoiding to build it before necessary.
+/// optimization by avoiding to build it before necessary.
 class Node {
  public:
   /// @brief Slash-segmented path
@@ -276,12 +276,14 @@ class Node {
   // These two operator() functions could be "protected" once
   //  unit tests updated.
   //
-public:
   /// @brief Get node specified by path string
   Node& operator()(std::string const& path);
 
   /// @brief Get node specified by path string
   Node const& operator()(std::string const& path) const;
+
+  /// @brief Get string value (throws if type NODE or if conversion fails)
+  std::string getString() const;
 
   //
   // The protected accessors are the "old" interface.  They throw.
@@ -302,9 +304,6 @@ protected:
 
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
-
-  /// @brief Get string value (throws if type NODE or if conversion fails)
-  std::string getString() const;
 
   /// @brief Get array value
   Slice getArray() const;

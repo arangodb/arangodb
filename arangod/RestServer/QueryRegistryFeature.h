@@ -26,21 +26,24 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+
 namespace aql {
+
 class QueryRegistry;
+
 }
 
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:
   static aql::QueryRegistry* QUERY_REGISTRY;
-  
   static constexpr double DefaultQueryTTL = 600.0;
 
- public:
-  explicit QueryRegistryFeature(application_features::ApplicationServer* server);
+  explicit QueryRegistryFeature(
+    application_features::ApplicationServer& server
+  );
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void unprepare() override final;
@@ -50,12 +53,14 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double slowQueryThreshold() const { return _slowQueryThreshold; }
   bool failOnWarning() const { return _failOnWarning; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
+  uint64_t maxQueryPlans() const { return _maxQueryPlans; }
 
  private:
   bool _trackSlowQueries;
   bool _trackBindVars;
   bool _failOnWarning;
   uint64_t _queryMemoryLimit;
+  uint64_t _maxQueryPlans;
   double _slowQueryThreshold;
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
@@ -67,6 +72,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
  private:
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 };
+
 }
 
 #endif

@@ -55,6 +55,15 @@ struct QueryResult {
 
   virtual ~QueryResult() {}
 
+  void set(int c, std::string const& d) {
+    code = c;
+    cached = false;
+    details = d;
+    result.reset();
+    extra.reset();
+    context.reset();
+  }
+
  public:
   int code;
   bool cached;

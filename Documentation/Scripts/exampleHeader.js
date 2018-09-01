@@ -89,6 +89,9 @@ const ansiAppender = (text) => {
 const jsonAppender = function(text) {
   output += highlight("js", text);
 };
+const jsonLAppender = function(text) {
+  output += highlight("js", text) + "&#x21A9;\n" ;
+};
 const htmlAppender = function(text) {
   output += highlight("html", text);
 };
@@ -104,7 +107,7 @@ const log = function (a) {
   appender(internal.stopCaptureMode());
 };
 
-var logCurlRequestRaw = internal.appendCurlRequest(shellAppender,jsonAppender, rawAppender);
+var logCurlRequestRaw = internal.appendCurlRequest(shellAppender, jsonAppender, rawAppender);
 var logCurlRequest = function () {
   if ((arguments.length > 1) &&
       (arguments[1] !== undefined) &&
@@ -133,6 +136,7 @@ var curlRequest = function () {
   return rc
 };
 var logJsonResponse = internal.appendJsonResponse(rawAppender, jsonAppender);
+var logJsonLResponse = internal.appendJsonLResponse(rawAppender, jsonLAppender);
 var logHtmlResponse = internal.appendRawResponse(rawAppender, htmlAppender);
 var logRawResponse = internal.appendRawResponse(rawAppender, rawAppender);
 var logErrorResponse = function (response) {
@@ -168,28 +172,25 @@ var runTestLine = function(line, testName, sourceFN, sourceLine, lineCount, show
 /* jshint ignore:start */
     if (!showCmd || isLoop) {
       eval(line);
-    }
-    else {
+    } else {
       eval("XXX = " + line);
     }
 /* jshint ignore:end */
     if (expectError !== undefined) {
-       throw new Error("expected to throw with " + expectError + " but didn't!");
+      throw new Error("expected to throw with " + expectError + " but didn't!");
     }
   }
   catch (err) {
     if (expectError !== undefined) {
       if (err.errorNum === errors[expectError].code) {
         print(err);
-      }
-      else {
+      } else {
         print(err);
         createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught unexpected exception!");
       }
-    }
-    else {
-        createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\n");
-        print(err);
+    } else {
+      createErrorMessage(err, line, testName, sourceFN, sourceLine, lineCount, " caught an exception!\n");
+      print(err);
     }
   }
   if (showCmd && XXX !== undefined) {
@@ -203,7 +204,7 @@ var runTestFunc = function (execFunction, testName, sourceFile) {
     return('done with  ' + testName);
   } catch (err) {
     allErrors += '\nRUN FAILED: ' + testName + ' from testfile: ' + sourceFile + ', ' + err + '\n' + err.stack + '\n';
-    return hashes + '\nfailed with  ' + testName + ', ', err, '\n' + hashes;
+    return hashes + '\nfailed with  ' + testName + ', ' + err + '\n' + hashes;
   }
 };
 
@@ -214,7 +215,7 @@ var runTestFuncCatch = function (execFunction, testName, expectError) {
   } catch (err) {
     if (err.num !== expectError.code) {
       allErrors += '\nRUN FAILED: ' + testName + ', ' + err + '\n' + err.stack + '\n';
-      return hashes + '\nfailed with  ' + testName + ', ', err, '\n' + hashes;
+      return hashes + '\nfailed with  ' + testName + ', ' + err + '\n' + hashes;
     }
   }
 };
@@ -254,12 +255,12 @@ var addIgnoreCollection = function(collectionName) {
 
 var removeIgnoreCollection = function(collectionName) {
   // print("from now on checking again whether this collection dropped: " + collectionName);
-  for (j=0; j < collectionAlreadyThere.length; j++) {
+  for (j = 0; j < collectionAlreadyThere.length; j++) {
     if (collectionAlreadyThere[j] === collectionName) {
       collectionAlreadyThere[j] = undefined;
     }
   }
-  for (j=0; j < ignoreCollectionAlreadyThere.length; j++) {
+  for (j = 0; j < ignoreCollectionAlreadyThere.length; j++) {
     if (ignoreCollectionAlreadyThere[j] === collectionName) {
       ignoreCollectionAlreadyThere[j] = undefined;
     }

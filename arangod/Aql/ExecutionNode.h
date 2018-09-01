@@ -53,6 +53,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Aql/CostEstimate.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
@@ -145,6 +146,7 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
+    REMOTESINGLE = 25,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
 #endif
@@ -158,9 +160,6 @@ class ExecutionNode {
   /// @brief constructor using an id
   ExecutionNode(ExecutionPlan* plan, size_t id)
       : _id(id),
-        _estimatedCost(0.0),
-        _estimatedNrItems(0),
-        _estimatedCostSet(false),
         _depth(0),
         _varUsageValid(false),
         _plan(plan) {}
@@ -200,6 +199,9 @@ class ExecutionNode {
 
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
+
+  /// @brief resolve nodeType to a string.
+  static std::string const& getTypeString(NodeType type);
 
   /// @brief return the type name of the node
   std::string const& getTypeString() const;
@@ -261,21 +263,14 @@ class ExecutionNode {
   }
 
   /// @brief get the node and its dependencies as a vector
-  std::vector<ExecutionNode*> getDependencyChain(bool includeSelf) {
-    std::vector<ExecutionNode*> result;
-
+  void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf) {
     auto current = this;
     while (current != nullptr) {
       if (includeSelf || current != this) {
         result.emplace_back(current);
       }
-      if (! current->hasDependency()) {
-        break;
-      }
       current = current->getFirstDependency();
     }
-
-    return result;
   }
 
   /// @brief inspect one index; only skiplist indices which match attrs in
@@ -329,29 +324,13 @@ class ExecutionNode {
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
                          bool withProperties) const;
 
-  /// @brief convert to a string, basically for debugging purposes
-  virtual void appendAsString(std::string& st, int indent = 0);
-
-  /// @brief invalidate the cost estimation for the node and its dependencies
-  void invalidateCost();
-
-  /// @brief this actually estimates the costs as well as the number of items
-  /// coming out of the node
-  virtual double estimateCost(size_t& nrItems) const = 0;
-
+  /// @brief invalidate the cost estimate for the node and its dependencies
+  virtual void invalidateCost();
+  
   /// @brief estimate the cost of the node . . .
-  double getCost(size_t& nrItems) const {
-    if (!_estimatedCostSet) {
-      _estimatedCost = estimateCost(_estimatedNrItems);
-      nrItems = _estimatedNrItems;
-      _estimatedCostSet = true;
-      TRI_ASSERT(_estimatedCost >= 0.0);
-    } else {
-      nrItems = _estimatedNrItems;
-    }
-    return _estimatedCost;
-  }
-
+  /// does not recalculate the estimate if already calculated
+  CostEstimate getCost() const;
+  
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>& worker);
 
@@ -371,6 +350,14 @@ class ExecutionNode {
   /// @brief toVelocyPack
   virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,
                                   unsigned flags) const = 0;
+
+
+  /** Variables used and set are disjunct!
+  *   Variables that are read from must be returned by the
+  *   UsedHere functions and variables that are filled by
+  *   the corresponding ExecutionBlock must be added in
+  *   the SetHere functions.
+  */
 
   /// @brief getVariablesUsedHere, returning a vector
   virtual std::vector<Variable const*> getVariablesUsedHere() const {
@@ -441,9 +428,6 @@ class ExecutionNode {
     _varsValid.clear();
     _varUsageValid = false;
   }
-
-  /// @brief can the node throw?
-  virtual bool canThrow() { return false; }
 
   /// @brief whether or not the subquery is deterministic
   virtual bool isDeterministic() { return true; }
@@ -556,6 +540,10 @@ class ExecutionNode {
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
   void setId(size_t id) { _id = id; }
+  
+  /// @brief this actually estimates the costs as well as the number of items
+  /// coming out of the node
+  virtual CostEstimate estimateCost() const = 0;
 
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
@@ -580,15 +568,8 @@ class ExecutionNode {
   /// @brief our parent nodes
   std::vector<ExecutionNode*> _parents;
 
-  /// @brief _estimatedCost = 0 if uninitialized and otherwise stores the result
-  /// of estimateCost(), the bool indicates if the cost has been set, it starts
-  /// out as false, _estimatedNrItems is the estimated number of items coming
-  /// out of this node.
-  double mutable _estimatedCost;
-
-  size_t mutable _estimatedNrItems;
-
-  bool mutable _estimatedCostSet;
+  /// @brief cost estimate for the node
+  CostEstimate mutable _costEstimate; 
 
   /// @brief _varsUsedLater and _varsValid, the former contains those
   /// variables that are still needed further down in the chain. The
@@ -662,7 +643,7 @@ class SingletonNode : public ExecutionNode {
   }
 
   /// @brief the cost of a singleton is 1
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -703,9 +684,8 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
                        bool withProperties) const override final;
 
   /// @brief the cost of an enumerate collection node is a multiple of the cost
-  /// of
-  /// its unique dependency
-  double estimateCost(size_t&) const override final;
+  /// of its unique dependency
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
@@ -760,7 +740,7 @@ class EnumerateListNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief the cost of an enumerate list node
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -836,7 +816,7 @@ class LimitNode : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief tell the node to fully count what it will limit
   void setFullCount() { _fullCount = true; }
@@ -878,8 +858,7 @@ class CalculationNode : public ExecutionNode {
       : ExecutionNode(plan, id),
         _conditionVariable(conditionVariable),
         _outVariable(outVariable),
-        _expression(expr),
-        _canRemoveIfThrows(false) {
+        _expression(expr) {
     TRI_ASSERT(_expression != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
   }
@@ -915,18 +894,8 @@ class CalculationNode : public ExecutionNode {
   /// @brief return the expression
   Expression* expression() const { return _expression; }
 
-  /// @brief allow removal of this calculation even if it can throw
-  /// this can only happen if the optimizer added a clone of this expression
-  /// elsewhere, and if the clone will stand in
-  bool canRemoveIfThrows() const { return _canRemoveIfThrows; }
-
-  /// @brief allow removal of this calculation even if it can throw
-  /// this can only happen if the optimizer added a clone of this expression
-  /// elsewhere, and if the clone will stand in
-  void canRemoveIfThrows(bool value) { _canRemoveIfThrows = value; }
-
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -963,9 +932,6 @@ class CalculationNode : public ExecutionNode {
     return std::vector<Variable const*>{_outVariable};
   }
 
-  /// @brief can the node throw?
-  bool canThrow() override final { return _expression->canThrow(); }
-
   bool isDeterministic() override final { return _expression->isDeterministic(); }
 
  private:
@@ -977,11 +943,6 @@ class CalculationNode : public ExecutionNode {
 
   /// @brief we need to have an expression and where to write the result
   Expression* _expression;
-
-  /// @brief allow removal of this calculation even if it can throw
-  /// this can only happen if the optimizer added a clone of this expression
-  /// elsewhere, and if the clone will stand in
-  bool _canRemoveIfThrows;
 };
 
 /// @brief class SubqueryNode
@@ -1001,9 +962,12 @@ class SubqueryNode : public ExecutionNode {
     TRI_ASSERT(_subquery != nullptr);
     TRI_ASSERT(_outVariable != nullptr);
   }
-
+  
   /// @brief return the type of the node
   NodeType getType() const override final { return SUBQUERY; }
+  
+  /// @brief invalidate the cost estimate for the node and its dependencies
+  void invalidateCost() override;
 
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
@@ -1037,7 +1001,7 @@ class SubqueryNode : public ExecutionNode {
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final;
@@ -1053,11 +1017,6 @@ class SubqueryNode : public ExecutionNode {
 
   /// @brief replace the out variable, so we can adjust the name.
   void replaceOutVariable(Variable const* var);
-
-  /// @brief can the node throw? Note that this means that an exception can
-  /// *originate* from this node. That is, this method does not need to
-  /// return true just because a dependent node can throw an exception.
-  bool canThrow() override final;
 
   bool isDeterministic() override final;
 
@@ -1088,7 +1047,7 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return FILTER; }
+  NodeType getType() const override { return FILTER; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -1105,7 +1064,7 @@ class FilterNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -1138,7 +1097,6 @@ struct SortInformation {
   bool isValid = true;
   bool isDeterministic = true;
   bool isComplex = false;
-  bool canThrow = false;
 
   Match isCoveredBy(SortInformation const& other) {
     if (!isValid || !other.isValid) {
@@ -1213,7 +1171,7 @@ class ReturnNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
@@ -1273,7 +1231,7 @@ class NoResultsNode : public ExecutionNode {
   }
 
   /// @brief the cost of a NoResults is 0
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 };
 
 }  // namespace arangodb::aql

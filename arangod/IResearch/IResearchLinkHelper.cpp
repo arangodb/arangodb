@@ -35,6 +35,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -186,7 +187,7 @@ namespace iresearch {
       );
       namedJson.add(
         StaticStrings::ViewIdField,
-        arangodb::velocypack::Value(view.id())
+        arangodb::velocypack::Value(view.guid())
       );
 
       if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {
@@ -225,6 +226,7 @@ namespace iresearch {
     }
 
     static std::vector<std::string> const EMPTY;
+    arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY, // readCollections
@@ -398,10 +400,20 @@ namespace iresearch {
       TRI_ERROR_ARANGO_ILLEGAL_STATE,
       std::string("failed to update links while updating IResearch view '") + view.name() + "', retry same request or examine errors for collections: " + error
     );
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      e.code(),
+      std::string("error updating links for IResearch view '") + view.name() + "'"
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating links for IResearch view '") + view.name() + "'"
@@ -410,6 +422,7 @@ namespace iresearch {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while updating links for IResearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
+
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating links for IResearch view '") + view.name() + "'"

@@ -29,6 +29,22 @@
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
+#include "Utils/ExecContext.h"
+
+namespace {
+bool authorized(std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
+  auto context = arangodb::ExecContext::CURRENT;
+  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+    return true;
+  }
+
+  if (context->isSuperuser()) {
+    return true;
+  }
+
+  return (job.first == context->user());
+}
+}
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -38,16 +54,15 @@ AsyncJobResult::AsyncJobResult()
     : _jobId(0),
       _response(nullptr),
       _stamp(0.0),
-      _status(JOB_UNDEFINED),
-      _handler(nullptr) {}
+      _status(JOB_UNDEFINED) {}
 
 AsyncJobResult::AsyncJobResult(IdType jobId, Status status,
-                               RestHandler* handler)
+                               std::shared_ptr<RestHandler>&& handler)
     : _jobId(jobId),
       _response(nullptr),
       _stamp(TRI_microtime()),
       _status(status),
-      _handler(handler) {}
+      _handler(std::move(handler)) {}
 
 AsyncJobResult::~AsyncJobResult() {}
 
@@ -70,13 +85,13 @@ GeneralResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
 
   auto it = _jobs.find(jobId);
 
-  if (it == _jobs.end()) {
+  if (it == _jobs.end() || !::authorized(it->second)) {
     status = AsyncJobResult::JOB_UNDEFINED;
     return nullptr;
   }
 
-  GeneralResponse* response = (*it).second._response;
-  status = (*it).second._status;
+  GeneralResponse* response = (*it).second.second._response;
+  status = (*it).second.second._status;
 
   if (status == AsyncJobResult::JOB_PENDING) {
     return nullptr;
@@ -100,11 +115,11 @@ bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
 
   auto it = _jobs.find(jobId);
 
-  if (it == _jobs.end()) {
+  if (it == _jobs.end() || !::authorized(it->second)) {
     return false;
   }
 
-  GeneralResponse* response = (*it).second._response;
+  GeneralResponse* response = (*it).second.second._response;
 
   if (response != nullptr) {
     delete response;
@@ -125,16 +140,16 @@ void AsyncJobManager::deleteJobs() {
   auto it = _jobs.begin();
 
   while (it != _jobs.end()) {
-    GeneralResponse* response = (*it).second._response;
-
-    if (response != nullptr) {
-      delete response;
+    if (::authorized(it->second)) {
+      GeneralResponse* response = (*it).second.second._response;
+      if (response != nullptr) {
+        delete response;
+      }
+      _jobs.erase(it++);
+    } else {
+      ++it;
     }
-
-    ++it;
   }
-
-  _jobs.clear();
 }
 
 void AsyncJobManager::deleteExpiredJobResults(double stamp) {
@@ -143,16 +158,20 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
   auto it = _jobs.begin();
 
   while (it != _jobs.end()) {
-    AsyncJobResult ajr = (*it).second;
+    if (::authorized(it->second)) {
+      AsyncJobResult ajr = (*it).second.second;
 
-    if (ajr._stamp < stamp) {
-      GeneralResponse* response = ajr._response;
+      if (ajr._stamp < stamp) {
+        GeneralResponse* response = ajr._response;
 
-      if (response != nullptr) {
-        delete response;
+        if (response != nullptr) {
+          delete response;
+        }
+
+        _jobs.erase(it++);
+      } else {
+        ++it;
       }
-
-      _jobs.erase(it++);
     } else {
       ++it;
     }
@@ -165,7 +184,7 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
 
   auto it = _jobs.find(jobId);
 
-  if (it == _jobs.end()) {
+  if (it == _jobs.end() || !::authorized(it->second)) {
     rv.reset(TRI_ERROR_HTTP_NOT_FOUND
             , "could not find job (" + std::to_string(jobId) +
               ") in AsyncJobManager during cancel operation");
@@ -173,7 +192,8 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
   }
 
   bool ok = true;
-  RestHandler* handler = it->second._handler;
+  std::shared_ptr<RestHandler>& handler = it->second.second._handler;
+
   if (handler != nullptr) {
     ok = handler->cancel();
   }
@@ -190,14 +210,15 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
 Result AsyncJobManager::clearAllJobs() {
   Result rv;
   WRITE_LOCKER(writeLocker, _lock);
-  
-  for (auto const& it : _jobs) {
+
+  for (auto& it : _jobs) {
     bool ok = true;
-    RestHandler* handler = it.second._handler;
+    std::shared_ptr<RestHandler>& handler = it.second.second._handler;
+
     if (handler != nullptr) {
       ok = handler->cancel();
     }
-    
+
     if(!ok){
       // if you end up here you might need to implement the cancel method on your handler
       rv.reset(TRI_ERROR_INTERNAL,"could not cancel job (" +
@@ -205,7 +226,7 @@ Result AsyncJobManager::clearAllJobs() {
     }
   }
   _jobs.clear();
-  
+
   return rv;
 }
 
@@ -238,7 +259,7 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
     while (it != _jobs.end()) {
       AsyncJobResult::IdType jobId = (*it).first;
 
-      if ((*it).second._status == status) {
+      if ((*it).second.second._status == status && ::authorized(it->second)) {
         jobs.emplace_back(jobId);
 
         if (++n >= maxCount) {
@@ -257,14 +278,16 @@ std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob(RestHandler* handler) {
+void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
+  handler->assignHandlerId();
   AsyncJobResult::IdType jobId = handler->handlerId();
 
-  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, handler);
+  std::string user = handler->request()->user();
+  AsyncJobResult ajr(jobId, AsyncJobResult::JOB_PENDING, std::move(handler));
 
   WRITE_LOCKER(writeLocker, _lock);
 
-  _jobs.emplace(jobId, ajr);
+  _jobs.emplace(jobId, std::make_pair(std::move(user), ajr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -283,8 +306,8 @@ void AsyncJobManager::finishAsyncJob(RestHandler* handler) {
       return; // job is already canceled
     }
 
-    it->second._response = response.release();
-    it->second._status = AsyncJobResult::JOB_DONE;
-    it->second._stamp = TRI_microtime();
+    it->second.second._response = response.release();
+    it->second.second._status = AsyncJobResult::JOB_DONE;
+    it->second.second._stamp = TRI_microtime();
   }
 }

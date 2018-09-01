@@ -69,12 +69,14 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
   RocksDBFulltextIndex() = delete;
 
-  RocksDBFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  RocksDBFulltextIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBFulltextIndex() {}
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
 
   char const* typeName() const override { return "fulltext"; }
@@ -85,8 +87,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -139,9 +140,8 @@ class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, index),
+  : IndexIterator(collection, trx),
   _docs(std::move(docs)),
   _pos(_docs.begin()) {}
   

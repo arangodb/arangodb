@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +81,7 @@ namespace arangodb {
 /// } 
 ///
 /// In this way, the mutex of the condition variable can at the same time
-/// organise mutual exclusion of the callback function and the checking of
+/// organize mutual exclusion of the callback function and the checking of
 /// the termination condition in the main thread.
 /// The wait for condition variable can conveniently be done with the
 /// method executeByCallbackOrTimeout below.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,6 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
   : RestVocbaseBaseHandler(request, response),
     _agencyCallbackRegistry(agencyCallbackRegistry) {
 }
-
-bool RestAgencyCallbacksHandler::isDirect() const { return false; }
 
 RestStatus RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();

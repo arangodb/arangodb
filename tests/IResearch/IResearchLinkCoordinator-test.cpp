@@ -29,6 +29,11 @@
 #include "utils/utf8_path.hpp"
 #include "utils/log.hpp"
 
+#include "ApplicationFeatures/BasicPhase.h"
+#include "ApplicationFeatures/ClusterPhase.h"
+#include "ApplicationFeatures/DatabasePhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/V8Phase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AstNode.h"
@@ -41,31 +46,31 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/EndpointFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -94,12 +99,14 @@ struct IResearchLinkCoordinatorSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::map<std::string, std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<arangodb::application_features::ApplicationFeature*> orderedFeatures;
   std::string testFilesystemPath;
 
-  IResearchLinkCoordinatorSetup(): server(nullptr, nullptr) {
+  IResearchLinkCoordinatorSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -120,39 +127,53 @@ struct IResearchLinkCoordinatorSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
-    arangodb::AuthenticationFeature* auth{};
 
     // pretend we're on coordinator
     serverRoleBeforeSetup = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
 
+    auto buildFeatureEntry = [&] (arangodb::application_features::ApplicationFeature* ftr, bool start) -> void {
+      std::string name = ftr->name();
+      features.emplace(name, std::make_pair(ftr, start));
+    };
+    arangodb::application_features::ApplicationFeature* tmpFeature;
+
+    buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::DatabaseFeaturePhase(server), false);
+    buildFeatureEntry(new arangodb::application_features::GreetingsFeaturePhase(server, false), false);
+    buildFeatureEntry(new arangodb::application_features::V8FeaturePhase(server), false);
+
     // setup required application features
-    features.emplace_back(new arangodb::V8DealerFeature(&server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
-    features.emplace_back(auth = new arangodb::AuthenticationFeature(&server), false);
-    features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
-    features.emplace_back(new arangodb::ClusterFeature(&server), false);
-    features.emplace_back(new arangodb::AgencyFeature(&server), false);
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
+    buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
+    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
+    arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
+    buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
+    buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
+    buildFeatureEntry(new arangodb::DatabasePathFeature(server), false);
+    buildFeatureEntry(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    buildFeatureEntry(new arangodb::AqlFeature(server), true);
+    buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
+    buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
+    buildFeatureEntry(new arangodb::ClusterFeature(server), false);
+    buildFeatureEntry(new arangodb::ShardingFeature(server), false);
+    buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      buildFeatureEntry(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
+      arangodb::application_features::ApplicationServer::server->addFeature(f.second.first);
     }
+    arangodb::application_features::ApplicationServer::server->setupDependencies(false);
+    orderedFeatures = arangodb::application_features::ApplicationServer::server->getOrderedFeatures();
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
@@ -160,30 +181,27 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
-    for (auto& f : features) {
-      f.first->prepare();
+    for (auto& f : orderedFeatures) {
+      f->prepare();
 
-      if (f.first->name() == "Authentication") {
-        f.first->forceDisable();
+      if (f->name() == "Authentication") {
+        f->forceDisable();
       }
     }
 
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
+    for (auto& f : orderedFeatures) {
+      if (features.at(f->name()).second) {
+        f->start();
       }
     }
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    testFilesystemPath = (
-      (irs::utf8_path()/=
-      TRI_GetTempPath())/=
-      (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
-    ).utf8();
+
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    testFilesystemPath = dbPathFeature->directory();
 
     long systemError;
     std::string systemErrorStr;
@@ -201,14 +219,14 @@ struct IResearchLinkCoordinatorSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      if (features.at((*f)->name()).second) {
+        (*f)->stop();
       }
     }
 
-    for (auto& f : features) {
-      f.first->unprepare();
+    for (auto f = orderedFeatures.rbegin() ; f != orderedFeatures.rend(); ++f) { 
+      (*f)->unprepare();
     }
 
     ClusterCommControl::reset();
@@ -277,7 +295,7 @@ SECTION("test_create_drop") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      logicalCollection.get(), json->slice(), 1, true
+      *logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
   }
@@ -286,7 +304,7 @@ SECTION("test_create_drop") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
-      logicalCollection.get(), json->slice(), 1, true
+      *logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
   }
@@ -341,7 +359,7 @@ SECTION("test_create_drop") {
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -349,8 +367,9 @@ SECTION("test_create_drop") {
     CHECK(expectedMeta == actualMeta);
     auto const slice = builder->slice();
     CHECK(slice.hasKey("view"));
-    CHECK(slice.get("view").isNumber());
-    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.get("view").isString());
+    CHECK(logicalView->id() == 42);
+    CHECK(logicalView->guid() == slice.get("view").copyString());
     CHECK(slice.hasKey("figures"));
     CHECK(slice.get("figures").isObject());
     CHECK(slice.get("figures").hasKey("memory"));
@@ -379,7 +398,7 @@ SECTION("test_create_drop") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
@@ -387,8 +406,9 @@ SECTION("test_create_drop") {
       CHECK(error.empty());
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -448,15 +468,16 @@ SECTION("test_create_drop") {
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
       std::string error;
 
       CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")
@@ -468,12 +489,13 @@ SECTION("test_create_drop") {
     // ensure jSON is still valid after unload()
     {
       index->unload();
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
       auto slice = builder->slice();
       CHECK((
         slice.hasKey("view")
-        && slice.get("view").isNumber()
-        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.get("view").isString()
+        && logicalView->id() == 42
+        && logicalView->guid() == slice.get("view").copyString()
         && slice.hasKey("figures")
         && slice.get("figures").isObject()
         && slice.get("figures").hasKey("memory")

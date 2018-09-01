@@ -44,7 +44,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -52,7 +51,9 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -78,7 +79,7 @@ struct IResearchBlockMockSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchBlockMockSetup(): server(nullptr, nullptr) {
+  IResearchBlockMockSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -92,23 +93,24 @@ struct IResearchBlockMockSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::ShardingFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -131,11 +133,14 @@ struct IResearchBlockMockSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchBlockMockSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
@@ -197,24 +202,27 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10));
-      CHECK(nullptr != res);
-      CHECK(10 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block.getSome(10);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(10 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // retrieve last 90 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(100));
-      CHECK(nullptr != res);
-      CHECK(90 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block.getSome(100);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(90 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1));
-      CHECK(nullptr == res);
+      auto pair = block.getSome(1);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(nullptr == pair.second);
     }
   }
 
@@ -246,19 +254,24 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10));
-      CHECK(nullptr != res);
-      CHECK(10 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block.getSome(10);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(10 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
-
-    // skip last 90 items
-    CHECK(90 == block.skipSome(90));
+    {
+      // skip last 90 items
+      auto pair = block.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1));
-      CHECK(nullptr == res);
+      auto pair = block.getSome(1);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(nullptr == pair.second);
     }
   }
 
@@ -288,21 +301,27 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     ExecutionBlockMock block(data, *query.engine(), node);
     block.addDependency(&rootBlock);
 
-    // skip last 90 items
-    CHECK(90 == block.skipSome(90));
+    {
+      // skip last 90 items
+      auto pair = block.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10));
-      CHECK(nullptr != res);
-      CHECK(10 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block.getSome(10);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(10 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1));
-      CHECK(nullptr == res);
+      auto pair = block.getSome(1);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(nullptr == pair.second);
     }
   }
 }
@@ -346,32 +365,36 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10));
-      CHECK(nullptr != res);
-      CHECK(10 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(10);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(10 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // retrieve 90 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
-      CHECK(nullptr != res);
-      CHECK(90 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(100);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(90 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // retrieve last 100 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
-      CHECK(nullptr != res);
-      CHECK(100 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(100);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(100 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1));
-      CHECK(nullptr == res);
+      auto pair = block1.getSome(1);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(nullptr == pair.second);
     }
   }
 
@@ -407,27 +430,34 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10));
-      CHECK(nullptr != res);
-      CHECK(10 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(10);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(10 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
-    // skip 90 items
-    CHECK(90 == block1.skipSome(90));
+    {
+      // skip 90 items
+      auto pair = block1.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // retrieve last 100 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
-      CHECK(nullptr != res);
-      CHECK(100 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(100);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(100 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1));
-      CHECK(nullptr == res);
+      auto pair = block1.getSome(1);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(nullptr == pair.second);
     }
   }
 
@@ -461,29 +491,36 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     ExecutionBlockMock block1(data1, *query.engine(), node1);
     block1.addDependency(&block0);
 
-    // skip 90 items
-    CHECK(90 == block1.skipSome(90));
+    {
+      // skip 90 items
+      auto pair = block1.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // retrieve 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10));
-      CHECK(nullptr != res);
-      CHECK(10 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(10);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(10 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // retrieve last 100 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
-      CHECK(nullptr != res);
-      CHECK(100 == res->size());
-      CHECK(4 == res->getNrRegs());
+      auto pair = block1.getSome(100);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(nullptr != pair.second);
+      CHECK(100 == pair.second->size());
+      CHECK(4 == pair.second->getNrRegs());
     }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1));
-      CHECK(nullptr == res);
+      auto pair = block1.getSome(1);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(nullptr == pair.second);
     }
   }
 }

@@ -75,7 +75,7 @@ typedef void followers_t;
 /// then the node does not have any handles attached. If it is non-NULL, it
 /// contains a byte stream consisting of the following values:
 /// - uint32_t numAllocated: number of handles allocated for the node
-/// - unit32_t numEntries: number of handles currently in use
+/// - uint32_t numEntries: number of handles currently in use
 /// - TRI_fulltext_handle_t* handles: all the handle values subsequently
 /// Note that the highest bit of the numAllocated value contains a flag whether
 /// the handles list is sorted or not. It is therefore not safe to access the
@@ -1005,7 +1005,7 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
     if (prev != nullptr) {
       // check if current word has a shared/common prefix with the previous word
       // inserted
-      // in case this is true, we can use an optimisation and do not need to
+      // in case this is true, we can use an optimization and do not need to
       // traverse the
       // tree from the root again. instead, we just start at the node at the end
       // of the
@@ -1120,7 +1120,7 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
     if (prev != nullptr) {
       // check if current word has a shared/common prefix with the previous word
       // inserted
-      // in case this is true, we can use an optimisation and do not need to
+      // in case this is true, we can use an optimization and do not need to
       // traverse the
       // tree from the root again. instead, we just start at the node at the end
       // of the

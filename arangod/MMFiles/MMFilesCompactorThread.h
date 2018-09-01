@@ -97,7 +97,7 @@ class MMFilesCompactorThread final : public Thread {
   int removeDatafile(LogicalCollection* collection, MMFilesDatafile* datafile);
 
   /// @brief determine the number of documents in the collection
-  uint64_t getNumberOfDocuments(LogicalCollection* collection);
+  uint64_t getNumberOfDocuments(LogicalCollection& collection);
 
   /// @brief write a copy of the marker into the datafile
   int copyMarker(MMFilesDatafile* compactor, MMFilesMarker const* marker,

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
+/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
 /* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -15,6 +15,7 @@
     outputDiv: '#outputEditors',
     outputTemplate: templateEngine.createTemplate('queryViewOutput.ejs'),
     outputCounter: 0,
+    maps: {},
 
     allowUpload: false,
     renderComplete: false,
@@ -72,6 +73,7 @@
     events: {
       'click #executeQuery': 'executeQuery',
       'click #explainQuery': 'explainQuery',
+      'click #profileQuery': 'profileQuery',
       'click #debugQuery': 'debugDownloadDialog',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
@@ -295,7 +297,7 @@
         'aqlEditor', 'queryTable', 'previewWrapper', 'querySpotlight',
         'bindParamEditor', 'toggleQueries1', 'toggleQueries2', 'createNewQuery',
         'saveCurrentQuery', 'querySize', 'executeQuery', 'switchTypes',
-        'explainQuery', 'importQuery', 'exportQuery'
+        'explainQuery', 'profileQuery', 'debugQuery', 'importQuery', 'exportQuery'
       ];
       _.each(divs, function (div) {
         $('#' + div).toggle();
@@ -459,14 +461,23 @@
 
         $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
+        $('#outputGeo' + count).hide();
       } else if (string === 'Table') {
         $('#outputTable' + count).show();
 
         $('#outputGraph' + count).hide();
         $('#outputEditor' + count).hide();
+        $('#outputGeo' + count).hide();
       } else if (string === 'Graph') {
         $('#outputGraph' + count).show();
 
+        $('#outputTable' + count).hide();
+        $('#outputEditor' + count).hide();
+        $('#outputGeo' + count).hide();
+      } else if (string === 'Geo') {
+        $('#outputGeo' + count).show();
+
+        $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
         $('#outputEditor' + count).hide();
       }
@@ -495,16 +506,31 @@
       }
     },
 
-    explainQuery: function () {
+    profileQuery: function () {
+      this.explainQuery(true);
+    },
+
+    explainQuery: function (profile) {
+      if (profile !== true) {
+        profile = false;
+      } else {
+        profile = true;
+      }
+
       if (this.verifyQueryAndParams()) {
         return;
       }
 
       this.lastSentQueryString = this.aqlEditor.getValue();
 
+      var type = 'Explain';
+      if (profile) {
+        type = 'Profile';
+      }
+
       this.$(this.outputDiv).prepend(this.outputTemplate.render({
         counter: this.outputCounter,
-        type: 'Explain'
+        type: type
       }));
 
       var counter = this.outputCounter;
@@ -522,7 +548,7 @@
         bindParam: this.bindParamTableObj
       };
 
-      this.fillExplain(outputEditor, counter);
+      this.fillExplain(outputEditor, counter, profile);
       this.outputCounter++;
     },
 
@@ -534,7 +560,16 @@
         window.modalView.createReadOnlyEntry(
           'debug-download-package-disclaimer',
           'Disclaimer',
-          'This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include collection names and created indexes, including attribute names and bind parameters. All string values will be obfuscated in a not-reversable way. If the below check box is not checked this package will not include any data. If the below check box is checked it will include a sample data-set again obfuscating all string values, all number values are not obfuscated. In order to check if any sensitive data is shared open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before. Including this package in bug reports will lower the amout of questioning back and forth until the issue is reproduced.',
+          '<p>This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include:</p>' +
+            '<ul>' +
+            '<li>collection names</li>' +
+            '<li>collection indexes</li>' +
+            '<li>attribute names</li>' +
+            '<li>bind parameters</li>' +
+            '</ul>' +
+            '<p>Additionally, samples of your data will be included with all <b>string values obfuscated</b> in a non-reversible way if below checkbox is ticked.</p>' +
+            '<p>If disabled, this package will not include any data.</p>' +
+            '<p>Please open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before uploading. Including this package in bug reports will lower the amount of questioning back and forth to reproduce the issue on our side and is much appreciated.</p>',
           undefined,
           false,
           false
@@ -545,7 +580,7 @@
           'debug-download-package-examples',
           'Include obfuscated examples',
           'includeExamples',
-          'Includes an example set of documents, obfuscating all String values inside the data. This helps the Team in many ways as many issues are related to the document structure / format and the indexes defined on them.',
+          'Includes an example set of documents, obfuscating all string values inside the data. This helps the ArangoDB Team as many issues are related to the document structure / format and the indexes defined on them.',
           true
         )
       );
@@ -582,9 +617,15 @@
       }
     },
 
-    fillExplain: function (outputEditor, counter) {
+    fillExplain: function (outputEditor, counter, profile) {
       var self = this;
-      var queryData = this.readQueryData();
+      var queryData;
+
+      if (profile) {
+        queryData = this.readQueryData(null, null, true);
+      } else {
+        queryData = this.readQueryData();
+      }
 
       if (queryData === 'false') {
         return;
@@ -601,16 +642,27 @@
           $('#outputEditorWrapper' + counter + ' .switchAce').show();
         };
 
+        var url;
+        if (profile) {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/query/profile');
+        } else {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/query/explain');
+        }
+
         $.ajax({
           type: 'POST',
-          url: arangoHelper.databaseUrl('/_admin/aardvark/query/explain/'),
+          url: url,
           data: queryData,
           contentType: 'application/json',
           processData: false,
           success: function (data) {
             if (data.msg && data.msg.errorMessage) {
               self.removeOutputEditor(counter);
-              arangoHelper.arangoError('Explain', data.msg);
+              if (profile) {
+                arangoHelper.arangoError('Profile', data.msg);
+              } else {
+                arangoHelper.arangoError('Explain', data.msg);
+              }
             } else {
               // cache explain results
               self.cachedQueries[counter] = data;
@@ -629,9 +681,17 @@
           error: function (data) {
             try {
               var temp = JSON.parse(data.responseText);
-              arangoHelper.arangoError('Explain', temp.errorMessage);
+              if (profile) {
+                arangoHelper.arangoError('Profile', temp.errorMessage);
+              } else {
+                arangoHelper.arangoError('Explain', temp.errorMessage);
+              }
             } catch (e) {
-              arangoHelper.arangoError('Explain', 'ERROR');
+              if (profile) {
+                arangoHelper.arangoError('Profile', 'ERROR');
+              } else {
+                arangoHelper.arangoError('Explain', 'ERROR');
+              }
             }
             self.handleResult(counter);
             self.removeOutputEditor(counter);
@@ -1368,6 +1428,7 @@
       this.queryPreview.getSession().setMode('ace/mode/aql');
       this.queryPreview.setReadOnly(true);
       this.queryPreview.setFontSize('13px');
+      this.queryPreview.setShowPrintMargin(false);
 
       // auto focus this editor
       $('#aqlEditor .ace_text-input').focus();
@@ -1682,11 +1743,13 @@
       }
     },
 
-    readQueryData: function (selected, forExecute) {
+    readQueryData: function (selected, forExecute, forProfile) {
       // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
-      var data = {
-        id: 'currentFrontendQuery'
-      };
+      var data = {};
+
+      if (!forProfile) {
+        data.id = 'currentFrontendQuery';
+      }
 
       if (selected) {
         data.query = this.aqlEditor.getSelectedText();
@@ -1828,13 +1891,15 @@
       if (window.location.hash === '#queries') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
+        var maxHeight = $('.centralRow').height() - 250;
         var success;
+        var invalidGeoJSON = 0;
 
         // handle explain query case
         if (!data.msg) {
           // handle usual query
           result = self.analyseQuery(data.result);
-          if (result.defaultType === 'table') {
+          if (result.defaultType === 'table' || result.defaultType === 'geotable') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div id="outputTable' + counter + '" class="outputTable"></div>'
             );
@@ -1842,7 +1907,6 @@
             self.renderOutputTable(result, counter);
 
             // apply max height for table output dynamically
-            var maxHeight = $('.centralRow').height() - 250;
             $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
 
             $('#outputEditor' + counter).hide();
@@ -1863,12 +1927,114 @@
               $('#outputGraph' + counter).remove();
             }
           }
+          if (result.defaultType === 'geo' || result.defaultType === 'geotable') {
+            var geoHeight = 500;
+            $('#outputEditor' + counter).hide();
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+              '<div class="geoContainer" id="outputGeo' + counter + '" style="height: ' + geoHeight + 'px; maxheight: ' + maxHeight + 'px;"></div>'
+            );
+
+            self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
+
+            self.maps[counter].addLayer(new L.StamenTileLayer('terrain', {
+              detectRetina: true
+            }));
+
+            var position = 1;
+            var geojson;
+
+            var geoStyle = {
+              color: '#3498db',
+              opacity: 1,
+              weight: 3
+            };
+
+            var geojsonMarkerOptions = {
+              radius: 8,
+              fillColor: '#2ecc71',
+              color: 'white',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.64
+            };
+
+            var markers = [];
+            _.each(data.result, function (geo) {
+              if (geo.type === 'Point' || geo.type === 'MultiPoint') {
+                // reverse neccessary if we are using GeoJSON order
+                // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
+                try {
+                  geojson = new L.GeoJSON(geo, {
+                    pointToLayer: function (feature, latlng) {
+                      var res = L.circleMarker(latlng, geojsonMarkerOptions);
+                      markers.push(res);
+                      return res;
+                    }
+                  }).addTo(self.maps[counter]);
+                } catch (ignore) {
+                  invalidGeoJSON++;
+                }
+              } else if (geo.type === 'Polygon' || geo.type === 'LineString' || geo.type === 'MultiLineString' || geo.type === 'MultiPolygon') {
+                try {
+                  geojson = new L.GeoJSON(geo, {
+                    style: geoStyle
+                  }).addTo(self.maps[counter]);
+                  markers.push(geojson);
+                } catch (ignore) {
+                  invalidGeoJSON++;
+                }
+              }
+
+              // positioning
+              if (position === data.result.length) {
+                if (markers.length > 0) {
+                  try {
+                    var show = new L.featureGroup(markers);
+                    self.maps[counter].fitBounds(show.getBounds());
+                  } catch (ignore) {
+                  }
+                } else {
+                  try {
+                    self.maps[counter].fitBounds(geojson.getBounds());
+                  } catch (ignore) {
+                  }
+                }
+              }
+              position++;
+            });
+          }
 
           // add active class to choosen display method
           if (success !== false) {
-            $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
-          } else {
-            $('#json-switch').addClass('active').css('display', 'inline');
+            if (result.defaultType === 'geotable' || result.defaultType === 'geo') {
+              $('#outputTable' + counter).hide();
+              if (result.defaultType === 'geotable') {
+                $('#table-switch').css('display', 'inline');
+              }
+
+              if (data.result.length === invalidGeoJSON) {
+                $('#outputGeo' + counter).remove();
+                if (result.defaultType === 'geotable') {
+                  $('#outputTable' + counter).show();
+                  $('#table-switch').addClass('active').css('display', 'inline');
+                } else {
+                  $('#outputEditor' + counter).show();
+                  $('#json-switch').addClass('active').css('display', 'inline');
+                }
+              } else {
+                $('#geo-switch').addClass('active').css('display', 'inline');
+              }
+            } else {
+              $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+            }
+            $('#json-switch').css('display', 'inline');
+
+            // fallback
+            if (result.fallback && (result.fallback === 'geo' || result.fallback === 'geotable')) {
+              $('#geo-switch').addClass('disabled').css('display', 'inline').css('opacity', '0.5');
+              $('#geo-switch').addClass('tippy').attr('title', 'No internet collection. Map is not available.');
+              arangoHelper.createTooltips();
+            }
           }
 
           var appendSpan = function (value, icon, css) {
@@ -1972,11 +2138,15 @@
         }
 
         if (data.msg) {
-          $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          if (data.extra.profile) {
+            $('#outputEditorWrapper' + counter + ' .toolbarType').html('Profile');
+          } else {
+            $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
+          }
           outputEditor.setValue(data.msg, 1);
         }
 
-        if (result.defaultType === 'table') {
+        if (result.defaultType === 'table' || result.defaultType === 'geotable') {
           // show csv download button
           self.checkCSV(counter);
         }
@@ -2371,6 +2541,7 @@
       }
 
       // check if result could be displayed as table
+      var geojson = 0;
       if (!found) {
         var check = true;
         var attributes = {};
@@ -2384,6 +2555,16 @@
             if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
               // not a document and not suitable for tabluar display
               return;
+            }
+
+            if (typeof obj === 'object') {
+              if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
+                if (obj.type === 'Point' || obj.type === 'MultiPoint' ||
+                    obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
+                    obj.type === 'LineString' || obj.type === 'MultiLineString') {
+                  geojson++;
+                }
+              }
             }
 
             _.each(obj, function (value, key) {
@@ -2413,13 +2594,34 @@
 
         if (check) {
           found = true;
-          toReturn.defaultType = 'table';
+          if (result.length === geojson) {
+            toReturn.defaultType = 'geotable';
+          } else {
+            toReturn.defaultType = 'table';
+          }
         }
       }
 
       if (!found) {
       // if all check fails, then just display as json
-        toReturn.defaultType = 'json';
+        if (result.length !== 0 && result.length === geojson) {
+          toReturn.defaultType = 'geo';
+        } else {
+          toReturn.defaultType = 'json';
+        }
+      }
+
+      if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
+        if (!window.activeInternetConnection) {
+          // mark the type we wanted to render
+          toReturn.fallback = toReturn.defaultType;
+
+          if (toReturn.defaultType === 'geo') {
+            toReturn.defaultType = 'json';
+          } else {
+            toReturn.defaultType = 'table';
+          }
+        }
       }
 
       return toReturn;
@@ -2436,6 +2638,14 @@
       var found = this.aqlEditor.find(text);
 
       if (!found && pos) {
+        try {
+          row = parseInt(row);
+          if (row > 0) {
+            row = row - 1;
+          }
+        } catch (ignore) {
+        }
+
         this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
         this.aqlEditor.selection.selectLine();
       }
@@ -2610,6 +2820,9 @@
           if (originCallback) {
             originCallback();
           }
+        },
+        error: function (data, resp) {
+          arangoHelper.arangoError('User Queries', resp.responseText);
         }
       });
     },
@@ -2629,7 +2842,7 @@
             // if nested array or object found, do not offer csv download
             try {
               tmp = JSON.parse(entry);
-              // if parse succes -> arr or obj found
+              // if parse success -> arr or obj found
               if (typeof tmp === 'object') {
                 status = false;
               }

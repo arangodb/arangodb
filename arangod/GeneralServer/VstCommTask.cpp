@@ -42,7 +42,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 
@@ -50,31 +49,28 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-inline std::size_t validateAndCount(char const* vpStart,
-                                    char const* vpEnd) {
+// throws on error
+inline void validateMessage(char const* vpStart, char const* vpEnd) {
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
   VPackValidator validator(&validationOptions);
 
-  try {
-    std::size_t numPayloads = 0;
-    // check for slice start to the end of Chunk
-    // isSubPart allows the slice to be shorter than the checked buffer.
-    do {
-      validator.validate(vpStart, std::distance(vpStart, vpEnd),
-                         /*isSubPart =*/true);
+  // isSubPart allows the slice to be shorter than the checked buffer.
+  validator.validate(vpStart, std::distance(vpStart, vpEnd),
+                     /*isSubPart =*/true);
 
-      // get offset to next
-      VPackSlice tmp(vpStart);
-      vpStart += tmp.byteSize();
-      numPayloads++;
-    } while (vpStart != vpEnd);
-    return numPayloads - 1;
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-      << "len: " << std::distance(vpStart, vpEnd) << " - " << VPackSlice(vpStart).toHex();
-    throw std::runtime_error(
-        std::string("error during validation of incoming VPack: ") + e.what());
+  VPackSlice slice = VPackSlice(vpStart);
+  if (!slice.isArray() || slice.length() < 2) {
+    throw std::runtime_error("VST message does not contain a valid request header");
+  }
+  
+  VPackSlice vSlice = slice.at(0);
+  if (!vSlice.isNumber<short>() || vSlice.getNumber<int>() != 1) {
+    throw std::runtime_error("VST message header has an unsupported version");
+  }
+  VPackSlice typeSlice = slice.at(1);
+  if (!typeSlice.isNumber<int>()) {
+    throw std::runtime_error("VST message is not of type request");
   }
 }
 
@@ -86,7 +82,7 @@ VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
     : Task(scheduler, "VstCommTask"),
       GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
                       skipInit),
-      _authorized(false),
+      _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
       _protocolVersion(protocolVersion) {
@@ -290,27 +286,18 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
-  if (_auth->isActive()) { // will just fail if method is NONE
-    auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
-    _authorized = entry.authenticated();
-    if (_authorized) {
-      _authenticatedUser = std::move(entry._username);
-    } else {
-      _authenticatedUser.clear();
-    }
-  } else {
-    _authorized = true;
-    _authenticatedUser = std::move(user); // may be empty
-  }
+  auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authorized = entry.authenticated();
   
-  if (_authorized) {
-    // mop: hmmm...user should be completely ignored if there is no auth IMHO
-    // obi: user who sends authentication expects a reply
+  if (_authorized || !_auth->isActive()) {
+    _authenticatedUser = std::move(entry._username);
+    // simon: drivers expect a response for their auth request
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
-                     "authentication successful");
+                     "auth successful");
   } else {
+    _authenticatedUser.clear();
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
-                     TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
+                     TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 }
 
@@ -368,48 +355,45 @@ bool VstCommTask::processRead(double startTime) {
         << "\"vst-request-header\",\"" << (void*)this << "/"
         << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"vst-request-payload\",\"" << (void*)this << "/"
-        << chunkHeader._messageID << "\"," << message.payload().toJson()
-        << "\"";
+        << chunkHeader._messageID << "\"," << VPackSlice(message.payload()).toJson()
+        << "\"";*/
 
-    // get type of request
-    int type = meta::underlyingValue(rest::RequestType::ILLEGAL);
-    try {
-      type = header.at(1).getNumber<int>();
-    } catch (std::exception const& e) {
-      addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                        chunkHeader._messageID, VPackBuffer<uint8_t>());
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "VstCommTask: "
-          << "VPack Validation failed: " << e.what();
-      closeTask(rest::ResponseCode::BAD);
-      return false;
-    }
+    // get type of request, message header is validated earlier
+    TRI_ASSERT(header.isArray() && header.length() >= 2);
+    TRI_ASSERT(header.at(1).isNumber<int>()); // va
     
+    int type = header.at(1).getNumber<int>();
     // handle request types
-    if (type == 1000) {
+    if (type == 1000) { // auth
       handleAuthHeader(header, chunkHeader._messageID);
-    } else {
+    } else if (type == 1) { // request
       
       // the handler will take ownership of this pointer
-      std::unique_ptr<VstRequest> request(new VstRequest(
-          _connectionInfo, std::move(message), chunkHeader._messageID));
-      request->setAuthenticated(_authorized);
-      request->setUser(_authenticatedUser);
-      request->setAuthenticationMethod(_authMethod);
+      auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
+                                              chunkHeader._messageID);
+      req->setAuthenticated(_authorized);
+      req->setUser(_authenticatedUser);
+      req->setAuthenticationMethod(_authMethod);
       if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
       
-      RequestFlow cont = prepareExecution(*request.get());
+      RequestFlow cont = prepareExecution(*req.get());
       if (cont == RequestFlow::Continue) {
         auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
                                                   chunkHeader._messageID);
-        resp->setContentTypeRequested(request->contentTypeResponse());
-        executeRequest(std::move(request), std::move(resp));
+        resp->setContentTypeRequested(req->contentTypeResponse());
+        executeRequest(std::move(req), std::move(resp));
       }
+    } else { // not supported on server
+      LOG_TOPIC(ERR, Logger::REQUESTS) << "\"vst-request-header\",\"" << (void*)this << "/"
+      << chunkHeader._messageID << "\"," << message.header().toJson() << "\"" << " is unsupported";
+      addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                        chunkHeader._messageID, VPackBuffer<uint8_t>());
+      return false;
     }
   }
 
@@ -451,10 +435,8 @@ bool VstCommTask::getMessageFromSingleChunk(
 
   LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                           << "chunk contains single message";
-  std::size_t payloads = 0;
-
   try {
-    payloads = validateAndCount(vpackBegin, chunkEnd);
+    validateMessage(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       chunkHeader._messageID, VPackBuffer<uint8_t>());
@@ -474,7 +456,7 @@ bool VstCommTask::getMessageFromSingleChunk(
 
   VPackBuffer<uint8_t> buffer;
   buffer.append(vpackBegin, std::distance(vpackBegin, chunkEnd));
-  message.set(chunkHeader._messageID, std::move(buffer), payloads);  // fixme
+  message.set(chunkHeader._messageID, std::move(buffer));  // fixme
 
   doExecute = true;
   return true;
@@ -538,14 +520,10 @@ bool VstCommTask::getMessageFromMultiChunks(
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
-      std::size_t payloads = 0;
-
       try {
-        payloads =
-            validateAndCount(reinterpret_cast<char const*>(im._buffer.data()),
-                             reinterpret_cast<char const*>(
-                                 im._buffer.data() + im._buffer.byteSize()));
-
+         validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
+                         reinterpret_cast<char const*>(im._buffer.data() +
+                                                       im._buffer.byteSize()));
       } catch (std::exception const& e) {
         addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                          chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());
@@ -563,7 +541,7 @@ bool VstCommTask::getMessageFromMultiChunks(
         return false;
       }
 
-      message.set(chunkHeader._messageID, std::move(im._buffer), payloads);
+      message.set(chunkHeader._messageID, std::move(im._buffer));
       _incompleteMessages.erase(incompleteMessageItr);
       // check length
 

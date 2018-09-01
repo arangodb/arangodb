@@ -76,9 +76,11 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _indexesExhausted(false),
       _isLastIndex(false),
       _hasMultipleExpansions(false),
-      _returned(0) {
+      _returned(0),
+      _copyFromRow(0),
+      _resultInFlight(nullptr) {
   _mmdr.reset(new ManagedDocumentResult);
-    
+
   TRI_ASSERT(!_indexes.empty());
 
   if (_condition != nullptr) {
@@ -95,7 +97,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
         } else if (leaf->numMembers() != 2) {
           continue; // Otherwise we only support binary conditions
         }
-        
+
         TRI_ASSERT(leaf->numMembers() == 2);
         AstNode* lhs = leaf->getMemberUnchecked(0);
         AstNode* rhs = leaf->getMemberUnchecked(1);
@@ -114,7 +116,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
-  
+
   // count how many attributes in the index are expanded (array index)
   // if more than a single attribute, we always need to deduplicate the
   // result later on
@@ -132,9 +134,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
- 
+
   // build the _documentProducer callback for extracting
-  // documents from the index 
+  // documents from the index
   buildCallback();
 
   initializeOnce();
@@ -171,7 +173,6 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
 }
 
 void IndexBlock::executeExpressions() {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(_condition != nullptr);
   TRI_ASSERT(!_nonConstExpressions.empty());
 
@@ -185,11 +186,11 @@ void IndexBlock::executeExpressions() {
   AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
   _condition = newCondition;
   TRI_DEFER(FINALIZE_SUBTREE(newCondition));
-  
+
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
-    NonConstExpression* toReplace = _nonConstExpressions[posInExpressions];
-    auto exp = toReplace->expression;
+    NonConstExpression* toReplace = _nonConstExpressions[posInExpressions].get();
+    auto exp = toReplace->expression.get();
 
     bool mustDestroy;
     BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions],
@@ -200,7 +201,7 @@ void IndexBlock::executeExpressions() {
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
-    
+
     AstNode* tmp = newCondition;
     for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
       size_t idx = toReplace->indexPath[x];
@@ -214,7 +215,6 @@ void IndexBlock::executeExpressions() {
       }
     }
   }
-  DEBUG_END_BLOCK();
 }
 
 void IndexBlock::initializeOnce() {
@@ -236,10 +236,7 @@ void IndexBlock::initializeOnce() {
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
 
-    auto nce = std::make_unique<NonConstExpression>(e.get(), std::move(idxs));
-    e.release();
-    _nonConstExpressions.push_back(nce.get());
-    nce.release();
+    _nonConstExpressions.emplace_back(std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
@@ -275,7 +272,7 @@ void IndexBlock::initializeOnce() {
 
     return accessedInSubtree;
   };
-  
+
   auto instFCallArgExpressions = [&](AstNode* fcall,
                                      std::vector<size_t>&& indexPath) {
     TRI_ASSERT(1 == fcall->numMembers());
@@ -287,7 +284,7 @@ void IndexBlock::initializeOnce() {
         std::vector<size_t> idx = indexPath;
         idx.emplace_back(k);
         instantiateExpression(child, std::move(idx));
-        
+
         TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -363,7 +360,6 @@ void IndexBlock::initializeOnce() {
 // _pos to evaluate the variable bounds.
 
 bool IndexBlock::initIndexes() {
-  DEBUG_BEGIN_BLOCK();
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
@@ -437,22 +433,15 @@ bool IndexBlock::initIndexes() {
   }
   _indexesExhausted = false;
   return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief create an OperationCursor object
 void IndexBlock::createCursor() {
-  DEBUG_BEGIN_BLOCK();
   _cursor = orderCursor(_currentIndex);
-  DEBUG_END_BLOCK();
 }
 
 /// @brief Forwards _iterator to the next available index
 void IndexBlock::startNextCursor() {
-  DEBUG_BEGIN_BLOCK();
-
   IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   if (!node->options().ascending) {
     --_currentIndex;
@@ -467,13 +456,10 @@ void IndexBlock::startNextCursor() {
   } else {
     _cursor = nullptr;
   }
-  DEBUG_END_BLOCK();
 }
 
 // this is called every time we just skip in the index
 bool IndexBlock::skipIndex(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   if (_cursor == nullptr || _indexesExhausted) {
     // All indexes exhausted
     return false;
@@ -501,15 +487,11 @@ bool IndexBlock::skipIndex(size_t atMost) {
     return true;
   }
   return false;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 // this is called every time we need to fetch data from the indexes
 bool IndexBlock::readIndex(size_t atMost,
                            IndexIterator::DocumentCallback const& callback) {
-  DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -550,12 +532,12 @@ bool IndexBlock::readIndex(size_t atMost,
         callback(id, VPackSlice::nullSlice());
       }, atMost - _returned);
     } else {
-      // check if the *current* cursor supports covering index queries or not 
+      // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
       // DocumentProducingBlock can access the flag
       _allowCoveringIndexOptimization = _cursor->hasCovering();
-      
-      if (_allowCoveringIndexOptimization && 
+
+      if (_allowCoveringIndexOptimization &&
           !ExecutionNode::castTo<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
         // index covers all projections
         res = _cursor->nextCovering(callback, atMost - _returned);
@@ -574,16 +556,15 @@ bool IndexBlock::readIndex(size_t atMost,
   }
   // if we get here the indexes are exhausted.
   return false;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
-int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -591,31 +572,30 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _returned = 0;
   _pos = 0;
   _currentIndex = 0;
+  _resultInFlight.reset();
+  _copyFromRow = 0;
 
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  return res;
 }
 
 /// @brief getSome
-AqlItemBlock* IndexBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
+    size_t atMost) {
   traceGetSomeBegin(atMost);
   if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, nullptr};
   }
 
   TRI_ASSERT(atMost > 0);
-  size_t curRegs;
-
-  std::unique_ptr<AqlItemBlock> res(requestBlock(
-      atMost,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-  _returned = 0;       // here we count how many of this AqlItemBlock we have
-                       // already filled
-  size_t copyFromRow;  // The row to copy values from
+  size_t const nrInRegs = getNrInputRegisters();
+  if (_resultInFlight == nullptr) {
+    // We handed sth out last call and need to reset now.
+    TRI_ASSERT(_returned == 0);
+    TRI_ASSERT(_copyFromRow == 0);
+    _resultInFlight.reset(requestBlock(atMost, getNrOutputRegisters()));
+  }
 
   // The following callbacks write one index lookup result into res at
   // position _returned:
@@ -624,8 +604,8 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
 
   if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
-    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
-      TRI_ASSERT(res != nullptr);
+    callback = [this, nrInRegs](LocalDocumentId const& token, VPackSlice slice) {
+      TRI_ASSERT(_resultInFlight != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
         if (!_alreadyReturned.emplace(token.id()).second) {
@@ -640,20 +620,33 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
         }
       }
 
-      _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
+      _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
   } else {
     // No uniqueness checks
-    callback = [&](LocalDocumentId const&, VPackSlice slice) {
-      TRI_ASSERT(res.get() != nullptr);
-      _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
+    callback = [this, nrInRegs](LocalDocumentId const&, VPackSlice slice) {
+      TRI_ASSERT(_resultInFlight != nullptr);
+      _documentProducer(_resultInFlight.get(), slice, nrInRegs, _returned, _copyFromRow);
     };
   }
 
   do {
     if (_buffer.empty()) {
+      if (_upstreamState == ExecutionState::DONE) {
+        _done = true;
+        break;
+      }
+
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
+        return {ExecutionState::WAITING, nullptr};
+      }
+      if (!blockAppended || !initIndexes()) {
         _done = true;
         break;
       }
@@ -667,7 +660,20 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
+        if (_upstreamState == ExecutionState::DONE) {
+          _done = true;
+          break;
+        }
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) =
+            ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          traceGetSomeEnd(_resultInFlight.get(), ExecutionState::WAITING);
+          return {ExecutionState::WAITING, nullptr};
+        }
+        if (!blockAppended) {
           _done = true;
           break;
         }
@@ -684,21 +690,21 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
     // At least one of them is prepared and ready to read.
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
-    curRegs = cur->getNrRegs();
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
 
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs <= _resultInFlight->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos, _returned);
-    copyFromRow = _returned;
+    inheritRegisters(cur, _resultInFlight.get(), _pos, _returned);
+    _copyFromRow = _returned;
 
     // Read the next elements from the indexes
     auto saveReturned = _returned;
     _indexesExhausted = !readIndex(atMost, callback);
     if (_returned == saveReturned) {
       // No results. Kill the registers:
-      for (arangodb::aql::RegisterId i = 0; i < curRegs; ++i) {
-        res->destroyValue(_returned, i);
+      for (arangodb::aql::RegisterId i = 0; i < nrInRegs; ++i) {
+        _resultInFlight->destroyValue(_returned, i);
       }
     } else {
       // Update statistics
@@ -712,29 +718,30 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
   //   (2) The AqlItemBlock is half-full (0 < _returned < atMost)
   //   (3) The AqlItemBlock is full (_returned == atMost)
   if (_returned == 0) {
-    AqlItemBlock* dummy = res.release();
+    TRI_ASSERT(_copyFromRow == 0);
+    AqlItemBlock* dummy = _resultInFlight.release();
     returnBlock(dummy);
-    return nullptr;
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
+    return {getHasMoreState(), nullptr};
   }
   if (_returned < atMost) {
-    res->shrink(_returned);
+    _resultInFlight->shrink(_returned);
   }
 
+  _returned = 0;
+  _copyFromRow = 0;
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
+  clearRegisters(_resultInFlight.get());
+  traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
 
-  return res.release();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  return {getHasMoreState(), std::move(_resultInFlight)};
 }
 
 /// @brief skipSome
-size_t IndexBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
+std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
   if (_done) {
-    return 0;
+    return {ExecutionState::DONE, 0};
   }
 
   _returned = 0;
@@ -742,7 +749,14 @@ size_t IndexBlock::skipSome(size_t atMost) {
   while (_returned < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        return {ExecutionState::WAITING, 0};
+      }
+      if (!blockAppended || !initIndexes()) {
         _done = true;
         break;
       }
@@ -757,7 +771,14 @@ size_t IndexBlock::skipSome(size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          return {ExecutionState::WAITING, 0};
+        }
+        if (!blockAppended) {
           _done = true;
           break;
         }
@@ -777,36 +798,32 @@ size_t IndexBlock::skipSome(size_t atMost) {
     _indexesExhausted = !skipIndex(atMost);
   }
 
-  return _returned;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+  size_t returned = _returned;
+  _returned = 0;
+  return {getHasMoreState(), returned};
 }
 
 /// @brief frees the memory for all non-constant expressions
 void IndexBlock::cleanupNonConstExpressions() {
-  for (auto& it : _nonConstExpressions) {
-    delete it;
-  }
   _nonConstExpressions.clear();
 }
 
 /// @brief order a cursor for the index at the specified position
 arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
-  AstNode const* conditionNode = nullptr;
-  if (_condition != nullptr) {
-    TRI_ASSERT(_indexes.size() == _condition->numMembers());
-    TRI_ASSERT(_condition->numMembers() > currentIndex);
-
-    conditionNode = _condition->getMember(currentIndex);
-  }
-
   TRI_ASSERT(_indexes.size() > currentIndex);
 
   // TODO: if we have _nonConstExpressions, we should also reuse the
   // cursors, but in this case we have to adjust the iterator's search condition
   // from _condition
   if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
+    AstNode const* conditionNode = nullptr;
+    if (_condition != nullptr) {
+      TRI_ASSERT(_indexes.size() == _condition->numMembers());
+      TRI_ASSERT(_condition->numMembers() > currentIndex);
+
+      conditionNode = _condition->getMember(currentIndex);
+    }
+
     // yet no cursor for index, so create it
     IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(

@@ -64,8 +64,10 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
 }
 
 MMFilesFulltextIndex::MMFilesFulltextIndex(
-    TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
-    VPackSlice const& info)
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+)
     : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
@@ -117,10 +119,9 @@ size_t MMFilesFulltextIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
+void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)
@@ -281,7 +282,10 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   // note: the following call will free "ft"!
   std::set<TRI_voc_rid_t> results =
       TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
-  return new MMFilesFulltextIndexIterator(_collection, trx, this, std::move(results));
+
+  return new MMFilesFulltextIndexIterator(
+    &_collection, trx, std::move(results)
+  );
 }
 
 /// @brief callback function called by the fulltext index to determine the

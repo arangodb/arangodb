@@ -48,56 +48,54 @@ class AqlItemBlockManager {
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return a block to the manager
-  void returnBlock(AqlItemBlock*& block);
+  void returnBlock(AqlItemBlock*& block) noexcept;
+
+  /// @brief return a block to the manager
+  void returnBlock(std::unique_ptr<AqlItemBlock> block) noexcept {
+    AqlItemBlock* b = block.release();
+    returnBlock(b);
+  }
 
   ResourceMonitor* resourceMonitor() const { return _resourceMonitor; }
 
  private:
   ResourceMonitor* _resourceMonitor;
     
-  static constexpr size_t NumBuckets = 12;
+  static constexpr size_t numBuckets = 12;
+  static constexpr size_t numBlocksPerBucket = 7;
 
   struct Bucket {
-    static constexpr size_t NumBlocks = 4;
-
+    std::array<AqlItemBlock*, numBlocksPerBucket> blocks;
+    size_t numItems;
+    
     Bucket();
     ~Bucket(); 
 
-    std::array<AqlItemBlock*, NumBlocks> blocks;
-    
-    bool empty() const {
-      return (blocks[0] == nullptr);
+    bool empty() const noexcept { 
+      return numItems == 0; 
     }
 
-    bool full() const {
-      return (blocks[NumBlocks - 1] != nullptr);
+    bool full() const noexcept {
+      return (numItems == numBlocksPerBucket);
     }
 
-    AqlItemBlock* pop() {
+    AqlItemBlock* pop() noexcept {
       TRI_ASSERT(!empty());
-      size_t i = NumBlocks;
-      while (i--) {       
-        if (blocks[i] != nullptr) {
-          AqlItemBlock* result = blocks[i];
-          blocks[i] = nullptr;
-          return result;
-        }
-      }
-      return nullptr;
+      TRI_ASSERT(numItems > 0);
+      AqlItemBlock* result = blocks[--numItems];
+      TRI_ASSERT(result != nullptr);
+      blocks[numItems] = nullptr;
+      return result;
     }
 
-    void push(AqlItemBlock* block) {
+    void push(AqlItemBlock* block) noexcept {
       TRI_ASSERT(!full());
-      for (size_t i = 0; i < NumBlocks; ++i) {
-        if (blocks[i] == nullptr) {
-          blocks[i] = block;
-          return;
-        }
-      }
-      TRI_ASSERT(false);
+      TRI_ASSERT(blocks[numItems] == nullptr);
+      blocks[numItems++] = block;
+      TRI_ASSERT(numItems <= numBlocksPerBucket);
     }
 
-    static size_t getId(size_t targetSize) {
+    static size_t getId(size_t targetSize) noexcept {
       if (targetSize <= 1) {
         return 0;
       }
@@ -135,7 +133,7 @@ class AqlItemBlockManager {
     }
   };
 
-  Bucket _buckets[NumBuckets];
+  Bucket _buckets[numBuckets];
 };
 
 }

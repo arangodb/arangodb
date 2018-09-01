@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,7 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAgencyCallbacksHandler"; }
-  bool isDirect() const override;
+  RequestLane lane() const override final { return RequestLane::AGENCY_CLUSTER; }
   RestStatus execute() override;
 
  private:

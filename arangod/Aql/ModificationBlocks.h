@@ -42,14 +42,21 @@ class ModificationBlock : public ExecutionBlock {
   virtual ~ModificationBlock();
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final;
+
+  std::pair<ExecutionState, arangodb::Result> initializeCursor(
+      AqlItemBlock* items, size_t pos) override final;
 
  protected:
   /// @brief the actual work horse
-  virtual AqlItemBlock* work(std::vector<AqlItemBlock*>&) = 0;
+  virtual std::unique_ptr<AqlItemBlock> work() = 0;
 
   /// @brief extract a key from the AqlValue passed
-  int extractKey(AqlValue const&, std::string&);
+  int extractKey(AqlValue const&, std::string& key);
+
+  /// @brief extract a key and rev from the AqlValue passed
+  int extractKeyAndRev(AqlValue const&, std::string& key, std::string& rev);
 
   /// @brief process the result of a data-modification operation
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
@@ -57,6 +64,18 @@ class ModificationBlock : public ExecutionBlock {
   void handleBabyResult(std::unordered_map<int, size_t> const&, size_t,
                         bool ignoreAllErrors,
                         bool ignoreDocumentNotFound = false);
+
+  /// @brief determine the number of rows in a vector of blocks
+  size_t countBlocksRows() const;
+
+  /// @brief Returns the success return start of this block.
+  ///        Can either be HASMORE or DONE.
+  ///        Guarantee is that if DONE is returned every subsequent call
+  ///        to get/skipSome will NOT find mor documents.
+  ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
+  ///        no more results.
+  ExecutionState getHasMoreState() override;
+
 
  protected:
   /// @brief output register ($OLD)
@@ -78,7 +97,9 @@ class ModificationBlock : public ExecutionBlock {
   ///        Will only be disabled in SmartGraphCase.
   bool _countStats;
  
- protected:
+  /// @brief A list of AQL Itemblocks fetched from upstream
+  std::vector<std::unique_ptr<AqlItemBlock>> _blocks;
+
   /// @brief a Builder object, reused for various tasks to save a few memory allocations
   velocypack::Builder _tempBuilder;
 };
@@ -90,7 +111,7 @@ class RemoveBlock : public ModificationBlock {
 
  protected:
   /// @brief the actual work horse for removing data
-  AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
+  std::unique_ptr<AqlItemBlock> work() override final;
 };
 
 class InsertBlock : public ModificationBlock {
@@ -100,7 +121,7 @@ class InsertBlock : public ModificationBlock {
 
  protected:
   /// @brief the actual work horse for inserting data
-  AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
+  std::unique_ptr<AqlItemBlock> work() override final;
 };
 
 class UpdateBlock : public ModificationBlock {
@@ -110,7 +131,7 @@ class UpdateBlock : public ModificationBlock {
 
  protected:
   /// @brief the actual work horse for updating data
-  AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
+  std::unique_ptr<AqlItemBlock> work() override final;
 };
 
 class ReplaceBlock : public ModificationBlock {
@@ -120,7 +141,7 @@ class ReplaceBlock : public ModificationBlock {
 
  protected:
   /// @brief the actual work horse for replacing data
-  AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
+  std::unique_ptr<AqlItemBlock> work() override final;
 };
 
 class UpsertBlock : public ModificationBlock {
@@ -130,7 +151,7 @@ class UpsertBlock : public ModificationBlock {
 
  protected:
   /// @brief the actual work horse for updating data
-  AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
+  std::unique_ptr<AqlItemBlock> work() override final;
 };
 
 }  // namespace arangodb::aql

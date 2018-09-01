@@ -22,6 +22,7 @@
 
 #include "V8DealerFeature.h"
 
+#include <regex>
 #include <thread>
 
 #include "3rdParty/valgrind/valgrind.h"
@@ -34,12 +35,14 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/DatabaseFeature.h"
+#include "Rest/Version.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
@@ -60,8 +63,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
-static thread_local bool alreadyLockedInThread = false;
 
 namespace {
 class V8GcThread : public Thread {
@@ -91,7 +92,8 @@ class V8GcThread : public Thread {
 }
 
 V8DealerFeature::V8DealerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -107,16 +109,14 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(true);
+  startsAfter("ClusterPhase");
+
   startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("Temp");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption(
@@ -169,17 +169,25 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   
   options->addHiddenOption(
       "--javascript.enabled",
-      "enable or disable the V8 JS engine entirely",
+      "enable the V8 JavaScript engine",
       new BooleanParameter(&_enableJS));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
+  // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
+  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY &&
+      (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr))) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
+    _enableJS = false;
+  }
+  
   if (!_enableJS) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
       "Script", "FoxxQueues", "Frontend"});
-    LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
-      << " experimental option, some features may be missing or broken !";
     return;
   }
   
@@ -201,6 +209,29 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
 
+  // try to append the current version name to the startup directory,
+  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), ""); 
+  std::string versionedPath = basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
+
+  LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific startup-directory '" << versionedPath << "'";
+  if (basics::FileUtils::isDirectory(versionedPath)) {
+    // version-specific js path exists!
+    _startupDirectory = versionedPath;
+  }
+ 
+  for (auto& it : _moduleDirectory) { 
+    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
+
+    LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
+    if (basics::FileUtils::isDirectory(versionedPath)) {
+      // version-specific js path exists!
+      it = versionedPath;
+    }
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory << "', effective module-directory is " << _moduleDirectory;
+
   _startupLoader.setDirectory(_startupDirectory);
   ServerState::instance()->setJavaScriptPath(_startupDirectory);
 
@@ -218,6 +249,12 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+}
+
+void V8DealerFeature::prepare() {
+  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  TRI_ASSERT(cluster != nullptr);
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
 }
 
 void V8DealerFeature::start() {
@@ -313,11 +350,14 @@ void V8DealerFeature::start() {
     }
   }
 
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
 
-  loadJavaScriptFileInAllContexts(database->systemDatabase(), "server/initialize.js", nullptr);
-
+  loadJavaScriptFileInAllContexts(
+    database.get(), "server/initialize.js", nullptr
+  );
   startGarbageCollection();
 }
 
@@ -329,12 +369,17 @@ V8Context* V8DealerFeature::addContext() {
     // threads can see (yet)
     applyContextUpdate(context);
 
-    DatabaseFeature* database =
-        ApplicationServer::getFeature<DatabaseFeature>("Database");
+    auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+      arangodb::SystemDatabaseFeature
+    >();
+    auto database = sysDbFeature->use();
 
     // no other thread can use the context when we are here, as the
     // context has not been added to the global list of contexts yet
-    loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
+    loadJavaScriptFileInContext(
+      database.get(), "server/initialize.js", context, nullptr
+    );
+
     return context; 
   } catch (...) {
     delete context;
@@ -366,17 +411,8 @@ bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
     return result;
   };
 
-  if (alreadyLockedInThread) {
-    // the condition lock has already been acquired in this thread
-    // we cannot detect this easily here without a thread-local variable
-    // as we may be called from a JavaScript callback here
-    return cb();
-  } else {
-    // the condition lock has not been acquired in this thread, so
-    // we are responsible for locking properly!
-    CONDITION_LOCKER(guard, _contextCondition);
-    return cb();
-  }
+  CONDITION_LOCKER(guard, _contextCondition);
+  return cb();
 }
 
 void V8DealerFeature::collectGarbage() {
@@ -536,9 +572,6 @@ void V8DealerFeature::unblockDynamicContextCreation() {
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
    
-  alreadyLockedInThread = true;
-  TRI_DEFER(alreadyLockedInThread = false);
-  
   if (builder != nullptr) {
     builder->openArray();
   }
@@ -770,9 +803,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      bool contextLimitNotExceeded =
-        ((_contexts.size() + _nrInflightContexts < _nrMaxContexts) ||
-         (forceContext == ANY_CONTEXT_OR_PRIORITY && (_contexts.size() + _nrInflightContexts <= _nrMaxContexts)));
+      bool const contextLimitNotExceeded = (_contexts.size() + _nrInflightContexts < _nrMaxContexts);
       
       if (contextLimitNotExceeded &&
           _dynamicContextCreationBlockers == 0 && 
@@ -823,13 +854,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      {
-        JobGuard jobGuard(SchedulerFeature::SCHEDULER);
-        jobGuard.block();
-        
-        TRI_ASSERT(guard.isLocked());
-        guard.wait(100000);
-      }
+      TRI_ASSERT(guard.isLocked());
+      guard.wait(100000);
 
       if (exitWhenNoContext.tick()) {
         vocbase->release();
@@ -1026,13 +1052,21 @@ void V8DealerFeature::defineContextUpdate(
 // apply context update is only run on contexts that no other
 // threads can see (yet)
 void V8DealerFeature::applyContextUpdate(V8Context* context) {
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
   for (auto& p : _contextUpdates) {
     auto vocbase = p.second;
 
     if (vocbase == nullptr) {
-      vocbase = DatabaseFeature::DATABASE->systemDatabase();
+      vocbase = sysDbFeature ? sysDbFeature->use().get() : nullptr;
+
+      if (!vocbase) {
+        continue;
+      }
     }
-  
+
     if (!vocbase->use()) {
       // oops
       continue;
@@ -1313,8 +1347,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   return context.release();
 }
 
-V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
+V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
+
   return {
     _contexts.size(),
     _busyContexts.size(),

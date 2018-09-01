@@ -27,7 +27,11 @@
 
 # Using Docker container
 
-We provide the docker container `arangodb/documentation-builder` which brings all neccessary dependencies to build the documentation.
+We provide the docker container `arangodb/documentation-builder` which brings
+all neccessary dependencies to build the documentation.
+
+The files and a description how to (re-)generate the Docker image are here:<br/>
+https://github.com/arangodb-helper/build-docker-containers/tree/master/distros/debian/jessie.docu
 
 You can automagically build it using
 
@@ -77,6 +81,7 @@ be driver or other utilities which shouldn't be directly in sync to the ArangoDB
 The maintainer of the respective component can alter the documentation, and once a good point in 
 time is reached, it can be sync'ed over via `Documentation/Scripts/fetchRefs.sh`, which spiders 
 the `SUMMARY.md` files of all books, creates a clone of the external resource, adds a `don't edit this here` note to the files, and copies them over. 
+Use your *github username* as first parameter to clone using HTTP + authentification, or `git` if you want to use ssh+key for authentification
 
 The syntax of the `SUMMARY.md` integration are special comment lines that contain `git` in them in a semicolon separated value list:
 
@@ -271,8 +276,10 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
     * Send the HTTP-request: `var response = logCurlRequest('POST', url, body);`
     * check its response:    `assert(response.code === 200);`
     * output a JSON server Reply: `logJsonResponse(response);` (will fail if its not a valid json)
+    * output a JSONL server Reply: `logJsonLResponse(response);` (will fail if its not a valid json;
+      use if the server responds with one json document per line; Add a note to the user that this is `*(One JSON document per line)*` above the example)
     * output HTML to the user: `logHtmlResponse(response);` (i.e. redirects have HTML documents)
-    * output the plain text to dump to the user: `logRawResponse(response);`
+    * output the plain text to dump to the user: `logRawResponse(response);` (**don't use this if you expect a json reply**)
     * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
  - EXAMPLE_AQL is intended to contain AQL queries that can be pasted into arangosh or the webinterfaces query editor.

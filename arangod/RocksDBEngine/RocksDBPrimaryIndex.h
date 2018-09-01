@@ -83,12 +83,13 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  RocksDBPrimaryIndex(arangodb::LogicalCollection*,
-                      VPackSlice const& info);
+  RocksDBPrimaryIndex(
+    arangodb::LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBPrimaryIndex();
 
- public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
 
   char const* typeName() const override { return "primary"; }
@@ -107,10 +108,23 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void load() override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
+
+  /// @brief reads a revision id from the primary index 
+  /// if the document does not exist, this function will return false
+  /// if the document exists, the function will return true
+  /// the revision id will only be non-zero if the primary index
+  /// value contains the document's revision id. note that this is not
+  /// the case for older collections
+  /// in this case the caller must fetch the revision id from the actual
+  /// document
+  bool lookupRevision(transaction::Methods* trx,
+                      arangodb::StringRef key,
+                      LocalDocumentId& id,
+                      TRI_voc_rid_t& revisionId) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

@@ -57,7 +57,7 @@ let optionsDocumentation = [
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
   '',
-  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `mmfiles`',
+  '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
@@ -107,6 +107,7 @@ let optionsDocumentation = [
   '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
+  '   - `testCase`: filter a jsunity testsuite for one special test case',
   ''
 ];
 
@@ -148,7 +149,7 @@ const optionsDefaults = {
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipTimeCritical': false,
-  'storageEngine': 'mmfiles',
+  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'useReconnect': true,
@@ -160,7 +161,8 @@ const optionsDefaults = {
   'verbose': false,
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
-  'testFailureText': 'testfailures.txt'
+  'testFailureText': 'testfailures.txt',
+  'testCase': undefined
 };
 
 const _ = require('lodash');
@@ -609,6 +611,7 @@ function iterateTests(cases, options, jsonReply) {
     // grrr...normalize structure
     delete result.status;
     delete result.failed;
+    delete result.crashed;
 
     let status = Object.values(result).every(testCase => testCase.status === true);
     let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -648,6 +651,7 @@ function iterateTests(cases, options, jsonReply) {
       print(RED + require('internal').inspect(results) + RESET);
     }
   }
+
   return results;
 }
 
@@ -683,6 +687,7 @@ function unitTest (cases, options) {
   delete options.jsonReply;
 
   let results = iterateTests(cases, options, jsonReply);
+
   if (jsonReply === true) {
     return results;
   } else {

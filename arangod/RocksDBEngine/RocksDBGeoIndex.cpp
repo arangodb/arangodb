@@ -48,14 +48,13 @@ class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
-                  ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
+                  RocksDBGeoIndex const* index,
                   geo::QueryParams&& params)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _index(index),
-        _mmdr(mmdr),
         _near(std::move(params)) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->readOptions();
+    rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() ==
@@ -70,8 +69,8 @@ class RDBNearIterator final : public IndexIterator {
   }
 
   /// internal retrieval loop
-  inline bool nextToken(std::function<bool(geo_index::Document const&)>&& cb,
-                        size_t limit) {
+  template<typename T>
+  inline bool nextToken(T cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -97,26 +96,29 @@ class RDBNearIterator final : public IndexIterator {
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
-          if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+          bool result = true; // this is updated by the callback
+          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            geo::FilterType const ft = _near.filterType();
+            if (ft != geo::FilterType::NONE) {  // expensive test
+              geo::ShapeContainer const& filter = _near.filterShape();
+              TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false;
+                return;
+              }
+            }
+            cb(gdoc.token, doc);  // return result
+            result = true;
+          })) {
             return false;
           }
-          VPackSlice doc(_mmdr->vpack());
-          geo::FilterType const ft = _near.filterType();
-          if (ft != geo::FilterType::NONE) {  // expensive test
-            geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
-            geo::ShapeContainer test;
-            Result res = _index->shape(doc, test);
-            TRI_ASSERT(res.ok());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
-              return false;
-            }
-          }
-          cb(gdoc.token, doc);  // return result
-          return true;
+          return result;
         },
         limit);
   }
@@ -128,16 +130,21 @@ class RDBNearIterator final : public IndexIterator {
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
-            if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+            bool result = true; // this is updated by the callback
+            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false;
+              }
+            })) {
               return false;
             }
-            geo::ShapeContainer test;
-            Result res = _index->shape(VPackSlice(_mmdr->vpack()), test);
-            TRI_ASSERT(res.ok());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
+            if (!result) {
               return false;
             }
           }
@@ -163,15 +170,15 @@ class RDBNearIterator final : public IndexIterator {
 
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
-      TRI_ASSERT(it.min <= it.max);
+      TRI_ASSERT(it.range_min <= it.range_max);
       RocksDBKeyBounds bds = RocksDBKeyBounds::GeoIndex(
-          _index->objectId(), it.min.id(), it.max.id());
+          _index->objectId(), it.range_min.id(), it.range_max.id());
 
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
       if (i > 0) {
-        TRI_ASSERT(scan[i - 1].max < it.min);
+        TRI_ASSERT(scan[i - 1].range_max < it.range_min);
         if (!_iter->Valid()) {  // no more valid keys after this
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
@@ -198,7 +205,7 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        LocalDocumentId documentId = RocksDBKey::documentId(
+        LocalDocumentId documentId = RocksDBKey::indexDocumentId(
             RocksDBEntryType::GeoIndexValue, _iter->key());
         _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
@@ -227,16 +234,17 @@ class RDBNearIterator final : public IndexIterator {
 
  private:
   RocksDBGeoIndex const* _index;
-  ManagedDocumentResult* _mmdr;
   geo_index::NearUtils<CMP> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
-                                     LogicalCollection* collection,
-                                     VPackSlice const& info,
-                                     std::string const& typeName)
+RocksDBGeoIndex::RocksDBGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -247,11 +255,10 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                     bool forPersistence) const {
+void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
@@ -347,7 +354,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -382,10 +389,12 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
 
   if (params.ascending) {
     return new RDBNearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   } else {
     return new RDBNearIterator<geo_index::DocumentsDescending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   }
 }
 
@@ -410,8 +419,6 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(trx);
-  // FIXME: can we rely on the region coverer to return
-  // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
     Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
@@ -450,69 +457,4 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
     }
   }
   return IndexResult();
-}
-
-namespace {
-void retrieveNear(RocksDBGeoIndex const& index, transaction::Methods* trx,
-                  double lat, double lon, double radius, size_t count,
-                  std::string const& attributeName, VPackBuilder& builder) {
-  geo::QueryParams params;
-  params.origin = S2LatLng::FromDegrees(lat, lon);
-  params.sorted = true;
-  if (radius > 0.0) {
-    params.maxDistance = radius;
-    params.fullRange = true;
-  }
-  params.pointsOnly = index.pointsOnly();
-  params.limit = count;
-  size_t limit = (count > 0) ? count : SIZE_MAX;
-
-  ManagedDocumentResult mmdr;
-  LogicalCollection* collection = index.collection();
-  LegacyIterator iter(collection, trx, &mmdr, &index, std::move(params));
-  auto fetchDoc = [&](geo_index::Document gdoc) -> bool {
-    bool read = collection->readDocument(trx, gdoc.token, mmdr);
-    if (!read) {
-      return false;
-    }
-    VPackSlice doc(mmdr.vpack());
-
-    // add to builder results
-    if (!attributeName.empty()) {
-      double distance = gdoc.distAngle.radians() * geo::kEarthRadiusInMeters;
-      // We have to copy the entire document
-      VPackObjectBuilder docGuard(&builder);
-      builder.add(attributeName, VPackValue(distance));
-      for (auto const& entry : VPackObjectIterator(doc, true)) {
-        std::string key = entry.key.copyString();
-        if (key != attributeName) {
-          builder.add(key, entry.value);
-        }
-      }
-    } else {
-      mmdr.addToBuilder(builder, true);
-    }
-
-    return true;
-  };
-
-  bool more = iter.nextToken(fetchDoc, limit);
-  TRI_ASSERT(count > 0 || !more);
-}
-}  // namespace
-
-/// @brief looks up all points within a given radius
-void RocksDBGeoIndex::withinQuery(transaction::Methods* trx, double lat,
-                                    double lon, double radius,
-                                    std::string const& attributeName,
-                                    VPackBuilder& builder) const {
-  ::retrieveNear(*this, trx, lat, lon, radius, 0, attributeName, builder);
-}
-
-/// @brief looks up the nearest points
-void RocksDBGeoIndex::nearQuery(transaction::Methods* trx, double lat,
-                                  double lon, size_t count,
-                                  std::string const& attributeName,
-                                  VPackBuilder& builder) const {
-  ::retrieveNear(*this, trx, lat, lon, -1.0, count, attributeName, builder);
 }

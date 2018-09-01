@@ -35,6 +35,7 @@ const toArgv = require('internal').toArgv;
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
+const pathForTesting = require('internal').pathForTesting;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -500,8 +501,12 @@ function runThere (options, instanceInfo, file) {
     let testCode;
     let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
+      let testCase = JSON.stringify(options.testCase);
+      if (options.testCase === undefined) {
+        testCase = '"undefined"';
+      }
       testCode = 'const runTest = require("jsunity").runTest; ' +
-        'return runTest(' + JSON.stringify(file) + ', true);';
+        'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
@@ -566,6 +571,8 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
+  args['javascript.unit-test-filter'] = options.testFilter;
+
   if (!options.verbose) {
     args['log.level'] = 'warning';
   }
@@ -575,7 +582,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   const jsonFN = fs.join(instanceInfo.rootDir, 'testresult.json');
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
   let result;
   try {
     result = JSON.parse(fs.read(jsonFN));
@@ -677,7 +684,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   }
 
   args = ['--color',
-          '-I', fs.join('UnitTests', 'arangodbRspecLib'),
+          '-I', fs.join('tests', 'arangodbRspecLib'),
           '--format', 'd',
           '--format', 'j',
           '--out', jsonFN,
@@ -689,7 +696,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir);
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
 
   let result = {
     total: 0,
@@ -720,7 +727,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     }
   }
 
-  fs.remove(jsonFN);
+  if (fs.exists(jsonFN)) fs.remove(jsonFN);
   fs.remove(tmpname);
   return result;
 }
@@ -787,3 +794,4 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.makeResults = makeResults;
 exports.diffArray = diffArray;
+exports.pathForTesting = pathForTesting;

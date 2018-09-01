@@ -29,12 +29,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -73,6 +73,12 @@ std::string const RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 std::string const RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief control pregel path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::CONTROL_PREGEL_PATH = "/_api/control_pregel";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,6 +101,12 @@ std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gharial graph api path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::GHARIAL_PATH = "/_api/gharial";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoint path
@@ -186,6 +198,12 @@ std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
     "/_api/simple/remove-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tasks path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::TASKS_PATH = "/_api/tasks";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -213,8 +231,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(
     GeneralResponse* response
 ): RestBaseHandler(request, response),
    _context(*static_cast<VocbaseContext*>(request->requestContext())),
-   _vocbase(_context.vocbase()),
-   _nolockHeaderSet(nullptr) {
+   _vocbase(_context.vocbase()) {
   TRI_ASSERT(request->requestContext());
 }
 
@@ -286,7 +303,7 @@ void RestVocbaseBaseHandler::generate20x(
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
-    slice = VelocyPackHelper::EmptyObjectValue();
+    slice = arangodb::velocypack::Slice::emptyObjectSlice();
   } else {
     TRI_ASSERT(slice.isObject() || slice.isArray());
     if (slice.isObject()) {
@@ -527,18 +544,53 @@ void RestVocbaseBaseHandler::extractStringParameter(
   }
 }
 
+std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
+    std::string const& name, AccessMode::Type type) const {
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto trx = std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+  if (_nolockHeaderSet != nullptr) {
+    for (auto const& it : *_nolockHeaderSet) {
+      trx->setLockedShard(it);
+    }
+  }
+  return trx;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::prepareExecute() {
-  RestBaseHandler::prepareExecute();
+void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
+  RestBaseHandler::prepareExecute(isContinue);
+  pickupNoLockHeaders();
+}
 
-  bool found;
-  std::string const& shardId = _request->header("x-arango-nolock", found);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdownExecute, to react to X-Arango-Nolock header
+////////////////////////////////////////////////////////////////////////////////
 
-  if (found) {
-    _nolockHeaderSet = new std::unordered_set<std::string>();
+void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
+  clearNoLockHeaders();
+  RestBaseHandler::shutdownExecute(isFinalized);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::pickupNoLockHeaders() {
+  if (ServerState::instance()->isDBServer()) {
+    // Only DBServer needs to react to them!
+    bool found;
+    std::string const& shardId = _request->header(StaticStrings::XArangoNoLock, found);
+
+    if (!found) {
+      return;
+    }
+
+    TRI_ASSERT(_nolockHeaderSet == nullptr);
+    _nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
+
     // Split value at commas, if there are any, otherwise take full value:
     size_t pos = shardId.find(',');
     size_t oldpos = 0;
@@ -548,20 +600,9 @@ void RestVocbaseBaseHandler::prepareExecute() {
       pos = shardId.find(',', oldpos);
     }
     _nolockHeaderSet->emplace(shardId.substr(oldpos));
-    CollectionLockState::_noLockHeaders = _nolockHeaderSet;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finalizeExecute, to react to X-Arango-Nolock header
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::finalizeExecute() {
-  if (_nolockHeaderSet != nullptr) {
-    delete _nolockHeaderSet;
-    _nolockHeaderSet = nullptr;
-  }
-  CollectionLockState::_noLockHeaders = nullptr;
-
-  RestBaseHandler::finalizeExecute();
+void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
+  _nolockHeaderSet.reset();
 }

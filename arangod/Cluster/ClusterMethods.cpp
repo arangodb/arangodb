@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -128,6 +128,25 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   TRI_ASSERT(builder->isClosed());
 }
 
+static void InjectNoLockHeader(
+    arangodb::transaction::Methods const& trx, std::string const& shard,
+    std::unordered_map<std::string, std::string>* headers) {
+  if (trx.isLockedShard(shard)) {
+    headers->emplace(arangodb::StaticStrings::XArangoNoLock, shard);
+  }
+}
+
+static std::unique_ptr<std::unordered_map<std::string, std::string>>
+CreateNoLockHeader(arangodb::transaction::Methods const& trx,
+                   std::string const& shard) {
+  if (trx.isLockedShard(shard)) {
+    auto headers =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+    headers->emplace(arangodb::StaticStrings::XArangoNoLock, shard);
+    return headers;
+  }
+  return nullptr;
+}
 }
 
 namespace arangodb {
@@ -325,12 +344,10 @@ static int distributeBabyOnShards(
     temp.openObject();
     temp.add(StaticStrings::KeyString, value);
     temp.close();
-  
-    error = ci->getResponsibleShard(collinfo.get(), temp.slice(), false, shardID,
-                                    usesDefaultShardingAttributes);
+
+    error = collinfo->getResponsibleShard(temp.slice(), false, shardID, usesDefaultShardingAttributes);
   } else {
-    error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
-                                    usesDefaultShardingAttributes);
+    error = collinfo->getResponsibleShard(value, false, shardID, usesDefaultShardingAttributes);
   }
   if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -393,17 +410,20 @@ static int distributeBabyOnShards(
       _key = collinfo->keyGenerator()->generate();
     } else {
       userSpecifiedKey = true;
+      if (keySlice.isString()) {
+        VPackValueLength l;
+        char const* p = keySlice.getString(l);
+        collinfo->keyGenerator()->track(p, l);
+      }
     }
 
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
     int error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
-      error = ci->getResponsibleShard(collinfo.get(), value, true, shardID,
-                                      usesDefaultShardingAttributes);
+      error = collinfo->getResponsibleShard(value, true, shardID, usesDefaultShardingAttributes);
     } else {
-      error = ci->getResponsibleShard(collinfo.get(), value, true, shardID,
-                                      usesDefaultShardingAttributes, _key);
+      error = collinfo->getResponsibleShard(value, true, shardID, usesDefaultShardingAttributes, _key);
     }
     if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -570,18 +590,10 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
 
   // We need to replace the distribute with the cid.
-  col->distributeShardsLike(cidString);
+  col->distributeShardsLike(cidString, other->shardingInfo());
 
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
-  }
-
-  if (col->replicationFactor() != other->replicationFactor()) {
-    col->replicationFactor(other->replicationFactor());
-  }
-
-  if (col->numberOfShards() != other->numberOfShards()) {
-    col->numberOfShards(other->numberOfShards());
   }
 
   auto shards = other->shardIds();
@@ -602,8 +614,6 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -642,7 +652,7 @@ std::unordered_map<std::string, std::string> getForwardableRequestHeaders(
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+bool shardKeysChanged(LogicalCollection const& collection,
                       VPackSlice const& oldValue, VPackSlice const& newValue,
                       bool isPatch) {
   if (!oldValue.isObject() || !newValue.isObject()) {
@@ -650,16 +660,12 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
     return true;
   }
 #ifdef DEBUG_SYNC_REPLICATION
-  if (dbname == "sync-replication-test") {
+  if (collection.vocbase().name() == "sync-replication-test") {
     return false;
   }
 #endif
 
-  ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> c = ci->getCollection(dbname, collname);
-
-  TRI_ASSERT(c != nullptr);
-  std::vector<std::string> const& shardKeys = c->shardKeys();
+  std::vector<std::string> const& shardKeys = collection.shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {
     if (shardKeys[i] == StaticStrings::KeyString) {
@@ -673,21 +679,16 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
       continue;
     }
 
-    // a temporary buffer to hold a null value
-    char buffer[1];
-    VPackSlice nullValue =
-        arangodb::velocypack::buildNullValue(&buffer[0], sizeof(buffer));
-
     VPackSlice o = oldValue.get(shardKeys[i]);
 
     if (o.isNone()) {
       // if attribute is undefined, use "null" instead
-      o = nullValue;
+      o = arangodb::velocypack::Slice::nullSlice();
     }
 
     if (n.isNone()) {
       // if attribute is undefined, use "null" instead
-      n = nullValue;
+      n = arangodb::velocypack::Slice::nullSlice();
     }
 
     if (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0) {
@@ -891,8 +892,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& cname,
-                       std::vector<std::pair<std::string, uint64_t>>& result,
-                       bool sendNoLockHeader) {
+                       transaction::Methods const& trx,
+                       std::vector<std::pair<std::string, uint64_t>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -915,24 +916,12 @@ int countOnCoordinator(std::string const& dbname, std::string const& cname,
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  if (sendNoLockHeader) {
-    for (auto const& p : *shards) {
-      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
-      headers->emplace("x-arango-nolock", p.first);
-      requests.emplace_back(
-          "shard:" + p.first, arangodb::rest::RequestType::GET,
-          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
-              StringUtils::urlEncode(p.first) + "/count",
-          body, std::move(headers));
-    }
-  } else {
-    for (auto const& p : *shards) {
-      requests.emplace_back("shard:" + p.first,
-                            arangodb::rest::RequestType::GET,
-                            "/_db/" + StringUtils::urlEncode(dbname) +
-                            "/_api/collection/" +
-                            StringUtils::urlEncode(p.first) + "/count", body);
-    }
+  for (auto const& p : *shards) {
+    requests.emplace_back(
+        "shard:" + p.first, arangodb::rest::RequestType::GET,
+        "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+            StringUtils::urlEncode(p.first) + "/count",
+        body, ::CreateNoLockHeader(trx, p.first));
   }
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
@@ -1090,6 +1079,7 @@ int selectivityEstimatesOnCoordinator(
 
 Result createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    transaction::Methods const& trx,
     arangodb::OperationOptions const& options, VPackSlice const& slice,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
@@ -1190,7 +1180,8 @@ Result createDocumentOnCoordinator(
 
     requests.emplace_back(
         "shard:" + it.first, arangodb::rest::RequestType::POST,
-        baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+        baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+        ::CreateNoLockHeader(trx, it.first));
   }
 
   // Perform the requests
@@ -1236,6 +1227,7 @@ Result createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     VPackSlice const slice, arangodb::OperationOptions const& options,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
@@ -1295,9 +1287,8 @@ int deleteDocumentOnCoordinator(
       } else {
         // Now find the responsible shard:
         bool usesDefaultShardingAttributes;
-        int error = ci->getResponsibleShard(
-            collinfo.get(),
-            arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+        int error = collinfo->getResponsibleShard(
+            arangodb::velocypack::Slice::emptyObjectSlice(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
         if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
@@ -1353,7 +1344,8 @@ int deleteDocumentOnCoordinator(
       requests.emplace_back(
           "shard:" + it.first,
           arangodb::rest::RequestType::DELETE_REQ,
-          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, it.first));
     }
 
     // Perform the requests
@@ -1402,7 +1394,8 @@ int deleteDocumentOnCoordinator(
   for (auto const& shard : *shardList) {
     requests.emplace_back(
         "shard:" + shard, arangodb::rest::RequestType::DELETE_REQ,
-        baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
+        baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+        ::CreateNoLockHeader(trx, shard));
   }
 
   // Perform the requests
@@ -1587,8 +1580,8 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     VPackSlice slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1666,12 +1659,13 @@ int getDocumentOnCoordinator(
     optsUrlPart += std::string("&onlyget=true");
   }
 
+  auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
   if (canUseFastPath) {
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
     VPackBuilder reqBuilder;
-
+    
     // Now prepare the requests:
     std::vector<ClusterCommRequest> requests;
     auto body = std::make_shared<std::string>();
@@ -1688,14 +1682,14 @@ int getDocumentOnCoordinator(
           keySlice = slice.get(StaticStrings::KeyString);
         }
 
+        ::InjectNoLockHeader(trx, it.first, headers.get());
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
                 StringUtils::urlEncode(keySlice.copyString()) +
-                optsUrlPart,
-            body);
-        requests[0].setHeaders(std::move(headers));
+                optsUrlPart, body,
+                std::move(headers));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1707,7 +1701,8 @@ int getDocumentOnCoordinator(
         // We send to Babies endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
-            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+            ::CreateNoLockHeader(trx, it.first));
       }
     }
 
@@ -1760,24 +1755,24 @@ int getDocumentOnCoordinator(
       if (slice.isObject()) {
         keySlice = slice.get(StaticStrings::KeyString);
       }
-      ClusterCommRequest req(
-          "shard:" + shard, reqType,
-          baseUrl + StringUtils::urlEncode(shard) + "/" +
-              StringUtils::urlEncode(keySlice.copyString()) +
-              optsUrlPart,
-          nullptr);
       auto headersCopy =
           std::make_unique<std::unordered_map<std::string, std::string>>(
               *headers);
-      req.setHeaders(std::move(headersCopy));
-      requests.emplace_back(std::move(req));
+      ::InjectNoLockHeader(trx, shard, headersCopy.get());
+      requests.emplace_back(
+          "shard:" + shard, reqType,
+          baseUrl + StringUtils::urlEncode(shard) + "/" +
+              StringUtils::urlEncode(keySlice.copyString()) +
+              optsUrlPart, nullptr,
+              std::move(headersCopy));
     }
   } else {
     auto body = std::make_shared<std::string>(slice.toJson());
     for (auto const& shard : *shardList) {
       requests.emplace_back(
           "shard:" + shard, reqType,
-          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
+          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, shard));
     }
   }
 
@@ -2044,7 +2039,7 @@ void fetchVerticesFromEngines(
   // Fill everything we did not find with NULL
   for (auto const& v : vertexIds) {
     result.emplace(
-        v, VPackBuilder::clone(arangodb::basics::VelocyPackHelper::NullValue())
+        v, VPackBuilder::clone(arangodb::velocypack::Slice::nullSlice())
                .steal());
   }
   vertexIds.clear();
@@ -2151,6 +2146,7 @@ void fetchVerticesFromEngines(
 
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     arangodb::rest::ResponseCode& responseCode,
     VPackBuilder& result) {
@@ -2195,7 +2191,8 @@ int getFilteredEdgesOnCoordinator(
   for (auto const& p : *shards) {
     requests.emplace_back(
         "shard:" + p.first, arangodb::rest::RequestType::GET,
-        baseUrl + StringUtils::urlEncode(p.first) + queryParameters, body);
+        baseUrl + StringUtils::urlEncode(p.first) + queryParameters, body,
+        ::CreateNoLockHeader(trx, p.first));
   }
 
   // Perform the requests
@@ -2273,6 +2270,7 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
+    arangodb::transaction::Methods const& trx,
     VPackSlice const& slice, arangodb::OperationOptions const& options,
     bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
@@ -2399,8 +2397,9 @@ int modifyDocumentOnCoordinator(
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
-                StringUtils::urlEncode(keyStr.data(), keyStr.length()) + optsUrlPart,
-            body);
+                StringUtils::urlEncode(keyStr.data(), keyStr.length()) +
+                optsUrlPart,
+            body, ::CreateNoLockHeader(trx, it.first));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -2412,7 +2411,8 @@ int modifyDocumentOnCoordinator(
         // We send to Babies endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
-            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body,
+            ::CreateNoLockHeader(trx, it.first));
       }
     }
 
@@ -2466,7 +2466,9 @@ int modifyDocumentOnCoordinator(
     for (auto const& shard : *shardList) {
       requests.emplace_back(
           "shard:" + shard, reqType,
-          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body);
+          baseUrl + StringUtils::urlEncode(shard) + optsUrlPart, body,
+          ::CreateNoLockHeader(trx, shard));
+
     }
   }
 

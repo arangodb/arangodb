@@ -62,13 +62,6 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
     : _nrItems(0), _nrRegs(0), _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(resourceMonitor != nullptr);
 
-  bool exhausted = VelocyPackHelper::getBooleanValue(slice, "exhausted", false);
-
-  if (exhausted) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "exhausted must be false");
-  }
-
   int64_t nrItems = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   if (nrItems <= 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
@@ -169,19 +162,23 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
     }
   } catch (...) {
     destroy();
-    // TODO: rethrow?
+    throw;
   }
 }
 
 /// @brief destroy the block, used in the destructor and elsewhere
-void AqlItemBlock::destroy() {
-  if (_valueCount.empty()) {
-    return;
-  }
+void AqlItemBlock::destroy() noexcept {
+  // none of the functions used here will throw in reality, but
+  // technically all the unordered_map functions are not noexcept for
+  // arbitrary types. so we put a global try...catch here to be on
+  // the safe side
+  try {
+    if (_valueCount.empty()) {
+      return;
+    }
 
-  for (auto& it : _data) {
-    if (it.requiresDestruction()) {
-      try {  // can find() really throw???
+    for (auto& it : _data) {
+      if (it.requiresDestruction()) {
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) {  // if we know it, we are still responsible
           TRI_ASSERT((*it2).second > 0);
@@ -189,21 +186,18 @@ void AqlItemBlock::destroy() {
           if (--((*it2).second) == 0) {
             decreaseMemoryUsage(it.memoryUsage());
             it.destroy();
-            try {
-              _valueCount.erase(it2);
-            } catch (...) {
-            }
+            _valueCount.erase(it2);
           }
         }
-      } catch (...) {
+        // Note that if we do not know it the thing it has been stolen from us!
+      } else {
+        it.erase();
       }
-      // Note that if we do not know it the thing it has been stolen from us!
-    } else {
-      it.erase();
     }
-  }
 
-  _valueCount.clear();
+    _valueCount.clear();
+  } catch (...) {
+  }
 }
 
 /// @brief shrink the block to the specified number of rows
@@ -531,6 +525,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx,
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("error", VPackValue(false));
+  // Backwards compatbility 3.3
   result.add("exhausted", VPackValue(false));
   result.add("data", VPackValue(VPackValueType::Array));
 

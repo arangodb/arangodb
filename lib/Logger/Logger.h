@@ -59,6 +59,8 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
+#include "Basics/Common.h"
+#include "Basics/CleanupFunctions.h"
 #include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
@@ -143,6 +145,7 @@ class Logger {
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
+  static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
   static LogTopic PERFORMANCE;

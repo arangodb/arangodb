@@ -220,26 +220,26 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(ApplicationServer* server)
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Database"),
       _maximalJournalSize(TRI_JOURNAL_DEFAULT_SIZE),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
-      _check30Revisions("true"),
       _throwCollectionNotLoadedError(false),
-      _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("Authentication");
   startsAfter("CacheManager");
-  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("InitDatabase");
-  startsAfter("Scheduler");
   startsAfter("StorageEngine");
   
   DATABASE = nullptr;
@@ -282,18 +282,16 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
 
-  options->addHiddenOption(
-      "--database.check-30-revisions",
-      "check _rev values in collections created before 3.1",
-      new DiscreteValuesParameter<StringParameter>(
-          &_check30Revisions,
-          std::unordered_set<std::string>{"true", "false", "fail"}));
-
   // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread pool
   options->addObsoleteOption(
       "--database.index-threads",
       "threads to start for parallel background index creation", true);
+  
+  // the following hidden option was removed in 3.4
+  options->addObsoleteOption(
+      "--database.check-30-revisions",
+      "check for revision values from ArangoDB 3.0 databases", true);
 
   // the following options were removed in 3.2
   options->addObsoleteOption("--database.revision-cache-chunk-size",
@@ -341,7 +339,7 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (systemDatabase() == nullptr) {
+  if (!lookupDatabase(TRI_VOC_SYSTEM_DATABASE)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "No _system database found in database directory. Cannot start!";
     FATAL_ERROR_EXIT();
@@ -451,7 +449,7 @@ void DatabaseFeature::recoveryDone() {
                 << TRI_errno_string(result.errorNumber()) << "' message: "
                 << result.errorMessage();
 
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+      THROW_ARANGO_EXCEPTION(result);
     }
   }
 
@@ -835,21 +833,14 @@ void DatabaseFeature::inventory(VPackBuilder& result,
         continue;
       }
 
-      result.add(VPackValue(vocbase->name()));
-      result.add(VPackValue(VPackValueType::Object));
+      result.add(vocbase->name(), VPackValue(VPackValueType::Object));
       result.add("id", VPackValue(std::to_string(vocbase->id())));
       result.add("name", VPackValue(vocbase->name()));
-      result.add(VPackValue("collections"));
       vocbase->inventory(result, maxTick, nameFilter);
       result.close();
     }
   }
   result.close();
-}
-
-void DatabaseFeature::useSystemDatabase() {
-  TRI_vocbase_t* result = useDatabase(TRI_VOC_SYSTEM_DATABASE);
-  TRI_ASSERT(result != nullptr);
 }
 
 TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) {
@@ -959,20 +950,18 @@ void DatabaseFeature::enumerateDatabases(
 }
 
 void DatabaseFeature::updateContexts() {
-  TRI_ASSERT(_vocbase != nullptr);
-
   V8DealerFeature* dealer =
   ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
   if (!dealer->isEnabled()) {
     return;
   }
 
-  useSystemDatabase();
+  auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
+  TRI_ASSERT(vocbase);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
-
-  auto vocbase = _vocbase;
 
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,
@@ -1159,12 +1148,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
           << database->name() << "' failed: " << ex.what();
           FATAL_ERROR_EXIT();
         }
-      }
-
-      if (databaseName == TRI_VOC_SYSTEM_DATABASE) {
-        // found the system database
-        TRI_ASSERT(_vocbase == nullptr);
-        _vocbase = database;
       }
 
       newLists->_databases.insert(std::make_pair(database->name(), database));

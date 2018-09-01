@@ -128,7 +128,7 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0].toVelocyPack(result, false);
+  idxHandles[0].toVelocyPack(result, Index::SERIALIZE_BASICS);
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -290,7 +290,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
   std::unordered_set<size_t> toRemove;
-  aql::Condition::CollectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false);
+  aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition, toRemove, false, false);
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.
@@ -335,7 +335,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, false, false);
+      it2.getIndex()->toVelocyPack(builder, Index::SERIALIZE_BASICS);
       builder.close();
     }
   }
@@ -401,7 +401,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
                                          std::vector<LookupInfo>& list) {
   TRI_ASSERT(mmdr != nullptr);
   auto allCursor =
-      std::make_unique<SingleServerEdgeCursor>(mmdr, this, list.size());
+      std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
     auto& node = info.indexCondition;

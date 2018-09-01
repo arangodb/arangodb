@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,7 @@ void Compactor::run() {
     {
       CONDITION_LOCKER(guard, _cv);
       if (!_wakeupCompactor) {
-        _cv.wait();
+        _cv.wait(5000000);   // just in case we miss a wakeup call!
       }
       _wakeupCompactor = false;
     }
@@ -63,10 +63,9 @@ void Compactor::run() {
     }
     
     try {
-      _agent->compact();
-    }
-    catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Expection during compaction, details: "
+      _agent->compact();  // Note that this checks nextCompactionAfter again!
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Exception during compaction, details: "
         << e.what();
     }
   }

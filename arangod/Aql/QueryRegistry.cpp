@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryRegistry.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/CollectionLockState.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 
@@ -65,7 +66,6 @@ QueryRegistry::~QueryRegistry() {
   }
 }
 
-
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared) {
   TRI_ASSERT(query != nullptr);
@@ -83,7 +83,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
     auto m = _queries.find(vocbase.name());
     if (m == _queries.end()) {
       m = _queries.emplace(vocbase.name(),
-                           std::unordered_map<QueryId, QueryInfo*>()).first;
+                           std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>()).first;
 
       TRI_ASSERT(_queries.find(vocbase.name()) != _queries.end());
     }
@@ -95,19 +95,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
 
-    m->second.emplace(id, p.get());
-    p.release();
-  }
-
-  // If we have set _noLockHeaders, we need to unset it:
-  if (query->engine() != nullptr && CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders == query->engine()->lockedShards()) {
-      CollectionLockState::_noLockHeaders = nullptr;
-    }
-    // else {
-    // We have not set it, just leave it alone. This happens in particular
-    // on the DBServers, who do not set lockedShards() themselves.
-    // }
+    m->second.emplace(id, std::move(p));
   }
 }
 
@@ -129,7 +117,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
     return nullptr;
   }
 
-  QueryInfo* qi = q->second;
+  std::unique_ptr<QueryInfo>& qi = q->second;
   if (qi->_isOpen) {
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is already in open";
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -143,29 +131,19 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
     qi->_isPrepared = true;
   }
 
-  // If we had set _noLockHeaders, we need to reset it:
-  if (qi->_query->engine() != nullptr && qi->_query->engine()->lockedShards() != nullptr) {
-    if (CollectionLockState::_noLockHeaders == nullptr) {
-      // std::cout << "Setting _noLockHeaders\n";
-      CollectionLockState::_noLockHeaders = qi->_query->engine()->lockedShards();
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
-    }
-  }
-
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now in use";
   return qi->_query;
 }
 
 /// @brief close
 void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Returning query with id " << id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "returning query with id " << id;
   WRITE_LOCKER(writeLocker, _lock);
 
   auto m = _queries.find(vocbase->name());
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->name(),
-                         std::unordered_map<QueryId, QueryInfo*>()).first;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "query with given vocbase and id not found");
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -173,9 +151,9 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "query with given vocbase and id not found");
   }
-  QueryInfo* qi = q->second;
+  std::unique_ptr<QueryInfo>& qi = q->second;
   if (!qi->_isOpen) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query id " << id << " was not open.";
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query id " << id << " was not open.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "query with given vocbase and id is not open");
   }
@@ -185,29 +163,9 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
     qi->_query->prepare(this, 0);
   }
 
-  // If we have set _noLockHeaders, we need to unset it:
-  if (qi->_query->engine() != nullptr && CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders ==
-        qi->_query->engine()->lockedShards()) {
-      // std::cout << "Resetting _noLockHeaders to nullptr\n";
-      CollectionLockState::_noLockHeaders = nullptr;
-    } else {
-      if (CollectionLockState::_noLockHeaders != nullptr) {
-        if (CollectionLockState::_noLockHeaders ==
-            qi->_query->engine()->lockedShards()) {
-          CollectionLockState::_noLockHeaders = nullptr;
-        }
-        // else {
-        // We have not set it, just leave it alone. This happens in particular
-        // on the DBServers, who do not set lockedShards() themselves.
-        // }
-      }
-    }
-  }
-
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now returned.";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now returned.";
 }
 
 /// @brief destroy
@@ -234,16 +192,15 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
 
     if (q->second->_isOpen) {
       // query in use by another thread/request
-      q->second->_query->killed(true);
+      q->second->_query->kill();
       return;
     }
 
     // move query into our unique ptr, so we can process it outside
     // of the lock
-    queryInfo.reset(q->second);
+    queryInfo = std::move(q->second);
 
     // remove query from the table of running queries
-    q->second = nullptr;
     m->second.erase(q);
   }
 
@@ -259,20 +216,11 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
-  // If we had set _noLockHeaders, we need to reset it:
-  if (queryInfo->_query->engine() != nullptr && queryInfo->_query->engine()->lockedShards() != nullptr) {
-    if (CollectionLockState::_noLockHeaders == nullptr) {
-      CollectionLockState::_noLockHeaders = queryInfo->_query->engine()->lockedShards();
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Found strange lockedShards in thread, not overwriting!";
-    }
-  }
-
   if (errorCode == TRI_ERROR_NO_ERROR) {
     // commit the operation
     queryInfo->_query->trx()->commit();
   }
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now destroyed";
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "query with id " << id << " is now destroyed";
 }
 
 /// @brief destroy
@@ -284,26 +232,33 @@ void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
 void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;
+  std::vector<QueryId> queriesLeft;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
     for (auto& x : _queries) {
       // x.first is a TRI_vocbase_t* and
-      // x.second is a std::unordered_map<QueryId, QueryInfo*>
+      // x.second is a std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>
       for (auto& y : x.second) {
         // y.first is a QueryId and
-        // y.second is a QueryInfo*
-        QueryInfo*& qi = y.second;
+        // y.second is an std::unique_ptr<QueryInfo>
+        std::unique_ptr<QueryInfo> const& qi = y.second;
         if (!qi->_isOpen && now > qi->_expires) {
           toDelete.emplace_back(x.first, y.first);
+        } else {
+          queriesLeft.emplace_back(y.first);
         }
       }
     }
   }
 
+  if (!queriesLeft.empty()) {
+    LOG_TOPIC(TRACE, Logger::QUERIES) << "queries left in QueryRegistry: " << queriesLeft;
+  }
+
   for (auto& p : toDelete) {
     try {  // just in case
-      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Timeout for query with id " << p.second;
+      LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "timeout for query with id " << p.second;
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     } catch (...) {
     }

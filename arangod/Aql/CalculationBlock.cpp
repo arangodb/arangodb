@@ -101,7 +101,6 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
 
 /// @brief shared code for executing a simple or a V8 expression
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (ExecutionNode::castTo<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
   TRI_ASSERT(!hasCondition); // currently not implemented
@@ -117,7 +116,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->emplaceValue(i, _outReg, arangodb::basics::VelocyPackHelper::NullValue());
+        result->emplaceValue(i, _outReg, arangodb::velocypack::Slice::nullSlice());
         continue;
       }
     }
@@ -135,12 +134,10 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
     guard.steal(); // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
-  DEBUG_END_BLOCK();
 }
 
 /// @brief doEvaluation, private helper to do the work
 void CalculationBlock::doEvaluation(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result != nullptr);
 
   if (_isReference) {
@@ -182,26 +179,30 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // the V8 handle scope and the scope guard
     executeExpression(result);
   }
-  DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* CalculationBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+CalculationBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
-  std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-  if (res.get() == nullptr) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+  if (_done) {
+    return {ExecutionState::DONE, nullptr};
   }
 
-  doEvaluation(res.get());
-  // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
+  auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
+    return res;
+  }
+  if (res.second == nullptr) {
+    TRI_ASSERT(res.first == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, res.first);
+    return res;
+  }
 
-  // cppcheck-suppress *
-  DEBUG_END_BLOCK();
+  doEvaluation(res.second.get());
+  // Clear out registers no longer needed later:
+  clearRegisters(res.second.get());
+  traceGetSomeEnd(res.second.get(), res.first);
+  return res;
 }

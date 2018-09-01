@@ -1,4 +1,3 @@
-
 @startDocuBlock delete_api_view
 @brief drops a view
 
@@ -14,16 +13,13 @@ Drops the view identified by *view-name*.
 
 If the view was successfully dropped, an object is returned with
 the following attributes:
-
 - *error*: *false*
-
-- *id*: The identifier of the dropped view.
+- *id*: The identifier of the dropped view
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the *view-name* is missing, then a *HTTP 400* is
-returned.
+If the *view-name* is missing, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
 If the *view-name* is unknown, then a *HTTP 404* is returned.
@@ -40,8 +36,6 @@ Using an identifier:
     var url = "/_api/view/"+ view._id;
 
     var response = logCurlRequest('DELETE', url);
-    db._viewList[viewName] = undefined;
-
     assert(response.code === 200);
 
     logJsonResponse(response);
@@ -57,11 +51,8 @@ Using a name:
     var url = "/_api/view/testView";
 
     var response = logCurlRequest('DELETE', url);
-    db._viewList[viewName] = undefined;
-
     assert(response.code === 200);
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

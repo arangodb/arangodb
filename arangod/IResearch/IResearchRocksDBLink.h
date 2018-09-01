@@ -54,6 +54,10 @@ class IResearchRocksDBLink final
     writeRocksWalMarker();
     return IResearchLink::drop();
   }
+    
+  virtual void afterTruncate() override {
+    IResearchLink::afterTruncate();
+  };
 
   virtual bool hasBatchInsert() const override {
     return IResearchLink::hasBatchInsert();
@@ -86,7 +90,7 @@ class IResearchRocksDBLink final
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -116,11 +120,10 @@ class IResearchRocksDBLink final
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    unsigned int flags
   ) const override;
 
   virtual IndexType type() const override {
@@ -142,7 +145,7 @@ class IResearchRocksDBLink final
   void writeRocksWalMarker();
   IResearchRocksDBLink(
     TRI_idx_iid_t iid,
-    arangodb::LogicalCollection* collection
+    arangodb::LogicalCollection& collection
   );
 };
 

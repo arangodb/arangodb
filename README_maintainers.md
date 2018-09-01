@@ -112,7 +112,7 @@ A sample version to help working with the arangod rescue console may look like t
     };
     print = internal.print;
 
-HINT: You shouldn't lean on these variables in your foxx services.
+HINT: You shouldn't lean on these variables in your Foxx services.
 ______________________________________________________________________________________________________
 
 JSLint
@@ -347,15 +347,28 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we specify some arangod arguments via --extraArgs which increase the server performance
  - we specify to run using valgrind (this is supported by all facilities)
  - we specify some valgrind commandline arguments
- - we set the loglevel to debug
- - we force the logging not to happen asynchroneous
+ - we set the log level to debug
+ - we force the logging not to happen asynchronous
  - eventually you may still add temporary `console.log()` statements to tests you debug.
+
+Debugging AQL execution blocks
+------------------------------
+To debug AQL execution blocks, two steps are required:
+
+- turn on logging for queries using `--extraArgs:log.level queries=info`
+- send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
+
+you now will get log-entries with the contents being passed between the blocks.
 
 Running a single unittestsuite
 ------------------------------
 Testing a single test with the framework directly on a server:
 
     scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js
+
+You can also only execute a single test case in a jsunity testsuite (in this case `testTokens`:
+
+    scripts/unittest single_server --test js/server/tests/aql/aql-escaping.js --testCase testTokens
 
 Testing a single test with the framework via arangosh:
 
@@ -365,10 +378,14 @@ Testing a single rspec test:
 
     scripts/unittest http_server --test api-users-spec.rb
 
+Running a test against a ready started server (in contrast to starting one by itself):
+
+    scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+
 **scripts/unittest** is mostly only a wrapper; The backend functionality lives in:
 **js/client/modules/@arangodb/testing.js**
 
-Running foxx tests with a fake foxx Repo
+Running Foxx tests with a fake Foxx Repo
 ----------------------------------------
 Since downloading fox apps from github can be cumbersome with shaky DSL
 and DOS'ed github, we can fake it like this:
@@ -380,6 +397,10 @@ arangod Emergency console
 -------------------------
 
     require("jsunity").runTest("js/server/tests/aql/aql-escaping.js");
+
+Filtering for one test case (in this case `testTokens`):
+
+    require("jsunity").runTest("js/server/tests/aql/aql-escaping.js", false, "testTokens");
 
 arangosh client
 ---------------

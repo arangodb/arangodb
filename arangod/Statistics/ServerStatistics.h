@@ -29,7 +29,6 @@ class ServerStatistics {
   static ServerStatistics statistics();
 
   static void initialize();
-  static void shutdown();
 
   double _startTime;
   double _uptime;

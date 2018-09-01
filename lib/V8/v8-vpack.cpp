@@ -285,8 +285,7 @@ static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      arangodb::StringRef const& attributeName,
                      bool convertFunctionsToNull) {
-  if (parameter->IsNull() || 
-      parameter->IsUndefined() || 
+  if (parameter->IsNullOrUndefined() || 
       (convertFunctionsToNull && parameter->IsFunction())) {
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Null));
@@ -478,7 +477,7 @@ static int V8ToVPack(BuilderContext& context,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
-                  v8::Handle<v8::Value> const value, bool keepTopLevelOpen,
+                  v8::Local<v8::Value> const value, bool keepTopLevelOpen,
                   bool convertFunctionsToNull) {
   v8::HandleScope scope(isolate);
   BuilderContext context(isolate, builder, keepTopLevelOpen);

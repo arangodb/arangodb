@@ -132,7 +132,7 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
-  std::vector<std::string> collectionNames() const;
+  std::vector<std::string> collectionNames(std::unordered_set<std::string> const& initial = std::unordered_set<std::string>()) const;
 
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
@@ -191,13 +191,37 @@ class TransactionState {
     return (_type == AccessMode::Type::READ);
   }
 
+  /**
+   * @brief Check if this shard is locked, used to send nolockheader
+   *
+   * @param shard The name of the shard
+   *
+   * @return True if locked by this transaction.
+   */
+  bool isLockedShard(std::string const& shard) const;
+
+  /**
+   * @brief Set that this shard is locked by this transaction
+   *        Used to define nolockheaders
+   *
+   * @param shard the shard name
+   */
+  void setLockedShard(std::string const& shard);
+
+  /**
+   * @brief Overwrite the entire list of locked shards.
+   *
+   * @param lockedShards The list of locked shards.
+   */
+  void setLockedShards(std::unordered_set<std::string> const& lockedShards);
+  
+  /// @brief whether or not a transaction is an exclusive transaction on a single collection
+  bool isExclusiveTransactionOnSingleCollection() const;
+
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
                                         size_t& position) const;
-
-  /// @brief whether or not a transaction is an exclusive transaction on a single collection
-  bool isExclusiveTransactionOnSingleCollection() const;
 
   /// @brief check if current user can access this collection
   int checkCollectionPermission(TRI_voc_cid_t cid,
@@ -236,6 +260,9 @@ class TransactionState {
  private:
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
+
+  /// the list of locked shards (cluster only)
+  std::unordered_set<std::string> _lockedShards;
 };
 
 }

@@ -24,6 +24,7 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 
 using namespace arangodb;
@@ -50,12 +51,11 @@ RestStatus RestAdminServerHandler::execute() {
   return RestStatus::DONE;
 }
 
-void RestAdminServerHandler::writeModeResult(ServerState::Mode const& mode) {
+void RestAdminServerHandler::writeModeResult(bool readOnly) {
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
-    builder.add(
-        "mode", VPackValue(ServerState::modeToString(mode))
+    builder.add("mode", VPackValue(readOnly ? "readonly" : "default")
     );
   }
   generateOk(rest::ResponseCode::OK, builder);
@@ -125,14 +125,13 @@ void RestAdminServerHandler::handleAvailability() {
   }
   
   bool available = false;
-  switch (ServerState::serverMode()) {
+  switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
       available = !application_features::ApplicationServer::isStopping();
       break;
     case ServerState::Mode::MAINTENANCE: 
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN: 
-    case ServerState::Mode::READ_ONLY:
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;
@@ -143,71 +142,69 @@ void RestAdminServerHandler::handleAvailability() {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
   } else {
     // this will produce an HTTP 200 result
-    writeModeResult(ServerState::serverMode());
+    writeModeResult(ServerState::readOnly());
   }
 }
 
 void RestAdminServerHandler::handleMode() {
-    auto const requestType = _request->requestType();
-    if (requestType == rest::RequestType::GET) {
-        writeModeResult(ServerState::serverMode());
-    } else if (requestType == rest::RequestType::PUT) {
-        bool parseSuccess = false;
-        VPackSlice slice = this->parseVPackBody(parseSuccess);
-        if (!parseSuccess) {
-            generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
-            return;
-        }
-
-        if (!slice.isObject()) {
-          generateError(rest::ResponseCode::BAD,
-            TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");
-          return;
-        }
-
-        auto modeSlice = slice.get("mode");
-        if (!modeSlice.isString()) {
-            generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_BAD_PARAMETER, "mode must be a string");
-            return;
-        }
-
-        auto newMode = ServerState::stringToMode(modeSlice.copyString());
-        if (newMode == ServerState::Mode::INVALID) {
-            generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_BAD_PARAMETER, "mode invalid");
-            return;
-        }
-
-        auto currentMode = ServerState::serverMode();
-        // very restrictive...only default and readonly user writeable
-        if (
-            newMode == currentMode
-            ||
-            (newMode == ServerState::Mode::DEFAULT
-            && currentMode == ServerState::Mode::READ_ONLY)
-            ||
-            (currentMode == ServerState::Mode::DEFAULT
-            && newMode == ServerState::Mode::READ_ONLY)
-        ) {
-            auto res = ServerState::instance()->propagateClusterServerMode(newMode);
-            if (!res.ok()) {
-                generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SERVER_ERROR, "couldn't set requested mode");
-                LOG_TOPIC(ERR, Logger::FIXME) << "Couldn't set requested mode: " <<
-                    res.errorMessage();
-            } else {
-                generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER, "cannot set requested mode");
-            }
-            writeModeResult(newMode);
-        } else {
-            generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_BAD_PARAMETER, "cannot set requested mode");
-        }
-    } else {
-        generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-            TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  auto const requestType = _request->requestType();
+  if (requestType == rest::RequestType::GET) {
+    writeModeResult(ServerState::readOnly());
+  } else if (requestType == rest::RequestType::PUT) {
+    
+    AuthenticationFeature* af = AuthenticationFeature::instance();
+    if (af->isEnabled() && !_request->user().empty()) {
+      auth::Level lvl = af->userManager()->databaseAuthLevel(_request->user(),
+                                          TRI_VOC_SYSTEM_DATABASE, /*configured*/true);
+      if (lvl < auth::Level::RW) {
+        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+        return;
+      }
     }
+    
+    bool parseSuccess = false;
+    VPackSlice slice = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
+      return;
+    }
+    
+    if (!slice.isObject()) {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");
+      return;
+    }
+    
+    auto modeSlice = slice.get("mode");
+    if (!modeSlice.isString()) {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "mode must be a string");
+      return;
+    }
+    
+    
+    Result res;
+    if (modeSlice.compareString("readonly") == 0) {
+      res = ServerState::instance()->propagateClusterReadOnly(true);
+    } else if (modeSlice.compareString("default") == 0) {
+      res = ServerState::instance()->propagateClusterReadOnly(false);
+    } else {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER, "mode invalid");
+      return;
+    }
+    
+    if (res.fail()) {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SERVER_ERROR, "couldn't set requested mode");
+      LOG_TOPIC(ERR, Logger::FIXME) << "Couldn't set requested mode: " << res.errorMessage();
+      return;
+    }
+    writeModeResult(ServerState::readOnly());
+    
+  } else {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  }
 }

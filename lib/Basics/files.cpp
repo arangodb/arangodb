@@ -51,39 +51,50 @@
 using namespace arangodb::basics;
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read buffer size (used for bulk file reading)
-////////////////////////////////////////////////////////////////////////////////
+namespace {
 
-#define READBUFFER_SIZE 8192
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a static buffer of zeros, used to initialize files
-////////////////////////////////////////////////////////////////////////////////
-
-static char NullBuffer[4096];
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief already initialized
-////////////////////////////////////////////////////////////////////////////////
-
-static bool Initialized = false;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief names of blocking files
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 std::vector<std::pair<std::string, HANDLE>> OpenedFiles;
 #else
 std::vector<std::pair<std::string, int>> OpenedFiles;
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector OpenedFiles
-////////////////////////////////////////////////////////////////////////////////
-
 static basics::ReadWriteLock OpenedFilesLock;
+
+/// @brief struct to remove all opened lockfiles on shutdown
+struct LockfileRemover {
+  LockfileRemover() {}
+
+  ~LockfileRemover() {
+    WRITE_LOCKER(locker, OpenedFilesLock);
+
+    for (auto const& it : OpenedFiles) {
+#ifdef TRI_HAVE_WIN32_FILE_LOCKING
+      HANDLE fd = it.second;
+      CloseHandle(fd);
+#else
+      int fd = it.second;
+      TRI_TRACKED_CLOSE_FILE(fd);
+#endif
+
+      TRI_UnlinkFile(it.first.c_str());
+    }
+
+    OpenedFiles.clear();
+  }
+};
+
+/// @brief this instance will remove all lockfiles in its dtor
+static LockfileRemover remover;
+}
+
+/// @brief read buffer size (used for bulk file reading)
+#define READBUFFER_SIZE 8192
+
+/// @brief a static buffer of zeros, used to initialize files
+static char NullBuffer[4096];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the character is a directory separator
@@ -109,41 +120,6 @@ static void NormalizePath(std::string& path) {
       it = TRI_DIR_SEPARATOR_CHAR;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback function for removing all locked files by a process
-////////////////////////////////////////////////////////////////////////////////
-
-static void RemoveAllLockedFiles(void) {
-  WRITE_LOCKER(locker, OpenedFilesLock);
-
-  for (auto const& it : OpenedFiles) {
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-    HANDLE fd = it.second;
-    CloseHandle(fd);
-#else
-    int fd = it.second;
-    TRI_TRACKED_CLOSE_FILE(fd);
-#endif
-
-    TRI_UnlinkFile(it.first.c_str());
-  }
-
-  OpenedFiles.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes some structures which are needed by the file functions
-////////////////////////////////////////////////////////////////////////////////
-
-static void InitializeLockFiles(void) {
-  if (Initialized) {
-    return;
-  }
-
-  Initialized = true;
-  atexit(&RemoveAllLockedFiles);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -981,10 +957,8 @@ int TRI_CreateLockFile(char const* filename) {
     }
   }
   
-  InitializeLockFiles();
-
   HANDLE fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-                  FILE_ATTRIBUTE_NORMAL, NULL);
+                         FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
     TRI_SYSTEM_ERROR();
@@ -1047,8 +1021,6 @@ int TRI_CreateLockFile(char const* filename) {
     }
   }
   
-  InitializeLockFiles();
-
   int fd = TRI_TRACKED_CREATE_FILE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR);
 
@@ -1227,8 +1199,6 @@ int TRI_VerifyLockFile(char const* filename) {
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_DestroyLockFile(char const* filename) {
-  InitializeLockFiles();
-  
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1247,8 +1217,6 @@ int TRI_DestroyLockFile(char const* filename) {
 #else
 
 int TRI_DestroyLockFile(char const* filename) {
-  InitializeLockFiles();
-  
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1566,29 +1534,29 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 std::string TRI_GetInstallRoot(std::string const& binaryPath,
                                char const* installBinaryPath) {
   // First lets remove trailing (back) slashes from the bill:
-  size_t ibpLength = strlen(installBinaryPath);
+  size_t installPathLength = strlen(installBinaryPath);
 
-  if (installBinaryPath[ibpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
-    ibpLength --;
+  if (installBinaryPath[installPathLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    --installPathLength;
   }
   
-  size_t bpLength = binaryPath.length();
-  char const* pbPath = binaryPath.c_str();
+  size_t binaryPathLength = binaryPath.size();
+  char const* p = binaryPath.c_str();
 
-  if (pbPath[bpLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
-    --bpLength;
+  if (p[binaryPathLength - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    --binaryPathLength;
   }
   
-  if (ibpLength > bpLength) {
+  if (installPathLength > binaryPathLength) {
     return TRI_DIR_SEPARATOR_STR;
   }
 
-  for (size_t i = 1; i < ibpLength; ++i) {
-    if (pbPath[bpLength - i] != installBinaryPath[ibpLength - i]) {
+  for (size_t i = 1; i < installPathLength; ++i) {
+    if (p[binaryPathLength - i] != installBinaryPath[installPathLength - i]) {
       return TRI_DIR_SEPARATOR_STR;
     }
   }
-  return std::string(pbPath, bpLength - ibpLength);
+  return std::string(p, binaryPathLength - installPathLength);
 }
 
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize,
@@ -2174,10 +2142,10 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 //
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
+
 std::string TRI_LocateInstallDirectory(char const* argv0, char const* binaryPath) {
   std::string thisPath = TRI_LocateBinaryPath(argv0);
-  return TRI_GetInstallRoot(thisPath, binaryPath) + 
-    std::string(1, TRI_DIR_SEPARATOR_CHAR);
+  return TRI_GetInstallRoot(thisPath, binaryPath) + TRI_DIR_SEPARATOR_CHAR; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2343,16 +2311,13 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 }
 
 
+bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
-bool TRI_PathIsAbsolute(const std::string &path) {
   return !PathIsRelative(path.c_str());
-}
-
 #else  
-bool TRI_PathIsAbsolute(const std::string &path) {
-  return path.c_str()[0] == '/';
-}
+  return (!path.empty()) && path.c_str()[0] == '/';
 #endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the files subsystem

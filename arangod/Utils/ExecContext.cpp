@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
+
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -28,7 +30,8 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::SUPERUSER(true, "", "", auth::Level::RW, auth::Level::RW);
+ExecContext ExecContext::SUPERUSER(ExecContext::Type::Internal, "", "",
+                                   auth::Level::RW, auth::Level::RW);
 
 bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -49,17 +52,17 @@ ExecContext* ExecContext::create(std::string const& user,
   if (af->isActive()) {
     auth::UserManager* um = af->userManager();
     TRI_ASSERT(um != nullptr);
-    dbLvl = um->databaseAuthLevel(user, dbname);
+    dbLvl = sysLvl = um->databaseAuthLevel(user, dbname);
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
-  return new ExecContext(false, user, dbname, sysLvl, dbLvl);
+  return new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  auth::Level requested) const {
-  if (_internal || _database == db) {
+  if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
@@ -76,7 +79,7 @@ bool ExecContext::canUseDatabase(std::string const& db,
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
                                              std::string const& coll) const {
-  if (_internal) {
+  if (isInternal()) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }

@@ -2,6 +2,7 @@
   "check-configuration" : {
     "default" : false,
     "description" : "check the configuration and exit",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -10,6 +11,7 @@
     "default" : [
     ],
     "description" : "restrict to collection name (can be specified multiple times)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string..."
@@ -17,6 +19,7 @@
   "config" : {
     "default" : "",
     "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "string"
@@ -24,6 +27,7 @@
   "configuration" : {
     "default" : "",
     "description" : "the configuration file or 'none'",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -32,6 +36,7 @@
     "default" : [
     ],
     "description" : "define key=value for a @key@ entry in config file",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "string..."
@@ -39,6 +44,7 @@
   "dump-dependencies" : {
     "default" : false,
     "description" : "dump dependency graph",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -46,6 +52,7 @@
   "dump-options" : {
     "default" : true,
     "description" : "dump configuration options in JSON format",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "boolean"
@@ -53,6 +60,7 @@
   "fields" : {
     "default" : "",
     "description" : "comma separated list of fileds to export into a csv file",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -60,6 +68,7 @@
   "graph-name" : {
     "default" : "",
     "description" : "name of a graph to export",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -69,6 +78,7 @@
       "info"
     ],
     "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "",
     "type" : "string..."
@@ -76,6 +86,7 @@
   "log.color" : {
     "default" : true,
     "description" : "use colors for TTY logging",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -83,6 +94,7 @@
   "log.escape" : {
     "default" : true,
     "description" : "escape characters when logging",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -90,6 +102,7 @@
   "log.file" : {
     "default" : "-",
     "description" : "shortcut for '--log.output file://<filename>'",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "string"
@@ -97,6 +110,7 @@
   "log.force-direct" : {
     "default" : false,
     "description" : "do not start a seperate thread for logging",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -104,6 +118,7 @@
   "log.foreground-tty" : {
     "default" : false,
     "description" : "also log to tty if backgrounded",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -111,6 +126,7 @@
   "log.keep-logrotate" : {
     "default" : false,
     "description" : "keep the old log file after receiving a sighup",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -120,6 +136,7 @@
       "info"
     ],
     "description" : "the global or topic-specific log level",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "string..."
@@ -127,6 +144,7 @@
   "log.line-number" : {
     "default" : false,
     "description" : "append line number and file name",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -135,6 +153,7 @@
     "default" : [
     ],
     "description" : "log destination(s)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "string..."
@@ -142,6 +161,7 @@
   "log.performance" : {
     "default" : false,
     "description" : "shortcut for '--log.level performance=trace'",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -149,6 +169,7 @@
   "log.prefix" : {
     "default" : "",
     "description" : "prefix log message with this string",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "string"
@@ -156,6 +177,7 @@
   "log.role" : {
     "default" : false,
     "description" : "log server role",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -163,6 +185,7 @@
   "log.shorten-filenames" : {
     "default" : true,
     "description" : "shorten filenames in log output (use with --log.line-number)",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -170,6 +193,7 @@
   "log.thread" : {
     "default" : false,
     "description" : "show thread identifier in log message",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -177,6 +201,7 @@
   "log.thread-name" : {
     "default" : false,
     "description" : "show thread name in log message",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "log",
     "type" : "boolean"
@@ -184,6 +209,7 @@
   "log.use-local-time" : {
     "default" : false,
     "description" : "use local timezone instead of UTC",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -191,6 +217,7 @@
   "log.use-microtime" : {
     "default" : false,
     "description" : "use microtime instead",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "log",
     "type" : "boolean"
@@ -198,6 +225,7 @@
   "output-directory" : {
     "default" : "/home/steemann/ArangoNoAsan/export",
     "description" : "output directory",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -205,6 +233,7 @@
   "overwrite" : {
     "default" : false,
     "description" : "overwrite data in output directory",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -212,6 +241,7 @@
   "progress" : {
     "default" : true,
     "description" : "show progress",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -219,6 +249,7 @@
   "query" : {
     "default" : "",
     "description" : "AQL query to run",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -226,6 +257,7 @@
   "random.generator" : {
     "default" : 1,
     "description" : "random number generator to use (1 = MERSENNE, 2 = RANDOM, 3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "random",
     "type" : "uint32",
@@ -234,6 +266,7 @@
   "server.authentication" : {
     "default" : false,
     "description" : "require authentication credentials when connecting (does not affect the server-side authentication settings)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "boolean"
@@ -241,6 +274,7 @@
   "server.connection-timeout" : {
     "default" : 5,
     "description" : "connection timeout in seconds",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "double"
@@ -248,6 +282,7 @@
   "server.database" : {
     "default" : "_system",
     "description" : "database name to use when connecting",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
@@ -255,13 +290,15 @@
   "server.endpoint" : {
     "default" : "http+tcp://127.0.0.1:8529",
     "description" : "endpoint to connect to, use 'none' to start without a server",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
   },
   "server.max-packet-size" : {
-    "default" : 134217728,
+    "default" : 1073741824,
     "description" : "maximum packet size (in bytes) for client/server communication",
+    "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "server",
     "type" : "uint64"
@@ -269,6 +306,7 @@
   "server.password" : {
     "default" : "",
     "description" : "password to use when connecting. If not specified and authentication is required, the user will be prompted for a password",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
@@ -276,6 +314,7 @@
   "server.request-timeout" : {
     "default" : 1200,
     "description" : "request timeout in seconds",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "double"
@@ -283,13 +322,15 @@
   "server.username" : {
     "default" : "root",
     "description" : "username to use when connecting",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "server",
     "type" : "string"
   },
   "ssl.protocol" : {
     "default" : 5,
-    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2)",
+    "description" : "ssl protocol (1 = SSLv2, 2 = SSLv2 or SSLv3 (negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2)",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "ssl",
     "type" : "uint64",
@@ -298,6 +339,7 @@
   "temp.path" : {
     "default" : "",
     "description" : "path for temporary files",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "temp",
     "type" : "string"
@@ -305,6 +347,7 @@
   "type" : {
     "default" : "json",
     "description" : "type of export",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string",
@@ -313,6 +356,7 @@
   "version" : {
     "default" : false,
     "description" : "reports the version and exits",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"
@@ -320,6 +364,7 @@
   "xgmml-label-attribute" : {
     "default" : "label",
     "description" : "specify document attribute that will be the xgmml label",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "string"
@@ -327,6 +372,7 @@
   "xgmml-label-only" : {
     "default" : false,
     "description" : "export only xgmml label",
+    "enterpriseOnly" : false,
     "hidden" : false,
     "section" : "",
     "type" : "boolean"

@@ -215,14 +215,14 @@ You may use edge collections with vertex collections without the graph managemen
 View
 ----
 
-A view is conceptially a transformation function over documents from zero or
+A view is conceptually a transformation function over documents from zero or
 more collections. It is uniquely identified by its view identifier. It also has
 a unique name that clients should use to identify and access it. Views can be
 renamed. Renaming a view will change the view name, but not the view identifier.
 The conceptual transformation function employed by a view type is implementation
 specific. The type is specified by the user when the view is created, and cannot
 be changed later. The following view types are currently supported:
-* [arangosearch](../Views/ArangoSearch.md)
+* [arangosearch](../Views/ArangoSearch/README.md)
 
 View Identifier
 ---------------

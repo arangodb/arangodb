@@ -71,26 +71,6 @@ class HttpRequest final : public GeneralRequest {
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }
-  // the content length
-  int64_t contentLength() const override { return _contentLength; }
-
-  // get value from headers map. The key must be lowercase.
-  std::string const& header(std::string const& key) const override;
-  std::string const& header(std::string const& key, bool& found) const override;
-  std::unordered_map<std::string, std::string> const& headers() const override {
-    return _headers;
-  }
-
-  std::string const& value(std::string const& key) const override;
-  std::string const& value(std::string const& key, bool& found) const override;
-  std::unordered_map<std::string, std::string> values() const override {
-    return _values;
-  }
-
-  std::unordered_map<std::string, std::vector<std::string>> arrayValues()
-      const override {
-    return _arrayValues;
-  }
 
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
@@ -101,8 +81,11 @@ class HttpRequest final : public GeneralRequest {
   std::string const& body() const;
   void setBody(char const* body, size_t length);
 
+  /// @brief the body content length
+  size_t contentLength() const override { return _contentLength; }
   // Payload
-  VPackSlice payload(arangodb::velocypack::Options const*) override final;
+  arangodb::StringRef rawPayload() const override { return StringRef(_body); };
+  VPackSlice payload(arangodb::velocypack::Options const*) override;
 
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
@@ -143,12 +126,6 @@ class HttpRequest final : public GeneralRequest {
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
-
-  // previously in base class
-  std::unordered_map<std::string, std::string>
-      _headers;  // is set by httpRequest: parseHeaders -> setHeaders
-  std::unordered_map<std::string, std::string> _values;
-  std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
 };
 }
 

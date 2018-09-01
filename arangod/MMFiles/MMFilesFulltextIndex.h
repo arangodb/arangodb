@@ -41,8 +41,11 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
   MMFilesFulltextIndex() = delete;
 
-  MMFilesFulltextIndex(TRI_idx_iid_t, LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  MMFilesFulltextIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~MMFilesFulltextIndex();
 
@@ -59,9 +62,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures,
-                    bool forPersistence) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -111,9 +112,8 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
  public:
   MMFilesFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               MMFilesFulltextIndex const* index,
                                std::set<TRI_voc_rid_t>&& docs)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 

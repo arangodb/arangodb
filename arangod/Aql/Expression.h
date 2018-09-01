@@ -56,7 +56,7 @@ class Query;
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
  public:
-  enum ExpressionType : uint32_t { UNPROCESSED, JSON, SIMPLE, ATTRIBUTE_SYSTEM, ATTRIBUTE_DYNAMIC };
+  enum ExpressionType : uint32_t { UNPROCESSED, JSON, SIMPLE, ATTRIBUTE_ACCESS };
 
   Expression(Expression const&) = delete;
   Expression& operator=(Expression const&) = delete;
@@ -81,14 +81,6 @@ class Expression {
 
   /// @brief get the underlying AST node
   inline AstNode* nodeForModification() const { return _node; }
-
-  /// @brief whether or not the expression can throw an exception
-  inline bool canThrow() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _canThrow;
-  }
 
   /// @brief whether or not the expression can safely run on a DB server
   inline bool canRunOnDBServer() {
@@ -133,14 +125,6 @@ class Expression {
   AqlValue execute(transaction::Methods* trx, ExpressionContext* ctx,
                    bool& mustDestroy);
 
-  /// @brief check whether this is a JSON expression
-  inline bool isJson() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _type == JSON;
-  }
-
   /// @brief get expression type as string
   std::string typeString() {
     if (_type == UNPROCESSED) {
@@ -152,8 +136,7 @@ class Expression {
         return "json";
       case SIMPLE:
         return "simple";
-      case ATTRIBUTE_SYSTEM:
-      case ATTRIBUTE_DYNAMIC:
+      case ATTRIBUTE_ACCESS:
         return "attribute";
       case UNPROCESSED: {
       }
@@ -368,9 +351,6 @@ class Expression {
 
   /// @brief type of expression
   ExpressionType _type;
-
-  /// @brief whether or not the expression may throw a runtime exception
-  bool _canThrow;
 
   /// @brief whether or not the expression can be run safely on a DB server
   bool _canRunOnDBServer;

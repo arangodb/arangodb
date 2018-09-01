@@ -1,4 +1,5 @@
-"use strict"
+"use strict";
+var Buffer = require("buffer").Buffer;
 
 // Multibyte codec. In this scheme, a character is represented by 1 or more bytes.
 // Our codec supports UTF-16 surrogates, extensions for GB18030 and unicode sequences.

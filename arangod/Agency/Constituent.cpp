@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -615,7 +615,8 @@ void Constituent::run() {
       nullptr,
       arangodb::aql::PART_MAIN
     );
-    auto queryResult = query.execute(_queryRegistry);
+
+    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);

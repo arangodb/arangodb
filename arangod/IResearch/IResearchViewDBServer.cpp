@@ -23,16 +23,15 @@
 
 #include "IResearchCommon.h"
 #include "IResearchDocument.h"
+#include "IResearchFeature.h"
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewDBServer.h"
 #include "VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
@@ -60,6 +59,7 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
 
   void add(arangodb::iresearch::PrimaryKeyIndexReader const& reader);
   virtual reader_iterator begin() const override;
+  void clear() noexcept { _subReaders.clear(); }
   virtual uint64_t docs_count() const override;
   virtual uint64_t docs_count(const irs::string_ref& field) const override;
   virtual reader_iterator end() const override;
@@ -191,20 +191,15 @@ IResearchViewDBServer::IResearchViewDBServer(
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion
-): LogicalView(vocbase, info, planVersion),
-   _meta(
-     info.isObject() && info.get(StaticStrings::PropertiesField).isObject()
-     ? info.get(StaticStrings::PropertiesField) : emptyObjectSlice()
-   ) {
+): LogicalViewClusterInfo(vocbase, info, planVersion) {
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 
-arangodb::Result IResearchViewDBServer::appendVelocyPack(
+arangodb::Result IResearchViewDBServer::appendVelocyPackDetailed(
   arangodb::velocypack::Builder& builder,
-  bool detailed,
   bool //forPersistence
 ) const {
   if (!builder.isOpenObject()) {
@@ -214,49 +209,16 @@ arangodb::Result IResearchViewDBServer::appendVelocyPack(
     );
   }
 
-  builder.add(
-    arangodb::StaticStrings::DataSourceType,
-    arangodb::velocypack::Value(type().name())
-  );
-
-  if (!detailed) {
-    return arangodb::Result();
-  }
-
-  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-      irs::string_ref const& key
-  )->bool {
-    // ignored fields
-    return key != StaticStrings::CollectionsField
-      && key != StaticStrings::LinksField;
-  };
-  ReadMutex mutex(_mutex);
-  SCOPED_LOCK(mutex); // '_collections'/'_meta' can be asynchronously modified
-
-  builder.add(
-    StaticStrings::PropertiesField,
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-  );
-
   {
-    builder.add(
-      StaticStrings::CollectionsField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array)
-    );
+    SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
-    for (auto& entry: _collections) {
-      builder.add(arangodb::velocypack::Value(entry.first));
+    if (!_meta->json(builder)) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failure to generate definition while generating properties jSON for IResearch View in database '") + vocbase().name() + "'"
+      );
     }
-
-    builder.close(); // close COLLECTIONS_FIELD
   }
-
-  if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to generate definition while generating properties jSON IResearch View in database '" << vocbase().name() << "'";
-  }
-
-  builder.close(); // close PROPERTIES_FIELD
 
   return arangodb::Result();
 }
@@ -296,14 +258,33 @@ arangodb::Result IResearchViewDBServer::drop(TRI_voc_cid_t cid) noexcept {
     }
 
     return res;
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      e.code(),
+      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "': " << e.what();
     IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+    );
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while dropping collection '" << cid << "' from IResearchView '" << name() << "'";
     IR_LOG_EXCEPTION();
+
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("error dropping collection '") + std::to_string(cid) + "' from IResearchView '" + name() + "'"
+    );
   }
 
   return arangodb::Result(TRI_ERROR_INTERNAL);
@@ -323,10 +304,11 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   auto viewName = generateName(id(), cid);
   auto view = vocbase().lookupView(viewName); // on startup a IResearchView might only be in vocbase but not in a brand new IResearchViewDBServer
+  auto* impl = LogicalView::cast<IResearchView>(view.get());
 
-  if (view) {
+  if (impl) {
     _collections.emplace(cid, view); // track the IResearchView instance from vocbase
-    // FIXME TODO view->updateProperties(*_syncWorker) add sync jobs tho this IResearchViewDBServer sync worker
+    impl->updateProperties(_meta);
 
     return view; // do not wrap in deleter since view already present in vocbase (as if already present in '_collections')
   }
@@ -335,12 +317,6 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-      irs::string_ref const& key
-  )->bool {
-    return key != StaticStrings::CollectionsField
-      && key != StaticStrings::LinksField; // ignored fields
-  };
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
@@ -362,25 +338,22 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   ); // type required for proper factory selection
 
   {
-    builder.add(
-      StaticStrings::PropertiesField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
+    SCOPED_LOCK(_meta->read()); // '_meta' can be asynchronously updated
 
-    if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
+    if (!_meta->json(builder)) {
+      builder.close(); // close StaticStrings::PropertiesField
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().id() << "'";
+        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().name() << "'";
 
-        return nullptr;
+      return nullptr;
     }
-
-    builder.close(); // close StaticStrings::PropertiesField
   }
 
   builder.close();
   view = vocbase().createView(builder.slice());
+  impl = LogicalView::cast<IResearchView>(view.get());
 
-  if (!view) {
+  if (!impl) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure while creating an IResearch View for collection '" << cid << "' in database '" << vocbase().name() << "'";
 
@@ -389,7 +362,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   // FIXME should we register?
   _collections.emplace(cid, view);
-  // FIXME TODO view->updateProperties(*_syncWorker) add sync jobs tho this IResearchViewDBServer sync worker
+  impl->updateProperties(_meta);
 
   // hold a reference to the original view in the deleter so that the view is still valid for the duration of the pointer wrapper
   // this shared_ptr should not be stored in TRI_vocbase_t since the deleter depends on 'this'
@@ -462,14 +435,40 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
 
+    auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
+    std::string error;
+    IResearchViewMeta meta;
+
+    if (!meta.init(properties, error)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to initialize IResearch view from definition, error: " << error;
+
+      return nullptr;
+    }
+
+    // search for the previous view instance and check if it's meta is the same
+    {
+      auto oldLogicalWiew =
+        ci->getViewCurrent(vocbase.name(), std::to_string(wiew->id()));
+      auto* oldWiew =
+        LogicalView::cast<IResearchViewDBServer>(oldLogicalWiew.get());
+
+      if (oldWiew && *(oldWiew->_meta) == meta) {
+        wiew->_meta = oldWiew->_meta;
+      }
+    }
+
+    if (!(wiew->_meta)) {
+      wiew->_meta = std::make_shared<AsyncMeta>();
+      static_cast<IResearchViewMeta&>(*(wiew->_meta)) = std::move(meta);
+    }
+
     if (preCommit && !preCommit(wiew)) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
 
       return nullptr;
     }
-
-    // FIXME TODO if a syncWorker with identical meta exists then use it instead
 
     return wiew;
   }
@@ -484,10 +483,37 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return view;
   }
 
+  auto* ci = ClusterInfo::instance();
+  std::shared_ptr<AsyncMeta> meta;
+
+  // reference meta from cluster-wide view if available to
+  // avoid memory and thread allocation
+  // if not availble then the meta will be reassigned when
+  // the per-cid instance is associated with the cluster-wide view
+  if (ci) {
+    auto planId = arangodb::basics::VelocyPackHelper::stringUInt64(
+      info.get(arangodb::StaticStrings::DataSourcePlanId)
+    ); // planId set in ensure(...)
+    auto wiewId = std::to_string(planId);
+    auto logicalWiew = ci->getView(vocbase.name(), wiewId); // here if creating per-cid view during loadPlan()
+    auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+
+    // if not found in 'Plan' then search in 'Current'
+    if (!wiew) {
+      logicalWiew = ci->getViewCurrent(vocbase.name(), wiewId); // here if creating per-cid view outisde of loadPlan()
+      wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+    }
+
+    if (wiew) {
+      meta = wiew->_meta;
+    }
+  }
+
   // no view for shard
   view = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
 
-  if (!view) {
+  if (!view
+      || (meta && !LogicalView::cast<IResearchView>(*view).updateProperties(meta).ok())) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure while creating an IResearch View '" << name << "' in database '" << vocbase.name() << "'";
 
@@ -535,7 +561,7 @@ arangodb::Result IResearchViewDBServer::rename(
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
-    bool force /*= false*/
+    IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
   auto* state = trx.state();
 
@@ -553,12 +579,16 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     auto* cookie = static_cast<ViewState*>(state->cookie(this));
   #endif
 
-  if (cookie) {
-    return &(cookie->_snapshot);
-  }
-
-  if (!force) {
-    return nullptr;
+  switch (mode) {
+    case IResearchView::Snapshot::Find:
+      return cookie ? &cookie->_snapshot : nullptr;
+    case IResearchView::Snapshot::FindOrCreate:
+      if (cookie) {
+        return &cookie->_snapshot;
+      }
+      break;
+    default:
+      break;
   }
 
   auto* resolver = trx.resolver();
@@ -570,8 +600,19 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     return nullptr;
   }
 
-  auto cookiePtr = irs::memory::make_unique<ViewState>();
-  auto& reader = cookiePtr->_snapshot;
+  std::unique_ptr<ViewState> cookiePtr;
+  CompoundReader* reader = nullptr;
+
+  if (!cookie) {
+    cookiePtr = irs::memory::make_unique<ViewState>();
+    reader = &cookiePtr->_snapshot;
+  } else {
+    reader = &cookie->_snapshot;
+    reader->clear();
+  }
+
+  TRI_ASSERT(reader);
+
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // 'collections_' can be asynchronously modified
 
@@ -593,12 +634,19 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
         continue;
       }
 
-      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(trx, force);
+      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(trx, mode);
 
       if (rdr) {
-        reader.add(*rdr);
+        reader->add(*rdr);
       }
     }
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id()
+      << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+
+    return nullptr;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while collecting readers for snapshot of DBServer IResearch view '" << id()
@@ -614,17 +662,19 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     return nullptr;
   }
 
-  state->cookie(this, std::move(cookiePtr));
+  if (cookiePtr) {
+    state->cookie(this, std::move(cookiePtr));
+  }
 
-  return &reader;
+  return reader;
 }
 
 arangodb::Result IResearchViewDBServer::updateProperties(
-  arangodb::velocypack::Slice const& properties,
+  arangodb::velocypack::Slice const& slice,
   bool partialUpdate,
   bool doSync
 ) {
-  if (!properties.isObject()) {
+  if (!slice.isObject()) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("invalid properties supplied while updating IResearch View in database '") + vocbase().name() + "'"
@@ -638,13 +688,13 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   static const std::function<bool(irs::string_ref const& key)> propsAcceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
+    return key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder props;
 
   props.openObject();
 
-  if (!mergeSliceSkipKeys(props, properties, propsAcceptor)) {
+  if (!mergeSliceSkipKeys(props, slice, propsAcceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate definition while updating IResearch View in database '") + vocbase().name() + "'"
@@ -654,14 +704,12 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   props.close();
 
   IResearchViewMeta meta;
-  IResearchViewMetaState metaState;
   std::string error;
 
   if (partialUpdate) {
-    IResearchViewMeta oldMeta;
+    SCOPED_LOCK(_meta->read());
 
-    if (!oldMeta.init(_meta.slice(), error)
-        || !meta.init(props.slice(), error, oldMeta)) {
+    if (!meta.init(props.slice(), error, *_meta)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("failure parsing properties while updating IResearch View in database '") + vocbase().name() + "'"
@@ -675,47 +723,26 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   }
 
   WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
+  SCOPED_LOCK(mutex); // '_collections' can be asynchronously read
 
-  metaState._collections.clear();
+  {
+    SCOPED_LOCK(_meta->write());
 
-  for (auto& entry: _collections) {
-    metaState._collections.emplace(entry.first);
+    // reset non-updatable values to match current meta
+    meta._locale = _meta->_locale;
+
+    static_cast<IResearchViewMeta&>(*_meta) = std::move(meta);
   }
 
-  // ...........................................................................
-  // prepare replacement '_meta'
-  // ...........................................................................
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchFeature
+  >();
 
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-
-  if (!meta.json(builder) || !metaState.json(builder)) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failure to generate 'properties' definition while updating IResearch View in database '") + vocbase().name() + "'"
-    );
+  if (feature) {
+    feature->asyncNotify();
   }
 
-  builder.close();
-
-  // ...........................................................................
-  // update per-cid views
-  // ...........................................................................
-
-  for (auto& entry: _collections) {
-    auto res =
-      entry.second->updateProperties(props.slice(), partialUpdate, doSync);
-
-    if (!res.ok()) {
-      return res; // fail on first failure
-    }
-  }
-
-  _meta = std::move(builder);
-
-  if (!properties.hasKey(StaticStrings::LinksField)) {
+  if (!slice.hasKey(StaticStrings::LinksField) && partialUpdate) {
     return arangodb::Result();
   }
 
@@ -724,7 +751,10 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   // ...........................................................................
 
   std::unordered_set<TRI_voc_cid_t> collections;
-  auto links = properties.get(StaticStrings::LinksField);
+  auto links = slice.hasKey(StaticStrings::LinksField)
+             ? slice.get(StaticStrings::LinksField)
+             : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
+
 
   if (partialUpdate) {
     return IResearchLinkHelper::updateLinks(

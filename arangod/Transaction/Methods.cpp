@@ -288,8 +288,8 @@ std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex()
 
 /// @brief IndexHandle toVelocyPack method passthrough
 void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder, bool withFigures) const {
-  _index->toVelocyPack(builder, withFigures, false);
+    arangodb::velocypack::Builder& builder, unsigned flags) const {
+  _index->toVelocyPack(builder, flags);
 }
 
 TRI_vocbase_t& transaction::Methods::vocbase() const {
@@ -873,8 +873,8 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString,
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
-  // TRI_ASSERT(rid != 0);
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+  char ridBuffer[21];
+  builder.add(StaticStrings::RevString, TRI_RidToValuePair(rid, &ridBuffer[0]));
 
   if (oldRid != 0) {
     builder.add("_oldRev", VPackValue(TRI_RidToString(oldRid)));
@@ -927,7 +927,7 @@ Result transaction::Methods::commit() {
 
   ExecContext const* exe = ExecContext::CURRENT;
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
-    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
@@ -1420,8 +1420,6 @@ OperationResult transaction::Methods::document(
 OperationResult transaction::Methods::documentCoordinator(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1437,9 +1435,9 @@ OperationResult transaction::Methods::documentCoordinator(
   int res = arangodb::getDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
-    std::move(headers),
     responseCode,
     errorCounter,
     resultBody
@@ -1569,7 +1567,7 @@ OperationResult transaction::Methods::insertCoordinator(
   auto resultBody = std::make_shared<VPackBuilder>();
 
   Result res = arangodb::createDocumentOnCoordinator(
-      vocbase().name(), collectionName, options, value, responseCode,
+      vocbase().name(), collectionName, *this, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res.ok()) {
@@ -1666,8 +1664,11 @@ OperationResult transaction::Methods::insertLocal(
       res = collection->replace( this, value, documentResult, options
                                , resultMarkerTick, needsLock, previousRevisionId
                                , previousDocumentResult);
-      if(res.ok()){
-         revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
+      if(res.ok() && !options.silent){
+        // If we are silent, then revisionId will not be looked at further
+        // down. In the silent case, documentResult is empty, so nobody
+        // must actually look at it!
+        revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
       }
     }
 
@@ -1885,6 +1886,7 @@ OperationResult transaction::Methods::updateCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     true /* isPatch */,
@@ -1943,6 +1945,7 @@ OperationResult transaction::Methods::replaceCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     false /* isPatch */,
@@ -2258,6 +2261,7 @@ OperationResult transaction::Methods::removeCoordinator(
   int res = arangodb::deleteDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     responseCode,
@@ -2784,35 +2788,90 @@ OperationResult transaction::Methods::rotateActiveJournalLocal(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::count(std::string const& collectionName,
-                                            bool details) {
+                                            transaction::CountType type) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, details, true);
+    return countCoordinator(collectionName, type);
   }
 
-  return countLocal(collectionName);
+  if (type == CountType::Detailed) {
+    // we are a single-server... we cannot provide detailed per-shard counts,
+    // so just downgrade the request to a normal request
+    type = CountType::Normal;
+  }
+
+  return countLocal(collectionName, type);
 }
 
-/// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
+/// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool details, bool sendNoLockHeader) {
-  std::vector<std::pair<std::string, uint64_t>> count;
-  auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, count, sendNoLockHeader
-  );
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
+    std::string const& collectionName, transaction::CountType type) {
+  
+  ClusterInfo* ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return OperationResult(TRI_ERROR_SHUTTING_DOWN);
   }
-  return buildCountResult(count, details);
+  
+  // First determine the collection ID from the name:
+  std::shared_ptr<LogicalCollection> collinfo;
+  try {
+    collinfo = ci->getCollection(vocbase().name(), collectionName);
+  } catch (...) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  return countCoordinatorHelper(collinfo, collectionName, type);
 }
+
 #endif
+
+OperationResult transaction::Methods::countCoordinatorHelper(
+    std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName, transaction::CountType type) { 
+  TRI_ASSERT(collinfo != nullptr);
+  auto& cache = collinfo->countCache();
+
+  int64_t documents = CountCache::NotPopulated;
+  if (type == transaction::CountType::ForceCache) {
+    // always return from the cache, regardless what's in it
+    documents = cache.get();
+  } else if (type == transaction::CountType::TryCache) {
+    documents = cache.get(CountCache::Ttl);
+  }
+
+  if (documents == CountCache::NotPopulated) {
+    // no cache hit, or detailed results requested
+    std::vector<std::pair<std::string, uint64_t>> count;
+    auto res = arangodb::countOnCoordinator(
+      vocbase().name(), collectionName, *this, count 
+    );
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return OperationResult(res);
+    }
+    
+    int64_t total = 0;
+    OperationResult opRes = buildCountResult(count, type, total);
+    cache.store(total);
+    return opRes;
+  } 
+
+  // cache hit!
+  TRI_ASSERT(documents >= 0);
+  TRI_ASSERT(type != transaction::CountType::Detailed);
+
+  // return number from cache  
+  VPackBuilder resultBuilder;
+  resultBuilder.add(VPackValue(documents));
+  return OperationResult(Result(), resultBuilder.buffer(), nullptr);
+}
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName) {
+    std::string const& collectionName, transaction::CountType type) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -2824,7 +2883,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this);
+  uint64_t num = collection->numberDocuments(this, type);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
@@ -2922,7 +2981,7 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
 
   auto indexes = indexesForCollection(collectionName);
 
-  // Const cast is save here. Giving computeSpecialisation == false
+  // Const cast is save here. Giving computeSpecialization == false
   // Makes sure node is NOT modified.
   return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection,
                                    usedIndex);
@@ -3205,6 +3264,18 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
 Result transaction::Methods::addCollection(std::string const& name,
                                            AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
+}
+
+bool transaction::Methods::isLockedShard(std::string const& shardName) const {
+  return _state->isLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShard(std::string const& shardName) {
+  _state->setLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+  _state->setLockedShards(lockedShards);
 }
 
 /// @brief test if a collection is already locked

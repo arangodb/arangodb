@@ -28,35 +28,34 @@
 #include "Basics/ConditionVariable.h"
 #include "V8/JSLoader.h"
 
-#include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class Thread;
 class V8Context;
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
-  struct stats {
+ public:
+  static V8DealerFeature* DEALER;
+  
+  struct Statistics {
     size_t available;
     size_t busy;
     size_t dirty;
     size_t free;
     size_t max;
   };
- public:
-  static V8DealerFeature* DEALER;
-  static constexpr ssize_t ANY_CONTEXT = -1;
-  static constexpr ssize_t ANY_CONTEXT_OR_PRIORITY = -2;
 
- public:
-  explicit V8DealerFeature(application_features::ApplicationServer* server);
+  explicit V8DealerFeature(application_features::ApplicationServer& server);
 
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
@@ -67,10 +66,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::string _appPath;
   std::string _startupDirectory;
   std::vector<std::string> _moduleDirectory;
-  uint64_t _nrMaxContexts;  // maximum number of contexts to create
-  uint64_t _nrMinContexts; // minimum number of contexts to keep
-  uint64_t _nrInflightContexts; // number of contexts currently in creation
-  uint64_t _maxContextInvocations; // maximum number of V8 context invocations
+  uint64_t _nrMaxContexts;          // maximum number of contexts to create
+  uint64_t _nrMinContexts;          // minimum number of contexts to keep
+  uint64_t _nrInflightContexts;     // number of contexts currently in creation
+  uint64_t _maxContextInvocations;  // maximum number of V8 context invocations
   bool _allowAdminExecute;
   bool _enableJS;
 
@@ -88,30 +87,30 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   /// @brief forceContext == -1 means that any free context may be
   /// picked, or a new one will be created if we have not exceeded
   /// the maximum number of contexts
-  /// forceContext == -2 means that any free context may be picked, 
+  /// forceContext == -2 means that any free context may be picked,
   /// or a new one will be created if we have not exceeded or exactly
   /// reached the maximum number of contexts. this can be used to
   /// force the creation of another context for high priority tasks
-  /// forceContext >= 0 means picking the context with that exact id 
+  /// forceContext >= 0 means picking the context with that exact id
   V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
-                          ssize_t forceContext = ANY_CONTEXT);
+                          ssize_t forceContext = -1);
   void exitContext(V8Context*);
 
   void defineContextUpdate(
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*);
 
-  void setMinimumContexts(size_t nr) { 
+  void setMinimumContexts(size_t nr) {
     if (nr > _nrMinContexts) {
-      _nrMinContexts = nr; 
+      _nrMinContexts = nr;
     }
   }
 
-  void setMaximumContexts(size_t nr) {
-    _nrMaxContexts = nr;
-  }
+  uint64_t maximumContexts() const { return _nrMaxContexts; }
 
-  V8DealerFeature::stats getCurrentContextNumbers();
+  void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
+
+  Statistics getCurrentContextNumbers();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -133,14 +132,14 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void unblockDynamicContextCreation();
   void loadJavaScriptFileInternal(std::string const& file, V8Context* context,
                                   VPackBuilder* builder);
-  bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
+  bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
+                                   V8Context* context, VPackBuilder* builder);
   void prepareLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
   void cleanupLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);
   void shutdownContexts();
 
- private:
   std::atomic<uint64_t> _nextId;
 
   std::unique_ptr<Thread> _gcThread;
@@ -162,15 +161,16 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::vector<std::pair<
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
-      TRI_vocbase_t*>> _contextUpdates;
+      TRI_vocbase_t*>>
+      _contextUpdates;
 };
-
 
 // enters and exits a context and provides an isolate
 // in case the passed in isolate is a nullptr
 class V8ContextDealerGuard {
  public:
-  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, bool allowModification);
+  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*,
+                                bool allowModification);
   V8ContextDealerGuard(V8ContextDealerGuard const&) = delete;
   V8ContextDealerGuard& operator=(V8ContextDealerGuard const&) = delete;
   ~V8ContextDealerGuard();
@@ -181,6 +181,6 @@ class V8ContextDealerGuard {
   bool _active;
 };
 
-}
+}  // namespace arangodb
 
 #endif

@@ -45,7 +45,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -54,7 +53,9 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
@@ -81,7 +82,7 @@ struct IResearchQueryStartsWithSetup {
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQueryStartsWithSetup(): server(nullptr, nullptr) {
+  IResearchQueryStartsWithSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -95,23 +96,24 @@ struct IResearchQueryStartsWithSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
+    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(server), false);
+    features.emplace_back(new arangodb::ShardingFeature(server), true);
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
     #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
     for (auto& f : features) {
@@ -134,11 +136,14 @@ struct IResearchQueryStartsWithSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryStartsWithSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
@@ -225,7 +230,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
-    auto tmpSlice = slice.get("properties").get("links");
+    auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -275,7 +280,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.invalid_field, 'abc') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.invalid_field, 'abc') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -291,7 +296,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.seq, '0') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.seq, '0') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -311,7 +316,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER starts_with(d.name, 'A') RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.name, 'A') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -348,7 +353,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -381,7 +386,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
+      "FOR d IN testView SEARCH starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -404,7 +409,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
   {
     auto queryResult = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
+      "FOR d IN testView SEARCH STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 

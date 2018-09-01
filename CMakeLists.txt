@@ -54,26 +54,207 @@ option(VERBOSE "be verbose about flags used" OFF)
 
 # use standalone boost asio
 add_definitions("-DARANGODB_STANDALONE_ASIO=1")
+add_definitions("-DFUERTE_STANDALONE_ASIO=1")
 
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
 
-set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "4")
-if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "devel")
-endif()
-set(ARANGODB_PACKAGE_REVISION   "1")
-# version for the windows rc file needs to be numeric:
-if (ARANGODB_VERSION_REVISION GREATER -1)
-  set(ARANGODB_NUMERIC_VERSION_REVISION "${ARANGODB_VERSION_REVISION}")
+# stable release:   MAJOR.MINOR.PATCH
+# hot fix:          MAJOR.MINOR.PATCH-FIXNUMBER
+# unstable release: MAJOR.MINOR.PATCH-TYPE.NUMBER
+# devel:            MAJOR.MINOR.devel
+#
+# These are mapped to the following variables:
+#
+# ARANGODB_VERSION_MAJOR = MAJOR
+# ARANGODB_VERSION_MINOR = MINOR
+# ARANGODB_VERSION_PATCH = PATCH
+#
+# for pre-releases, otherwise empty:
+#
+# ARANGODB_VERSION_PRELEASE_TYPE   = TYPE
+# ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
+#
+# This will set the following variables
+#
+# ARANGODB_DEBIAN_UPSTREAM
+# ARANGODB_DEBIAN_REVISION
+#
+# ARANGODB_RPM_UPSTREAM
+# ARANGODB_RPM_REVISION
+
+set(ARANGODB_VERSION_MAJOR "3")
+set(ARANGODB_VERSION_MINOR "4")
+
+# when building the nightly ARANGODB_VERSION_PATCH will be set
+if (NOT DEFINED ARANGODB_VERSION_PATCH)
+  set(ARANGODB_VERSION_PATCH          "devel")
+  set(ARANGODB_VERSION_RELEASE_TYPE   "")
+  set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
-  set(ARANGODB_NUMERIC_VERSION_REVISION 1337)
+  unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
+  unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
 endif()
 
-set(ARANGODB_VERSION
-    "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
+# unset TYPE and NUMBER in case they are empty
+if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
+  if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "")
+    unset (ARANGODB_VERSION_RELEASE_TYPE) # do not remove space
+    unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+  endif()
+else()
+  unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+endif()
+
+if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+  if (ARANGODB_VERSION_RELEASE_NUMBER STREQUAL "")
+    unset (ARANGODB_VERSION_RELEASE_NUMBER) # do not remove space
+  endif()
+endif()
+
+# semantic version
+set(ARANGODB_PLAIN_VERSION "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_PATCH}")
+
+if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
+  if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+    set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
+    set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
+  else()
+    set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}-${ARANGODB_VERSION_RELEASE_TYPE}")
+    set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
+  endif()
+else()
+  set(ARANGODB_VERSION "${ARANGODB_PLAIN_VERSION}")
+  set(ARANGODB_JS_VERSION "js/${ARANGODB_PLAIN_VERSION}")
+endif()
+
+message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
+message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
+message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
+
+################################################################################
+# DEBIAN, RPM, MacOS version
+################################################################################
+
+if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
+
+  # unstable version
+  if (   ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha"
+      OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta"
+      OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone"
+      OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview"
+      OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
+    if (NOT DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER is missing")
+    endif()
+
+    if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha")
+      set(ARANGODB_RPM_REVISION_NUMBER 100)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta")
+      set(ARANGODB_RPM_REVISION_NUMBER 200)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone")
+      set(ARANGODB_RPM_REVISION_NUMBER 300)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview")
+      set(ARANGODB_RPM_REVISION_NUMBER 400)
+    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
+      set(ARANGODB_RPM_REVISION_NUMBER 500)
+    endif()
+
+    MATH(EXPR ARANGODB_RPM_REVISION_NUMBER "${ARANGODB_RPM_REVISION_NUMBER}+${ARANGODB_VERSION_RELEASE_NUMBER}")
+
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}~${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_RPM_REVISION "0.${ARANGODB_RPM_REVISION_NUMBER}")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
+
+  # hot-fix
+  else()
+    if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
+      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER must be empty for type ${ARANGODB_VERSION_RELEASE_TYPE}")
+    endif()
+
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_RPM_REVISION "1.${ARANGODB_VERSION_RELEASE_TYPE}")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
+    set(ARANGODB_DARWIN_REVISION "")
+  endif()
+else()
+
+  # devel
+  if (ARANGODB_VERSION_PATCH STREQUAL "devel")
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_REVISION "0.1")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "")
+
+  # nightly
+  elseif (ARANGODB_VERSION_PATCH STREQUAL "nightly")
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_REVISION "0.2")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "")
+
+  # stable version
+  else()
+    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DEBIAN_REVISION "1")
+
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_RPM_REVISION "1.0")
+
+    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
+    set(ARANGODB_DARWIN_REVISION "")
+  endif()
+endif()
+
+message(STATUS "DEBIAN VERSION: ${ARANGODB_DEBIAN_UPSTREAM} / ${ARANGODB_DEBIAN_REVISION}")
+message(STATUS "RPM VERSION:    ${ARANGODB_RPM_UPSTREAM} / ${ARANGODB_RPM_REVISION}")
+message(STATUS "DARWIN VERSION: ${ARANGODB_DARWIN_UPSTREAM} / ${ARANGODB_DARWIN_REVISION}")
+
+
+################################################################################
+# Windows version
+################################################################################
+
+# PATCH needs to be numeric for the windows rc file
+set(ARANGODB_WINDOWS_UPSTREAM "${ARANGODB_VERSION}")
+
+if (ARANGODB_VERSION_PATCH GREATER -1)
+  set(ARANGODB_WINDOWS_PATCH "${ARANGODB_VERSION_PATCH}")
+else()
+  set(ARANGODB_WINDOWS_PATCH 1337)
+endif()
+
+message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
+
+################################################################################
+# SNAP version
+################################################################################
+
+set(ARANGODB_SNAP_REVISION "1")
+
+message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
+
+# ------------------------------------------------------------------------------
+# 
+# ------------------------------------------------------------------------------
 
 if (WIN32)
   # path containing the OpenSSL find-module and libraries
@@ -446,14 +627,6 @@ endif ()
 ## INCLUDE DIRECTORIES
 ################################################################################
 
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/552f562/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
 
@@ -638,23 +811,13 @@ endfunction()
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-
-  if (LINUX OR DARWIN)
-    add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
-  endif ()
 endif ()
 
 # ------------------------------------------------------------------------------
 # NDEBUG
 # ------------------------------------------------------------------------------
 
-if ( NOT USE_MAINTAINER_MODE AND ( CMAKE_BUILD_TYPE STREQUAL "Release" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR
-                                   CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"
-                                 )
-   )
-   add_definitions(-DNDEBUG)
-endif ()
+add_definitions(-DNDEBUG)
 
 ################################################################################
 ## FLAGS
@@ -855,21 +1018,36 @@ endif()
 # ZLIB_VERSION
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
+
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
+
+################################################################################
+## 3rd Party INCLUDE DIRECTORIES
+################################################################################
+
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
-set(ROCKSDB_LIBS rocksdb;snappystatic)
+set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappystatic)
+add_dependencies(rocksdb ${SNAPPY_LIB})
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
@@ -884,9 +1062,6 @@ include_directories(SYSTEM ${ASIO_INCLUDES})
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
-  link_directories("${LINK_DIR}")
-endforeach()
 
 ################################################################################
 ## ICU
@@ -901,22 +1076,26 @@ include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
+foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+  link_directories("${LINK_DIR}")
+endforeach()
+
 ################################################################################
 ## ZLIB
 ################################################################################
 
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+link_directories("${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ## cURL
 ################################################################################
 
-# This does not belong here! it should be handled in 3rdParty!
 add_definitions(-DCURL_STATICLIB=1)
 include_directories(SYSTEM
-  ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.57.0/include/
-  ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.57.0/include/curl/
+  ${CURL_SRC_DIR}/include/
+  ${CURL_BIN_DIR}/include/curl/
 )
 
 ################################################################################

@@ -23,7 +23,6 @@
 #include "SslServerFeature.h"
 
 #include "Basics/FileUtils.h"
-#include "Basics/locks.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -36,7 +35,8 @@ using namespace arangodb::options;
 SslServerFeature* SslServerFeature::SSL = nullptr;
 
 SslServerFeature::SslServerFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "SslServer"),
       _cafile(),
       _keyfile(),
@@ -46,8 +46,7 @@ SslServerFeature::SslServerFeature(
       _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
-  startsAfter("Ssl");
-  startsAfter("Logger");
+  startsAfter("AQLPhase");
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

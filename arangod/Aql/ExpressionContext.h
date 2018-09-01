@@ -34,18 +34,18 @@ struct AqlValue;
 struct Variable;
 
 class ExpressionContext {
-  public:
-    ExpressionContext() {}
+ public:
+  ExpressionContext() {}
 
-    virtual ~ExpressionContext() {}
+  virtual ~ExpressionContext() {}
 
-    virtual size_t numRegisters() const = 0;
+  virtual size_t numRegisters() const = 0;
 
-    virtual AqlValue const& getRegisterValue(size_t i) const = 0;
+  virtual AqlValue const& getRegisterValue(size_t i) const = 0;
 
-    virtual Variable const* getVariable(size_t i) const = 0;
+  virtual Variable const* getVariable(size_t i) const = 0;
 
-    virtual AqlValue getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const = 0;
+  virtual AqlValue getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const = 0;
 };
 }
 }

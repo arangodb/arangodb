@@ -142,8 +142,11 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   RocksDBVPackIndex() = delete;
 
-  RocksDBVPackIndex(TRI_idx_iid_t, LogicalCollection*,
-                    arangodb::velocypack::Slice const&);
+  RocksDBVPackIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info
+  );
 
   ~RocksDBVPackIndex();
 
@@ -154,7 +157,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   bool needToPersistEstimate() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
 
   bool canBeDropped() const override { return true; }
   
@@ -200,8 +203,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
       std::string& output, rocksdb::SequenceNumber seq) const override;
 
   bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
-
+  
   void recalculateEstimates() override;
+  
+  void afterTruncate() override;
 
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*,

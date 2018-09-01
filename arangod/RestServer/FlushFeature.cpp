@@ -23,6 +23,7 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
@@ -33,25 +34,27 @@
 #include "Utils/FlushThread.h"
 #include "Utils/FlushTransaction.h"
 
-using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace arangodb {
+
 std::atomic<bool> FlushFeature::_isRunning(false);
 
-FlushFeature::FlushFeature(ApplicationServer* server)
+FlushFeature::FlushFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Flush"),
       _flushInterval(1000000) {
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("StorageEngine");
   startsAfter("MMFilesLogfileManager");
-  // TODO: must start after storage engine
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
-  options->addOption(
+  options->addHiddenOption(
       "--server.flush-interval",
       "interval (in microseconds) for flushing data",
       new UInt64Parameter(&_flushInterval));
@@ -67,8 +70,8 @@ void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opti
 void FlushFeature::prepare() {
   // At least for now we need FlushThread for ArangoSearch views
   // on a DB/Single server only, so we avoid starting FlushThread on
-  // a coordinator.
-  setEnabled(!arangodb::ServerState::instance()->isCoordinator());
+  // a coordinator and on agency nodes.
+  setEnabled(!arangodb::ServerState::instance()->isCoordinator() && !arangodb::ServerState::instance()->isAgent());
 }
 
 void FlushFeature::start() {
@@ -135,7 +138,6 @@ void FlushFeature::executeCallbacks() {
   std::vector<FlushTransactionPtr> transactions;
 
   READ_LOCKER(locker, _callbacksLock);
-
   transactions.reserve(_callbacks.size());
 
   // execute all callbacks. this will create as many transactions as
@@ -146,7 +148,6 @@ void FlushFeature::executeCallbacks() {
   }
 
   // TODO: make sure all data is synced
-
 
   // commit all transactions
   for (auto const& trx : transactions) {
@@ -160,3 +161,5 @@ void FlushFeature::executeCallbacks() {
     // TODO: honor the commit results here
   }
 }
+
+} // arangodb

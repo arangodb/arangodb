@@ -74,7 +74,9 @@ class IResearchLinkCoordinator final: public arangodb::Index {
 
   virtual bool canBeDropped() const override { return true; }
 
-  virtual int drop() override;
+  virtual int drop() override { return TRI_ERROR_NO_ERROR; }
+  
+  virtual void afterTruncate() override {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds first link between specified collection and view
@@ -111,7 +113,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    arangodb::LogicalCollection* collection,
+    arangodb::LogicalCollection& collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
@@ -137,11 +139,10 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    unsigned flags
   ) const override;
 
   virtual IndexType type() const override {
@@ -159,7 +160,7 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(
     TRI_idx_iid_t id,
-    LogicalCollection* collection
+    LogicalCollection& collection
   );
 
   ////////////////////////////////////////////////////////////////////////////////

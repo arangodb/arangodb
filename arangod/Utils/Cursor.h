@@ -24,6 +24,7 @@
 #ifndef ARANGOD_UTILS_CURSOR_H
 #define ARANGOD_UTILS_CURSOR_H 1
 
+#include "Aql/ExecutionState.h"
 #include "Basics/Common.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
@@ -31,6 +32,7 @@
 #include <velocypack/Iterator.h>
 
 namespace arangodb {
+
 namespace transaction {
 class Context;
 }
@@ -63,17 +65,17 @@ class Cursor {
  public:
   CursorId id() const { return _id; }
 
-  size_t batchSize() const { return _batchSize; }
+  inline size_t batchSize() const { return _batchSize; }
 
-  bool hasCount() const { return _hasCount; }
+  inline bool hasCount() const { return _hasCount; }
 
-  double ttl() const { return _ttl; }
+  inline double ttl() const { return _ttl; }
 
-  double expires() const { return _expires; }
+  inline double expires() const { return _expires; }
 
-  bool isUsed() const { return _isUsed; }
+  inline bool isUsed() const { return _isUsed; }
 
-  bool isDeleted() const { return _isDeleted; }
+  inline bool isDeleted() const { return _isDeleted; }
 
   void deleted() { _isDeleted = true; }
 
@@ -96,7 +98,26 @@ class Cursor {
 
   virtual std::shared_ptr<transaction::Context> context() const = 0;
 
-  virtual Result dump(velocypack::Builder&) = 0;
+  /**
+   * @brief Dump the cursor result, async version. The caller needs to be contiueable
+   *
+   * @param result The Builder to write the result to
+   * @param continueHandler The function that is posted on scheduler to contiue this execution.
+   *
+   * @return First: ExecutionState either DONE or WAITING. On Waiting we need to free this thread on DONE we have a result.
+   *         Second: Result If State==DONE this contains Error information or NO_ERROR. On NO_ERROR result is filled.
+   */
+  virtual std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result, std::function<void()> const&) = 0;
+
+  /**
+   * @brief Dump the cursor result. This is guaranteed to return the result in this thread.
+   *
+   * @param result the Builder to write the result to
+   *
+   * @return ErrorResult, if something goes wrong
+   */
+  virtual Result dumpSync(velocypack::Builder& result) = 0;
 
  protected:
   CursorId const _id;

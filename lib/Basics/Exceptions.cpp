@@ -88,19 +88,19 @@ Exception::Exception(int code, char const* errorMessage, char const* file,
   appendLocation();
 }
 
-Exception::~Exception() throw() {}
+Exception::~Exception() {}
 
 /// @brief returns the error message
 std::string Exception::message() const { return _errorMessage; }
 
 /// @brief returns the error code
-int Exception::code() const throw() { return _code; }
+int Exception::code() const noexcept { return _code; }
 
 /// @brief adds to the message
 void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
 
 /// @brief return exception message
-char const* Exception::what() const throw() { return _errorMessage.c_str(); }
+char const* Exception::what() const noexcept { return _errorMessage.c_str(); }
 
 /// @brief append original error location to message
 void Exception::appendLocation () noexcept {

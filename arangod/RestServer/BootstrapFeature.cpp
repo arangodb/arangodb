@@ -34,6 +34,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -44,19 +45,22 @@ using namespace arangodb::options;
 static std::string const boostrapKey = "Bootstrap";
 
 BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer* server)
+    application_features::ApplicationServer& server
+)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
-  startsAfter("Authentication");
-  startsAfter("CheckVersion");
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("Endpoint");
+  startsAfter("ServerPhase");
+
+  // TODO: It is only in FoxxPhase because of:
   startsAfter("FoxxQueues");
+
+  // If this is Sorted out we can go down to ServerPhase
+  // And activate the following dependencies:
+  /*
+  startsAfter("Endpoint");
   startsAfter("GeneralServer");
-  startsAfter("Scheduler");
   startsAfter("Server");
   startsAfter("Upgrade");
-  startsAfter("V8Dealer");
+  */
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -130,7 +134,11 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::SystemDatabaseFeature
+    >();
+    arangodb::SystemDatabaseFeature::ptr vocbase =
+      sysDbFeature ? sysDbFeature->use() : nullptr;
     auto upgradeRes = vocbase
       ? methods::Upgrade::clusterBootstrap(*vocbase)
       : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
@@ -144,9 +152,10 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    // become Foxxmater, ignore result
+    // become Foxxmaster, ignore result
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
     agency.setValue("Current/Foxxmaster", b.slice(), 0);
+    agency.increment("Current/Version");
 
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -245,9 +254,13 @@ void runActiveFailoverStart(std::string const& myId) {
 }
 
 void BootstrapFeature::start() {
-  auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  arangodb::SystemDatabaseFeature::ptr vocbase =
+    sysDbFeature ? sysDbFeature->use() : nullptr;
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
-  TRI_ASSERT(vocbase != nullptr);
+  TRI_ASSERT(vocbase.get() != nullptr);
 
   auto ss = ServerState::instance();
   ServerState::RoleEnum role =  ServerState::instance()->getRole();
@@ -261,7 +274,7 @@ void BootstrapFeature::start() {
       raceForClusterBootstrap();
 
       if (v8Enabled) {
-        ::runCoordinatorJS(vocbase);
+        ::runCoordinatorJS(vocbase.get());
       }
     } else if (ServerState::isDBServer(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
@@ -288,7 +301,7 @@ void BootstrapFeature::start() {
     if (v8Enabled) { // runs the single server boostrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
+      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase.get(), "server/server.js", nullptr);
     }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
@@ -299,10 +312,10 @@ void BootstrapFeature::start() {
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
-    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+    ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
     // Start service properly:
-    ServerState::setServerMode(ServerState::Mode::DEFAULT);
+    ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
   }
   
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL

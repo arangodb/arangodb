@@ -41,8 +41,6 @@ RestAuthHandler::RestAuthHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response),
       _validFor(60 * 60 * 24 * 30) {}
 
-bool RestAuthHandler::isDirect() const { return false; }
-
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
   std::chrono::seconds exp =
@@ -58,7 +56,7 @@ std::string RestAuthHandler::generateJwt(std::string const& username,
   }
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return af->tokenCache()->generateJwt(bodyBuilder.slice());
+  return af->tokenCache().generateJwt(bodyBuilder.slice());
 }
 
 RestStatus RestAuthHandler::execute() {

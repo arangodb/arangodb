@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
@@ -50,7 +51,7 @@ struct Options;
 class ClusterEngine final : public StorageEngine {
  public:
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer*);
+  explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e) { _actualEngine = e; }
@@ -62,8 +63,8 @@ class ClusterEngine final : public StorageEngine {
   // storage engine overrides
   // ------------------------
 
-  char const* typeName() const override {
-    return _actualEngine ? _actualEngine->typeName() : nullptr;
+  std::string const& typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : StaticStrings::Empty;
   }
 
   // inherited from ApplicationFeature
@@ -195,7 +196,10 @@ class ClusterEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
+  
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override { return std::vector<std::string>(); }
+
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override {
     return TRI_ERROR_NO_ERROR;
@@ -262,26 +266,18 @@ class ClusterEngine final : public StorageEngine {
     std::string const& oldName
   ) override;
 
-  void createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-  ) override;
-
   void unloadCollection(
     TRI_vocbase_t& vocbase,
     LogicalCollection& collection
   ) override;
 
-  void changeView(
+  arangodb::Result changeView(
     TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
   ) override;
 
-  void createView(
+  arangodb::Result createView(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
@@ -294,19 +290,6 @@ class ClusterEngine final : public StorageEngine {
   ) override {
     // does nothing
   }
-
-  arangodb::Result persistView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view
-  ) override;
-
-  // asks the storage engine to persist renaming of a view
-  // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(
-    TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
-    std::string const& oldName
-  ) override;
 
   arangodb::Result dropView(
     TRI_vocbase_t& vocbase,
@@ -321,9 +304,6 @@ class ClusterEngine final : public StorageEngine {
   void signalCleanup(TRI_vocbase_t& vocbase) override;
 
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
-
-  /// @brief Add engine-specific AQL functions.
-  void addAqlFunctions() override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules() override;

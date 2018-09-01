@@ -46,12 +46,11 @@ template <typename CMP = geo_index::DocumentsAscending>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
-               ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
+               MMFilesGeoIndex const* index,
                geo::QueryParams&& params)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _index(index),
-        _near(std::move(params)),
-        _mmdr(mmdr) {
+        _near(std::move(params)) {
     if (!params.fullRange) {
       estimateDensity();
     }
@@ -89,27 +88,30 @@ struct NearIterator final : public IndexIterator {
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
-          if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+          bool result = true; // updated by the callback
+          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            geo::FilterType const ft = _near.filterType();
+            if (ft != geo::FilterType::NONE) {  // expensive test
+              geo::ShapeContainer const& filter = _near.filterShape();
+              TRI_ASSERT(!filter.empty());
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok() &&
+                        !test.empty());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                  !filter.intersects(&test))) {
+                result = false; // skip
+                return;
+              }
+            }
+            cb(gdoc.token, doc);  // return result
+            result = true;
+          })) {
             return false;  // skip
           }
-          VPackSlice doc(_mmdr->vpack());
-          geo::FilterType const ft = _near.filterType();
-          if (ft != geo::FilterType::NONE) {  // expensive test
-            geo::ShapeContainer const& filter = _near.filterShape();
-            TRI_ASSERT(!filter.empty());
-            geo::ShapeContainer test;
-            Result res = _index->shape(doc, test);
-            TRI_ASSERT(res.ok() &&
-                       !test.empty());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
-              return false;  // skip
-            }
-          }
-          cb(gdoc.token, doc);  // return result
-          return true;
+          return result;
         },
         limit);
   }
@@ -121,18 +123,23 @@ struct NearIterator final : public IndexIterator {
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
-            if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
+            bool result = true; // updated by the callback
+            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                   !filter.intersects(&test))) {
+                result = false;
+              } else {
+                result = true;
+              }
+            })) {
               return false;
             }
-            geo::ShapeContainer test;
-            Result res = _index->shape(VPackSlice(_mmdr->vpack()), test);
-            TRI_ASSERT(res.ok());  // this should never fail here
-            if (res.fail() ||
-                (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS &&
-                 !filter.intersects(&test))) {
-              return false;
-            }
+            return result;
           }
           cb(gdoc.token);  // return result
           return true;
@@ -154,28 +161,28 @@ struct NearIterator final : public IndexIterator {
     auto it = tree.begin();
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& interval = scan[i];
-      TRI_ASSERT(interval.min <= interval.max);
+      TRI_ASSERT(interval.range_min <= interval.range_max);
 
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
       if (i > 0) {
-        TRI_ASSERT(scan[i - 1].max < interval.min);
+        TRI_ASSERT(scan[i - 1].range_max < interval.range_min);
         if (it == tree.end()) {  // no more valid keys after this
           break;
-        } else if (it->first > interval.max) {
+        } else if (it->first > interval.range_max) {
           continue;  // beyond range already
-        } else if (interval.min <= it->first) {
+        } else if (interval.range_min <= it->first) {
           seek = false;  // already in range: min <= key <= max
-          TRI_ASSERT(it->first <= interval.max);
+          TRI_ASSERT(it->first <= interval.range_max);
         }
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        it = tree.lower_bound(interval.min);
+        it = tree.lower_bound(interval.range_min);
       }
 
-      while (it != tree.end() && it->first <= interval.max) {
+      while (it != tree.end() && it->first <= interval.range_max) {
         _near.reportFound(it->second.documentId, it->second.centroid);
         it++;
       }
@@ -203,14 +210,16 @@ struct NearIterator final : public IndexIterator {
  private:
   MMFilesGeoIndex const* _index;
   geo_index::NearUtils<CMP> _near;
-  ManagedDocumentResult* _mmdr;
 };
+
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
-                                 LogicalCollection* collection,
-                                 VPackSlice const& info,
-                                 std::string const& typeName)
+MMFilesGeoIndex::MMFilesGeoIndex(
+    TRI_idx_iid_t iid,
+    LogicalCollection& collection,
+    arangodb::velocypack::Slice const& info,
+    std::string const& typeName
+)
     : MMFilesIndex(iid, collection, info),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -223,13 +232,11 @@ MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
 size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                   bool forPersistence) const {
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
-  // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
+  MMFilesIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
@@ -380,7 +387,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*,
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -415,77 +422,15 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   // why does this have to be shit?
   if (params.ascending) {
     return new NearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   } else {
     return new NearIterator<geo_index::DocumentsDescending>(
-        _collection, trx, mmdr, this, std::move(params));
+      &_collection, trx, this, std::move(params)
+    );
   }
 }
 
 void MMFilesGeoIndex::unload() {
   _tree.clear();  // TODO: do we need load?
-}
-
-namespace {
-void retrieveNear(MMFilesGeoIndex const& index, transaction::Methods* trx,
-                  double lat, double lon, double radius, size_t count,
-                  std::string const& attributeName, VPackBuilder& builder) {
-  geo::QueryParams params;
-  params.origin = S2LatLng::FromDegrees(lat, lon);
-  params.sorted = true;
-  if (radius > 0.0) {
-    params.maxDistance = radius;
-    params.fullRange = true;
-  }
-  params.pointsOnly = index.pointsOnly();
-  params.limit = count;
-  size_t limit = (count > 0) ? count : SIZE_MAX;
-
-  ManagedDocumentResult mmdr;
-  LogicalCollection* collection = index.collection();
-  LegacyIterator iter(collection, trx, &mmdr, &index, std::move(params));
-  auto fetchDoc = [&](geo_index::Document const& gdoc) -> bool {
-    bool read = collection->readDocument(trx, gdoc.token, mmdr);
-    if (!read) {
-      TRI_ASSERT(false);
-      return false;
-    }
-    VPackSlice doc(mmdr.vpack());
-    // add to builder results
-    if (!attributeName.empty()) {
-      double distance = gdoc.distAngle.radians() * geo::kEarthRadiusInMeters;
-      // We have to copy the entire document
-      VPackObjectBuilder docGuard(&builder);
-      builder.add(attributeName, VPackValue(distance));
-      for (auto const& entry : VPackObjectIterator(doc, true)) {
-        std::string key = entry.key.copyString();
-        if (key != attributeName) {
-          builder.add(key, entry.value);
-        }
-      }
-    } else {
-      mmdr.addToBuilder(builder, true);
-    }
-
-    return true;
-  };
-
-  bool more = iter.nextToken(fetchDoc, limit);
-  TRI_ASSERT(count > 0 || !more);
-}
-}  // namespace
-
-/// @brief looks up all points within a given radius
-void MMFilesGeoIndex::withinQuery(transaction::Methods* trx, double lat,
-                                  double lon, double radius,
-                                  std::string const& attributeName,
-                                  VPackBuilder& builder) const {
-  ::retrieveNear(*this, trx, lat, lon, radius, 0, attributeName, builder);
-}
-
-void MMFilesGeoIndex::nearQuery(transaction::Methods* trx, double lat,
-                                double lon, size_t count,
-                                std::string const& attributeName,
-                                VPackBuilder& builder) const {
-  ::retrieveNear(*this, trx, lat, lon, -1.0, count, attributeName, builder);
 }
