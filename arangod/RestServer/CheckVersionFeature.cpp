@@ -56,6 +56,7 @@ CheckVersionFeature::CheckVersionFeature(
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("ServerId");
+  startsAfter("SystemDatabase");
 }
 
 void CheckVersionFeature::collectOptions(

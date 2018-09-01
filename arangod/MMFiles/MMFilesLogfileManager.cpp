@@ -128,6 +128,7 @@ MMFilesLogfileManager::MMFilesLogfileManager(
   startsAfter("Database");
   startsAfter("EngineSelector");
   startsAfter("MMFilesEngine");
+  startsAfter("SystemDatabase");
 
   onlyEnabledWith("MMFilesEngine");
 }

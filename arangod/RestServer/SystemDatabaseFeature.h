@@ -49,7 +49,7 @@ class SystemDatabaseFeature final:
 
   static std::string const& name() noexcept;
   void start() override;
-  void stop() override;
+  void unprepare() override;
   ptr use() const;
 
  private:
