@@ -92,6 +92,10 @@ void CheckVersionFeature::validateOptions(
   DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->enableCheckVersion();
+
+  // we can turn off all warnings about environment here, because they
+  // wil show up on a regular start later anyway
+  ApplicationServer::disableFeatures({"Environment"});
 }
 
 void CheckVersionFeature::start() {
