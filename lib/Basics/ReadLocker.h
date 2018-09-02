@@ -48,6 +48,10 @@
 #define CONDITIONAL_READ_LOCKER(obj, lock, condition) \
   arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
+#define TRY_CONDITIONAL_READ_LOCKER(obj, lock, condition) \
+  arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, (condition), __FILE__, __LINE__)
+
+
 namespace arangodb {
 namespace basics {
 

@@ -72,6 +72,9 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+constexpr uint32_t PREFER_READER = 1;
+constexpr uint32_t PREFER_WRITER = 1;
+
 /// @brief helper class for filling indexes
 class MMFilesIndexFillerTask : public basics::LocalTask {
  public:
@@ -501,7 +504,8 @@ MMFilesCollection::MMFilesCollection(
           info, "indexBuckets", defaultIndexBuckets)),
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
-      _maxTick(0) {
+      _maxTick(0),
+      _next(::PREFER_READER | ::PREFER_WRITER) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   if (_isVolatile && _logicalCollection.waitForSync()) {
@@ -2443,15 +2447,15 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
 
   TRI_voc_tid_t tid = state->id();
 
-  // LOCKING-DEBUG
-  // std::cout << "BeginReadTimed: " << _name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
-  uint64_t waitTime = 0;  // indicate that times uninitialized
+  uint64_t waitTime = 0;  // indicate that time is uninitialized
   double startTime = 0.0;
 
+  uint32_t next = ::PREFER_READER;
+
   while (true) {
-    TRY_READ_LOCKER(locker, _dataLock);
+    TRY_CONDITIONAL_READ_LOCKER(locker, _dataLock, next & ::PREFER_READER);
 
     if (locker.isLocked()) {
       // when we are here, we've got the read lock
@@ -2553,6 +2557,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TransactionState const
         waitTime *= 2;
       }
     }
+    next = _next.load(std::memory_order_acquire);
   }
 }
 
@@ -2567,15 +2572,15 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
 
   TRI_voc_tid_t tid = state->id();
 
-  // LOCKING-DEBUG
-  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
   int iterations = 0;
   bool wasBlocked = false;
-  uint64_t waitTime = 0;  // indicate that times uninitialized
+  uint64_t waitTime = 0;  // indicate that time is uninitialized
   double startTime = 0.0;
+  
+  uint32_t next = ::PREFER_WRITER;
 
   while (true) {
-    TRY_WRITE_LOCKER(locker, _dataLock);
+    TRY_CONDITIONAL_WRITE_LOCKER(locker, _dataLock, next & ::PREFER_WRITER);
 
     if (locker.isLocked()) {
       // register writer
@@ -2676,6 +2681,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TransactionState cons
         waitTime *= 2;
       }
     }
+    next = _next.load(std::memory_order_acquire);
   }
 }
 
@@ -2700,8 +2706,7 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector, TransactionState con
     }
   }
 
-  // LOCKING-DEBUG
-  // std::cout << "EndRead: " << _name << std::endl;
+  _next.store(::PREFER_WRITER, std::memory_order_release);
   _dataLock.unlockRead();
 
   return TRI_ERROR_NO_ERROR;
@@ -2729,8 +2734,7 @@ int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TransactionState co
     }
   }
 
-  // LOCKING-DEBUG
-  // std::cout << "EndWrite: " << _name << std::endl;
+  _next.store(::PREFER_READER, std::memory_order_release);
   _dataLock.unlockWrite();
 
   return TRI_ERROR_NO_ERROR;

@@ -48,6 +48,10 @@
 #define CONDITIONAL_WRITE_LOCKER(obj, lock, condition) \
   arangodb::basics::WriteLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
+#define TRY_CONDITIONAL_WRITE_LOCKER(obj, lock, condition) \
+  arangodb::basics::WriteLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::TRY, (condition), __FILE__, __LINE__)
+
+
 namespace arangodb {
 namespace basics {
 
