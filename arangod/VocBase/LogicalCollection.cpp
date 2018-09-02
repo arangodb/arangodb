@@ -493,7 +493,8 @@ LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }
 
-void LogicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
+void LogicalCollection::getIndexesVPack(VPackBuilder& result,
+                                        std::underlying_type<Index::Serialize>::type flags,
                                         std::function<bool(arangodb::Index const*)> const& filter) const {
   getPhysical()->getIndexesVPack(result, flags, filter);
 }
@@ -689,7 +690,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   // Indexes
   result.add(VPackValue("indexes"));
-  unsigned flags = Index::makeFlags();
+  auto flags = Index::makeFlags();
   if (forPersistence) {
     flags = Index::makeFlags(Index::Serialize::ObjectId);
   }

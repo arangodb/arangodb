@@ -215,7 +215,8 @@ class LogicalCollection: public LogicalDataSource {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, unsigned flags,
+  void getIndexesVPack(velocypack::Builder&,
+                       std::underlying_type<arangodb::Index::Serialize>::type,
                        std::function<bool(arangodb::Index const*)> const& filter =
                          [](arangodb::Index const*) -> bool { return true; }) const;
 

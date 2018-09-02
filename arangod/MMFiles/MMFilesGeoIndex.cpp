@@ -232,7 +232,8 @@ MMFilesGeoIndex::MMFilesGeoIndex(
 size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, uint8_t flags) const {
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
