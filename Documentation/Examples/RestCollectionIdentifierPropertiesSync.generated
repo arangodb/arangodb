@@ -4,7 +4,7 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 location: <span class="hljs-regexp">/_api/</span>collection/products/properties
 x-content-type-options: nosniff
@@ -22,7 +22,7 @@ x-content-type-options: nosniff
   }, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h65CFE98C83F5/103417"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h3ED3FEA31531/103417"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"103417"</span>, 

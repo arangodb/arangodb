@@ -1,21 +1,21 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103939</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103940</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_XW2jnPq--A"</span>
+etag: <span class="hljs-string">"_XXlQQdO--_"</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103939"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103939"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XW2jnPq--A"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103940"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103940"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XXlQQdO--_"</span>, 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"china"</span> : <span class="hljs-number">1366980000</span>, 
     <span class="hljs-string">"india"</span> : <span class="hljs-number">1263590000</span>, 
     <span class="hljs-string">"usa"</span> : <span class="hljs-number">319220000</span> 
   } 
 }
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PATCH --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/103939?mergeObjects=<span class="hljs-literal">true</span></span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PATCH --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/103940?mergeObjects=<span class="hljs-literal">true</span></span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"indonesia"</span> : <span class="hljs-number">252164800</span>, 
@@ -24,17 +24,17 @@ x-content-type-options: nosniff
 }
 EOF
 
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103939</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103940</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_XW2jnQ---_"</span>
+etag: <span class="hljs-string">"_XXlQQde--_"</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103939"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103939"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XW2jnQ---_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103940"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103940"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XXlQQde--_"</span>, 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"china"</span> : <span class="hljs-number">1366980000</span>, 
     <span class="hljs-string">"india"</span> : <span class="hljs-number">1263590000</span>, 
@@ -43,7 +43,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"brazil"</span> : <span class="hljs-number">203553000</span> 
   } 
 }
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PATCH --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/103939?mergeObjects=<span class="hljs-literal">false</span></span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PATCH --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/103940?mergeObjects=<span class="hljs-literal">false</span></span> &lt;&lt;EOF
 { 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"pakistan"</span> : <span class="hljs-number">188346000</span> 
@@ -51,29 +51,29 @@ x-content-type-options: nosniff
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_XW2jnQS--_"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">103939</span>
+etag: <span class="hljs-string">"_XXlQQd2--_"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">103940</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103939"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103939"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XW2jnQS--_"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XW2jnQ---_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103940"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103940"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XXlQQd2--_"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XXlQQde--_"</span> 
 }
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103939</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103940</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_XW2jnQS--_"</span>
+etag: <span class="hljs-string">"_XXlQQd2--_"</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103939"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103939"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XW2jnQS--_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103940"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103940"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XXlQQd2--_"</span>, 
   <span class="hljs-string">"inhabitants"</span> : { 
     <span class="hljs-string">"pakistan"</span> : <span class="hljs-number">188346000</span> 
   } 

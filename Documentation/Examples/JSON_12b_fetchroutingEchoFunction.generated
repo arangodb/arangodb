@@ -7,6 +7,7 @@ arangosh&gt; arango.GET_RAW(<span class="hljs-string">"hello/echo"</span>, { <sp
     <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
     <span class="hljs-string">"content-length"</span> : <span class="hljs-string">"5"</span>, 
     <span class="hljs-string">"content-type"</span> : <span class="hljs-string">"application/json; charset=utf-8"</span>, 
+    <span class="hljs-string">"http/1.1"</span> : <span class="hljs-string">"OK"</span>, 
     <span class="hljs-string">"server"</span> : <span class="hljs-string">"ArangoDB"</span>, 
     <span class="hljs-string">"x-content-type-options"</span> : <span class="hljs-string">"nosniff"</span> 
   } 

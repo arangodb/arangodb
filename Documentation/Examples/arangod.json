@@ -483,6 +483,14 @@
     "section" : "",
     "type" : "boolean"
   },
+  "fortune" : {
+    "default" : false,
+    "description" : "show fortune cookie on startup",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "",
+    "type" : "boolean"
+  },
   "foxx.queues" : {
     "default" : true,
     "description" : "enable Foxx queues",
@@ -1236,6 +1244,14 @@
   "rocksdb.use-direct-reads" : {
     "default" : false,
     "description" : "use O_DIRECT for reading files",
+    "enterpriseOnly" : false,
+    "hidden" : true,
+    "section" : "rocksdb",
+    "type" : "boolean"
+  },
+  "rocksdb.use-file-logging" : {
+    "default" : false,
+    "description" : "use a file-base logger for RocksDB's own logs",
     "enterpriseOnly" : false,
     "hidden" : true,
     "section" : "rocksdb",
