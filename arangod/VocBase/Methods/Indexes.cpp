@@ -98,7 +98,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
 /// @brief get all indexes, skips view links
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                  std::underlying_type<Index::Serialize>::type flags,
-                                 bool skipLinks,
+                                 bool withLinks,
                                  VPackBuilder& result) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
@@ -117,8 +117,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
 #ifdef USE_IRESEARCH
-    c->getIndexesVPack(tmpInner, flags, [skipLinks](arangodb::Index const* idx) {
-      return !skipLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
+      return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
     });
 #else
     c->getIndexesVPack(tmpInner, flags);
@@ -167,7 +167,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.openArray(true);
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
 #ifdef USE_IRESEARCH
-      if (skipLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
         continue;
       }
 #endif
