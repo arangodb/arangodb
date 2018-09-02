@@ -42,7 +42,7 @@ function StatementResultEncodingSuite () {
   "use strict";
 
   var c = null;
-  var countries = JSON.parse(require("fs").read(pathForTesting('common/tests/countries.json')));
+  var countries = JSON.parse(require("fs").read(pathForTesting('common/countries.json')));
 
   return {
 
