@@ -80,6 +80,7 @@ class RocksDBOptionFeature final
   bool _skipCorrupted;
   bool _dynamicLevelBytes;
   bool _enableStatistics;
+  bool _useFileLogging;
 };
 
 }  // namespace arangodb

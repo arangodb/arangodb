@@ -73,7 +73,6 @@ V8ClientConnection::~V8ClientConnection() {
 }
 
 void V8ClientConnection::createConnection() {
- 
   auto newConnection = _builder.connect(_loop);
   fuerte::StringMap params{{"details","true"}};
   auto req = fuerte::createRequest(fuerte::RestVerb::Get, "/_api/version", params);
@@ -1365,9 +1364,9 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
   if (!_connection) {
-    _lastErrorMessage = "not connected";
-    _lastHttpReturnCode = 503;
-    return v8::Null(isolate);
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 "not connected");
+    return v8::Undefined(isolate); 
   }
   
   auto req = std::make_unique<fuerte::Request>();
@@ -1431,6 +1430,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
+  if (!_connection) {
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                 "not connected");
+    return v8::Undefined(isolate); 
+  }
 
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;

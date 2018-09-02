@@ -15,6 +15,12 @@ devel
   on path (vertices and edges) have not been applied. In SmartGraphs the checks
   have been executed properly.
 
+* added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
+  informational LOG files into RocksDB's database directory.
+
+  This option is turned off by default, but can be enabled for debugging RocksDB
+  internals and performance.
+
 * improved error messages when managing Foxx services
 
   Install/replace/upgrade will now provide additional information when an error
