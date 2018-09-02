@@ -80,8 +80,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   Object.assign(allTestPaths, testPaths);
   testFns['audit'] = [ 'auditlog' ];
 
-  testFns['auditlog'] = auditLog;
-
   // turn off test by default.
   opts['skipAudit'] = true;
 
