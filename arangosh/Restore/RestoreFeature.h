@@ -90,6 +90,7 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   // statistics
   struct {
     uint64_t _totalBatches;
+    uint64_t _totalSent;
     uint64_t _totalCollections;
     uint64_t _totalRead;
   } _stats;
