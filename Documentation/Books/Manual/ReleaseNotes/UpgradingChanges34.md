@@ -777,3 +777,7 @@ removed in future versions of ArangoDB:
   3.4, and `arangoimp` is just a symbolic link to `arangoimport` now.
   `arangoimp` is there for compatibility only, but client scripts should 
   eventually be migrated to use `arangoimport` instead.
+
+* the `foxx-manager` executable is deprecated and will be removed in ArangoDB 4.
+  
+  Please use foxx-cli instead: https://docs.arangodb.com/3.4/Manual/Foxx/Deployment/FoxxCLI/
