@@ -54,23 +54,9 @@ using namespace arangodb::basics::StringUtils;
 
 static std::vector<std::string> const cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
-static std::string const CURRENT_COLLECTIONS("Current/Collections/");
-static std::string const CURRENT_DATABASES("Current/Databases/");
-static std::string const DATABASES("Databases");
-static std::string const ERROR_MESSAGE("errorMessage");
-static std::string const ERROR_NUM("errorNum");
-static std::string const ERROR_STR("error");
-static std::string const PLAN_ID("planId");
-static std::string const PRIMARY("primary");
-static std::string const SERVERS("servers");
-static std::string const SELECTIVITY_ESTIMATE("selectivityEstimate");
-static std::string const COLLECTIONS("Collections");
-static std::string const DB ("/_db/");
-static std::string const FOLLOWER_ID("followerId");
+
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
-static std::string const OP("op");
-static std::string const UNDERSCORE("_");
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -657,14 +643,14 @@ static VPackBuilder assembleLocalCollectionInfo(
     { VPackObjectBuilder r(&ret);
       auto it = allErrors.shards.find(errorKey);
       if (it == allErrors.shards.end()) {
-        ret.add(ERROR_STR, VPackValue(false));
-        ret.add(ERROR_MESSAGE, VPackValue(std::string()));
-        ret.add(ERROR_NUM, VPackValue(0));
+        ret.add(StaticStrings::Error, VPackValue(false));
+        ret.add(StaticStrings::ErrorMessage, VPackValue(std::string()));
+        ret.add(StaticStrings::ErrorNum, VPackValue(0));
       } else {
         VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
-        ret.add(ERROR_STR, errs.get(ERROR_STR));
-        ret.add(ERROR_NUM, errs.get(ERROR_NUM));
-        ret.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
+        ret.add(StaticStrings::Error, errs.get(StaticStrings::Error));
+        ret.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
+        ret.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
       }
       ret.add(VPackValue(INDEXES));
       { VPackArrayBuilder ixs(&ret);
@@ -752,14 +738,14 @@ static VPackBuilder assembleLocalDatabaseInfo (std::string const& database,
     { VPackObjectBuilder o(&ret);
       auto it = allErrors.databases.find(database);
       if (it == allErrors.databases.end()) {
-        ret.add(ERROR_STR, VPackValue(false));
-        ret.add(ERROR_NUM, VPackValue(0));
-        ret.add(ERROR_MESSAGE, VPackValue(""));
+        ret.add(StaticStrings::Error, VPackValue(false));
+        ret.add(StaticStrings::ErrorNum, VPackValue(0));
+        ret.add(StaticStrings::ErrorMessage, VPackValue(""));
       } else {
         VPackSlice errs(static_cast<uint8_t const*>(it->second->data()));
-        ret.add(ERROR_STR, errs.get(ERROR_STR));
-        ret.add(ERROR_NUM, errs.get(ERROR_NUM));
-        ret.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
+        ret.add(StaticStrings::Error, errs.get(StaticStrings::Error));
+        ret.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
+        ret.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
       }
       ret.add(ID, VPackValue(std::to_string(vocbase->id())));
       ret.add("name", VPackValue(vocbase->name())); }
@@ -813,7 +799,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         continue;
       }
       auto const shSlice = shard.value;
-      auto const colName = shSlice.get(PLAN_ID).copyString();
+      auto const colName = shSlice.get(StaticStrings::DataSourcePlanId).copyString();
 
       VPackBuilder error;
       if (shSlice.get(THE_LEADER).copyString().empty()) { // Leader
@@ -949,9 +935,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           report.add(VPackSlice("payload"));
           { VPackObjectBuilder pp(&report);
             VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
-            report.add(ERROR_STR, errs.get(ERROR_STR));
-            report.add(ERROR_NUM, errs.get(ERROR_NUM));
-            report.add(ERROR_MESSAGE, errs.get(ERROR_MESSAGE));
+            report.add(StaticStrings::Error, errs.get(StaticStrings::Error));
+            report.add(StaticStrings::ErrorNum, errs.get(StaticStrings::ErrorNum));
+            report.add(StaticStrings::ErrorMessage, errs.get(StaticStrings::ErrorMessage));
           }
         }
       }
