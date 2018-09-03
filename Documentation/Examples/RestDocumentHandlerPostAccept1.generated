@@ -2,14 +2,14 @@
 { "Hello": "World" }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_XUJy9M6--B"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">103373</span>
+etag: <span class="hljs-string">"_XXlQQfS--_"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">103961</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103373"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103373"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJy9M6--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103961"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103961"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XXlQQfS--_"</span> 
 }

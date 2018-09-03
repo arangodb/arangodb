@@ -123,7 +123,7 @@ class IResearchRocksDBLink final
   using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    unsigned int flags
+    std::underlying_type<arangodb::Index::Serialize>::type flags
   ) const override;
 
   virtual IndexType type() const override {
