@@ -1019,7 +1019,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
     s.slice(),
     false,
     true,
-    [&](LogicalCollection&) {}
+    [](std::shared_ptr<LogicalCollection> const&)->void {}
   );
 
   if (r.is(TRI_ERROR_SHUTTING_DOWN)) {
@@ -1038,7 +1038,9 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
   r = methods::Collections::lookup(
     &_vocbase, 
     collection, 
-    [&](LogicalCollection& coll) {
+    [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+      TRI_ASSERT(coll);
+
       VPackBuilder t;
 
       t.openObject();
@@ -1054,7 +1056,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
       VPackBuilder output;
       Result idxRes =
-        methods::Indexes::ensureIndex(&coll, t.slice(), true, output);
+        methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
 
       if (!idxRes.ok()) {
         LOG_TOPIC(WARN, Logger::STATISTICS)
