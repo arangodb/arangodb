@@ -29,6 +29,7 @@ ArangoSearch
 * Using a loop variable in expressions within a corresponding SEARCH condition is not supported (internal #318)
 * Data of "NONE" collection could be accessed via a view for a used regardless of rights check (internal #453)
 * "NONE" read permission is not checked for a single link in a view with multiple links where others are "RW" for a user in cluster (internal #452)
-* ArangoSearch doesn't support joining with satellite collections (internal #440)
+* ArangoSearch doesn't support joins with satellite collections (internal #440)
+* RocksDB recovery fails sometimes after renaming a view (internal #469)
 
 
