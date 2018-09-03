@@ -10,4 +10,4 @@ may be removed in later versions of ArangoDB:
   how many database operations may have been lost during a failover.
 - Should you be using the [ArangoDB Starter](https://github.com/arangodb-helper/arangodb) 
   or the [Kubernetes Operator](https://github.com/arangodb/kube-arangodb) to manage your Active-Failover
-  deployment, be aware that upgrading might cause a failover to between machines.
+  deployment, be aware that upgrading might trigger an unintentional failover between machines.
