@@ -42,9 +42,11 @@ CreateDatabase::CreateDatabase(
   : ActionBase(feature, desc) {
 
   std::stringstream error;
+  
+  _labels.emplace(FAST_TRACK);
 
   if (!desc.has(DATABASE)) {
-    error << "database must be specified";
+    error << "database must be specified.";
   }
   TRI_ASSERT(desc.has(DATABASE));
 
