@@ -179,7 +179,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(collection, withFigures, output);
+  auto res = methods::Indexes::getAll(collection, flags, withLinks, output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
