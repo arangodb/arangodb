@@ -26,4 +26,6 @@ ArangoSearch
 * Creation of ArangoSearch on a large collection may cause OOM
 * Long-running transaction with a huge number of DML operations may cause OOM
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported
+* Using a loop variable in expressions within a corresponding SEARCH condition is not supported
+
 
