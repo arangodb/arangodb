@@ -229,6 +229,10 @@ public:
       } // if
     } // if
 
+    if (description.get(FAST_TRACK, value).ok()) {
+      _labels.emplace(FAST_TRACK);
+    }
+
     if (description.get("result_code", value).ok()) {
       _resultCode = std::atol(value.c_str());
     } // if
@@ -752,11 +756,15 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
   SECTION("Priority") {
     std::vector<Expected> pre_thread, post_thread;
 
-    std::shared_ptr<arangodb::options::ProgramOptions> po = std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path");
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    
     arangodb::application_features::ApplicationServer as(po, nullptr);
     TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
     as.addFeature(tf);
-    std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+    std::thread th(
+      &arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
     //
     // 1. load up the queue without threads running
@@ -765,39 +773,29 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
-            {"name","TestActionBasic"},{"iterate_count","100"},{"postaction_result_code","0"}
-          })));
+            {"name","TestActionBasic"},{"iterate_count","100"},
+            {TestActionBasic::FAST_TRACK, ""}})));
     arangodb::Result result = tf->addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), false);
 
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
-    pre_thread.push_back({1,0,READY,0});
-    post_thread.push_back({1,0,FAILED,0});
 
     //
-    // 2. see if happy about queue prior to threads running
-    REQUIRE(tf->verifyRegistryState(pre_thread));
-    tf->deleteAction(1);
+    // 2. start threads AFTER ApplicationServer known to be running
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit-1);
 
     //
-    // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
-
-    //
-    // 4. loop while waiting for threads to complete all actions
+    // 3. loop while waiting for threads to complete all actions
     tf->waitRegistryComplete();
 
-    //
-    // 5. verify completed actions
-    REQUIRE(tf->verifyRegistryState(post_thread));
 
 #if 0   // for debugging
     std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
 
     //
-    // 6. bring down the ApplicationServer, i.e. clean up
+    // 4. bring down the ApplicationServer, i.e. clean up
     as.beginShutdown();
     th.join();
   }
