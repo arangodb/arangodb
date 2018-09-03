@@ -766,6 +766,9 @@ This is a change to previous versions of ArangoDB, in which the `fullCount`
 value was produced by the sequential last `LIMIT` statement in a query,
 regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
+The `fullCount` result value will now also be returned for queries that are served
+from the query results cache.
+
 ### Improved sparse index support
 
 The AQL query optimizer can now use sparse indexes in more cases than it was able to
