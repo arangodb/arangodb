@@ -99,7 +99,8 @@ class Methods {
     std::shared_ptr<arangodb::Index> _index;
    public:
     IndexHandle() = default;
-    void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
+    void toVelocyPack(arangodb::velocypack::Builder& builder,
+            std::underlying_type<Index::Serialize>::type flags) const;
     bool operator==(IndexHandle const& other) const {
       return other._index.get() == _index.get();
     }

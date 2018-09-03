@@ -2414,7 +2414,7 @@ int ClusterInfo::ensureIndexCoordinator(
     oldPlanIndexes.reset(new VPackBuilder());
 
     c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::SERIALIZE_BASICS);
+    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::makeFlags(Index::Serialize::Basics));
     VPackSlice const planIndexes = oldPlanIndexes->slice();
 
     if (planIndexes.isArray()) {
@@ -2505,7 +2505,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), Index::SERIALIZE_BASICS);
+    c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
     {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
       *numberOfShards = static_cast<int>(c->numberOfShards());
@@ -2875,7 +2875,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     READ_LOCKER(readLocker, _planProt.lock);
 
-    c->getIndexesVPack(tmp, Index::SERIALIZE_BASICS);
+    c->getIndexesVPack(tmp, Index::makeFlags(Index::Serialize::Basics));
     indexes = tmp.slice();
 
     if (!indexes.isArray()) {
