@@ -45,7 +45,7 @@ EnsureIndex::EnsureIndex(
   ActionBase(feature, desc) {
 
   std::stringstream error;
-  
+
   if (!desc.has(DATABASE)) {
     error << "database must be specified. ";
   }
