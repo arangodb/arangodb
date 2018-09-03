@@ -753,7 +753,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
-  SECTION("Priority") {
+  SECTION("Priority queue should be able to process fast tracked action") {
     std::vector<Expected> pre_thread, post_thread;
 
     std::shared_ptr<arangodb::options::ProgramOptions> po =
