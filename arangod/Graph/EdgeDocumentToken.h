@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
@@ -117,6 +118,13 @@ struct EdgeDocumentToken {
 #endif
     return _data.document.cid == other.cid() &&
            _data.document.localDocumentId == other.localDocumentId();
+  }
+
+  bool equals(EdgeDocumentToken const& other) const {
+    if (ServerState::instance()->isCoordinator()) {
+      return equalsCoordinator(other);
+    }
+    return equalsLocal(other);
   }
   
 private:
