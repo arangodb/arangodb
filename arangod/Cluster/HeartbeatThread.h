@@ -50,6 +50,7 @@ struct AgencyVersions {
 };
 
 class AgencyCallbackRegistry;
+class HeartbeatBackgroundJobThread;
 
 class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
@@ -77,7 +78,7 @@ class HeartbeatThread : public CriticalThread,
 
   void setReady() { _ready.store(true); }
 
-  void runBackgroundJob();
+  //void runBackgroundJob();
 
   void dispatchedJobResult(DBServerAgencySyncResult);
 
@@ -294,6 +295,10 @@ public:
 
   // when was the javascript sync routine last run?
   double _lastSyncTime;
+
+
+
+  std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
 };
 }
 

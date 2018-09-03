@@ -73,6 +73,87 @@ static std::chrono::system_clock::time_point deadThreadsPosted;  // defaults to 
 
 static arangodb::Mutex deadThreadsMutex;
 
+namespace arangodb {
+
+
+class HeartbeatBackgroundJobThread : public Thread {
+
+public:
+  HeartbeatBackgroundJobThread(HeartbeatThread *heartbeatThread) :
+    Thread("Maintenance"),
+    _heartbeatThread(heartbeatThread),
+    _stop(false),
+    _sleeping(false),
+    _backgroundJobsLaunched(0)
+  {}
+
+  ~HeartbeatBackgroundJobThread() { shutdown(); }
+
+  void stop() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _stop = true;
+    _condition.notify_one();
+  }
+
+  void notify() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _anotherRun.store(true, std::memory_order_release);
+    if (_sleeping.load(std::memory_order_acquire)) {
+      _condition.notify_one();
+    }
+  }
+
+protected:
+  void run() override {
+
+    while (!_stop) {
+
+      {
+        std::unique_lock<std::mutex> guard(_mutex);
+
+        if (!_anotherRun.load(std::memory_order_acquire)) {
+          _sleeping.store(true, std::memory_order_release);
+
+          while (true) {
+            _condition.wait(guard);
+
+            if (_stop) {
+              return ;
+            } else if (_anotherRun) {
+              break ;
+            } // otherwise spurious wakeup
+          }
+
+          _sleeping.store(false, std::memory_order_release);
+        }
+
+        _anotherRun.store(false, std::memory_order_release);
+      }
+
+      // execute schmutz here
+      uint64_t jobNr = ++_backgroundJobsLaunched;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+      {
+        DBServerAgencySync job(_heartbeatThread);
+        job.work();
+      }
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+
+    }
+  }
+
+private:
+  HeartbeatThread *_heartbeatThread;
+
+  std::mutex _mutex;
+  std::condition_variable _condition;
+
+  std::atomic<bool> _stop;
+  std::atomic<bool> _sleeping;
+  std::atomic<bool> _anotherRun;
+  uint64_t _backgroundJobsLaunched;
+};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
@@ -100,14 +181,20 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _backgroundJobsLaunched(0),
       _backgroundJobScheduledOrRunning(false),
       _launchAnotherBackgroundJob(false),
-      _lastSyncTime(0) {
+      _lastSyncTime(0),
+      _maintenanceThread(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::~HeartbeatThread() { shutdown(); }
+HeartbeatThread::~HeartbeatThread() {
+  if (_maintenanceThread) {
+    _maintenanceThread->stop();
+  }
+  shutdown();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running of heartbeat background jobs (in JavaScript), we run
@@ -124,7 +211,7 @@ HeartbeatThread::~HeartbeatThread() { shutdown(); }
 /// create a new shared_ptr keeping the HeartbeatThread object alive.
 ////////////////////////////////////////////////////////////////////////////////
 
-class HeartbeatBackgroundJob {
+/*class HeartbeatBackgroundJob {
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   double _startTime;
   std::string _schedulerInfo;
@@ -147,15 +234,16 @@ class HeartbeatBackgroundJob {
         << ", scheduler info now: "
         << SchedulerFeature::SCHEDULER->infoStatus();
     }
-    _heartbeatThread->runBackgroundJob();
+    //_heartbeatThread->runBackgroundJob();
   }
-};
+};*/
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief method runBackgroundJob()
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::runBackgroundJob() {
+/*void HeartbeatThread::runBackgroundJob() {
   uint64_t jobNr = ++_backgroundJobsLaunched;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
   {
@@ -182,7 +270,7 @@ void HeartbeatThread::runBackgroundJob() {
       _launchAnotherBackgroundJob = false;
     }
   }
-}
+}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -198,6 +286,7 @@ void HeartbeatThread::runBackgroundJob() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run() {
+
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   // mop: the heartbeat thread itself is now ready
@@ -247,6 +336,12 @@ void HeartbeatThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
+
+  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(this);
+  if (!_maintenanceThread->start()) {
+    // WHAT TO DO NOW?
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to start dedicated thread for maintenance";
+  }
 
   std::function<bool(VPackSlice const& result)> updatePlan =
     [=](VPackSlice const& result) {
@@ -612,7 +707,7 @@ void HeartbeatThread::runSingleServer() {
           continue; // try again next time
         }
       }
-      
+
       TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
       auto sendTransient = [&]() {
         VPackBuilder builder;
@@ -631,7 +726,7 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
-        
+
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(std::vector<std::string>(
                                           {AgencyCommManager::path(), "Readonly"}));
@@ -654,7 +749,7 @@ void HeartbeatThread::runSingleServer() {
 
       ServerState::instance()->setFoxxmaster(leaderStr); // leader is foxxmater
       ServerState::instance()->setReadOnly(true); // Disable writes with dirty-read header
-      
+
       std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
@@ -748,7 +843,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   if (readOnlySlice.isBoolean()) {
     readOnly = readOnlySlice.getBool();
   }
-  
+
   ServerState::instance()->setReadOnly(readOnly);
 }
 
@@ -1086,7 +1181,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
       std::string const name = options.value.get("name").copyString();
       TRI_ASSERT(!name.empty());
-      
+
       VPackSlice const idSlice = options.value.get("id");
       if (!idSlice.isString()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Missing id in agency database plan";
@@ -1168,7 +1263,7 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
   bool shouldUpdate = false;
-    
+
   if (_desiredVersions->plan > _currentVersions.plan) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
       << "Plan version " << _currentVersions.plan
@@ -1181,18 +1276,18 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
       << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
   }
-    
+
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
   if (now > _lastSyncTime + 7.4 || asyncPush) {
     shouldUpdate = true;
   }
-    
+
   if (!shouldUpdate) {
     return;
   }
-    
+
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
   if (_desiredVersions->plan > ci->getPlanVersion()) {
@@ -1201,22 +1296,24 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
-    
-  if (_backgroundJobScheduledOrRunning) {
+
+  /*if (_backgroundJobScheduledOrRunning) {
     _launchAnotherBackgroundJob = true;
     return;
-  }
-    
+  }*/
+
   // schedule a job for the change:
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
   _backgroundJobScheduledOrRunning = true;
-    
+
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(
-    HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
-  
+  //SchedulerFeature::SCHEDULER->post(
+  //  HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
+  TRI_ASSERT(_maintenanceThread != nullptr);
+  _maintenanceThread->notify();
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1289,7 +1386,7 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
-    
+
     for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 
