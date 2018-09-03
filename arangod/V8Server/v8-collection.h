@@ -60,7 +60,6 @@ bool EqualCollection(arangodb::CollectionNameResolver const* resolver,
 /// be freed. If it is not a local collection (coordinator case), then delete
 /// will be called when the V8 object is garbage collected.
 ////////////////////////////////////////////////////////////////////////////////
-
 v8::Handle<v8::Object> WrapCollection(
   v8::Isolate* isolate,
   std::shared_ptr<arangodb::LogicalCollection> const& collection
@@ -70,5 +69,13 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, 
                            TRI_v8_global_t* v8g, v8::Isolate* isolate,
                            v8::Handle<v8::ObjectTemplate> ArangoDBNS);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
+/// @return collection or nullptr on failure
+////////////////////////////////////////////////////////////////////////////////
+arangodb::LogicalCollection* UnwrapCollection(
+  v8::Local<v8::Object> const& holder
+);
 
 #endif

@@ -36,6 +36,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
@@ -132,15 +133,13 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid edge index direction");
   };
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  if (TRI_COL_TYPE_EDGE != (*collection)->type()) {
+  if (TRI_COL_TYPE_EDGE != collection->type()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
 
@@ -161,7 +160,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue((*collection)->name()));
+  bindVars->add("@collection", VPackValue(collection->name()));
   bindVars->add(VPackValue("value"));
 
   if (args[0]->IsArray()) {
@@ -188,7 +187,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
-  auto queryResult = AqlQuery(isolate, collection->get(), queryString, bindVars);
+  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   if (!queryResult.result.IsEmpty()) {
     TRI_V8_RETURN(queryResult.result);
@@ -205,20 +204,18 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string const collectionName((*collection)->name());
+  std::string const collectionName(collection->name());
 
   auto transactionContext =
-    transaction::V8Context::Create((*collection)->vocbase(), true);
+    transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, **collection, AccessMode::Type::READ
+    transactionContext, *collection, AccessMode::Type::READ
   );
   Result res = trx.begin();
 
@@ -287,20 +284,18 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* col = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* col = UnwrapCollection(args.Holder());
 
-  if (!col || !*col) {
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string const collectionName((*col)->name());
+  std::string const collectionName(col->name());
 
   auto transactionContext =
-    transaction::V8Context::Create((*col)->vocbase(), true);
+    transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, **col, AccessMode::Type::READ
+    transactionContext, *col, AccessMode::Type::READ
   );
   Result res = trx.begin();
 
@@ -344,15 +339,13 @@ static void JS_ChecksumCollection(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* col = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* col = UnwrapCollection(args.Holder());
 
-  if (!col || !*col) {
+  if (!col) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col->get());
+  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   bool withRevisions = false;
   bool withData = false;
@@ -364,7 +357,7 @@ static void JS_ChecksumCollection(
     }
   }
 
-  auto result = (*col)->checksum(withRevisions, withData);
+  auto result = col->checksum(withRevisions, withData);
 
   if (!result.ok()) {
     TRI_V8_THROW_EXCEPTION(result);
@@ -415,11 +408,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -429,7 +420,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue((*collection)->name()));
+  bindVars->add("@collection", VPackValue(collection->name()));
 
   VPackBuilder keys;
   int res = TRI_V8ToVPack(isolate, keys, args[0], false);
@@ -440,14 +431,14 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bindVars->add(VPackValue("keys"));
   arangodb::aql::BindParameters::stripCollectionNames(
-    keys.slice(), (*collection)->name(), *bindVars.get()
+    keys.slice(), collection->name(), *bindVars.get()
   );
   bindVars->close();
 
   std::string const queryString(
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-  auto queryResult = AqlQuery(isolate, collection->get(), queryString, bindVars);
+  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (!queryResult.result.IsEmpty()) {
@@ -466,11 +457,9 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -480,7 +469,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue((*collection)->name()));
+  bindVars->add("@collection", VPackValue(collection->name()));
   bindVars->add(VPackValue("keys"));
 
   int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
@@ -492,7 +481,7 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const queryString(
       "FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true }");
 
-  auto queryResult = AqlQuery(isolate, collection->get(), queryString, bindVars);
+  auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   size_t ignored = 0;
   size_t removed = 0;

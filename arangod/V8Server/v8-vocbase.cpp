@@ -1330,31 +1330,25 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   }
 
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
-    std::shared_ptr<arangodb::LogicalCollection>* collection;
     v8::Handle<v8::Object> value =
         cacheObject->GetRealNamedProperty(cacheName)->ToObject();
-
-    collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-      value, WRP_VOCBASE_COL_TYPE
-    );
+    auto* collection = UnwrapCollection(value);
 
     // check if the collection is from the same database
-    if (collection != nullptr
-        && *collection != nullptr
-        && &((*collection)->vocbase()) == &vocbase) {
+    if (collection && &(collection->vocbase()) == &vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
       // caller may have already acquired the collection's status lock
       // with that transaction. if we now lock again, we may deadlock!
-      auto status = (*collection)->status();
-      auto cid = (*collection)->id();
-      auto internalVersion = (*collection)->internalVersion();
+      auto status = collection->status();
+      auto cid = collection->id();
+      auto internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED
           && cid > 0
-          && (*collection)->isLocal()) {
+          && collection->isLocal()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {

@@ -33,6 +33,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+#include "V8Server/v8-collection.h"
 #include "V8Server/v8-externals.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -142,11 +143,9 @@ static void JS_EstimateCollectionSize(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -155,7 +154,7 @@ static void JS_EstimateCollectionSize(
   builder.add("documents", VPackValue(0));
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
-  for (auto& i : (*collection)->getIndexes()) {
+  for (auto& i : collection->getIndexes()) {
     builder.add(std::to_string(i->id()), VPackValue(0));
   }
 

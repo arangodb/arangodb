@@ -68,11 +68,9 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -87,7 +85,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   VPackBuilder output;
   auto res = methods::Indexes::ensureIndex(
-    collection->get(), builder.slice(), create, output
+    collection, builder.slice(), create, output
   );
 
   if (res.fail()) {
@@ -137,11 +135,9 @@ static void JS_DropIndexVocbaseCol(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -152,7 +148,7 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
 
-  auto res = methods::Indexes::drop(collection->get(), builder.slice());
+  auto res = methods::Indexes::drop(collection, builder.slice());
 
   if (res.ok()) {
     TRI_V8_RETURN_TRUE();
@@ -171,11 +167,9 @@ static void JS_GetIndexesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* collection = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalCollection>>(
-    args.Holder(), WRP_VOCBASE_COL_TYPE
-  );
+  auto* collection = UnwrapCollection(args.Holder());
 
-  if (!collection || !*collection) {
+  if (!collection) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
@@ -185,7 +179,7 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(collection->get(), withFigures, output);
+  auto res = methods::Indexes::getAll(collection, withFigures, output);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

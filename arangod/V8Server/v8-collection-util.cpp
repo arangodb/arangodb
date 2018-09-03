@@ -125,11 +125,11 @@ v8::Handle<v8::Object> WrapCollection(
         // create a new shared_ptr on the heap
         auto* collectionPtr =
           new std::shared_ptr<arangodb::LogicalCollection>(collection);
-        auto externalCollection = v8::External::New(isolate, collectionPtr);
+        auto externalCollection = v8::External::New(isolate, collection.get());
         auto& persistent = v8g->JSCollections[collection.get()];
 
         result->SetInternalField(
-          SLOT_CLASS, v8::External::New(isolate, collectionPtr)
+          SLOT_CLASS, v8::External::New(isolate, collection.get())
         );
         result->SetInternalField(SLOT_EXTERNAL, externalCollection);
         persistent.Reset(isolate, externalCollection);
@@ -168,4 +168,16 @@ v8::Handle<v8::Object> WrapCollection(
   }
 
   return scope.Escape<v8::Object>(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
+/// @return collection or nullptr on failure
+////////////////////////////////////////////////////////////////////////////////
+arangodb::LogicalCollection* UnwrapCollection(
+    v8::Local<v8::Object> const& holder
+) {
+  return TRI_UnwrapClass<arangodb::LogicalCollection>(
+    holder, WRP_VOCBASE_COL_TYPE
+  );
 }

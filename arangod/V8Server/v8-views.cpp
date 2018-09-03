@@ -76,6 +76,16 @@ std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(
   return vocbase.lookupView(TRI_ObjectToString(val));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unwraps a LogicalView wrapped via WrapView(...)
+/// @return collection or nullptr on failure
+////////////////////////////////////////////////////////////////////////////////
+arangodb::LogicalView* UnwrapView(
+    v8::Local<v8::Object> const& holder
+) {
+  return TRI_UnwrapClass<arangodb::LogicalView>(holder, WRP_VOCBASE_VIEW_TYPE);
+}
+
 }
 
 using namespace arangodb;
@@ -140,11 +150,11 @@ v8::Handle<v8::Object> WrapView(
       try {
         // create a new shared_ptr on the heap
         auto* viewPtr = new std::shared_ptr<arangodb::LogicalView>(view);
-        auto externalView = v8::External::New(isolate, viewPtr);
+        auto externalView = v8::External::New(isolate, view.get());
         auto& persistent = v8g->JSViews[view.get()];
 
         result->SetInternalField(
-          SLOT_CLASS, v8::External::New(isolate, viewPtr)
+          SLOT_CLASS, v8::External::New(isolate, view.get())
         );
         result->SetInternalField(SLOT_EXTERNAL, externalView);
         persistent.Reset(isolate, externalView);
@@ -319,15 +329,11 @@ static void JS_DropViewVocbaseObj(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
-          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+  auto* view = UnwrapView(args.Holder());
 
-  if (v == nullptr || v->get() == nullptr) {
+  if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
-
-  LogicalView* view = v->get();
 
   PREVENT_EMBEDDED_TRANSACTION();
 
@@ -501,15 +507,11 @@ static void JS_NameViewVocbase(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
-          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+  auto* view = UnwrapView(args.Holder());
 
-  if (v == nullptr || v->get() == nullptr) {
+  if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
-
-  LogicalView* view = v->get();
 
   // ...........................................................................
   // end of parameter parsing
@@ -537,19 +539,15 @@ static void JS_PropertiesViewVocbase(
 ) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto* viewPtr = TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
-    args.Holder(), WRP_VOCBASE_VIEW_TYPE
-  );
+  auto* viewPtr = UnwrapView(args.Holder());
 
-  if (!viewPtr || !*viewPtr) {
+  if (!viewPtr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
 
-  auto view = *viewPtr;
-
   // In the cluster the view object might contain outdated properties,
   // which will break tests. We need an extra lookup for each operation.
-  arangodb::CollectionNameResolver resolver(view->vocbase());
+  arangodb::CollectionNameResolver resolver(viewPtr->vocbase());
 
   // check if we want to change some parameters
   if (args.Length() > 0 && args[0]->IsObject()) {
@@ -577,8 +575,8 @@ static void JS_PropertiesViewVocbase(
     // end of parameter parsing
     // ...........................................................................
 
-    if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
-    //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+    if (!canUse(auth::Level::RW, viewPtr->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+    //if (!canUse(auth::Level::RW, viewPtr->vocbase(), &viewPtr->name())) { // check auth after ensuring that the view exists
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view");
     }
 
@@ -588,7 +586,7 @@ static void JS_PropertiesViewVocbase(
 
       builderCurrent.openObject();
 
-      auto resCurrent = view->toVelocyPack(builderCurrent, true, false);
+      auto resCurrent = viewPtr->toVelocyPack(builderCurrent, true, false);
 
       if (!resCurrent.ok()) {
         TRI_V8_THROW_EXCEPTION(resCurrent);
@@ -599,7 +597,7 @@ static void JS_PropertiesViewVocbase(
       DatabaseFeature
     >("Database")->forceSyncProperties();
 
-    view = resolver.getView(view->id()); // ensure have the latest definition
+    auto view = resolver.getView(viewPtr->id()); // ensure have the latest definition
 
     if (!view) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -612,7 +610,7 @@ static void JS_PropertiesViewVocbase(
     }
   }
 
-  view = resolver.getView(view->id());
+  auto view = resolver.getView(viewPtr->id());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -664,15 +662,11 @@ static void JS_RenameViewVocbase(
     TRI_V8_THROW_EXCEPTION_PARAMETER("<name> must be non-empty");
   }
 
-  std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
-          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
+  auto* view = UnwrapView(args.Holder());
 
-  if (v == nullptr || v->get() == nullptr) {
+  if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
-
-  std::shared_ptr<LogicalView> view = *v;
 
   PREVENT_EMBEDDED_TRANSACTION();
 
@@ -700,7 +694,12 @@ static void JS_RenameViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); // skip view
   }
 
-  int res = view->vocbase().renameView(view, name);
+  // need to get the sharedPtr from the vocbase
+  // FIXME TODO use id or name for renaming instead of shared pointer to new value
+  arangodb::CollectionNameResolver resolver(view->vocbase());
+  auto viewPtr = resolver.getView(view->id());
+
+  int res = view->vocbase().renameView(viewPtr, name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename view");
@@ -715,16 +714,11 @@ static void JS_TypeViewVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto* view = UnwrapView(args.Holder());
 
-  std::shared_ptr<arangodb::LogicalView>* v =
-      TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(
-          args.Holder(), WRP_VOCBASE_VIEW_TYPE);
-
-  if (v == nullptr || v->get() == nullptr) {
+  if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
-
-  LogicalView* view = v->get();
 
   // ...........................................................................
   // end of parameter parsing
