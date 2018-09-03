@@ -71,7 +71,7 @@ function IResearchFeatureDDLTestSuite () {
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(1, Object.keys(properties.links).length);
-        var indexes = db.TestCollection0.getIndexes();
+        var indexes = db.TestCollection0.getIndexes(false, true);
         assertEqual(2, indexes.length);
         var link = indexes[1];
         assertEqual("primary", indexes[0].type);
@@ -79,7 +79,7 @@ function IResearchFeatureDDLTestSuite () {
         assertEqual("arangosearch", link.type);
         db._dropView("TestView");
         assertEqual(null, db._view("TestView"));
-        assertEqual(1, db.TestCollection0.getIndexes().length);
+        assertEqual(1, db.TestCollection0.getIndexes(false, true).length);
       }
     },
 
@@ -97,7 +97,7 @@ function IResearchFeatureDDLTestSuite () {
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(1, Object.keys(properties.links).length);
-        var indexes = db.TestCollection0.getIndexes();
+        var indexes = db.TestCollection0.getIndexes(false, true);
         assertEqual(2, indexes.length);
         var link = indexes[1];
         assertEqual("primary", indexes[0].type);
@@ -107,7 +107,7 @@ function IResearchFeatureDDLTestSuite () {
         properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(0, Object.keys(properties.links).length);
-        assertEqual(1, db.TestCollection0.getIndexes().length);
+        assertEqual(1, db.TestCollection0.getIndexes(false, true).length);
       }
     },
 

@@ -14,17 +14,6 @@ Installer
 * The windows installer doesn't offer a way to continue the installation if it failed
   because of a locked database.
 
-APIs
-----
-
-* the REST API for retrieving indexes at endpoint GET `/_api/index/?collection=<collection>` 
-  will currently also return all links (type `arangosearch`) for views that refer to this 
-  collection. The links will be removed from the results of this API in a later version.
-
-* the REST API for retrieving a single index at endpoint GET `/_api/index/<indexname>` will 
-  currently succeed for indexes used internally for links of views. These requests will 
-  return a "not found" error in a later version.
-
 Cluster
 -------
 

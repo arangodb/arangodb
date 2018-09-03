@@ -158,9 +158,10 @@ void RocksDBIndex::unload() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
+                                std::underlying_type<Serialize>::type flags) const {
   Index::toVelocyPack(builder, flags);
-  if (flags & Index::SERIALIZE_OBJECTID) {
+  if (Index::hasFlag(flags, Index::Serialize::ObjectId)) {
     // If we store it, it cannot be 0
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
