@@ -75,7 +75,8 @@ void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 // ========== below is cluster schmutz ============
 
 /// @brief return a VelocyPack representation of the index
-void ClusterIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void ClusterIndex::toVelocyPack(VPackBuilder& builder,
+                                std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexUnique, VPackValue(_unique));
