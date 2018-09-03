@@ -781,13 +781,17 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(), node.first,
         errors, actions);
 
-      if (actions.size() != 1) {
+      if (actions.size() != 2) {
         std::cout << actions << std::endl;
       }
       REQUIRE(actions.size() == 2);
       REQUIRE(actions.front().name() == "UpdateCollection");
       REQUIRE(actions.front().get(DATABASE) == dbname);
-      //     REQUIRE(actions.front().get(SHARD) == shname);
+      REQUIRE(actions.front().get(SHARD) == shname);
+      REQUIRE(actions.front().get("localLeader") == std::string(""));
+      REQUIRE(actions[1].name() == "ResignShardLeadership");
+      REQUIRE(actions[1].get(DATABASE) == dbname);
+      REQUIRE(actions[1].get(SHARD) == shname);
     }
 
   }

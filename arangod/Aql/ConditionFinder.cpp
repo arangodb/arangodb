@@ -40,32 +40,36 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
     case EN::RETURN:
     case EN::TRAVERSAL:
     case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+    {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
+    }
 
-    case EN::LIMIT:
-      // LIMIT invalidates the sort expression we already found
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::UPSERT:
+    case EN::LIMIT: {
+      // LIMIT or modification invalidates the sort expression we already found
       _sorts.clear();
       _filters.clear();
       break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
       std::vector<Variable const*> invars(en->getVariablesUsedHere());
@@ -237,7 +241,7 @@ bool ConditionFinder::handleFilterCondition(
   }
 
   auto const& varsValid = en->getVarsValid();
-  
+
   // remove all invalid variables from the condition
   if (condition->removeInvalidVariables(varsValid)) {
     // removing left a previously non-empty OR block empty...
