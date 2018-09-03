@@ -405,6 +405,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     builder.add(VPackValue("databases"));
     res = ctx->getInventory(&_vocbase, includeSystem, true, builder);
   } else {
+    grantTemporaryRights();
     res = ctx->getInventory(&_vocbase, includeSystem, false, builder);
     TRI_ASSERT(builder.hasKey("collections") &&
                builder.hasKey("views"));

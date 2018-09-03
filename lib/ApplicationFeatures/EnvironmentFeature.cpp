@@ -41,7 +41,7 @@ EnvironmentFeature::EnvironmentFeature(
     application_features::ApplicationServer& server
 )
     : ApplicationFeature(server, "Environment") {
-  setOptional(false);
+  setOptional(true);
   startsAfter("GreetingsPhase");
   startsAfter("MaxMapCount");
 }

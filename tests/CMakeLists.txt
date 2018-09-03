@@ -55,8 +55,10 @@ if (USE_IRESEARCH)
     IResearch/StorageEngineMock.cpp
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
+    RestHandler/RestUsersHandler-test.cpp
     RestHandler/RestViewHandler-test.cpp
     Utils/CollectionNameResolver-test.cpp
+    V8Server/v8-users-test.cpp
     V8Server/v8-views-test.cpp
     VocBase/LogicalDataSource-test.cpp
     VocBase/vocbase-test.cpp
@@ -128,6 +130,9 @@ set(ARANGODB_TESTS_SOURCES
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Maintenance/MaintenanceFeatureTest.cpp
+  Maintenance/MaintenanceRestHandlerTest.cpp
+  Maintenance/MaintenanceTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp

@@ -420,18 +420,28 @@ void RocksDBEngine::start() {
 
   // intentionally set the RocksDB logger to warning because it will
   // log lots of things otherwise
-  if (!_debugLogging) {
-    _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
-  } else {
+  if (_debugLogging) {
     _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
-  } // else
+  } else {
+    if (!opts->_useFileLogging) {
+      // if we don't use file logging but log into ArangoDB's logfile,
+      // we only want real errors
+      _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+    }
+  } 
 
-  auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
-  _options.info_log = logger;
+  std::shared_ptr<RocksDBLogger> logger;
+ 
+  if (!opts->_useFileLogging) {
+    // if option "--rocksdb.use-file-logging" is set to false, we will use
+    // our own logger that logs to ArangoDB's logfile 
+    logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
+    _options.info_log = logger;
 
-  if (!_debugLogging) {
-    logger->disable();
-  } // if
+    if (!_debugLogging) {
+      logger->disable();
+    } // if
+  }
 
   if (opts->_enableStatistics) {
     _options.statistics = rocksdb::CreateDBStatistics();
@@ -629,7 +639,9 @@ void RocksDBEngine::start() {
   arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
 
   // only enable logger after RocksDB start
-  logger->enable();
+  if (logger != nullptr) {
+    logger->enable();
+  }
 
   if (_syncInterval > 0) {
     _syncThread.reset(
@@ -1536,6 +1548,29 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
   }
   return it->second;
 }
+   
+   
+/// @brief return a list of the currently open WAL files
+std::vector<std::string> RocksDBEngine::currentWalFiles() const {
+  rocksdb::VectorLogPtr files;
+  std::vector<std::string> names;
+
+  auto status = _db->GetSortedWalFiles(files);
+  if (!status.ok()) {
+    return names;  // TODO: error here?
+  }
+
+  for (size_t current = 0; current < files.size(); current++) {
+    auto f = files[current].get();
+    try {
+      names.push_back(f->PathName());
+    } catch (...) {
+      return names;
+    }
+  }
+
+  return names;
+}
 
 Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool /*writeShutdownFile*/) {
@@ -1585,27 +1620,6 @@ Result RocksDBEngine::registerRecoveryHelper(
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
 RocksDBEngine::recoveryHelpers() {
   return _recoveryHelpers;
-}
-
-std::vector<std::string> RocksDBEngine::currentWalFiles() {
-  rocksdb::VectorLogPtr files;
-  std::vector<std::string> names;
-
-  auto status = _db->GetSortedWalFiles(files);
-  if (!status.ok()) {
-    return names;  // TODO: error here?
-  }
-
-  for (size_t current = 0; current < files.size(); current++) {
-    auto f = files[current].get();
-    try {
-      names.push_back(f->PathName());
-    } catch (...) {
-      return names;
-    }
-  }
-
-  return names;
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {

@@ -86,8 +86,8 @@ const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
 
   if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('arangosh') && !fs.exists('UnitTests')) {
-    throw new Error('Must be in ArangoDB topdir to execute unit tests.');
+    !fs.exists('arangosh') && !fs.exists('tests')) {
+    throw new Error('Must be in ArangoDB topdir to execute tests.');
   }
 
   return topDir;
@@ -442,7 +442,13 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       pid: res.pid,
       exitStatus: res
     };
-    crashUtils.analyzeCrash(cmd, instanceInfo, {exitStatus: {}}, 'execution of ' + cmd + ' - ' + res.signal);
+    crashUtils.analyzeCrash(cmd,
+                            instanceInfo,
+                            options,
+                            'execution of ' + cmd + ' - ' + res.signal);
+    if (options.coreCheck) {
+      print(instanceInfo.exitStatus.gdbHint);
+    }
     serverCrashed = true;
   }
 

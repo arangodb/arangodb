@@ -484,22 +484,22 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPersistence) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(std::underlying_type<Index::Serialize>::type flags) const {
   auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder, withFigures, forPersistence);
+  toVelocyPack(*builder, flags);
   return builder;
 }
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
+void Index::toVelocyPack(VPackBuilder& builder,
+                         std::underlying_type<Index::Serialize>::type flags) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(
     arangodb::StaticStrings::IndexId,
     arangodb::velocypack::Value(std::to_string(_iid))
   );
-  //builder.add(arangodb::StaticStrings::IndexType, VPackValue(oldtypeName()));
   builder.add(
     arangodb::StaticStrings::IndexType,
     arangodb::velocypack::Value(oldtypeName(type()))
@@ -518,11 +518,12 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
 
   builder.close();
 
-  if (hasSelectivityEstimate() && !ServerState::instance()->isCoordinator()) {
+  if (hasSelectivityEstimate() &&
+      Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
-  if (withFigures) {
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();

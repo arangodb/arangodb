@@ -62,9 +62,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool withFigures,
-                    bool forPersistence) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -114,9 +112,8 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
  public:
   MMFilesFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               MMFilesFulltextIndex const* index,
                                std::set<TRI_voc_rid_t>&& docs)
-      : IndexIterator(collection, trx, index),
+      : IndexIterator(collection, trx),
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 

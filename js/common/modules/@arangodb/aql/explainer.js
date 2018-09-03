@@ -371,6 +371,7 @@ function printFunctions (functions) {
 
   let maxNameLen = String('Name').length;
   let maxDeterministicLen = String('Deterministic').length;
+  let maxCacheableLen = String('Cacheable').length;
   let maxV8Len = String('Uses V8').length;
   funcArray.forEach(function (f) {
     let l = String(f.name).length;
@@ -381,16 +382,20 @@ function printFunctions (functions) {
   let line = ' ' + 
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
     header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
+    header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
     header('Uses V8') + pad(1 + maxV8Len - 'Uses V8'.length);
 
   stringBuilder.appendLine(line);
 
   for (var i = 0; i < funcArray.length; ++i) {
-    let deterministic = String(funcArray[i].isDeterministic);
-    let usesV8 = String(funcArray[i].usesV8);
+    // prevent "undefined"
+    let deterministic = String(funcArray[i].isDeterministic || false);
+    let cacheable = String(funcArray[i].cacheable || false);
+    let usesV8 = String(funcArray[i].usesV8 || false);
     line = ' ' +
       variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
       value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
+      value(cacheable) + pad(1 + maxCacheableLen - cacheable.length) + '   ' +
       value(usesV8) + pad(1 + maxV8Len - usesV8.length);
 
     stringBuilder.appendLine(line);
@@ -1002,10 +1007,11 @@ function processQuery (query, explain) {
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
+        var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition) + '   ' + annotation('/* view query */');
+          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1430,7 +1436,7 @@ function processQuery (query, explain) {
               return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
             }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ') + '  ' + annotation('/* sort mode: ' + node.sortmode + ' */');
+          }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
     }
 
     return 'unhandled node type (' + node.type + ')';

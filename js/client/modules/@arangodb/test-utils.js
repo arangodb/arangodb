@@ -35,6 +35,7 @@ const toArgv = require('internal').toArgv;
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
+const pathForTesting = require('internal').pathForTesting;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -284,10 +285,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (count === 0) {
     results['ALLTESTS'] = {
-      status: false,
+      status: true,
       skipped: true
     };
-    results.status = false;
+    results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 
@@ -683,7 +684,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   }
 
   args = ['--color',
-          '-I', fs.join('UnitTests', 'arangodbRspecLib'),
+          '-I', fs.join('tests', 'arangodbRspecLib'),
           '--format', 'd',
           '--format', 'j',
           '--out', jsonFN,
@@ -793,3 +794,4 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.makeResults = makeResults;
 exports.diffArray = diffArray;
+exports.pathForTesting = pathForTesting;

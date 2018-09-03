@@ -1006,7 +1006,7 @@ void TRI_vocbase_t::inventory(
       result.openObject();
 
       result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
+      collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
@@ -1404,6 +1404,10 @@ int TRI_vocbase_t::renameView(
   TRI_ASSERT(databaseFeature);
   auto doSync = databaseFeature->forceSyncProperties();
   auto res = view->rename(std::string(newName), doSync);
+
+  // invalidate all entries in the plan and query cache now
+  arangodb::aql::PlanCache::instance()->invalidate(this);
+  arangodb::aql::QueryCache::instance()->invalidate(this);
 
   return res.errorNumber();
 }

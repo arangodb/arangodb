@@ -30,7 +30,7 @@ Background:
   However, the files for the released states/snapshots are left on disk, and
   only removed by "cleanup" operation.
 
-@RESTSTRUCT{commitIntervalMsec,post_api_view_props,integer,optional,uint64}
+@RESTSTRUCT{consolidationIntervalMsec,post_api_view_props,integer,optional,uint64}
 Wait at least this many milliseconds between committing view data store
 changes and making documents visible to queries (default: 60000, to disable
 use: 0).
@@ -53,9 +53,9 @@ Background:
   still continue to return a repeatable-read state.
 
 
-@RESTSTRUCT{consolidate,post_api_view_props,object,optional,post_api_view_props_consolidation}
+@RESTSTRUCT{consolidationPolicy,post_api_view_props,object,optional,post_api_view_props_consolidation}
 The consolidation policy to apply for selecting which segments should be merged
-(default: {}, to disable use: null)
+(default: {})
 Background:
   With each ArangoDB transaction that inserts documents one or more
   ArangoSearch internal segments gets created.
@@ -95,18 +95,10 @@ The currently supported types are (default: "bytes_accum"):
 Apply the "consolidation" operation if and only if (default: 300):
 {segmentThreshold} < number_of_segments
 
-@RESTSTRUCT{threshold,post_api_view_props_consolidation,float,optional,float}
+@RESTSTRUCT{threshold,post_api_view_props_consolidation,number,optional,float}
 Select a given segment for "consolidation" if and only if the formula based
 on *type* (as defined above) evaluates to true, valid value range [0.0, 1.0]
 (default: 0.85)
-
-
-@RESTSTRUCT{locale,post_api_view_props,string,optional,string}
-The locale/collation used for ordering processed attribute names within
-ArangoSearch internal structures (default: *C*).
-The value format is any string representation of a locale name that is
-recognised by Boost and ICU can understand, e.g.
-{Language}_{Country}.{Encoding}@{Variant}
 
 
 @RESTDESCRIPTION

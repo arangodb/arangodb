@@ -26,12 +26,15 @@
 #include "src/objects/scope-info.h" // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 
 #include "catch.hpp"
+#include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
+
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
@@ -91,35 +94,6 @@ struct TestView: public arangodb::LogicalView {
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 
-template <typename T, typename U>
-std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
-  auto* location = &ptr;
-  auto* oldValue = ptr;
-  ptr = newValue;
-  return std::shared_ptr<T>(oldValue, [location](T* p)->void { *location = p; });
-}
-
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
-void v8Init() {
-  struct init_t {
-    std::shared_ptr<v8::Platform> platform;
-    init_t() {
-      platform = std::shared_ptr<v8::Platform>(
-        v8::platform::CreateDefaultPlatform(),
-        [](v8::Platform* p)->void {
-          v8::V8::Dispose();
-          v8::V8::ShutdownPlatform();
-          delete p;
-        }
-      );
-      v8::V8::InitializePlatform(platform.get()); // avoid SIGSEGV duing 8::Isolate::New(...)
-      v8::V8::Initialize(); // avoid error: "Check failed: thread_data_table_"
-    }
-  };
-  static const init_t init;
-  (void)(init);
-}
-
 }
 
 // -----------------------------------------------------------------------------
@@ -134,7 +108,7 @@ struct V8ViewsSetup {
   V8ViewsSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    v8Init(); // on-time initialize V8
+    arangodb::tests::v8Init(); // on-time initialize V8
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
@@ -210,18 +184,24 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto fn_createView = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_createView"));
     CHECK((fn_createView->IsFunction()));
@@ -238,7 +218,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -310,18 +290,24 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto fn_dropView = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_dropView"));
     CHECK((fn_dropView->IsFunction()));
@@ -334,7 +320,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -440,18 +426,24 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_drop = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "drop"));
@@ -467,7 +459,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -573,18 +565,24 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_rename = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "rename"));
@@ -601,7 +599,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -634,6 +632,32 @@ SECTION("test_auth") {
       auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::velocypack::Builder responce;
+      v8::TryCatch tryCatch(isolate.get());
+      auto result = v8::Function::Cast(*fn_rename)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((result.IsEmpty()));
+      CHECK((tryCatch.HasCaught()));
+      CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
+      auto slice = responce.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+      auto view1 = vocbase.lookupView("testView1");
+      CHECK((true == !view1));
+    }
+
+    // not authorized (NONE user view with failing toVelocyPack()) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
@@ -719,7 +743,13 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     char isolateData[64]; // 64 > sizeof(arangodb::V8PlatformFeature::IsolateData)
     std::memset(isolateData, 0, 64); // otherwise arangodb::V8PlatformFeature::isOutOfMemory(isolate) returns true
@@ -729,11 +759,11 @@ SECTION("test_auth") {
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_properties = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
@@ -750,7 +780,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -928,18 +958,24 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto fn_view = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_view"));
     CHECK((fn_view->IsFunction()));
@@ -952,7 +988,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -963,6 +999,30 @@ SECTION("test_auth") {
     {
       arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::velocypack::Builder responce;
+      v8::TryCatch tryCatch(isolate.get());
+      auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
+      CHECK((result.IsEmpty()));
+      CHECK((tryCatch.HasCaught()));
+      CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
+      auto slice = responce.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+    }
+
+    // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
@@ -1048,7 +1108,13 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     char isolateData[64]; // 64 > sizeof(arangodb::V8PlatformFeature::IsolateData)
     std::memset(isolateData, 0, 64); // otherwise arangodb::V8PlatformFeature::isOutOfMemory(isolate) returns true
@@ -1058,11 +1124,11 @@ SECTION("test_auth") {
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto arangoView = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->VocbaseViewTempl)->NewInstance();
     auto fn_properties = arangoView->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
@@ -1078,7 +1144,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -1089,6 +1155,30 @@ SECTION("test_auth") {
     {
       arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      arangodb::velocypack::Builder responce;
+      v8::TryCatch tryCatch(isolate.get());
+      auto result = v8::Function::Cast(*fn_properties)->CallAsFunction(context, arangoView, args.size(), args.data());
+      CHECK((result.IsEmpty()));
+      CHECK((tryCatch.HasCaught()));
+      CHECK((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce, tryCatch.Exception(), false)));
+      auto slice = responce.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+    }
+
+    // not authorized (failed detailed toVelocyPack(...))
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
       arangodb::velocypack::Builder responce;
       v8::TryCatch tryCatch(isolate.get());
@@ -1179,18 +1269,24 @@ SECTION("test_auth") {
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-    auto isolate = std::shared_ptr<v8::Isolate>(v8::Isolate::New(isolateParams), [](v8::Isolate* p)->void { p->Dispose(); });
+    std::unique_ptr<TRI_v8_global_t> v8g; // define before creating the 'isolate' so that it is destroyed after 'isolate'
+    auto isolate = std::shared_ptr<v8::Isolate>(
+      v8::Isolate::New(isolateParams),
+      [](v8::Isolate* p)->void {
+        p->LowMemoryNotification(); // garbage collection
+        p->Dispose();
+    });
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::HandleScope handleScope(isolate.get()); // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(context); // required for TRI_AddMethodVocbase(...)
-    auto v8g = TRI_CreateV8Globals(isolate.get()); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    v8g.reset(TRI_CreateV8Globals(isolate.get())); // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get())); // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
     auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(context, &vocbase, v8g, isolate.get(), arangoDBNS);
+    TRI_InitV8Views(context, &vocbase, v8g.get(), isolate.get(), arangoDBNS);
 
     auto fn_views = arangoDBNS->NewInstance()->Get(TRI_V8_ASCII_STRING(isolate.get(), "_views"));
     CHECK((fn_views->IsFunction()));
@@ -1202,7 +1298,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -1227,6 +1323,31 @@ SECTION("test_auth") {
       CHECK((false == !view1));
       auto view2 = vocbase.lookupView("testView2");
       CHECK((false == !view2));
+    }
+
+    // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView1", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testView2", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView2.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
+
+      auto result = v8::Function::Cast(*fn_views)->CallAsFunction(context, fn_views, args.size(), args.data());
+      CHECK((!result.IsEmpty()));
+      CHECK((result.ToLocalChecked()->IsArray()));
+      auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
+      CHECK((1U == resultArray->Length()));
+      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      CHECK((false == !v8View));
+      CHECK((std::string("testView1") == v8View->name()));
+      CHECK((std::string("testViewType") == v8View->type().name()));
+      auto view1 = vocbase.lookupView("testView1");
+      CHECK((false == !view1));
     }
 
     // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459

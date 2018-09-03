@@ -503,11 +503,6 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
-    case EN::INSERT:
-    case EN::REMOVE:
-    case EN::REPLACE:
-    case EN::UPDATE:
-    case EN::UPSERT:
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
@@ -516,18 +511,32 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
 #endif
+    {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
+    }
+
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::UPSERT: {
+      // modification invalidates the filter expression we already found
+      _condition = std::make_unique<Condition>(_plan->getAst());
+      _filterVariables.clear();
+      break;
+    }
 
     case EN::SINGLETON:
-    case EN::NORESULTS:
+    case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
+    }
 
     case EN::FILTER: {
-      std::vector<Variable const*>&& invars = en->getVariablesUsedHere();
+      std::vector<Variable const*> invars = en->getVariablesUsedHere();
       TRI_ASSERT(invars.size() == 1);
       // register which variable is used in a FILTER
       _filterVariables.emplace(invars[0]->id);

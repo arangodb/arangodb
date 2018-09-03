@@ -39,6 +39,7 @@
 #include "Random/UniformCharacter.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -50,6 +51,28 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
+  if (!feature) {
+    LOG_TOPIC(WARN, arangodb::Logger::AUTHENTICATION)
+      << "failure to find feature '" << arangodb::SystemDatabaseFeature::name() << "' while getting the system database";
+
+    return nullptr;
+  }
+
+  return feature->use();
+}
+
+}
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -100,8 +123,9 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    aql::QueryRegistry* queryRegistry) {
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    aql::QueryRegistry* queryRegistry
+) {
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
@@ -121,6 +145,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     emptyBuilder,
     arangodb::aql::PART_MAIN
   );
+  
+  query.queryOptions().cache = false;
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
@@ -173,7 +199,8 @@ void auth::UserManager::loadFromDB() {
     return;
   }
   MUTEX_LOCKER(guard, _loadFromDBLock);
-  if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
+  uint64_t tmp = globalVersion();
+  if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
   }
 
@@ -200,7 +227,7 @@ void auth::UserManager::loadFromDB() {
 #endif
         }
         
-        _internalVersion.store(_globalVersion.load());
+        _internalVersion.store(tmp);
       }
     }
   } catch (std::exception const& ex) {
@@ -231,7 +258,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   bool hasRev = data.slice().hasKey(StaticStrings::RevString);
   TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
@@ -295,7 +322,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 #endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated
       _userCache.erase(entry.username());
-      increaseGlobalVersion();
+      triggerLocalReload();
       LOG_TOPIC(WARN, Logger::AUTHENTICATION)
           << "Cannot update user due to conflict";
     }
@@ -363,10 +390,10 @@ VPackBuilder auth::UserManager::allUsers() {
 }
 
 /// Trigger eventual reload, user facing API call
-void auth::UserManager::triggerReload() {
+void auth::UserManager::triggerGlobalReload() {
   if (!ServerState::instance()->isCoordinator()) {
     // will reload users on next suitable query
-    increaseGlobalVersion();
+    _globalVersion.fetch_add(1, std::memory_order_release);
     _internalVersion.fetch_add(1, std::memory_order_release);
     return;
   }
@@ -383,7 +410,7 @@ void auth::UserManager::triggerReload() {
     AgencyCommResult result =
         agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
-      increaseGlobalVersion();
+      _globalVersion.fetch_add(1, std::memory_order_release);
       _internalVersion.fetch_add(1, std::memory_order_release);
       return;
     }
@@ -435,7 +462,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
 
   Result r = storeUserInternal(user, replace);
   if (r.ok()) {
-    triggerReload();
+    triggerGlobalReload();
   }
   return r;
 }
@@ -461,7 +488,7 @@ Result auth::UserManager::enumerateUsers(
   Result res;
   {
     WRITE_LOCKER(writeGuard, _userCacheLock);
-    for (auth::User& u : toUpdate) {
+    for (auth::User const& u : toUpdate) {
       res = storeUserInternal(u, true);
       if (res.fail()) {
         break;  // do not return, still need to invalidate token cache
@@ -471,7 +498,7 @@ Result auth::UserManager::enumerateUsers(
 
   // cannot hold _userCacheLock while  invalidating token cache
   if (!toUpdate.empty()) {
-    triggerReload();  // trigger auth reload in cluster
+    triggerGlobalReload();  // trigger auth reload in cluster
   }
   return res;
 }
@@ -508,7 +535,7 @@ Result auth::UserManager::updateUser(std::string const& name,
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
-    triggerReload();  // trigger auth reload in cluster
+    triggerGlobalReload();  // trigger auth reload in cluster
   }
   return r;
 }
@@ -547,7 +574,7 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
 
 static Result RemoveUserInternal(auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
@@ -609,7 +636,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
 
   // cannot hold _userCacheLock while  invalidating token cache
   writeGuard.unlock();
-  triggerReload();  // trigger auth reload in cluster
+  triggerGlobalReload();  // trigger auth reload in cluster
 
   return res;
 }
@@ -637,7 +664,7 @@ Result auth::UserManager::removeAllUsers() {
     }
   }
 
-  triggerReload();
+  triggerGlobalReload();
   return res;
 }
 

@@ -76,7 +76,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
         names = methods::Databases::list(std::string());
       }
     } else if (suffixes[0] == "user") {
-      if (!_request->authenticated()) {
+      if (!_request->authenticated() && ExecContext::isAuthEnabled()) {
         res.reset(TRI_ERROR_FORBIDDEN);
       } else {
         names = methods::Databases::list(_request->user());

@@ -87,8 +87,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(VPackBuilder&,
+            std::underlying_type<Index::Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -141,9 +141,8 @@ class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, index),
+  : IndexIterator(collection, trx),
   _docs(std::move(docs)),
   _pos(_docs.begin()) {}
   

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,13 +24,12 @@
 #ifndef ARANGOD_CONSENSUS_SUPERVISION_H
 #define ARANGOD_CONSENSUS_SUPERVISION_H 1
 
+#include "Agency/AgencyCommon.h"
 #include "Agency/Node.h"
-#include "AgencyCommon.h"
+#include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Cluster/CriticalThread.h"
-
-#include <chrono>
 
 namespace arangodb {
 namespace consensus {
@@ -123,6 +122,9 @@ class Supervision : public arangodb::CriticalThread {
   }
 
  private:
+
+  /// @brief decide, if we can start supervision ahead of armageddon delay
+  bool earlyBird() const;
 
   /// @brief Upgrade agency with FailedServers an object from array
   void upgradeZero(VPackBuilder&);
@@ -218,34 +220,6 @@ class Supervision : public arangodb::CriticalThread {
  * @return           Agency transaction
  */
 query_t removeTransactionBuilder(std::vector<std::string> const&);
-
-inline std::string timepointToString(Supervision::TimePoint const& t) {
-  time_t tt = std::chrono::system_clock::to_time_t(t);
-  struct tm tb;
-  size_t const len(21);
-  char buffer[len];
-  TRI_gmtime(tt, &tb);
-  ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-  return std::string(buffer, len - 1);
-}
-
-inline Supervision::TimePoint stringToTimepoint(std::string const& s) {
-  if (!s.empty()) {
-    try {
-      std::tm tt;
-      tt.tm_year = std::stoi(s.substr(0, 4)) - 1900;
-      tt.tm_mon = std::stoi(s.substr(5, 2)) - 1;
-      tt.tm_mday = std::stoi(s.substr(8, 2));
-      tt.tm_hour = std::stoi(s.substr(11, 2));
-      tt.tm_min = std::stoi(s.substr(14, 2));
-      tt.tm_sec = std::stoi(s.substr(17, 2));
-      tt.tm_isdst = 0;
-      auto time_c = TRI_timegm(&tt);
-      return std::chrono::system_clock::from_time_t(time_c);
-    } catch (...) {}
-  }
-  return std::chrono::time_point<std::chrono::system_clock>();
-}
 
 }}  // Name spaces
 

@@ -43,7 +43,9 @@ class EdgeDefinition {
  public:
   EdgeDefinition(std::string edgeCollection_, std::set<std::string>&& from_,
                  std::set<std::string>&& to_)
-      : _edgeCollection(std::move(edgeCollection_)), _from(std::move(from_)), _to(std::move(to_)) {}
+      : _edgeCollection(std::move(edgeCollection_)),
+        _from(std::move(from_)),
+        _to(std::move(to_)) {}
 
   std::string const& getName() const { return _edgeCollection; }
   std::set<std::string> const& getFrom() const { return _from; }
@@ -56,20 +58,19 @@ class EdgeDefinition {
   bool hasFrom(std::string const& vertexCollection) const;
   bool hasTo(std::string const& vertexCollection) const;
 
-  bool hasVertexCollection(std::string const& vertexCollection) const;
-
   /// @brief validate the structure of edgeDefinition, i.e.
   /// that it contains the correct attributes, and that they contain the correct
   /// types of values.
   static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
-  static std::shared_ptr<velocypack::Buffer<uint8_t>> sortEdgeDefinition(
-      const velocypack::Slice& edgeDefinition);
 
   static ResultT<EdgeDefinition> createFromVelocypack(
       velocypack::Slice edgeDefinition);
 
+  void toVelocyPack(velocypack::Builder&) const;
+
   bool operator==(EdgeDefinition const& other) const;
   bool operator!=(EdgeDefinition const& other) const;
+  bool isVertexCollectionUsed(std::string const& collectionName) const;
 
  private:
   std::string _edgeCollection;
@@ -78,25 +79,24 @@ class EdgeDefinition {
 };
 
 class Graph {
-
  public:
-
-   /**
-    * @brief Create graph from persistence.
-    *
-    * @param document The stored document
-    *
-    * @return A graph object corresponding to this document
-    */
-  static std::unique_ptr<Graph> fromPersistence(
-      velocypack::Slice document, TRI_vocbase_t& vocbase);
+  /**
+   * @brief Create graph from persistence.
+   *
+   * @param document The stored document
+   *
+   * @return A graph object corresponding to this document
+   */
+  static std::unique_ptr<Graph> fromPersistence(velocypack::Slice document,
+                                                TRI_vocbase_t& vocbase);
 
   /**
    * @brief Create graph from user input.
    *        NOTE: This is purely in memory and will NOT persist anything.
    *
    * @param name The name of the Graph
-   * @param collectionInformation Collection information about relations and orphans
+   * @param collectionInformation Collection information about relations and
+   * orphans
    * @param options The collection creation options.
    *
    * @return A graph object corresponding to the user input
@@ -111,14 +111,12 @@ class Graph {
       velocypack::Slice options);
 
  protected:
-
-   /**
-    * @brief Create graph from persistence.
-    *
-    * @param info The stored document
-    */
+  /**
+   * @brief Create graph from persistence.
+   *
+   * @param info The stored document
+   */
   explicit Graph(velocypack::Slice const& info);
-
 
   /**
    * @brief Create graph from user input.
@@ -127,7 +125,8 @@ class Graph {
    * @param info Collection information, including relations and orphans
    * @param options The options to be used for collections
    */
-  Graph(std::string&& graphName, velocypack::Slice const& info, velocypack::Slice const& options);
+  Graph(std::string&& graphName, velocypack::Slice const& info,
+        velocypack::Slice const& options);
 
  public:
   virtual ~Graph() = default;
@@ -173,16 +172,18 @@ class Graph {
   /**
    * @brief Create the GraphDocument to be stored in the database.
    *
-   * @param builder The builder the result should be written in. Expects an open object.
+   * @param builder The builder the result should be written in. Expects an open
+   * object.
    */
   virtual void toPersistence(velocypack::Builder& builder) const;
 
   /**
    * @brief Create the Graph Json Representation to be given to the client.
-   *        Uses toPersistence, but also includes _rev and _id values and encapsulates
-   *        the date into a graph attribute.
+   *        Uses toPersistence, but also includes _rev and _id values and
+   * encapsulates the date into a graph attribute.
    *
-   * @param builder The builder the result should be written in. Expects an open object.
+   * @param builder The builder the result should be written in. Expects an open
+   * object.
    */
   void graphForClient(VPackBuilder& builder) const;
 
@@ -203,16 +204,38 @@ class Graph {
 
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
-  ResultT<EdgeDefinition const*> addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+      velocypack::Slice const& edgeDefinitionSlice);
+
+  /// @brief adds one edge definition. Returns an error if the edgeDefinition
+  ///        is already added to this graph.
+  ResultT<EdgeDefinition const*> addEdgeDefinition(
+          EdgeDefinition const& edgeDefinition);
+
+  /// @brief removes one edge definition. Returns an error if the edgeDefinition
+  ///        is not included in this graph.
+  bool removeEdgeDefinition(std::string const& edgeDefinitionName);
+
+  /// @brief replaces one edge definition. Returns an error if the
+  /// edgeDefinition
+  ///        is not included in this graph.
+  Result replaceEdgeDefinition(EdgeDefinition const& edgeDefinition);
+
+  /// @brief Rebuild orphan collections. Needs to be called after every
+  /// removal or change of an existing an edgeDefinition.
+  void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition);
+
+  /// @brief Removes an orphan vertex collection from the graphs definition
+  Result removeOrphanCollection(std::string&&);
 
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
 
- std::ostream& operator<<(std::ostream& ostream);
+  std::ostream& operator<<(std::ostream& ostream);
 
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph
-  void parseEdgeDefinitions(velocypack::Slice  edgeDefs);
+  void parseEdgeDefinitions(velocypack::Slice edgeDefs);
 
   /// @brief Add a vertex collection to this graphs definition
   void addVertexCollection(std::string const&);
@@ -229,11 +252,11 @@ class Graph {
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
 
-/////////////////////////////////////////////////////////////////////////////////
-//
-// SECTION: Variables
-//
-/////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////
+  //
+  // SECTION: Variables
+  //
+  /////////////////////////////////////////////////////////////////////////////////
  protected:
   /// @brief name of this graph
   std::string const _graphName;
@@ -262,17 +285,10 @@ class Graph {
 };
 
 // helper functions
-template<class T, class C>
-void setUnion(std::set<T> &set, C const &container) {
-  for(auto const& it : container) {
+template <class T, class C>
+void setUnion(std::set<T>& set, C const& container) {
+  for (auto const& it : container) {
     set.insert(it);
-  }
-}
-
-template<class T, class C>
-void setMinus(std::set<T> &set, C const &container) {
-  for(auto const& it : container) {
-    set.erase(it);
   }
 }
 

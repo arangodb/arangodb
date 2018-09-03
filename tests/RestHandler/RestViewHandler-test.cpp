@@ -67,14 +67,6 @@ struct TestView: public arangodb::LogicalView {
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 
-template <typename T, typename U>
-std::shared_ptr<T> scopedPtr(T*& ptr, U* newValue) {
-  auto* location = &ptr;
-  auto* oldValue = ptr;
-  ptr = newValue;
-  return std::shared_ptr<T>(oldValue, [location](T* p)->void { *location = p; });
-}
-
 }
 
 // -----------------------------------------------------------------------------
@@ -178,7 +170,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -256,7 +248,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -378,7 +370,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -410,6 +402,31 @@ SECTION("test_auth") {
       auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto status = handler.execute();
+      CHECK((arangodb::RestStatus::DONE == status));
+      CHECK((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
+      auto slice = responce._payload.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::FORBIDDEN) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+      auto view = vocbase.lookupView("testView");
+      CHECK((false == !view));
+      auto view1 = vocbase.lookupView("testView1");
+      CHECK((true == !view1));
+    }
+
+    // not authorized (NONE user view with failing toVelocyPack()) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE);
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
       auto status = handler.execute();
       CHECK((arangodb::RestStatus::DONE == status));
@@ -512,7 +529,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -690,7 +707,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -701,6 +718,27 @@ SECTION("test_auth") {
     {
       arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto status = handler.execute();
+      CHECK((arangodb::RestStatus::DONE == status));
+      CHECK((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
+      auto slice = responce._payload.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::FORBIDDEN) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+    }
+
+    // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
       auto status = handler.execute();
       CHECK((arangodb::RestStatus::DONE == status));
@@ -784,7 +822,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -795,6 +833,27 @@ SECTION("test_auth") {
     {
       arangodb::auth::UserMap userMap; // empty map, no user -> no permissions
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+
+      auto status = handler.execute();
+      CHECK((arangodb::RestStatus::DONE == status));
+      CHECK((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
+      auto slice = responce._payload.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::FORBIDDEN) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+    }
+
+    // not authorized (failed detailed toVelocyPack(...))
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
 
       auto status = handler.execute();
       CHECK((arangodb::RestStatus::DONE == status));
@@ -879,7 +938,7 @@ SECTION("test_auth") {
       ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                            arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
     } execContext;
-    auto resetExecContext = scopedPtr(ExecContext::CURRENT, &execContext);
+    arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0); // required for UserManager::loadFromDB()
@@ -899,6 +958,34 @@ SECTION("test_auth") {
       CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::FORBIDDEN) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
       CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+    }
+
+    // not authorized (failed detailed toVelocyPack(...)) as per https://github.com/arangodb/backlog/issues/459
+    {
+      arangodb::auth::UserMap userMap;
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP)).first->second;
+      user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
+      user.grantCollection(vocbase.name(), "testView1", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      user.grantCollection(vocbase.name(), "testView2", arangodb::auth::Level::NONE); // for missing collections User::collectionAuthLevel(...) returns database auth::Level
+      userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
+      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView2.get());
+      testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
+      auto resetAppendVelocyPackResult = std::shared_ptr<TestView>(testView, [](TestView* p)->void { p->_appendVelocyPackResult = arangodb::Result(); });
+
+      auto status = handler.execute();
+      CHECK((arangodb::RestStatus::DONE == status));
+      CHECK((arangodb::rest::ResponseCode::OK == responce.responseCode()));
+      auto slice = responce._payload.slice();
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::OK) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+      CHECK((slice.hasKey("result")));
+      slice = slice.get("result");
+      CHECK((slice.isArray()));
+      CHECK((1U == slice.length()));
+      slice = slice.at(0);
+      CHECK((slice.isObject()));
+      CHECK((slice.hasKey(arangodb::StaticStrings::DataSourceName) && slice.get(arangodb::StaticStrings::DataSourceName).isString() && std::string("testView1") == slice.get(arangodb::StaticStrings::DataSourceName).copyString()));
     }
 
     // authorized (NONE view) as per https://github.com/arangodb/backlog/issues/459

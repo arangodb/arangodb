@@ -139,11 +139,10 @@ class IResearchLinkCoordinator final: public arangodb::Index {
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
-  using Index::toVelocyPack; // for Index::toVelocyPack(bool, bool)
+  using Index::toVelocyPack; // for Index::toVelocyPack(bool, unsigned)
   virtual void toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool forPeristence
+    std::underlying_type<arangodb::Index::Serialize>::type flags
   ) const override;
 
   virtual IndexType type() const override {

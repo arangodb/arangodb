@@ -177,7 +177,7 @@ QueryStreamCursor::QueryStreamCursor(
   if (_query->optionsSlice().hasKey("exportCollection")) {
     std::string cname = _query->optionsSlice().get("exportCollection").copyString();
     TRI_ASSERT(_query->trx()->status() == transaction::Status::RUNNING);
-    OperationResult opRes = _query->trx()->count(cname, false);
+    OperationResult opRes = _query->trx()->count(cname, transaction::CountType::Normal);
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }

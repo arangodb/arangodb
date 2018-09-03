@@ -411,7 +411,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       {"path", "statusString"}, true, /*forPersistence*/ true);
   VPackBuilder indexInfo;
 
-  idx->toVelocyPack(indexInfo, false, true);
+  idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
   res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
     _logicalCollection.vocbase().id(),
     _logicalCollection.id(),
@@ -501,7 +501,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         {"path", "statusString"}, true, /*forPersistence*/ true);
     VPackBuilder indexInfo;
 
-    newIdx->toVelocyPack(indexInfo, false, true);
+    newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
 
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
