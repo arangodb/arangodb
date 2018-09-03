@@ -77,6 +77,10 @@ void InitDatabaseFeature::validateOptions(
   if (_initDatabase || _restoreAdmin) {
     ApplicationServer::forceDisableFeatures(_nonServerFeatures);
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
+  
+    // we can turn off all warnings about environment here, because they
+    // wil show up on a regular start later anyway
+    ApplicationServer::disableFeatures({"Environment"});
   }
 }
 

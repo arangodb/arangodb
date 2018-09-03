@@ -40,18 +40,16 @@ class Thread;
 class V8Context;
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
-  struct stats {
+ public:
+  static V8DealerFeature* DEALER;
+  
+  struct Statistics {
     size_t available;
     size_t busy;
     size_t dirty;
     size_t free;
     size_t max;
   };
-
- public:
-  static V8DealerFeature* DEALER;
-  static constexpr ssize_t ANY_CONTEXT = -1;
-  static constexpr ssize_t ANY_CONTEXT_OR_PRIORITY = -2;
 
   explicit V8DealerFeature(application_features::ApplicationServer& server);
 
@@ -95,7 +93,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   /// force the creation of another context for high priority tasks
   /// forceContext >= 0 means picking the context with that exact id
   V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
-                          ssize_t forceContext = ANY_CONTEXT);
+                          ssize_t forceContext = -1);
   void exitContext(V8Context*);
 
   void defineContextUpdate(
@@ -112,7 +110,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
 
-  V8DealerFeature::stats getCurrentContextNumbers();
+  Statistics getCurrentContextNumbers();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;

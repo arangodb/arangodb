@@ -128,7 +128,7 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0].toVelocyPack(result, Index::SERIALIZE_BASICS);
+  idxHandles[0].toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -335,7 +335,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, Index::SERIALIZE_BASICS);
+      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       builder.close();
     }
   }

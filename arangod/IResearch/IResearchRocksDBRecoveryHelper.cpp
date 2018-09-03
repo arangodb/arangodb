@@ -192,7 +192,7 @@ void ensureLink(
 
   json.openObject();
 
-  if (!link->json(json, false)) {
+  if (!link->json(json)) {
     LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "Failed to generate jSON definition for link '" << iid
         << "' to the collection '" << cid

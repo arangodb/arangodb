@@ -87,14 +87,27 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
   return nullptr;
 }
 
-void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
-                                        unsigned flags) const {
-  TRI_ASSERT(!builder.isOpenObject());
-  builder.openObject();
-  bool success = json(builder, (flags & arangodb::Index::SERIALIZE_OBJECTID) != 0);
-  TRI_ASSERT(success);
+void IResearchRocksDBLink::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type flags
+) const {
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failed to generate link definition for IResearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
 
-  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
+  builder.openObject();
+
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to generate link definition for IResearch view RocksDB link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
+
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();
@@ -130,5 +143,5 @@ NS_END      // iresearch
 NS_END  // arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

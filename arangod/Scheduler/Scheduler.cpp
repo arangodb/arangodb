@@ -375,6 +375,8 @@ void Scheduler::drain() {
 void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
   auto counters = getCounters();
 
+  // if you change the names of these attributes, please make sure to
+  // also change them in StatisticsWorker.cpp:computePerSeconds
   b.add("scheduler-threads", VPackValue(numRunning(counters)));
   b.add("in-progress", VPackValue(numWorking(counters)));
   b.add("queued", VPackValue(numQueued(counters)));

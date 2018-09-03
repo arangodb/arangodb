@@ -79,6 +79,7 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
   startsAfter("BasicsPhase");
 
   startsAfter("Database");
+  startsAfter("SystemDatabase");
   startsAfter("RocksDBEngine");
   startsAfter("ServerId");
   startsAfter("StorageEngine");

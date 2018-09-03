@@ -246,7 +246,7 @@ exports.lockCycleParallel = function (opts) {
   print('Starting', n, 'worker');
 
   const cmd = function (params) {
-    require('./' + pathForTesting('server/tests/stress/deadlock')).lockCycleRaw(params);
+    require('./' + pathForTesting('server/stress/deadlock')).lockCycleRaw(params);
   };
 
   for (let i = 0; i < n; ++i) {

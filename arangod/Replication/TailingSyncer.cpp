@@ -37,6 +37,7 @@
 #include "Replication/ReplicationTransaction.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -259,8 +260,17 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
+  if (!sysDbFeature) {
+    return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
+
     if (!data.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                      "create database marker did not contain data");
@@ -268,13 +278,16 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(data.get("name") == nameSlice);
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
       LOG_TOPIC(WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
-      TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
-      TRI_ASSERT(system);
-      Result res = methods::Databases::drop(system, name);
+
+      auto system = sysDbFeature->use();
+      TRI_ASSERT(system.get());
+      auto res = methods::Databases::drop(system.get(), name);
+
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
         return res;
@@ -284,25 +297,30 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res =
         methods::Databases::create(name, users, VPackSlice::emptyObjectSlice());
+
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
-      TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
-      TRI_ASSERT(system != nullptr);
+      auto system = sysDbFeature->use();
+      TRI_ASSERT(system.get());
       // delete from cache by id and name
       _state.vocbases.erase(std::to_string(vocbase->id()));
       _state.vocbases.erase(name);
 
-      Result res = methods::Databases::drop(system, name);
+      auto res = methods::Databases::drop(system.get(), name);
 
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
+
       return res;
     }
+
     return TRI_ERROR_NO_ERROR;  // ignoring because it's idempotent
   }
+
   TRI_ASSERT(false);
   return Result(TRI_ERROR_INTERNAL);  // unreachable
 }

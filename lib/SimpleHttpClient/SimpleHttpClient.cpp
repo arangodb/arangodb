@@ -25,6 +25,7 @@
 
 #include "SimpleHttpClient.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
@@ -48,7 +49,7 @@ std::unordered_map<std::string, std::string> const
     SimpleHttpClient::NO_HEADERS{};
 
 /// @brief default value for max packet size
-size_t SimpleHttpClientParams::MaxPacketSize = 256 * 1024 * 1024;
+size_t SimpleHttpClientParams::MaxPacketSize = 512 * 1024 * 1024;
 
 SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
                                    SimpleHttpClientParams const& params)
@@ -177,6 +178,11 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT)
           << "" << _params._retryMessage << " - no retries left";
       break;
+    }
+    
+    if (application_features::ApplicationServer::isStopping()) {
+      // abort this client, will also lead to exiting this loop next
+      setAborted(true);
     }
 
     if (isAborted()) {
