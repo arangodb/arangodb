@@ -789,7 +789,6 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     // 3. loop while waiting for threads to complete all actions
     tf->waitRegistryComplete();
 
-
 #if 0   // for debugging
     std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
