@@ -11,8 +11,8 @@ Installer
   there are multiple instances of the same ArangoDB version running on the same host,
   and only some of them shall be upgraded, or they should be upgraded one after the
   other.
-* The windows installer doesn't offer a way to continue the installation if it failed by a 
-  locked database 
+* The windows installer doesn't offer a way to continue the installation if it failed
+  because of a locked database.
 
 APIs
 ----
@@ -27,4 +27,5 @@ APIs
 
 Cluster
 -------
-* sometimes the shutdown order in the cluster will cause the shutdown to hang infinite.
+
+* sometimes the shutdown order in the cluster will cause the shutdown to hang infinitely.
