@@ -292,6 +292,12 @@ public:
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
+  /// @brief Lowest limit for worker threads
+  static uint32_t const minThreadLimit;
+
+  /// @brief Highest limit for worker threads
+  static uint32_t const maxThreadLimit;
+  
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -312,14 +318,11 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
- protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
-  static uint32_t const _minThreadLimit;
-  static uint32_t const _maxThreadLimit;
 
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry

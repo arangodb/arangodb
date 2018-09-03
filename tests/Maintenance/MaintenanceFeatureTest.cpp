@@ -616,7 +616,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(2);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -675,7 +675,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(2);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -729,7 +729,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(2);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -782,7 +782,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(2);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -836,7 +836,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(2);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions

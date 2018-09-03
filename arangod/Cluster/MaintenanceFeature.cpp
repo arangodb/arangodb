@@ -39,8 +39,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-const uint32_t MaintenanceFeature::_minThreadLimit = 2;
-const uint32_t MaintenanceFeature::_maxThreadLimit = 64;
+const uint32_t MaintenanceFeature::minThreadLimit = 2;
+const uint32_t MaintenanceFeature::maxThreadLimit = 64;
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Maintenance"),
@@ -66,7 +66,7 @@ void MaintenanceFeature::init() {
 
   // these parameters might be updated by config and/or command line options
 
-  _maintenanceThreadsMax = (std::max)(static_cast<uint32_t>(_minThreadLimit),
+  _maintenanceThreadsMax = (std::max)(static_cast<uint32_t>(minThreadLimit),
     static_cast<uint32_t>(TRI_numberProcessors() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
@@ -95,14 +95,14 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
 void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
-  if (_maintenanceThreadsMax < _minThreadLimit) {
+  if (_maintenanceThreadsMax < minThreadLimit) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "Need at least" << _minThreadLimit << "maintenance-threads";
-    _maintenanceThreadsMax = _minThreadLimit;
-  } else if (_maintenanceThreadsMax >= _maxThreadLimit) {
+      << "Need at least" << minThreadLimit << "maintenance-threads";
+    _maintenanceThreadsMax = minThreadLimit;
+  } else if (_maintenanceThreadsMax >= maxThreadLimit) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "maintenance-threads limited to " << _minThreadLimit;
-    _maintenanceThreadsMax = _minThreadLimit;
+      << "maintenance-threads limited to " << minThreadLimit;
+    _maintenanceThreadsMax = minThreadLimit;
   }
 }
 
