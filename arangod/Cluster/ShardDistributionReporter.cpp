@@ -82,6 +82,12 @@ static void ReportShardNoProgress(
     std::unordered_map<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
+
+  if (respServers.empty()) {
+    // for some reason there are no responsible servers yet defined for the shard
+    return;
+  }
+
   result.add(VPackValue(shardId));
   result.openObject();
   // We always have at least the leader
