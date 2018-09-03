@@ -18,3 +18,12 @@ Cluster
 -------
 
 * sometimes the shutdown order in the cluster will cause the shutdown to hang infinitely.
+
+ArangoSearch
+------------
+
+* ArangoSearch ingores `_id` attribute even if `includeAllFields` is set to `true`
+* Creation of ArangoSearch on a large collection may cause OOM
+* Long-running transaction with a huge number of DML operations may cause OOM
+* Using score functions (BM25/TFIDF) in ArangoDB expression is not supported
+
