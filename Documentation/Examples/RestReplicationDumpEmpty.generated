@@ -1,6 +1,6 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/dump?collection=testCollection</span>
 
-HTTP/1.1 undefined
+HTTP/1.1 No Content
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
 x-arango-replication-lastincluded: 0

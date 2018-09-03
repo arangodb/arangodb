@@ -234,7 +234,6 @@ else
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
-
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
 git fetch --tags
 
