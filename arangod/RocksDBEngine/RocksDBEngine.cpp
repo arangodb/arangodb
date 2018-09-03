@@ -370,18 +370,28 @@ void RocksDBEngine::start() {
 
   // intentionally set the RocksDB logger to warning because it will
   // log lots of things otherwise
-  if (!_debugLogging) {
-    _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
-  } else {
+  if (_debugLogging) {
     _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
-  } // else
+  } else {
+    if (!opts->_useFileLogging) {
+      // if we don't use file logging but log into ArangoDB's logfile,
+      // we only want real errors
+      _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+    }
+  } 
 
-  auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
-  _options.info_log = logger;
+  std::shared_ptr<RocksDBLogger> logger;
+ 
+  if (!opts->_useFileLogging) {
+    // if option "--rocksdb.use-file-logging" is set to false, we will use
+    // our own logger that logs to ArangoDB's logfile 
+    logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
+    _options.info_log = logger;
 
-  if (!_debugLogging) {
-    logger->disable();
-  } // if
+    if (!_debugLogging) {
+      logger->disable();
+    } // if
+  }
 
   if (opts->_enableStatistics) {
     _options.statistics = rocksdb::CreateDBStatistics();
@@ -596,7 +606,9 @@ void RocksDBEngine::start() {
   TRI_ASSERT(s.ok());
 
   // only enable logger after RocksDB start
-  logger->enable();
+  if (logger != nullptr) {
+    logger->enable();
+  }
 
   if (_syncInterval > 0) {
     _syncThread.reset(
