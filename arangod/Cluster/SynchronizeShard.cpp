@@ -104,10 +104,10 @@ SynchronizeShard::SynchronizeShard(
   }
   TRI_ASSERT(desc.has(SHARD));
 
-  if (!desc.has(LEADER)) {
+  if (!desc.has(THE_LEADER)) {
     error << "leader must be stecified";
   }
-  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(desc.has(THE_LEADER));
 
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
@@ -630,7 +630,7 @@ bool SynchronizeShard::first() {
   std::string database = _description.get(DATABASE);
   std::string planId = _description.get(COLLECTION);
   std::string shard = _description.get(SHARD);
-  std::string leader = _description.get(LEADER);
+  std::string leader = _description.get(THE_LEADER);
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "SynchronizeShard: synchronizing shard '" << database << "/" << shard

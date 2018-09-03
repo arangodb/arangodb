@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -45,6 +46,7 @@
 #include <regex>
 
 using namespace arangodb;
+using namespace arangodb::consensus;
 using namespace arangodb::basics;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
@@ -120,7 +122,7 @@ static VPackBuilder compareIndexes(
       for (auto const& pindex : VPackArrayIterator(plan)) {
 
         // Skip primary and edge indexes
-        auto const& ptype   = pindex.get(TYPE).copyString();
+        auto const& ptype   = pindex.get(StaticStrings::IndexType).copyString();
         if (ptype == PRIMARY || ptype == EDGE) {
           continue;
         }
@@ -136,7 +138,7 @@ static VPackBuilder compareIndexes(
           for (auto const& lindex : VPackArrayIterator(local)) {
 
             // Skip primary and edge indexes
-            auto const& ltype   = lindex.get(TYPE).copyString();
+            auto const& ltype   = lindex.get(StaticStrings::IndexType).copyString();
             if (ltype == PRIMARY || ltype == EDGE) {
               continue;
             }
@@ -211,7 +213,7 @@ void handlePlanShard(
 
   if (ldb.hasKey(shname)) {   // Have local collection with that name
     auto const lcol = ldb.get(shname);
-    bool leading = lcol.get(LEADER).copyString().empty();
+    bool leading = lcol.get(THE_LEADER).copyString().empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
@@ -225,8 +227,8 @@ void handlePlanShard(
         actions.emplace_back(
           ActionDescription(
             {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, colname},
-            {SHARD, shname}, {LEADER, shouldBeLeading ? std::string() : leaderId},
-            {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(LEADER).copyString()}},
+            {SHARD, shname}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+            {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()}},
             properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -249,8 +251,10 @@ void handlePlanShard(
         for (auto const& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(
             ActionDescription({{NAME, "EnsureIndex"}, {DATABASE, dbname},
-                {COLLECTION, colname}, {TYPE, index.get(TYPE).copyString()},
-                {FIELDS, index.get(FIELDS).toJson()}, {SHARD, shname},
+                {COLLECTION, colname}, {SHARD, shname},
+                {StaticStrings::IndexType,
+                    index.get(StaticStrings::IndexType).copyString()},
+                {FIELDS, index.get(FIELDS).toJson()}, 
                 {ID, index.get(ID).copyString()}},
               std::make_shared<VPackBuilder>(index)));
         }
@@ -262,7 +266,7 @@ void handlePlanShard(
       actions.emplace_back(
         ActionDescription(
           {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
-           {DATABASE, dbname}, {SERVER_ID, serverId}, {LEADER, shouldBeLeading ? std::string() : leaderId}},
+           {DATABASE, dbname}, {SERVER_ID, serverId}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     } else {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -286,7 +290,7 @@ void handleLocalShard(
   if (shardMap.hasKey(colname) && shardMap.get(colname).isArray()) {
     plannedLeader = shardMap.get(colname)[0].copyString();
   }
-  bool localLeader = cprops.get(LEADER).copyString().empty();
+  bool localLeader = cprops.get(THE_LEADER).copyString().empty();
   if (plannedLeader == UNDERSCORE + serverId && localLeader) {
     actions.emplace_back(
       ActionDescription (
@@ -316,7 +320,7 @@ void handleLocalShard(
         if (cprops.get(INDEXES).isArray()) {
           for (auto const& index :
                  VPackArrayIterator(cprops.get(INDEXES))) {
-            auto const& type = index.get(TYPE).copyString();
+            auto const& type = index.get(StaticStrings::IndexType).copyString();
             if (type != PRIMARY && type != EDGE) {
               std::string const id = index.get(ID).copyString();
 
@@ -613,7 +617,7 @@ arangodb::Result arangodb::maintenance::phaseOne (
         << ". " << __FILE__ << ":" << __LINE__;
     }}
 
-  report.add(VPackValue("Plan"));
+  report.add(VPackValue(PLAN));
   { VPackObjectBuilder p(&report);
     report.add("Version", plan.get("Version"));}
 
@@ -812,7 +816,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       auto const colName = shSlice.get(PLAN_ID).copyString();
 
       VPackBuilder error;
-      if (shSlice.get(LEADER).copyString().empty()) { // Leader
+      if (shSlice.get(THE_LEADER).copyString().empty()) { // Leader
 
         auto const localCollectionInfo =
           assembleLocalCollectionInfo(
@@ -1052,7 +1056,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             actions.emplace_back(
               ActionDescription(
                 {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
-                 {COLLECTION, colname}, {SHARD, shname}, {LEADER, leader}}));
+                 {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader}}));
 
           }
         }
