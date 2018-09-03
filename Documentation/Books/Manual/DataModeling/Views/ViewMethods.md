@@ -44,8 +44,8 @@ Get view name:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock viewName
 
-Modify Name
------------
+Rename
+------
 
 <!-- arangod/V8Server/v8-views.cpp -->
 
@@ -57,6 +57,8 @@ valid view name. For more information on valid view names please refer to the
 [naming conventions](../NamingConventions/README.md).
 
 If renaming fails for any reason, an error is thrown.
+
+**Note**: this method is not available in a cluster.
 
 **Examples**
 
