@@ -49,6 +49,7 @@ if (LINUX OR DARWIN)
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --with-malloc-conf=${JEMALLOC_CONFIG}
                   --with-version=${JEMALLOC_VERSION}-0-g0
+                  --disable-cxx
     BUILD_COMMAND
       make build_lib_static
     BUILD_IN_SOURCE
