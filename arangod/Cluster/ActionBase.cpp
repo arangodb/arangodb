@@ -101,10 +101,10 @@ void ActionBase::notify() {
 
 
 bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
-  if (labels.find(FAST_TRACK) != labels.end() &&
-    _labels.find(FAST_TRACK) == _labels.end()) {
+  for (auto label : labels) {
+  if (_labels.find(label) == _labels.end()) {
     LOG_TOPIC(TRACE, Logger::MAINTENANCE)
-      << " cannot run in fast track " << *this;
+      << "Must not run in worker with " << label << ": " << *this;
     return false;
   }
   return true;
