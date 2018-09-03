@@ -34,6 +34,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 
 
+std::string const ActionBase::FAST_TRACK = "fastTrack";
+
 inline static std::chrono::system_clock::duration secs_since_epoch() {
   return std::chrono::system_clock::now().time_since_epoch();
 }
@@ -78,6 +80,22 @@ void ActionBase::notify() {
   if (cf != nullptr) {
     cf->syncDBServerStatusQuo();
   }
+}
+
+
+bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
+  for (auto const& label : labels) {
+    if (_labels.find(label) == _labels.end()) {
+      LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+        << "Must not run in worker with " << label << ": " << *this;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool ActionBase::fastTrack() const {
+  return _labels.find(FAST_TRACK) != _labels.end();
 }
 
 
