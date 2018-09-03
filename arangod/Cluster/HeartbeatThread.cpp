@@ -89,12 +89,19 @@ public:
 
   ~HeartbeatBackgroundJobThread() { shutdown(); }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief asks the thread to stop, but does not wait.
+  //////////////////////////////////////////////////////////////////////////////
   void stop() {
     std::unique_lock<std::mutex> guard(_mutex);
     _stop = true;
     _condition.notify_one();
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief notifies the background thread: when the thread is sleeping, wakes
+  /// it up. Otherwise sets a flag to start another round.
+  //////////////////////////////////////////////////////////////////////////////
   void notify() {
     std::unique_lock<std::mutex> guard(_mutex);
     _anotherRun.store(true, std::memory_order_release);
@@ -146,11 +153,32 @@ private:
   HeartbeatThread *_heartbeatThread;
 
   std::mutex _mutex;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief used to wake up the background thread
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
   std::condition_variable _condition;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Set by the HeartbeatThread when the BackgroundThread should stop
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
   std::atomic<bool> _stop;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wether the background thread sleeps or not
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
   std::atomic<bool> _sleeping;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief when awake, the background thread will execute another round of
+  /// phase 1 and phase 2, after resetting this to false
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
   std::atomic<bool> _anotherRun;
+
   uint64_t _backgroundJobsLaunched;
 };
 }
@@ -178,9 +206,6 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
       _backgroundJobsPosted(0),
-      _backgroundJobsLaunched(0),
-      _backgroundJobScheduledOrRunning(false),
-      _launchAnotherBackgroundJob(false),
       _lastSyncTime(0),
       _maintenanceThread(nullptr) {
 }
@@ -196,81 +221,6 @@ HeartbeatThread::~HeartbeatThread() {
   shutdown();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief running of heartbeat background jobs (in JavaScript), we run
-/// these by instantiating an object in class HeartbeatBackgroundJob,
-/// which is a std::function<void()> and holds a shared_ptr to the
-/// HeartbeatThread singleton itself. This instance is then posted to
-/// the io_service for execution in the thread pool. Should the heartbeat
-/// thread itself terminate during shutdown, then the HeartbeatThread
-/// singleton itself is still kept alive by the shared_ptr in the instance
-/// of HeartbeatBackgroundJob. The operator() method simply calls the
-/// runBackgroundJob() method of the heartbeat thread. Should this have
-/// to schedule another background job, then it can simply create a new
-/// HeartbeatBackgroundJob instance, again using shared_from_this() to
-/// create a new shared_ptr keeping the HeartbeatThread object alive.
-////////////////////////////////////////////////////////////////////////////////
-
-/*class HeartbeatBackgroundJob {
-  std::shared_ptr<HeartbeatThread> _heartbeatThread;
-  double _startTime;
-  std::string _schedulerInfo;
- public:
-  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt,
-                                  double startTime)
-    : _heartbeatThread(hbt), _startTime(startTime),_schedulerInfo(SchedulerFeature::SCHEDULER->infoStatus()) {
-  }
-
-  void operator()() {
-    // first tell the scheduler that this thread is working:
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.work();
-
-    double now = TRI_microtime();
-    if (now > _startTime + 5.0) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
-        "took " << now - _startTime
-        << " seconds, scheduler info at schedule time: " << _schedulerInfo
-        << ", scheduler info now: "
-        << SchedulerFeature::SCHEDULER->infoStatus();
-    }
-    //_heartbeatThread->runBackgroundJob();
-  }
-};*/
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief method runBackgroundJob()
-////////////////////////////////////////////////////////////////////////////////
-
-/*void HeartbeatThread::runBackgroundJob() {
-  uint64_t jobNr = ++_backgroundJobsLaunched;
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
-  {
-    DBServerAgencySync job(this);
-    job.work();
-  }
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
-
-  {
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    TRI_ASSERT(_backgroundJobScheduledOrRunning);
-
-    if (_launchAnotherBackgroundJob) {
-      jobNr = ++_backgroundJobsPosted;
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
-      _launchAnotherBackgroundJob = false;
-
-      // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      _lastSyncTime = TRI_microtime();
-      SchedulerFeature::SCHEDULER->post(
-          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
-    } else {
-      _backgroundJobScheduledOrRunning = false;
-      _launchAnotherBackgroundJob = false;
-    }
-  }
-}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -1297,20 +1247,11 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
     ci->invalidateCurrent();
   }
 
-  /*if (_backgroundJobScheduledOrRunning) {
-    _launchAnotherBackgroundJob = true;
-    return;
-  }*/
-
   // schedule a job for the change:
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
-  _backgroundJobScheduledOrRunning = true;
 
-  // the JobGuard is in the operator() of HeartbeatBackgroundJob
   _lastSyncTime = TRI_microtime();
-  //SchedulerFeature::SCHEDULER->post(
-  //  HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
   TRI_ASSERT(_maintenanceThread != nullptr);
   _maintenanceThread->notify();
 

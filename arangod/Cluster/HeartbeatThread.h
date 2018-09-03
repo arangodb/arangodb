@@ -270,34 +270,13 @@ public:
 
   std::atomic<uint64_t> _backgroundJobsPosted;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief number of background jobs that have been launched by the scheduler
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::atomic<uint64_t> _backgroundJobsLaunched;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flag indicates whether or not a background job is either
-  /// scheduled with boost::asio or is already running, this and the
-  /// next one about having to start another background job when the
-  /// current one is finished are protected by the statusLock.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _backgroundJobScheduledOrRunning;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief flag indicates whether or not a new background job needs
-  /// to be started when the current one has terminated. This and the
-  /// previous one are protected by the statusLock.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _launchAnotherBackgroundJob;
-
-  // when was the javascript sync routine last run?
+  // when was the sync routine last run?
   double _lastSyncTime;
 
-
-
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief handle of the dedicated thread to execute the phase 1 and phase 2
+  /// code. Only created on dbservers.
+  //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
 };
 }
