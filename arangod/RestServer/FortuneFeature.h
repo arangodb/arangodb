@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,25 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Oreste Costa-Panaia
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/CleanupFunctions.h"
+#ifndef APPLICATION_FEATURES_FORTUNE_FEATURE_H
+#define APPLICATION_FEATURES_FORTUNE_FEATURE_H 1
 
-static void defaultExitFunction(int, void*);
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-TRI_ExitFunction_t TRI_EXIT_FUNCTION = defaultExitFunction;
+namespace arangodb {
+class FortuneFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit FortuneFeature(application_features::ApplicationServer&);
 
-void defaultExitFunction(int exitCode, void* /*data*/) { 
-  arangodb::basics::CleanupFunctions::run(exitCode, nullptr); 
-  _exit(exitCode); 
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
+
+ private:
+  bool _fortune;
+};
 }
 
-void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {
-  if (exitFunction != nullptr) {
-    TRI_EXIT_FUNCTION = exitFunction;
-  } else {
-    TRI_EXIT_FUNCTION = defaultExitFunction;
-  }
-}
+#endif

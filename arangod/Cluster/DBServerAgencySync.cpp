@@ -33,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
@@ -111,12 +112,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   using clock = std::chrono::steady_clock;
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::execute starting";
-  DatabaseFeature* dbfeature =
-    ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  auto* sysDbFeature = application_features::ApplicationServer::lookupFeature<
+    SystemDatabaseFeature
+  >();
   MaintenanceFeature* mfeature =
     ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
-  TRI_vocbase_t* const vocbase = dbfeature->systemDatabase();
-
+  arangodb::SystemDatabaseFeature::ptr vocbase =
+      sysDbFeature ? sysDbFeature->use() : nullptr;
   DBServerAgencySyncResult result;
 
   if (vocbase == nullptr) {

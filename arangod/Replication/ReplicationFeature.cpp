@@ -50,6 +50,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter("BasicsPhase");
   startsAfter("Database");
   startsAfter("StorageEngine");
+  startsAfter("SystemDatabase");
 }
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
