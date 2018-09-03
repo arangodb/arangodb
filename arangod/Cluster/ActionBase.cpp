@@ -101,7 +101,7 @@ void ActionBase::notify() {
 
 
 bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
-  for (auto label : labels) {
+  for (auto const& label : labels) {
     if (_labels.find(label) == _labels.end()) {
       LOG_TOPIC(TRACE, Logger::MAINTENANCE)
         << "Must not run in worker with " << label << ": " << *this;
