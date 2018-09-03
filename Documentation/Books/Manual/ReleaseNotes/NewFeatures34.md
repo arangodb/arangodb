@@ -20,6 +20,8 @@ view in ArangoDB.
 New geo index implementation
 ----------------------------
 
+### S2 based geo index
+
 The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
 functionality. The new geo index allows indexing points, but also indexing of more
 complex geographical objects. The new implementation is much faster than the previous one for
@@ -31,6 +33,11 @@ geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
+
+### AQL Editor GeoJSON Support
+
+As a feature on top, the web ui embedded AQL editor now supports also displaying all
+GeoJSON supported data. 
 
 
 RocksDB storage engine
