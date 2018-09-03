@@ -141,8 +141,22 @@ bool BreadthFirstEnumerator::next() {
             return;
           }
         }
+        if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+          if (pathContainsEdge(nextIdx, eid)) {
+            // This edge is on the path.
+            return;
+          }
+        }
 
         if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
+         
+          if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {
+            if (pathContainsVertex(nextIdx, vId)) {
+              // This vertex is on the path.
+              return;
+            }
+          }
+
           _schreier.emplace_back(
               std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
@@ -220,4 +234,38 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(
   result.close();  // vertices
   result.close();
   return arangodb::aql::AqlValue(result.slice());
+}
+
+bool BreadthFirstEnumerator::pathContainsVertex(size_t index, StringRef vertex) const {
+  while (true) {
+    TRI_ASSERT(index < _schreier.size());
+    auto const& step = _schreier[index];
+    // Massive logic error, only valid pointers should be inserted into _schreier
+    TRI_ASSERT(step != nullptr);
+    if (step->vertex == vertex) {
+      // We have the given vertex on this path
+      return true;
+    }
+    if (index == 0) {
+      // We have checked the complete path
+      return false;
+    }
+    index = step->sourceIdx;
+  }
+  return false;
+}
+
+bool BreadthFirstEnumerator::pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const {
+  while (index != 0) {
+    TRI_ASSERT(index < _schreier.size());
+    auto const& step = _schreier[index];
+    // Massive logic error, only valid pointers should be inserted into _schreier
+    TRI_ASSERT(step != nullptr);
+    if (step->edge.equals(edge)) {
+      // We have the given vertex on this path
+      return true;
+    }
+    index = step->sourceIdx;
+  } 
+  return false;
 }
