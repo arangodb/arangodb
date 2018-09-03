@@ -288,7 +288,8 @@ std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex()
 
 /// @brief IndexHandle toVelocyPack method passthrough
 void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder, unsigned flags) const {
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<Index::Serialize>::type flags) const {
   _index->toVelocyPack(builder, flags);
 }
 

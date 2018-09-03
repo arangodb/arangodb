@@ -100,12 +100,12 @@ SynchronizeShard::SynchronizeShard(
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(SHARD)) {
-    error << "SHARD must be stecified";
+    error << "SHARD must be specified";
   }
   TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(LEADER)) {
-    error << "leader must be stecified";
+    error << "leader must be specified";
   }
   TRI_ASSERT(desc.has(LEADER));
 
@@ -806,7 +806,7 @@ bool SynchronizeShard::first() {
       bool longSync = false;
 
       // Long shard sync initialisation
-      if (endTime-startTime > seconds(5)) {
+      if (endTime - startTime > seconds(5)) {
         LOG_TOPIC(WARN, Logger::MAINTENANCE)
           << "synchronizeOneShard: long call to syncCollection for shard"
           << shard << " " << syncRes.errorMessage() <<  " start time: "
@@ -949,9 +949,8 @@ bool SynchronizeShard::first() {
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
 
   notify();
-  return false;;
+  return false;
 
 }
 
-SynchronizeShard::~SynchronizeShard() {};
-
+SynchronizeShard::~SynchronizeShard() {}

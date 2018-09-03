@@ -45,8 +45,10 @@ struct Indexes {
                 velocypack::Slice const& indexId,
                 velocypack::Builder&);
 
+  /// @brief get all indexes, skips view links
   static arangodb::Result getAll(LogicalCollection const* collection,
-                                 bool withFigures,
+                                 std::underlying_type<Index::Serialize>::type,
+                                 bool skipLinks,
                                  arangodb::velocypack::Builder&);
   
   static arangodb::Result createIndex(LogicalCollection*, Index::IndexType,

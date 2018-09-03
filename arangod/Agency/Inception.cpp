@@ -241,14 +241,21 @@ bool Inception::restartingActiveAgent() {
       auto comres = cc->syncRequest(
         coordinatorTransactionID, p, rest::RequestType::POST, path, greetstr,
         std::unordered_map<std::string, std::string>(), 2.0);
-      // FIXMEMAINTENANCE: handle case of result not 200
-      if (comres->status == CL_COMM_SENT) { // WARN: What if result not 200?
+
+      if (comres->status == CL_COMM_SENT &&
+        comres->result->getHttpReturnCode() == 200) {
         auto const  theirConfigVP = comres->result->getBodyVelocyPack();
         auto const& theirConfig   = theirConfigVP->slice();
-        // FIXMEMAINTENANCE: handle the case that tcc is not an object such
-        // that the next command would throw.
-        auto const& tcc           = theirConfig.get("configuration");
-        auto const& theirId       = tcc.get("id").copyString();
+
+        if (!theirConfig.isObject()) {
+          continue ;
+        }
+        auto const& tcc = theirConfig.get("configuration");
+
+        if (!tcc.isObject() || !tcc.hasKey("id")) {
+          continue ;
+        }
+        auto const& theirId = tcc.get("id").copyString();
 
         _agent->updatePeerEndpoint(theirId, p);
         informed.push_back(p);

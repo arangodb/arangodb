@@ -73,7 +73,8 @@ void MMFilesPathBasedIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
+                                         std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
   builder.add(

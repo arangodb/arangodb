@@ -181,7 +181,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const 
   {
     VPackArrayBuilder guard(&builder);
     for (auto& index : _indexes) {
-      index.toVelocyPack(builder, Index::SERIALIZE_ESTIMATES);
+      index.toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
     }
   }
   builder.add(VPackValue("condition"));

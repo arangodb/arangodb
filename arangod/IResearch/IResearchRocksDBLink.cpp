@@ -89,7 +89,7 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 
 void IResearchRocksDBLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    unsigned int flags
+    std::underlying_type<arangodb::Index::Serialize>::type flags
 ) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result(
@@ -107,7 +107,7 @@ void IResearchRocksDBLink::toVelocyPack(
     ));
   }
 
-  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();
