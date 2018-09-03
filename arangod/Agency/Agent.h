@@ -307,9 +307,6 @@ class Agent final : public arangodb::Thread,
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
-  /// @brief Notify inactive pool members of changes in configuration
-  void notifyInactive() const;
-
   /// @brief Leader election delegate
   Constituent _constituent;
 

@@ -265,9 +265,39 @@ class Index {
   virtual bool implicitlyUnique() const;
 
   virtual size_t memory() const = 0;
+  
+  /// @brief serialization flags for indexes.
+  /// note that these must be mutually exclusive when bit-ORed
+  enum class Serialize : uint8_t {
+    /// @brief serialize figures for index
+    Basics = 0,
+    /// @brief serialize figures for index
+    Figures = 2,
+    /// @brief serialize object ids for persistence
+    ObjectId = 4,
+    /// @brief serialize selectivity estimates
+    Estimates = 8
+  };
+  
+  /// @brief helper for building flags
+  template <typename... Args>
+  static inline constexpr std::underlying_type<Serialize>::type makeFlags(Serialize flag, Args... args) {
+    return static_cast<std::underlying_type<Serialize>::type>(flag) + makeFlags(args...);
+  }
+  
+  static inline constexpr std::underlying_type<Serialize>::type makeFlags() {
+    return static_cast<std::underlying_type<Serialize>::type>(Serialize::Basics);
+  }
+  
+  static inline constexpr bool hasFlag(std::underlying_type<Serialize>::type flags,
+                                       Serialize aflag) {
+    return (flags & static_cast<std::underlying_type<Serialize>::type>(aflag)) != 0;
+  }
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, bool withFigures, bool forPersistence) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool withFigures, bool forPersistence) const;
+  /// serialize an index to velocypack, using the serialization flags above
+  virtual void toVelocyPack(arangodb::velocypack::Builder&,
+                            std::underlying_type<Index::Serialize>::type flags) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
@@ -336,8 +366,6 @@ class Index {
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
-
-  //returns estimate for index in cluster - the bool is true if the index was found
 
  protected:
   TRI_idx_iid_t const _iid;

@@ -20,7 +20,6 @@ IS_MAC=0
 NOTIFY='if test -x /usr/games/oneko; then /usr/games/oneko& fi'
 trap "$NOTIFY" EXIT
 
-
 if test "$(uname)" == "Darwin"; then
     SED=gsed
     OSNAME=darwin
@@ -130,10 +129,35 @@ if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     exit 1
 fi
 
-if echo "${VERSION}" | grep -q -- '-'; then
-    echo "${VERSION} mustn't contain minuses! "
+VERSION_RE='^([0-9]+.[0-9]+.[0-9]+)(-((alpha|beta|milestone|preview|rc).)?([0-9]+))?$'
+
+if echo "${VERSION}" | egrep -q -- $VERSION_RE; then
+    echo "${VERSION} matches $VERSION_RE"
+else
+    echo "${VERSION} does not match $VERSION_RE"
     exit 1
 fi
+
+N1=`echo $VERSION | awk -F- '{print $1}'`
+N2=`echo $VERSION | awk -F- '{print $2}'`
+
+VERSION_MAJOR=$(echo "$N1" | awk -F. '{print $1}')
+VERSION_MINOR=$(echo "$N1" | awk -F. '{print $2}')
+VERSION_PATCH=$(echo "$N1" | awk -F. '{print $3}')
+
+VERSION_RELEASE_TYPE=""
+VERSION_RELEASE_NUMBER=""
+
+if test ! -z "$N2"; then
+  VERSION_RELEASE_TYPE=$(echo "$N2" | awk -F. '{print $1}')
+  VERSION_RELEASE_NUMBER=$(echo "$N2" | awk -F. '{print $2}')
+fi
+
+echo "VERSION_MAJOR:          $VERSION_MAJOR"
+echo "VERSION_MINOR:          $VERSION_MINOR"
+echo "VERSION_PATCH:          $VERSION_PATCH"
+echo "VERSION_RELEASE_TYPE:   $VERSION_RELEASE_TYPE"
+echo "VERSION_RELEASE_NUMBER: $VERSION_RELEASE_NUMBER"
 
 if test "${FORCE_TAG}" == 0; then
     if git tag | grep -q "^v$VERSION$";  then
@@ -210,21 +234,18 @@ else
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
+
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+git fetch --tags
 
-
-
-VERSION_MAJOR=$(echo "$VERSION" | awk -F. '{print $1}')
-VERSION_MINOR=$(echo "$VERSION" | awk -F. '{print $2}')
-VERSION_REVISION=$(echo "$VERSION" | awk -F. '{print $3}')
-VERSION_PACKAGE="1"
 
 # shellcheck disable=SC2002
 cat CMakeLists.txt \
-    | $SED -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR      \"$VERSION_MAJOR\")~" \
-    | $SED -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR      \"$VERSION_MINOR\")~" \
-    | $SED -e "s~set(ARANGODB_VERSION_REVISION.*~set(ARANGODB_VERSION_REVISION   \"$VERSION_REVISION\")~" \
-    | $SED -e "s~set(ARANGODB_PACKAGE_REVISION.*~set(ARANGODB_PACKAGE_REVISION   \"$VERSION_PACKAGE\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MAJOR.*~set(ARANGODB_VERSION_MAJOR \"$VERSION_MAJOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_MINOR.*~set(ARANGODB_VERSION_MINOR \"$VERSION_MINOR\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_PATCH.*~set(ARANGODB_VERSION_PATCH \"$VERSION_PATCH\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_TYPE.*~set(ARANGODB_VERSION_RELEASE_TYPE \"$VERSION_RELEASE_TYPE\")~" \
+    | $SED -e "s~set(ARANGODB_VERSION_RELEASE_NUMBER.*~set(ARANGODB_VERSION_RELEASE_NUMBER \"$VERSION_RELEASE_NUMBER\")~" \
           > CMakeLists.txt.tmp
 
 mv CMakeLists.txt.tmp CMakeLists.txt
@@ -269,6 +290,8 @@ STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/rele
                          head -n 1 | \
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;')
 ${SED} -i VERSIONS -e "s;STARTER_REV.*;STARTER_REV \"${STARTER_REV}\";"
+
+./utils/generateREADME.sh
 
 git add -f \
     README \
@@ -333,10 +356,10 @@ if [ "$TAG" == "1" ];  then
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
-        git push --tags
+        git push origin "refs/tags/v$VERSION"
     else
         git tag -f "v$VERSION"
-        git push --tags -f
+        git push -f origin "refs/tags/v$VERSION"
     fi
 
     cd "${ENTERPRISE_SRC_DIR}"
@@ -345,10 +368,10 @@ if [ "$TAG" == "1" ];  then
 
     if test "${FORCE_TAG}" == 0; then
         git tag "v$VERSION"
-        git push --tags
+        git push origin "refs/tags/v$VERSION"
     else
         git tag -f "v$VERSION"
-        git push --tags -f
+        git push -f origin "refs/tags/v$VERSION"
     fi
 
     echo

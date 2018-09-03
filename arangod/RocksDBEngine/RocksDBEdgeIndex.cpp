@@ -558,11 +558,10 @@ double RocksDBEdgeIndex::selectivityEstimate(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                    bool forPersistence) const {
+void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
+                                    std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  // add selectivity estimate hard-coded
+  RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)

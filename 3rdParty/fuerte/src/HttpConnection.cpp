@@ -39,7 +39,11 @@ using namespace arangodb::fuerte::v1;
 using namespace arangodb::fuerte::v1::http;
 
 int on_message_began(http_parser* parser) { return 0; }
-int on_status(http_parser* parser, const char* at, size_t len) { return 0; }
+int on_status(http_parser* parser, const char* at, size_t len) {
+  RequestItem* data = static_cast<RequestItem*>(parser->data);
+  data->_response->header.meta.emplace(std::string("http/") + std::to_string(parser->http_major) + '.' + std::to_string(parser->http_minor), std::string(at, len));
+  return 0; 
+}
 int on_header_field(http_parser* parser, const char* at, size_t len) {
   RequestItem* data = static_cast<RequestItem*>(parser->data);
   if (data->last_header_was_a_value) {
@@ -345,6 +349,7 @@ void HttpConnection<ST>::startWriting() {
     auto self = shared_from_this();
     asio_ns::post(*_io_context, [this, self] {
       if (!_active.exchange(true)) {
+        FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
         asyncWriteNextRequest();
       }
     });
@@ -354,14 +359,14 @@ void HttpConnection<ST>::startWriting() {
 // writes data from task queue to network using asio_ns::async_write
 template<SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
-  FUERTE_LOG_TRACE << "asyncWriteNextRequest: this=" << this << "\n";
+  FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
   assert(_active.load(std::memory_order_acquire));
   
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
     _active.store(false);
     if (!_queue.pop(ptr)) {
-      FUERTE_LOG_TRACE << "stopped writing: this=" << this << "\n";
+      FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this=" << this << "\n";
       return;
     }
     // a request got queued in-between last minute
@@ -369,13 +374,6 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   }
   std::shared_ptr<http::RequestItem> item(ptr);
   _numQueued.fetch_sub(1, std::memory_order_relaxed);
-  
-  // we stop the write-loop if we stopped it ourselves.
-  auto self = shared_from_this();
-  auto cb = [this, self, item](asio_ns::error_code const& ec,
-                               std::size_t transferred) {
-    asyncWriteCallback(ec, transferred, std::move(item));
-  };
   
   setTimeout(item->_request->timeout());
   std::vector<asio_ns::const_buffer> buffers(2);
@@ -386,8 +384,14 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
       item->_request->header.restVerb != RestVerb::Head) {
     buffers.emplace_back(item->_request->payload());
   }
-  asio_ns::async_write(_protocol.socket, buffers, cb);
-  FUERTE_LOG_HTTPTRACE << "asyncWrite: done\n";
+  
+  auto self = shared_from_this();
+  asio_ns::async_write(_protocol.socket, buffers,
+                       [this, self, item](asio_ns::error_code const& ec,
+                                          std::size_t transferred) {
+    asyncWriteCallback(ec, transferred, std::move(item));
+  });
+  FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
 
 // called by the async_write handler (called from IO thread)
@@ -427,7 +431,7 @@ void HttpConnection<ST>::asyncWriteCallback(
   // check queue length later
   asyncReadSome();  // listen for the response
 
-  FUERTE_LOG_HTTPTRACE << "asyncWriteCallback (http): waiting for response\n";
+  FUERTE_LOG_HTTPTRACE << "asyncWriteCallback: waiting for response\n";
 }
   
 // ------------------------------------
@@ -437,7 +441,7 @@ void HttpConnection<ST>::asyncWriteCallback(
 // asyncReadSome reads the next bytes from the server.
 template<SocketType ST>
 void HttpConnection<ST>::asyncReadSome() {
-  FUERTE_LOG_TRACE << "asyncReadSome: this=" << this << "\n";
+  FUERTE_LOG_HTTPTRACE << "asyncReadSome: this=" << this << "\n";
   
   auto self = shared_from_this();
   auto cb = [this, self](asio_ns::error_code const& ec, size_t transferred) {
@@ -473,7 +477,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
     assert(false);
     shutdownConnection(ErrorCondition::Canceled);
   }
-  
+    
   // Inspect the data we've received so far.
   size_t parsedBytes = 0;
   auto buffers = _receiveBuffer.data(); // no copy
@@ -515,7 +519,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       _inFlight.reset();
       
       FUERTE_LOG_HTTPTRACE
-      << "asyncReadCallback (http): completed parsing response\n";
+      << "asyncReadCallback: completed parsing response\n";
 
       asyncWriteNextRequest();  // send next request
       return;
@@ -526,7 +530,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   _receiveBuffer.consume(parsedBytes);
   
   FUERTE_LOG_HTTPTRACE
-      << "asyncReadCallback (http): response not complete yet\n";
+      << "asyncReadCallback: response not complete yet\n";
   asyncReadSome();  // keep reading from socket
 }
   
@@ -545,6 +549,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     if (!ec) {
       auto s = self.lock();
       if (s) {
+        std::cerr << "sddsd";
         FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
         restartConnection(ErrorCondition::Timeout);
       }

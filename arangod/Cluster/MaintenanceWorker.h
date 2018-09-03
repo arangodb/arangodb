@@ -35,11 +35,16 @@ namespace maintenance {
 
 class MaintenanceWorker : public Thread {
  public:
-  MaintenanceWorker(MaintenanceFeature& feature);
+  
+  MaintenanceWorker(
+    MaintenanceFeature& feature,
+    std::unordered_set<std::string> const& labels =
+    std::unordered_set<std::string>());
+  
   MaintenanceWorker(
     MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
-  virtual ~MaintenanceWorker() {}
+  virtual ~MaintenanceWorker() { shutdown(); }
 
   //
   // MaintenanceWorker entry points
@@ -77,6 +82,8 @@ protected:
   bool _directAction;
 
   Result _lastResult;
+
+  const std::unordered_set<std::string> _labels;
 
 private:
   MaintenanceWorker(MaintenanceWorker const &) = delete;

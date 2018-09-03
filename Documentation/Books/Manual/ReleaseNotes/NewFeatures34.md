@@ -20,6 +20,8 @@ view in ArangoDB.
 New geo index implementation
 ----------------------------
 
+### S2 based geo index
+
 The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
 functionality. The new geo index allows indexing points, but also indexing of more
 complex geographical objects. The new implementation is much faster than the previous one for
@@ -31,6 +33,11 @@ geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
+
+### AQL Editor GeoJSON Support
+
+As a feature on top, the web ui embedded AQL editor now supports also displaying all
+GeoJSON supported data. 
 
 
 RocksDB storage engine
@@ -175,7 +182,10 @@ to RocksDB collections, so it should be used with extreme care.
 
 ### RocksDB library upgrade
 
-The version of the bundled RocksDB library was upgraded from 5.9 to 5.15.
+The version of the bundled RocksDB library was upgraded from 5.6 to 5.16.
+
+The version of the bundled Snappy compression library used by RocksDB was upgraded from
+1.1.3 to 1.1.7.
 
 
 Collection and document operations
@@ -865,8 +875,8 @@ However, streaming cursors are enabled for the following parts of ArangoDB in 3.
 Native implementations
 ----------------------
 
-The following internal and external functionality has been ported from JavaScript-based
-implementations to C++-based implementations in ArangoDB 3.4:
+The following internal and user-facing functionality has been ported from 
+JavaScript-based implementations to C++-based implementations in ArangoDB 3.4:
 
 * the statistics gathering background thread
 * the REST APIs for
@@ -876,18 +886,23 @@ implementations to C++-based implementations in ArangoDB 3.4:
     - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
+* database creation and setup
+* all the DBserver internal maintenance tasks for shard creation, index
+  creation and the like in the cluster
 
-By making the listed functionality not use and depend on the V8 JavaScript engine,
-the respective functionality can now be invoked more efficiently, without requiring
-the conversion of data between ArangoDB's native format and V8's internal format.
+By making the listed functionality not use and not depend on the V8 JavaScript 
+engine, the respective functionality can now be invoked more efficiently in the
+server, without requiring the conversion of data between ArangoDB's native format 
+and V8's internal formats. For the maintenance operations this will lead to
+improved stability in the cluster.
 
-As less functionality depends on the V8 JavaScript engine, an ArangoDB 3.4 server
-will not require as many V8 contexts as previous versions.
+As a consequence, ArangoDB agency and database server nodes in an ArangoDB 3.4 
+cluster will now turn off the V8 JavaScript engine at startup entirely and automatically.
+The V8 engine will still be enabled on cluster coordinators, single servers and
+active failover instances. But even the latter instance types will not require as 
+many V8 contexts as previous versions of ArangoDB.
 This should reduce problems with servers running out of available V8 contexts or
 using a lot of memory just for keeping V8 contexts around.
-
-As a consequence, ArangoDB agency nodes in 3.4 will now turn off the V8 JavaScript
-engine at startup automatically.
 
 
 Foxx

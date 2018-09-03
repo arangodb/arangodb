@@ -178,10 +178,10 @@ void RocksDBPrimaryIndex::load() {
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                       bool forPersistence) const {
+void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder,
+                                       std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   // hard-coded
   builder.add(
     arangodb::StaticStrings::IndexUnique,

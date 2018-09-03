@@ -1197,7 +1197,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     loadPlan();
   }
 
-  LOG_TOPIC(INFO, Logger::CLUSTER)
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "View not found: '" << viewID << "' in database '" << databaseID << "'";
 
   return nullptr;
@@ -2414,7 +2414,7 @@ int ClusterInfo::ensureIndexCoordinator(
     oldPlanIndexes.reset(new VPackBuilder());
 
     c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(*(oldPlanIndexes.get()), false, false);
+    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::makeFlags(Index::Serialize::Basics));
     VPackSlice const planIndexes = oldPlanIndexes->slice();
 
     if (planIndexes.isArray()) {
@@ -2428,12 +2428,13 @@ int ClusterInfo::ensureIndexCoordinator(
       }
     }
 
-    if (planValue==nullptr) {
+    if (planValue == nullptr) {
       // hmm :S both empty :S did somebody else clean up? :S
       // should not happen?
       return errorCode;
     }
-    std::string const planIndexesKey = "Plan/Collections/" + databaseName + "/" + collectionID +"/indexes";
+
+    std::string const planIndexesKey = "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
     std::vector<AgencyOperation> operations;
     std::vector<AgencyPrecondition> preconditions;
     if (planValue) {
@@ -2504,10 +2505,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), false, false);
+    c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
     {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      *numberOfShards = c->numberOfShards();
+      *numberOfShards = static_cast<int>(c->numberOfShards());
     }
     VPackSlice const indexes = tmp->slice();
 
@@ -2874,7 +2875,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     READ_LOCKER(readLocker, _planProt.lock);
 
-    c->getIndexesVPack(tmp, false, false);
+    c->getIndexesVPack(tmp, Index::makeFlags(Index::Serialize::Basics));
     indexes = tmp.slice();
 
     if (!indexes.isArray()) {
@@ -2892,7 +2893,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     }
 
     MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    *numberOfShards = c->numberOfShards();
+    *numberOfShards = static_cast<int>(c->numberOfShards());
   }
 
   bool found = false;
@@ -3588,10 +3589,6 @@ void ClusterInfo::invalidatePlan() {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
   }
-  {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3688,12 +3685,12 @@ arangodb::Result ClusterInfo::getShardServers(
   if (it != _shardServers.end()) {
     servers = (*it).second;
     return arangodb::Result();
-  } 
+  }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Strange, did not find shard in _shardServers: " << shardId;
   return arangodb::Result(TRI_ERROR_FAILED);
-  
+
 }
 
 

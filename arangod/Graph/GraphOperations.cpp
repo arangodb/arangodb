@@ -66,67 +66,19 @@ void GraphOperations::checkForUsedEdgeCollections(
 OperationResult GraphOperations::changeEdgeDefinitionForGraph(
     Graph& graph, EdgeDefinition const& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
-  std::string const& edgeDefinitionName = newEdgeDef.getName();
 
-  auto maybeOldEdgeDef = graph.getEdgeDefinition(edgeDefinitionName);
-  if (!maybeOldEdgeDef) {
-    // Graph doesn't contain this edge definition, no need to do anything.
-    return OperationResult{};
-  }
-  EdgeDefinition const& oldEdgeDef = maybeOldEdgeDef.get();
-
-  // replace edgeDefinition
   VPackBuilder builder;
-  builder.openObject();
-  // build edge definitions start
-  builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
-  builder.add(StaticStrings::GraphEdgeDefinitions,
-              VPackValue(VPackValueType::Array));
-
-  // now we have to build a new VPackObject for updating the
-  // edgeDefinition
-  for (auto const &it : graph.edgeDefinitions()) {
-    auto const& edgeDef = it.second;
-
-    if (edgeDef.getName() == newEdgeDef.getName()) {
-      newEdgeDef.addToBuilder(builder);
-    } else {
-      edgeDef.addToBuilder(builder);
-    }
+  // remove old definition, insert the new one instead
+  Result res = graph.replaceEdgeDefinition(newEdgeDef);
+  if (res.fail()) {
+    return OperationResult(res);
   }
-  builder.close();  // array 'edgeDefinitions'
+
+  builder.openObject();
+  graph.toPersistence(builder);
+  builder.close();
 
   GraphManager gmngr{_vocbase};
-
-  { // add orphans:
-
-    // previous orphans may still be orphans...
-    std::set<std::string> orphans{graph.orphanCollections()};
-
-    // previous vertex collections from the overwritten may be orphaned...
-    setUnion(orphans, oldEdgeDef.getFrom());
-    setUnion(orphans, oldEdgeDef.getTo());
-
-    // ...except they occur in any other edge definition, including the new one.
-    for (auto const &it : graph.edgeDefinitions()) {
-      std::string const &edgeCollection = it.first;
-
-      EdgeDefinition const &edgeDef =
-        edgeCollection == newEdgeDef.getName() ? newEdgeDef : it.second;
-
-      setMinus(orphans, edgeDef.getFrom());
-      setMinus(orphans, edgeDef.getTo());
-    }
-
-    builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-    for (auto const &orphan : orphans) {
-      builder.add(VPackValue(orphan));
-    }
-    builder.close(); // array 'orphanCollections'
-  }
-
-  builder.close();  // object (the graph)
-
   std::set<std::string> newCollections;
 
   // add collections that didn't exist in the graph before to newCollections:
@@ -171,74 +123,15 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     return OperationResult{TRI_ERROR_FORBIDDEN};
   }
 
-  std::unordered_set<std::string> possibleOrphans;
-  std::unordered_set<std::string> usedVertexCollections;
-  std::map<std::string, EdgeDefinition> edgeDefs =
-      _graph.edgeDefinitions();
-
-  VPackBuilder newEdgeDefs;
-  newEdgeDefs.add(VPackValue(VPackValueType::Array));
-
-  for (auto const& edgeDefinition : edgeDefs) {
-    if (edgeDefinition.second.getName() == edgeDefinitionName) {
-      for (auto const& from : edgeDefinition.second.getFrom()) {
-        possibleOrphans.emplace(from);
-      }
-      for (auto const& to : edgeDefinition.second.getTo()) {
-        possibleOrphans.emplace(to);
-      }
-    } else {
-      for (auto const& from : edgeDefinition.second.getFrom()) {
-        usedVertexCollections.emplace(from);
-      }
-      for (auto const& to : edgeDefinition.second.getTo()) {
-        usedVertexCollections.emplace(to);
-      }
-
-      // add still existing edgeDefinition to builder for update commit
-      newEdgeDefs.openObject();
-      newEdgeDefs.add("collection",
-                      VPackValue(edgeDefinition.second.getName()));
-      newEdgeDefs.add("from", VPackValue(VPackValueType::Array));
-      for (auto const& from : edgeDefinition.second.getFrom()) {
-        newEdgeDefs.add(VPackValue(from));
-      }
-      newEdgeDefs.close();  // array
-      newEdgeDefs.add("to", VPackValue(VPackValueType::Array));
-      for (auto const& to : edgeDefinition.second.getTo()) {
-        newEdgeDefs.add(VPackValue(to));
-      }
-      newEdgeDefs.close();  // array
-      newEdgeDefs.close();  // object
-    }
-  }
-
-  newEdgeDefs.close();  // array
-
-  // build orphan array
-  VPackBuilder newOrphColls;
-  newOrphColls.add(VPackValue(VPackValueType::Array));
-  for (auto const& orph : _graph.orphanCollections()) {
-    newOrphColls.add(VPackValue(orph));
-  }
-
-  for (auto const& po : possibleOrphans) {
-    if (usedVertexCollections.find(po) == usedVertexCollections.end()) {
-      newOrphColls.add(VPackValue(po));
-    }
-  }
-  newOrphColls.close();  // array
-
   // remove edgeDefinition from graph config
+  _graph.removeEdgeDefinition(edgeDefinitionName);
 
   OperationOptions options;
   options.waitForSync = waitForSync;
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(StaticStrings::GraphEdgeDefinitions, newEdgeDefs.slice());
-  builder.add(StaticStrings::GraphOrphans, newOrphColls.slice());
+  _graph.toPersistence(builder);
   builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
@@ -431,19 +324,13 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document,
       return OperationResult{std::move(res)};
     }
   }
+  // add orphan collection to graph
+  _graph.addOrphanCollection(std::move(collectionName));
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orph : _graph.orphanCollections()) {
-    if (orph != collectionName) {
-      builder.add(VPackValue(orph));
-    }
-  }
-  builder.add(VPackValue(collectionName));
-  builder.close();  // array
-  builder.close();  // object
+  _graph.toPersistence(builder);
+  builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
@@ -490,23 +377,21 @@ OperationResult GraphOperations::eraseOrphanCollection(
     return OperationResult{TRI_ERROR_FORBIDDEN};
   }
 
+  Result res = _graph.removeOrphanCollection(std::move(collectionName));
+  if (res.fail()) {
+    return OperationResult(res);
+  }
+
   VPackBuilder builder;
   builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
-  builder.add(StaticStrings::GraphOrphans, VPackValue(VPackValueType::Array));
-  for (auto const& orph : _graph.orphanCollections()) {
-    if (orph != collectionName) {
-      builder.add(VPackValue(orph));
-    }
-  }
-  builder.close();  // array
-  builder.close();  // object
+  _graph.toPersistence(builder);
+  builder.close();
 
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
     return OperationResult(res);

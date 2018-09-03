@@ -32,17 +32,27 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceWorker.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Maintenance") {
+const uint32_t MaintenanceFeature::minThreadLimit = 2;
+const uint32_t MaintenanceFeature::maxThreadLimit = 64;
 
-//  startsAfter("EngineSelector");    // ??? what should this be
-//  startsBefore("StorageEngine");
+MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
+  : ApplicationFeature(server, "Maintenance"),
+    _forceActivation(false),
+    _maintenanceThreadsMax(2) {
+  // the number of threads will be adjusted later. it's just that we want to initialize all members properly
+
+  // this feature has to know the role of this server in its `start`. The role
+  // is determined by `ClusterFeature::validateOptions`, hence the following line
+  // of code is not required. For philosophical reasons we added it to the
+  // ClusterPhase and let it start after `Cluster`.
+  startsAfter("Cluster");
 
   init();
 } // MaintenanceFeature::MaintenanceFeature
@@ -55,7 +65,9 @@ void MaintenanceFeature::init() {
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
 
   // these parameters might be updated by config and/or command line options
-  _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors() / 4 + 1);
+
+  _maintenanceThreadsMax = (std::max)(static_cast<uint32_t>(minThreadLimit),
+    static_cast<uint32_t>(TRI_numberProcessors() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
 } // MaintenanceFeature::init
@@ -67,7 +79,7 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addHiddenOption(
     "--server.maintenance-threads",
     "maximum number of threads available for maintenance actions",
-    new Int32Parameter(&_maintenanceThreadsMax));
+    new UInt32Parameter(&_maintenanceThreadsMax));
 
   options->addHiddenOption(
     "--server.maintenance-actions-block",
@@ -81,6 +93,18 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
 } // MaintenanceFeature::collectOptions
 
+void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+
+  if (_maintenanceThreadsMax < minThreadLimit) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "Need at least" << minThreadLimit << "maintenance-threads";
+    _maintenanceThreadsMax = minThreadLimit;
+  } else if (_maintenanceThreadsMax >= maxThreadLimit) {
+    LOG_TOPIC(WARN, Logger::MAINTENANCE)
+      << "maintenance-threads limited to " << minThreadLimit;
+    _maintenanceThreadsMax = maxThreadLimit;
+  }
+}
 
 /// do not start threads in prepare
 void MaintenanceFeature::prepare() {
@@ -88,9 +112,28 @@ void MaintenanceFeature::prepare() {
 
 
 void MaintenanceFeature::start() {
+  auto serverState = ServerState::instance();
+
+  // _forceActivation is set by the catch tests
+  if (!_forceActivation &&
+      (serverState->isAgent() || serverState->isSingleServer())) {
+    LOG_TOPIC(TRACE, Logger::MAINTENANCE) << "Disable maintenance-threads"
+      << " for single-server or agents.";
+    return ;
+  }
+
   // start threads
-  for (int32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
-    auto newWorker = std::make_unique<maintenance::MaintenanceWorker>(*this);
+  for (uint32_t loop = 0; loop < _maintenanceThreadsMax; ++loop) {
+
+    // First worker will be available only to fast track
+    std::unordered_set<std::string> labels {};
+    if (loop == 0) {
+      labels.emplace(ActionBase::FAST_TRACK);
+    }
+    
+    auto newWorker =  
+      std::make_unique<maintenance::MaintenanceWorker>(*this, labels);
+    
     if (!newWorker->start(&_workerCompletion)) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
         << "MaintenanceFeature::start:  newWorker start failed";
@@ -113,7 +156,7 @@ void MaintenanceFeature::stop() {
     CONDITION_LOCKER(cLock, _workerCompletion);
 
     // loop on each worker, retesting at 10ms just in case
-    if (itWorker->isRunning()) {
+    while (itWorker->isRunning()) {
       _workerCompletion.wait(10000);
     } // if
   } // for
@@ -142,12 +185,6 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 
 } // MaintenanceFeature::deleteAction
 
-
-// FIXMEMAINTENANCE: None of the addAction() and createAction() routines
-// explicitly check to see if construction of action set FAILED.
-// Therefore it is possible for an "executeNow" action to start running
-// with known invalid parameters.
-
 /// @brief This is the  API for creating an Action and executing it.
 ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
 ///  not yet:  ActionDescription parameter will be MOVED to new object.
@@ -168,9 +205,10 @@ Result MaintenanceFeature::addAction(
     // similar action not in the queue (or at least no longer viable)
     if (curAction == nullptr || curAction->done()) {
 
-      createAction(newAction, executeNow);
-
-      if (!newAction || !newAction->ok()) {
+      if (newAction && newAction->ok()) {
+        // Register action only if construction was ok
+        registerAction(newAction, executeNow);
+      } else {
         /// something failed in action creation ... go check logs
         result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
       } // if
@@ -219,7 +257,7 @@ Result MaintenanceFeature::addAction(
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction || curAction->done()) {
-      newAction = createAction(description, executeNow);
+      newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
         /// something failed in action creation ... go check logs
@@ -248,7 +286,7 @@ Result MaintenanceFeature::addAction(
 std::shared_ptr<Action> MaintenanceFeature::preAction(
   std::shared_ptr<ActionDescription> const & description) {
 
-  return createAction(description, true);
+  return createAndRegisterAction(description, true);
 
 } // MaintenanceFeature::preAction
 
@@ -256,13 +294,21 @@ std::shared_ptr<Action> MaintenanceFeature::preAction(
 std::shared_ptr<Action> MaintenanceFeature::postAction(
   std::shared_ptr<ActionDescription> const & description) {
 
-  return createAction(description, false);
+  auto action = createAction(description);
 
+  if (action->ok()) {
+    action->setState(WAITINGPOST);
+    registerAction(action, false);
+  }
+
+  return action;
 } // MaintenanceFeature::postAction
 
 
-void MaintenanceFeature::createAction(
+void MaintenanceFeature::registerAction(
   std::shared_ptr<Action> action, bool executeNow) {
+
+  // Assumes write lock on _actionRegistryLock
 
   // mark as executing so no other workers accidentally grab it
   if (executeNow) {
@@ -284,8 +330,7 @@ void MaintenanceFeature::createAction(
 
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(
-  std::shared_ptr<ActionDescription> const & description,
-  bool executeNow) {
+  std::shared_ptr<ActionDescription> const & description) {
 
   // write lock via _actionRegistryLock is assumed held
   std::shared_ptr<Action> newAction;
@@ -297,18 +342,26 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
   newAction = std::make_shared<Action>(*this, *description);
 
   // if a new action constructed successfully
-  if (newAction->ok()) {
-
-    createAction(newAction, executeNow);
-
-  } else {
+  if (!newAction->ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "createAction:  unknown action name given, \"" << name.c_str() << "\", or other construction failure.";
-  } // else
+  }
 
   return newAction;
 
 } // if
+
+std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
+  std::shared_ptr<ActionDescription> const & description, bool executeNow) {
+
+  std::shared_ptr<Action> newAction = createAction(description);
+
+  if (newAction->ok()) {
+    registerAction(newAction, executeNow);
+  }
+
+  return newAction;
+}
 
 
 std::shared_ptr<Action> MaintenanceFeature::findAction(
@@ -353,10 +406,12 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 
   std::shared_ptr<Action> ret_ptr;
 
-  for (auto action_it=_actionRegistry.begin();
+  for (auto action_it = _actionRegistry.begin();
        _actionRegistry.end() != action_it && !ret_ptr; ++action_it) {
     if ((*action_it)->id() == id) {
-      ret_ptr=*action_it;
+      // should we return the first match here or the last match?
+      // if first, we could simply add a break
+      ret_ptr = *action_it;
     } // if
   } // for
 
@@ -365,7 +420,8 @@ std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
 } // MaintenanceFeature::findActionIdNoLock
 
 
-std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
+  std::unordered_set<std::string> const& labels) {
   std::shared_ptr<Action> ret_ptr;
 
   while(!_isShuttingDown && !ret_ptr) {
@@ -376,7 +432,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
 
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
         auto state = (*loop)->getState();
-        if (state == maintenance::READY) {
+        if (state == maintenance::READY && (*loop)->matches(labels)) {
           ret_ptr=*loop;
           ret_ptr->setState(maintenance::EXECUTING);
         } else if ((*loop)->done()) {
@@ -420,6 +476,19 @@ std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
 
 std::string const SLASH("/");
 
+arangodb::Result  MaintenanceFeature::storeDBError (
+    std::string const& database, Result const& failure)
+{
+    VPackBuilder eb;
+  { VPackObjectBuilder b(&eb);
+    eb.add(NAME, VPackValue(database));
+    eb.add("error", VPackValue(true));
+    eb.add("errorNum", VPackValue(failure.errorNumber()));
+    eb.add("errorMessage", VPackValue(failure.errorMessage())); }
+
+  return storeDBError(database, eb.steal());
+}
+
 arangodb::Result MaintenanceFeature::storeDBError (
   std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error) {
 
@@ -439,7 +508,7 @@ arangodb::Result MaintenanceFeature::storeDBError (
   }
 
   return Result();
-  
+
 }
 
 arangodb::Result MaintenanceFeature::dbError (
@@ -449,7 +518,7 @@ arangodb::Result MaintenanceFeature::dbError (
   auto const it = _dbErrors.find(database);
   error = (it != _dbErrors.end()) ? it->second : nullptr;
   return Result();
-  
+
 }
 
 arangodb::Result MaintenanceFeature::removeDBError (
@@ -458,15 +527,34 @@ arangodb::Result MaintenanceFeature::removeDBError (
   try {
     MUTEX_LOCKER(guard, _seLock);
     _shardErrors.erase(database);
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     std::stringstream error;
-    error << "erasing dataabse error for " << database << " failed";
+    error << "erasing database error for " << database << " failed";
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
   return Result();
-  
+
+}
+
+arangodb::Result MaintenanceFeature::storeShardError (
+  std::string const& database, std::string const& collection,
+  std::string const& shard, std::string const& serverId,
+  arangodb::Result const& failure)
+{
+  VPackBuilder eb;
+  { VPackObjectBuilder o(&eb);
+    eb.add("error", VPackValue(true));
+    eb.add("errorMessage", VPackValue(failure.errorMessage()));
+    eb.add("errorNum", VPackValue(failure.errorNumber()));
+    eb.add(VPackValue("indexes"));
+    { VPackArrayBuilder a(&eb); } // []
+    eb.add(VPackValue("servers"));
+    {VPackArrayBuilder a(&eb);    // [serverId]
+      eb.add(VPackValue(serverId)); }}
+
+  return storeShardError(database, collection, shard, eb.steal());
 }
 
 arangodb::Result MaintenanceFeature::storeShardError (
@@ -474,7 +562,7 @@ arangodb::Result MaintenanceFeature::storeShardError (
   std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {
 
   std::string key = database + SLASH + collection + SLASH + shard;
-  
+
   MUTEX_LOCKER(guard, _seLock);
   auto const it = _shardErrors.find(key);
   if (it != _shardErrors.end()) {
@@ -491,7 +579,7 @@ arangodb::Result MaintenanceFeature::storeShardError (
   }
 
   return Result();
-  
+
 }
 
 arangodb::Result MaintenanceFeature::shardError (
@@ -504,7 +592,7 @@ arangodb::Result MaintenanceFeature::shardError (
   auto const it = _shardErrors.find(key);
   error = (it != _shardErrors.end()) ? it->second : nullptr;
   return Result();
-  
+
 }
 
 arangodb::Result MaintenanceFeature::removeShardError (std::string const& key) {
@@ -512,15 +600,15 @@ arangodb::Result MaintenanceFeature::removeShardError (std::string const& key) {
   try {
     MUTEX_LOCKER(guard, _seLock);
     _shardErrors.erase(key);
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing shard error for " << key << " failed";
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
     return Result(TRI_ERROR_FAILED, error.str());
   }
-  
+
   return Result();
-  
+
 }
 
 arangodb::Result MaintenanceFeature::removeShardError (
@@ -537,9 +625,9 @@ arangodb::Result MaintenanceFeature::storeIndexError (
 
   using buffer_t = std::shared_ptr<VPackBuffer<uint8_t>>;
   std::string key = database + SLASH + collection + SLASH + shard;
-  
+
   MUTEX_LOCKER(guard, _ieLock);
-  
+
   auto errorsIt = _indexErrors.find(key);
   if (errorsIt == _indexErrors.end()) {
     try {
@@ -566,7 +654,7 @@ arangodb::Result MaintenanceFeature::storeIndexError (
   }
 
   return Result();
-  
+
 }
 
 arangodb::Result MaintenanceFeature::indexErrors (
@@ -581,9 +669,9 @@ arangodb::Result MaintenanceFeature::indexErrors (
   if (it != _indexErrors.end()) {
     error = it->second;
   }
-  
+
   return Result();
-  
+
 }
 
 template<typename T>
@@ -602,12 +690,12 @@ std::ostream& operator<<(std::ostream& os, std::set<T>const& st) {
 
 
 arangodb::Result MaintenanceFeature::removeIndexErrors (
-  std::string const& key, std::unordered_set<std::string> indexIds) {
+  std::string const& key, std::unordered_set<std::string> const& indexIds) {
 
   MUTEX_LOCKER(guard, _ieLock);
 
   // If no entry for this shard exists bail out
-  auto kit = _indexErrors.find(key); 
+  auto kit = _indexErrors.find(key);
   if (kit == _indexErrors.end()) {
     std::stringstream error;
     error << "erasing index " << indexIds << " error for shard " << key
@@ -616,13 +704,13 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
     return Result(TRI_ERROR_FAILED, error.str());
   }
 
-  auto& errors = kit->second; 
+  auto& errors = kit->second;
 
   try {
     for (auto const& indexId : indexIds) {
       errors.erase(indexId);
     }
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     std::stringstream error;
     error << "erasing index errors " << indexIds << " for " << key << " failed";
     LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << error.str();
@@ -635,11 +723,11 @@ arangodb::Result MaintenanceFeature::removeIndexErrors (
 
 arangodb::Result MaintenanceFeature::removeIndexErrors (
   std::string const& database, std::string const& collection,
-  std::string const& shard, std::unordered_set<std::string> indexIds) {
+  std::string const& shard, std::unordered_set<std::string> const& indexIds) {
 
   return removeIndexErrors(
     database + SLASH + collection + SLASH + shard, indexIds);
-  
+
 }
 
 arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {

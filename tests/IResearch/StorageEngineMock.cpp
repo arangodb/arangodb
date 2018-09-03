@@ -184,11 +184,10 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void toVelocyPack(
       VPackBuilder& builder,
-      bool withFigures,
-      bool forPersistence
+      std::underlying_type<arangodb::Index::Serialize>::type flags
   ) const override {
     builder.openObject();
-    Index::toVelocyPack(builder, withFigures, forPersistence);
+    Index::toVelocyPack(builder, flags);
     // hard-coded
     builder.add("unique", VPackValue(false));
     builder.add("sparse", VPackValue(false));
@@ -862,8 +861,10 @@ arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods* 
 
 arangodb::Result PhysicalCollectionMock::replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous) {
   before();
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+
+  auto key = newSlice.get(arangodb::StaticStrings::KeyString);
+
+  return update(trx, newSlice, result, options, resultMarkerTick, lock, prevRev, previous, key);
 }
 
 int PhysicalCollectionMock::restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) {
@@ -1386,6 +1387,10 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
+}
+  
+std::vector<std::string> StorageEngineMock::currentWalFiles() const {
+  return std::vector<std::string>(); 
 }
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {

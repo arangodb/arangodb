@@ -85,10 +85,10 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
+void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
+                  std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
+  RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
     arangodb::StaticStrings::IndexUnique,
     arangodb::velocypack::Value(false)

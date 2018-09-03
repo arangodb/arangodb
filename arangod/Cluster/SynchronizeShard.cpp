@@ -100,12 +100,12 @@ SynchronizeShard::SynchronizeShard(
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(SHARD)) {
-    error << "SHARD must be stecified";
+    error << "SHARD must be specified";
   }
   TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(LEADER)) {
-    error << "leader must be stecified";
+    error << "leader must be specified";
   }
   TRI_ASSERT(desc.has(LEADER));
 
@@ -119,7 +119,7 @@ SynchronizeShard::SynchronizeShard(
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
 public:
-  SynchronizeShardCallback(SynchronizeShard* callie) {};
+  explicit SynchronizeShardCallback(SynchronizeShard* callie) {};
   virtual bool operator()(arangodb::ClusterCommResult*) override final {
     return true;
   }
@@ -152,7 +152,7 @@ arangodb::Result getReadLockId (
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
       id = std::stoll(idSlice.get(ID).copyString());
-    } catch (std::exception const& e) {
+    } catch (std::exception const&) {
       error += " expecting id to be int64_t ";
       error += idSlice.toJson();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
@@ -168,7 +168,7 @@ arangodb::Result getReadLockId (
 
 
 arangodb::Result count(
-  std::shared_ptr<arangodb::LogicalCollection> const col, uint64_t& c) {
+  std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
 
   std::string collectionName(col->name());
   auto ctx = std::make_shared<transaction::StandaloneContext>(col->vocbase());
@@ -504,7 +504,7 @@ enum ApplierType {
 };
 
 arangodb::Result replicationSynchronize(
-  std::shared_ptr<arangodb::LogicalCollection> const col, VPackSlice const& config,
+  std::shared_ptr<arangodb::LogicalCollection> const &col, VPackSlice const& config,
   ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
 
   auto& vocbase = col->vocbase();
@@ -570,16 +570,16 @@ arangodb::Result replicationSynchronize(
   } catch (arangodb::basics::Exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
-    return Result(ex.code(), ex.what());
+    return Result(ex.code(), s);
   } catch (std::exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") + syncer->progress() + "'";
-    return Result(TRI_ERROR_INTERNAL, ex.what());
+    return Result(TRI_ERROR_INTERNAL, s);
   } catch (...) {
     std::string s(
       "cannot sync from remote endpoint: unknown exception. last progress message was '");
       s+= syncer->progress() + "'";
-    return Result(TRI_ERROR_INTERNAL);
+    return Result(TRI_ERROR_INTERNAL, s);
   }
 
   return arangodb::Result();
@@ -806,7 +806,7 @@ bool SynchronizeShard::first() {
       bool longSync = false;
 
       // Long shard sync initialisation
-      if (endTime-startTime > seconds(5)) {
+      if (endTime - startTime > seconds(5)) {
         LOG_TOPIC(WARN, Logger::MAINTENANCE)
           << "synchronizeOneShard: long call to syncCollection for shard"
           << shard << " " << syncRes.errorMessage() <<  " start time: "
@@ -949,9 +949,8 @@ bool SynchronizeShard::first() {
     << timepointToString(startTime) << ", ended: " << timepointToString(endTime);
 
   notify();
-  return false;;
+  return false;
 
 }
 
-SynchronizeShard::~SynchronizeShard() {};
-
+SynchronizeShard::~SynchronizeShard() {}

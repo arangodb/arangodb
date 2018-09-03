@@ -49,14 +49,14 @@ public:
   Action(MaintenanceFeature&, ActionDescription&&);
 
   /// @brief construct with description
-  Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const);
+  Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const&);
 
   /**
    * @brief construct with concrete action base
    * @param feature  Maintenance feature
    * @param action   Concrete action
    */
-  Action(std::unique_ptr<ActionBase> action);
+  explicit Action(std::unique_ptr<ActionBase> action);
 
   /// @brief clean up
   virtual ~Action();
@@ -105,6 +105,9 @@ public:
 
   /// @brief finalize statistics
   void endStats();
+
+  /// @brief check if action matches worker options
+  bool matches(std::unordered_set<std::string> const& labels) const;
 
   /// @brief return progress statistic
   uint64_t getProgress() const { return _action->getProgress(); }

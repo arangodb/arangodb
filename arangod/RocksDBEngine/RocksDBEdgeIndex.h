@@ -142,7 +142,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   bool needToPersistEstimate() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   void batchInsert(
       transaction::Methods*,

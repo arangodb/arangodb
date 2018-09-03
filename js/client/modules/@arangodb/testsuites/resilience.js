@@ -36,9 +36,9 @@ const optionsDocumentation = [
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'resilience': ['js/server/tests/resilience'],
-  'client_resilience': ['js/client/tests/resilience'],
-  'active_failover': ['js/client/tests/active-failover']
+  'resilience': [tu.pathForTesting('server/resilience')],
+  'client_resilience': [tu.pathForTesting('client/resilience')],
+  'active_failover': [tu.pathForTesting('client/active-failover')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -60,7 +60,7 @@ function resilience (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
+  let testCases = tu.scanTestPaths(testPaths.client_resilience);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;

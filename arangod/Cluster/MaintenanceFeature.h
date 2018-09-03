@@ -41,7 +41,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   MaintenanceFeature();
 
-  virtual ~MaintenanceFeature() {};
+  virtual ~MaintenanceFeature() {}
 
   struct errors_t {
     std::map<std::string,
@@ -59,6 +59,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   // preparation phase for feature in the preparation phase, the features must
   // not start any threads. furthermore, they must not write any files under
@@ -77,6 +78,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   // shut down the feature
   virtual void unprepare() override {};
+
 
 
   //
@@ -112,11 +114,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
 protected:
   std::shared_ptr<maintenance::Action> createAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description);
+
+  void registerAction(
+    std::shared_ptr<maintenance::Action> action, bool executeNow);
+
+  std::shared_ptr<maintenance::Action> createAndRegisterAction(
     std::shared_ptr<maintenance::ActionDescription> const & description,
     bool executeNow);
-
-  void createAction(
-    std::shared_ptr<maintenance::Action> action, bool executeNow);
 
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
@@ -130,8 +135,10 @@ public:
   Result toJson(VPackBuilder & builder);
 
   /// @brief Return pointer to next ready action, or nullptr
-  std::shared_ptr<maintenance::Action> findReadyAction();
-
+  std::shared_ptr<maintenance::Action> findReadyAction(
+    std::unordered_set<std::string> const& options =
+    std::unordered_set<std::string>());
+  
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
   uint64_t nextActionId() {return _nextActionId++;};
@@ -192,9 +199,9 @@ public:
    */
   arangodb::Result removeIndexErrors (
     std::string const& database, std::string const& collection,
-    std::string const& shard, std::unordered_set<std::string> indexIds);
+    std::string const& shard, std::unordered_set<std::string> const& indexIds);
   arangodb::Result removeIndexErrors (
-    std::string const& path, std::unordered_set<std::string> indexIds);
+    std::string const& path, std::unordered_set<std::string> const& indexIds);
 
   /**
    * @brief add shard error to bucket
@@ -209,6 +216,11 @@ public:
   arangodb::Result storeShardError (
     std::string const& database, std::string const& collection,
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error);
+
+  arangodb::Result storeShardError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& serverId,
+    arangodb::Result const& failure);
 
   /**
    * @brief get all pending shard errors
@@ -249,6 +261,9 @@ public:
   arangodb::Result storeDBError (
     std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error);
 
+  arangodb::Result storeDBError (
+    std::string const& database, Result const& failure);
+
   /**
    * @brief get all pending shard errors
    *
@@ -277,6 +292,12 @@ public:
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
+  /// @brief Lowest limit for worker threads
+  static uint32_t const minThreadLimit;
+
+  /// @brief Highest limit for worker threads
+  static uint32_t const maxThreadLimit;
+  
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -297,9 +318,11 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
-protected:
+  /// @brief option for forcing this feature to always be enable - used by the catch tests
+  bool _forceActivation;
+
   /// @brief tunable option for thread pool size
-  int32_t _maintenanceThreadsMax;
+  uint32_t _maintenanceThreadsMax;
 
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry
@@ -360,8 +383,8 @@ protected:
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
 
-
-
+  
+  
 };
 
 }

@@ -41,13 +41,13 @@ const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'shell_replication': ['js/common/tests/replication'],
-  'replication_aql': ['js/server/tests/replication/'],
-  'replication_fuzz': ['js/server/tests/replication/'],
-  'replication_random': ['js/server/tests/replication/'],
-  'replication_ongoing': ['js/server/tests/replication/'],
-  'replication_static': ['js/server/tests/replication/'],
-  'replication_sync': ['js/server/tests/replication/']
+  'shell_replication': [tu.pathForTesting('common/replication')],
+  'replication_aql': [tu.pathForTesting('server/replication')],
+  'replication_fuzz': [tu.pathForTesting('server/replication')],
+  'replication_random': [tu.pathForTesting('server/replication')],
+  'replication_ongoing': [tu.pathForTesting('server/replication')],
+  'replication_static': [tu.pathForTesting('server/replication')],
+  'replication_sync': [tu.pathForTesting('server/replication')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////

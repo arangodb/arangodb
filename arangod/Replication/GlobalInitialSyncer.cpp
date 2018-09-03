@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/LogicalCollection.h"
@@ -339,8 +340,13 @@ Result GlobalInitialSyncer::updateServerInventory(
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
-    TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
-    Result r = methods::Databases::drop(system, dbname);
+    auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::SystemDatabaseFeature
+    >();
+    auto r = sysDbFeature
+      ? methods::Databases::drop(sysDbFeature->use().get(), dbname)
+      : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
+      ;
 
     if (r.fail()) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "Dropping db failed on replicant";

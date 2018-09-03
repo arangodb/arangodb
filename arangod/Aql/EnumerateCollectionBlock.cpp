@@ -91,7 +91,6 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
 
 std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -100,20 +99,14 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();
   _cursor->reset();
-  DEBUG_END_BLOCK();
 
   return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief getSome
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 EnumerateCollectionBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   TRI_ASSERT(_cursor != nullptr);
@@ -217,14 +210,9 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   _inflight = 0;
   traceGetSomeEnd(res.get(), getHasMoreState());
   return {getHasMoreState(), std::move(res)};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   if (_done) {
     TRI_ASSERT(_inflight == 0);
     return {ExecutionState::DONE, _inflight};
@@ -276,7 +264,4 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
   size_t skipped = _inflight;
   _inflight = 0;
   return {getHasMoreState(), skipped};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }

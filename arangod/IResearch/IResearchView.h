@@ -159,7 +159,7 @@ class IResearchView final
 
     /// @brief retrieve the latest view snapshot and cache
     /// it in a transaction
-    SyncAndCreate
+    SyncAndReplace
   };
 
   ///////////////////////////////////////////////////////////////////////////////

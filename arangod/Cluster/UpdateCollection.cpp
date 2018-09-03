@@ -32,6 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "Cluster/MaintenanceFeature.h"
 
 
 using namespace arangodb;
@@ -45,10 +46,17 @@ UpdateCollection::UpdateCollection(
 
   std::stringstream error;
   
+  _labels.emplace(FAST_TRACK);
+
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified. ";
   }
   TRI_ASSERT(desc.has(COLLECTION));
+
+  if (!desc.has(SHARD)) {
+    error << "shard must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SHARD));
 
   if (!desc.has(DATABASE)) {
     error << "database must be specified. ";
@@ -56,12 +64,12 @@ UpdateCollection::UpdateCollection(
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!desc.has(LEADER)) {
-    error << "leader must be stecified. ";
+    error << "leader must be specified. ";
   }
   TRI_ASSERT(desc.has(LEADER));
 
   if (!desc.has(LOCAL_LEADER)) {
-    error << "local leader must be stecified. ";
+    error << "local leader must be specified. ";
   }
   TRI_ASSERT(desc.has(LOCAL_LEADER));
 
@@ -70,7 +78,7 @@ UpdateCollection::UpdateCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-  
+
 }
 
 void handleLeadership(
@@ -117,33 +125,41 @@ UpdateCollection::~UpdateCollection() {};
 
 bool UpdateCollection::first() {
 
-  auto const& database   = _description.get(DATABASE);
-  auto const& collection = _description.get(COLLECTION);
+  auto const& database      = _description.get(DATABASE);
+  auto const& collection    = _description.get(COLLECTION);
+  auto const& shard         = _description.get(SHARD);
   auto const& plannedLeader = _description.get(LEADER);
-  auto const& localLeader = _description.get(LOCAL_LEADER);
+  auto const& localLeader   = _description.get(LOCAL_LEADER);
   auto const& props = properties();
 
   try {
 
     DatabaseGuard guard(database);
     auto vocbase = &guard.database();
-    
+
     Result found = methods::Collections::lookup(
-      vocbase, collection, [&](LogicalCollection& coll) {
+      vocbase, shard, [&](LogicalCollection& coll) {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-          << "Updating local collection " + collection;
-        
+          << "Updating local collection " + shard;
+
         // We adjust local leadership, note that the planned
         // resignation case is not handled here, since then
         // ourselves does not appear in shards[shard] but only
         // "_" + ourselves.
         handleLeadership(coll, localLeader, plannedLeader);
         _result = Collections::updateProperties(&coll, props);
+
+        if (!_result.ok()) {
+          LOG_TOPIC(ERR, Logger::MAINTENANCE) << "failed to update properties"
+            " of collection " << shard << ": " << _result.errorMessage();
+          _feature.storeShardError(database, collection, shard,
+            _description.get(SERVER_ID), _result);
+        }
       });
-    
+
     if (found.fail()) {
       std::stringstream error;
-      error << "failed to lookup local collection " << collection
+      error << "failed to lookup local collection " << shard
             << "in database " + database;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
@@ -156,7 +172,7 @@ bool UpdateCollection::first() {
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }
-  
+
   notify();
   return false;
 

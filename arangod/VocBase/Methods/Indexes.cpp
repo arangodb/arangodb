@@ -81,8 +81,9 @@ Result Indexes::getIndex(LogicalCollection const* collection,
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
+  
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, false, tmp);
+  Result res = Indexes::getAll(collection, Index::makeFlags(), false, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
       if (index.get("id").compareString(name) == 0) {
@@ -94,9 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
+/// @brief get all indexes, skips view links
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
-                                 bool withFigures, VPackBuilder& result) {
-
+                                 std::underlying_type<Index::Serialize>::type flags,
+                                 bool withLinks,
+                                 VPackBuilder& result) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(collection);
@@ -113,10 +116,16 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner, withFigures, false);
+#ifdef USE_IRESEARCH
+    c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
+      return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    });
+#else
+    c->getIndexesVPack(tmpInner, flags);
+#endif
 
     tmp.openArray();
-    for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
+    for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
       auto id = StringRef(s.get("id"));
       auto found = std::find_if(estimates.begin(),
                                 estimates.end(),
@@ -124,7 +133,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                   return id == v.first;
                                 }
                                );
-      if(found == estimates.end()){
+      if (found == estimates.end()) {
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
@@ -156,9 +165,13 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     auto indexes = collection->getIndexes();
 
     tmp.openArray(true);
-
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-      idx->toVelocyPack(tmp, withFigures, false);
+#ifdef USE_IRESEARCH
+      if (withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        continue;
+      }
+#endif
+      idx->toVelocyPack(tmp, flags);
     }
     tmp.close();
     trx.finish(res);
@@ -230,7 +243,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
           merge.close();
 
           merge.add("selectivityEstimate", VPackValue(selectivity / 2));
-          if (withFigures) {
+          if (Index::hasFlag(flags, Index::Serialize::Figures)) {
             merge.add("figures", VPackValue(VPackValueType::Object));
             merge.add("memory", VPackValue(memory));
             if (useCache) {
@@ -296,7 +309,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   VPackBuilder tmp;
   try {
-    idx->toVelocyPack(tmp, false, false);
+    idx->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Estimates));
   } catch (...) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
   }

@@ -100,7 +100,7 @@ class Methods {
    public:
     IndexHandle() = default;
     void toVelocyPack(arangodb::velocypack::Builder& builder,
-                      bool withFigures) const;
+            std::underlying_type<Index::Serialize>::type flags) const;
     bool operator==(IndexHandle const& other) const {
       return other._index.get() == _index.get();
     }

@@ -35,13 +35,13 @@
 #include "ApplicationServerHelper.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"
-#include "SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
@@ -254,14 +254,14 @@ void ensureConfigCollection(TRI_vocbase_t& vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
+arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
   auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::iresearch::SystemDatabaseFeature
+    arangodb::SystemDatabaseFeature
   >();
 
   if (!database) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to find feature 'SystemDatabase' while getting the system database";
+      << "failure to find feature '" << arangodb::SystemDatabaseFeature::name() << "' while getting the system database";
 
     return nullptr;
   }

@@ -56,7 +56,7 @@ Action::Action(
 
 Action::Action(
   MaintenanceFeature& feature,
-  std::shared_ptr<ActionDescription> const description)
+  std::shared_ptr<ActionDescription> const &description)
   : _action(nullptr) {
   TRI_ASSERT(description->has("name"));
   create(feature, *description);
@@ -115,6 +115,11 @@ bool Action::first() {
 bool Action::next() {
   TRI_ASSERT(_action != nullptr);
   return _action->next();
+}
+
+bool Action::matches(std::unordered_set<std::string> const& labels) const {
+  TRI_ASSERT(_action != nullptr);
+  return _action->matches(labels);
 }
 
 arangodb::Result Action::result() {

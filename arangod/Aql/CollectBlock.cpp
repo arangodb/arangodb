@@ -255,7 +255,6 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
 
 std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -264,16 +263,11 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();
   _currentGroup.reset();
   _pos = 0;
   _lastBlock = nullptr;
-  DEBUG_END_BLOCK();
 
   return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
@@ -946,7 +940,6 @@ DistinctCollectBlock::~DistinctCollectBlock() {
 
 std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   auto res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res.first == ExecutionState::WAITING ||
@@ -955,16 +948,11 @@ std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCurs
     return res;
   }
 
-  DEBUG_BEGIN_BLOCK();
   _pos = 0;
   _res = nullptr;
   clearValues();
-  DEBUG_END_BLOCK();
 
   return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 void DistinctCollectBlock::clearValues() {
@@ -1134,8 +1122,6 @@ std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
 
 std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping,
                                                                    AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();
-
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_done) {
@@ -1183,7 +1169,4 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
   result = res.release();
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }

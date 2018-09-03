@@ -66,7 +66,6 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchViewNode.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
@@ -76,6 +75,7 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -138,6 +138,7 @@ struct IResearchViewCoordinatorSetup {
       std::string name = ftr->name();
       features.emplace(name, std::make_pair(ftr, start));
     };
+    arangodb::application_features::ApplicationFeature* tmpFeature;
 
     buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
     buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
@@ -148,7 +149,10 @@ struct IResearchViewCoordinatorSetup {
     // setup required application features
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
+    arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
     buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
     buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
@@ -157,12 +161,6 @@ struct IResearchViewCoordinatorSetup {
     buildFeatureEntry(new arangodb::AqlFeature(server), true);
     buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
-
-    // We need this feature to be added now in order to create the system database
-    arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
-
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(server), true);
     buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(server), false);
@@ -1078,7 +1076,7 @@ SECTION("test_update_links_partial_remove") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1124,7 +1122,7 @@ SECTION("test_update_links_partial_remove") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1169,7 +1167,7 @@ SECTION("test_update_links_partial_remove") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1303,7 +1301,7 @@ SECTION("test_update_links_partial_remove") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1349,7 +1347,7 @@ SECTION("test_update_links_partial_remove") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1622,7 +1620,7 @@ SECTION("test_update_links_partial_add") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1667,7 +1665,7 @@ SECTION("test_update_links_partial_add") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1816,7 +1814,7 @@ SECTION("test_update_links_partial_add") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1863,7 +1861,7 @@ SECTION("test_update_links_partial_add") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1909,7 +1907,7 @@ SECTION("test_update_links_partial_add") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2228,7 +2226,7 @@ SECTION("test_update_links_replace") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2273,7 +2271,7 @@ SECTION("test_update_links_replace") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2404,7 +2402,7 @@ SECTION("test_update_links_replace") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2526,7 +2524,7 @@ SECTION("test_update_links_replace") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2815,7 +2813,7 @@ SECTION("test_update_links_clear") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2862,7 +2860,7 @@ SECTION("test_update_links_clear") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2907,7 +2905,7 @@ SECTION("test_update_links_clear") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(true, false);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -3174,7 +3172,7 @@ SECTION("test_drop_link") {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
-      auto builder = index->toVelocyPack(true, false);
+      auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       error.clear();
       CHECK(actualMeta.init(builder->slice(), error));
