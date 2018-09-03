@@ -318,6 +318,8 @@ protected:
 
   /// @brief tunable option for thread pool size
   uint32_t _maintenanceThreadsMax;
+  static uint32_t const _minThreadLimit;
+  static uint32_t const _maxThreadLimit;
 
   /// @brief tunable option for number of seconds COMPLETE or FAILED actions block
   ///  duplicates from adding to _actionRegistry
@@ -377,6 +379,9 @@ protected:
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
+
+  
+  
 };
 
 }
