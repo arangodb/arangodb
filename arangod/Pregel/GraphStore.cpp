@@ -98,21 +98,6 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
   uint64_t totalMemory = TRI_totalSystemMemory();
   
-  // calculating sum of all ith edge shards and set it as
-  // starting offset for all i+1 edge shards
-  /*for (auto const& pair : edgeCollMap) {
-    std::vector<ShardID> const& edgeShards = pair.second;
-    if (_edgeShardsOffset.size() == 0) {
-      _edgeShardsOffset.resize(edgeShards.size()+1);
-      std::fill(_edgeShardsOffset.begin(), _edgeShardsOffset.end(), 0);
-    } else {
-      TRI_ASSERT(_edgeShardsOffset.size() == edgeShards.size()+1);
-    }
-    for (size_t i = 0; i < edgeShards.size(); i++) {
-      _edgeShardsOffset[i+1] += shardSizes[edgeShards[i]];
-    }
-  }*/
-  
   std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
   _config->vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
@@ -228,47 +213,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
     }
     
-    /*std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
-    _config->vertexCollectionShards();
-    std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
-    _config->edgeCollectionShards();
-    
-    for (auto const& pair : vertexCollMap) {
-      std::vector<ShardID> const& vertexShards = pair.second;
-      for (size_t i = 0; i < vertexShards.size(); i++) {
-        // we might have already loaded these shards
-        if (_loadedShards.find(vertexShards[i]) != _loadedShards.end()) {
-          continue;
-        }
-        
-        ShardID const& vertexShard = vertexShards[i];
-        std::vector<ShardID> edgeLookups;
-        // distributeshardslike should cause the edges for a vertex to be
-        // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
-        for (auto const& pair2 : edgeCollMap) {
-          std::vector<ShardID> const& edgeShards = pair2.second;
-          if (vertexShards.size() != edgeShards.size()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                           "Collections need to have the same number of shards");
-          }
-          edgeLookups.push_back(edgeShards[i]);
-        }
-        
-        _loadedShards.insert(vertexShard);
-        _runningThreads++;
-        scheduler->post([this, i, vertexShard, edgeLookups, vertexOffset] {
-          TRI_DEFER(_runningThreads--);// exception safe
-          _loadVertices(vertexShard, edgeLookups, vertexOffset, _edgeShardsOffset[i]);
-        }, false);
-        // update to next offset
-        vertexOffset += shardSizes[vertexShard];
-      }
-      
-      // we can only load one vertex collection at a time
-      while (_runningThreads > 0) {
-        std::this_thread::sleep_for(std::chrono::microseconds(5000));
-      }
-    }*/
     scheduler->post(callback, false);
   }, false);
 }
