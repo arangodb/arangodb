@@ -1973,7 +1973,7 @@
                 try {
                   geojson = new L.GeoJSON(geometry, {
                     onEachFeature: function (feature, layer, x) {
-                      layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(geo, null, 2) + '</pre>');
+                      layer.bindPopup('<pre style="width: 250px; max-height: 250px;">' + JSON.stringify(geo, null, 2) + '</pre>');
                     },
                     pointToLayer: function (feature, latlng) {
                       var res = L.circleMarker(latlng, geojsonMarkerOptions);
