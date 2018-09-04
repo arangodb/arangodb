@@ -58,8 +58,7 @@ function StatementSuite () {
     tearDown : function () {
       try {
         db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
         // ignore this error
       }
     },
@@ -74,8 +73,7 @@ function StatementSuite () {
       try {
         st.execute();
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, e.errorNum);
       }
     },
@@ -88,8 +86,7 @@ function StatementSuite () {
       try {
         db._createStatement();
         fail();
-      }
-      catch (e) {
+      } catch (e) {
       }
     },
 
@@ -169,8 +166,7 @@ function StatementSuite () {
       try {
         st.parse();
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
     },
@@ -239,8 +235,7 @@ function StatementSuite () {
       try {
         st.explain();
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
     },
@@ -325,8 +320,7 @@ function StatementSuite () {
       var st = db._createStatement({ query : "FOR i IN @@list FILTER i == @value RETURN i" });
       try {
         st.explain();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
       }
     },
@@ -341,8 +335,7 @@ function StatementSuite () {
 
       try {
         st.explain();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_TYPE.code, e.errorNum);
       }
     },
@@ -359,8 +352,7 @@ function StatementSuite () {
 
       try {
         st.explain();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code, e.errorNum);
       }
     },
@@ -390,7 +382,6 @@ function StatementSuite () {
       assertTrue(result.hasOwnProperty("cacheable"));
       assertTrue(result.cacheable);
     },
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test bind method, bind variables
@@ -459,8 +450,7 @@ function StatementSuite () {
         var result = st.execute();
         result = true;
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
     },
@@ -795,8 +785,7 @@ function StatementSuite () {
       try {
         st.execute();
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
       }
     },
@@ -811,8 +800,7 @@ function StatementSuite () {
       try {
         st.bind("value", 1);
         fail();
-      }
-      catch (e) {
+      } catch (e) {
       }
     },
 
@@ -927,8 +915,7 @@ function StatementSuite () {
       try {
         // cursor does not exist anymore
         c.next();
-      }
-      catch (err) {
+      } catch (err) {
         require("internal").print(err);
         assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
       }
@@ -940,7 +927,6 @@ function StatementSuite () {
 
     testDispose2 : function () {
       var st = db._createStatement({ query : "for i in 1..10 return i", batchSize : 1 });
-
       var c = st.execute();
 
       while (c.hasNext()) {
@@ -950,9 +936,7 @@ function StatementSuite () {
 
       try {
         c.dispose();
-      }
-      catch (err) {
-        require("internal").print(err);
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
       }
     },
@@ -971,8 +955,7 @@ function StatementSuite () {
 
       try {
         db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       db._createDatabase("UnitTestsDatabase0");
@@ -1044,8 +1027,7 @@ function StatementSuite () {
       try {
         db._createStatement(aql`${FOR} i IN 1..2 ${RETURN} i ${PLUS} 1`).execute();
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, err.errorNum);
       }
     },
@@ -1071,8 +1053,7 @@ function StatementSuite () {
         /*global foo */
         db._createStatement(aql`FOR u IN ${foo} RETURN 1`);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertMatch(/^ReferenceError/, String(err));
       }
     }
@@ -1080,11 +1061,9 @@ function StatementSuite () {
   };
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(StatementSuite);
 return jsunity.done();
-

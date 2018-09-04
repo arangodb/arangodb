@@ -765,6 +765,9 @@ This is a change to previous versions of ArangoDB, in which the `fullCount`
 value was produced by the sequential last `LIMIT` statement in a query,
 regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
+The `fullCount` result value will now also be returned for queries that are served
+from the query results cache.
+
 ### Relaxed restrictions for LIMIT values
 
 The `offset` and `count` values used in an AQL LIMIT clause can now be expressions, as
