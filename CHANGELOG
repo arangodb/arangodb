@@ -1,4 +1,4 @@
-v3.3.15 (XXXX-XX-XX)
+v3.3.15 (2018-09-03)
 --------------------
 
 * fixed issue #5941 if using breadth-first search in traversals uniqueness checks
