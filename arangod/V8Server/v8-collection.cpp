@@ -110,19 +110,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-struct LocalCollectionGuard {
-  explicit LocalCollectionGuard(LogicalCollection* collection)
-      : _collection(collection) {}
-
-  ~LocalCollectionGuard() {
-    if (_collection != nullptr && !_collection->isLocal()) {
-      delete _collection;
-    }
-  }
-
-  LogicalCollection* _collection;
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a boolean flag from the arguments
 /// must specify the argument index starting from 1
@@ -368,8 +355,6 @@ static void ExistsVocbaseVPack(
     col = collection.get();
   }
 
-  LocalCollectionGuard g(useCollection ? nullptr : col);
-
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -544,8 +529,6 @@ static void DocumentVocbase(
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-
-  LocalCollectionGuard g(col);
 
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(!collectionName.empty());
@@ -787,8 +770,6 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-
-  LocalCollectionGuard g(col);
 
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(!collectionName.empty());
@@ -1775,9 +1756,6 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-
-  // We need to free the collection object in the end
-  LocalCollectionGuard g(col);
 
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
