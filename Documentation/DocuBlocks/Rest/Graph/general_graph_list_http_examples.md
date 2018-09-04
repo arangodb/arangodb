@@ -27,7 +27,7 @@ The information about the newly created graph
 @RESTSTRUCT{name,graph_representation,string,required,}
 The name of the graph
 
-@RESTSTRUCT{edgeDefinitions,graph_representation,array,required,post_api_gharial_create_edge_defs}
+@RESTSTRUCT{edgeDefinitions,graph_representation,array,required,graph_edge_definition}
 An array of definitions for the relations of the graph.
 Each has the following type:
 

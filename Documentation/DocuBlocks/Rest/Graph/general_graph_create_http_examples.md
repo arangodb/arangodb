@@ -17,24 +17,9 @@ Will change the success response code.
 @RESTBODYPARAM{name,string,required,string}
 Name of the graph.
 
-@RESTBODYPARAM{edgeDefinitions,array,optional,post_api_gharial_create_edge_defs}
+@RESTBODYPARAM{edgeDefinitions,array,optional,graph_edge_definition}
 An array of definitions for the relations of the graph.
 Each has the following type:
-
-@RESTSTRUCT{relation,post_api_gharial_create_edge_defs,object,optional,post_api_gharial_create_edge_defs_relation}
-An object describing exactly on relation in this graph. It defines the EdgeCollection
-where the edges are stored in and defines invariants for the collections where edges
-are allowed to start from and where they are allowed to point to.
-
-@RESTSTRUCT{collection,post_api_gharial_create_edge_defs_relation,string,required,}
-Name of the edge collection.
-
-@RESTSTRUCT{from,post_api_gharial_create_edge_defs_relation,array,required,post_api_gharial_create_edge_defs_relation_from}
-List of vertex collection names.
-Edges in collection can only be inserted if their _from is in any of the collections here.
-
-@RESTSTRUCT{fromCollection,post_api_gharial_create_edge_defs_relation_from,string,required,}
-The name of a vertex collection
 
 @RESTBODYPARAM{isSmart,boolean,optional,boolean}
 Define if the created graph should be smart.

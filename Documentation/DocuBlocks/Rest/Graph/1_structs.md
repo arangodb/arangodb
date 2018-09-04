@@ -1,7 +1,7 @@
 @RESTSTRUCT{name,graph_representation,string,required,}
 The name of the graph.
 
-@RESTSTRUCT{edgeDefinitions,graph_representation,array,required,post_api_gharial_create_edge_defs}
+@RESTSTRUCT{edgeDefinitions,graph_representation,array,required,graph_edge_definition}
 An array of definitions for the relations of the graph.
 Each has the following type:
 
@@ -40,4 +40,13 @@ The _key value of the new vertex.
 @RESTSTRUCT{_rev,vertex_representation,string,required,}
 The _rev value of the new vertex.
 
+@RESTSTRUCT{collection,graph_edge_definition,string,required,}
+Name of the edge collection, where the edge are stored in.
 
+@RESTSTRUCT{from,graph_edge_definition,array,required,string}
+List of vertex collection names.
+Edges in collection can only be inserted if their _from is in any of the collections here.
+
+@RESTSTRUCT{to,graph_edge_definition,array,required,string}
+List of vertex collection names.
+Edges in collection can only be inserted if their _to is in any of the collections here.
