@@ -36,20 +36,6 @@ Edges in collection can only be inserted if their _from is in any of the collect
 @RESTSTRUCT{fromCollection,post_api_gharial_create_edge_defs_relation_from,string,required,}
 The name of a vertex collection
 
-@RESTSTRUCT{to,post_api_gharial_create_edge_defs_relation,array,required,post_api_gharial_create_edge_defs_relation_to}
-List of vertex collection names.
-Edges in collection can only be inserted if their _to is in any of the collections here.
-
-@RESTSTRUCT{toCollection,post_api_gharial_create_edge_defs_relation_to,string,required,}
-The name of a vertex collection
-
-@RESTBODYPARAM{orphanCollections,array,optional,post_api_gharial_create_orphans}
-An array of additional vertex collections.
-Documents within these collections do not have edges within this graph.
-
-@RESTSTRUCT{orphanCollection,post_api_gharial_create_orphans,string,required,}
-The name of a vertex collection
-
 @RESTBODYPARAM{isSmart,boolean,optional,boolean}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
@@ -88,39 +74,6 @@ The response code.
 @RESTREPLYBODY{graph,object,required,graph_representation}
 The information about the newly created graph.
 
-@RESTSTRUCT{name,graph_representation,string,required,}
-The name of the graph.
-
-@RESTSTRUCT{edgeDefinitions,graph_representation,array,required,post_api_gharial_create_edge_defs}
-An array of definitions for the relations of the graph.
-Each has the following type:
-
-@RESTSTRUCT{orphanCollections,graph_representation,array,required,post_api_gharial_create_orphans}
-An array of additional vertex collections.
-Documents within these collections do not have edges within this graph.
-
-@RESTSTRUCT{numberOfShards,graph_representation,integer,required,}
-Number of shards created for every new collection in the graph.
-
-@RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
-The replication factor used for every new collection in the graph.
-
-@RESTSTRUCT{_id,graph_representation,string,required,}
-The internal id value of this graph. 
-
-@RESTSTRUCT{_rev,graph_representation,string,required,}
-The revision of this graph. Can be used to make sure to not override
-concurrent modifications to this graph.
-
-@RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
-The replication factor used for every new collection in the graph.
-
-@RESTSTRUCT{isSmart,graph_representation,boolean,required,}
-Flag if the graph is a SmartGraph (Enterprise only) or not.
-
-@RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
-The name of the sharding attribute in smart graph case (Enterprise Only)
-
 @RESTRETURNCODE{202}
 Is returned if the graph could be created and waitForSync is disabled
 for the `_graphs` collection and not given in the request.
@@ -131,43 +84,10 @@ Flag if there was an error (true) or not (false)
 It is false in this response.
 
 @RESTREPLYBODY{code,integer,required,}
-The response code
+The response code.
 
-@RESTREPLYBODY{graph,object,required,graph_representation_2}
-The information about the newly created graph
-
-@RESTSTRUCT{name,graph_representation_2,string,required,}
-The name of the graph
-
-@RESTSTRUCT{edgeDefinitions,graph_representation_2,array,required,post_api_gharial_create_edge_defs}
-An array of definitions for the relations of the graph.
-Each has the following type:
-
-@RESTSTRUCT{orphanCollections,graph_representation_2,array,required,post_api_gharial_create_orphans}
-An array of additional vertex collections.
-Documents within these collections do not have edges within this graph.
-
-@RESTSTRUCT{numberOfShards,graph_representation_2,integer,required,}
-Number of shards created for every new collection in the graph.
-
-@RESTSTRUCT{replicationFactor,graph_representation_2,integer,required,}
-The replication factor used for every new collection in the graph.
-
-@RESTSTRUCT{_id,graph_representation_2,string,required,}
-The internal id value of this graph. 
-
-@RESTSTRUCT{_rev,graph_representation_2,string,required,}
-The revision of this graph. Can be used to make sure to not override
-concurrent modifications to this graph.
-
-@RESTSTRUCT{replicationFactor,graph_representation_2,integer,required,}
-The replication factor used for every new collection in the graph.
-
-@RESTSTRUCT{isSmart,graph_representation_2,boolean,required,}
-Flag if the graph is a SmartGraph (Enterprise only) or not.
-
-@RESTSTRUCT{smartGraphAttribute,graph_representation_2,string,optional,}
-The name of the sharding attribute in smart graph case (Enterprise Only)
+@RESTREPLYBODY{graph,object,required,graph_representation}
+The information about the newly created graph.
 
 @RESTRETURNCODE{400}
 Returned if the request is in a wrong format.
