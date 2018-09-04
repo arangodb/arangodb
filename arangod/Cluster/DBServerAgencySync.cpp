@@ -84,11 +84,14 @@ Result getLocalCollections(VPackBuilder& collections) {
       auto cols = vocbase->collections(false);
 
       for (auto const& collection : cols) {
-        collections.add(VPackValue(collection->name()));
-        VPackObjectBuilder col(&collections);
-        collection->toVelocyPack(collections,true,false);
-        collections.add(
-          "theLeader", VPackValue(collection->followers()->getLeader()));
+        if (!collection->system()) {
+          std::string const colname = collection->name();
+          collections.add(VPackValue(colname));
+          VPackObjectBuilder col(&collections);
+          collection->toVelocyPack(collections,true,false);
+          collections.add(
+            "theLeader", VPackValue(collection->followers()->getLeader()));
+        }
       }
     } catch (std::exception const& e) {
       return Result(
@@ -234,7 +237,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     }
   }
-  
+
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "

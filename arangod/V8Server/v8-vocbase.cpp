@@ -1588,7 +1588,9 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const name = TRI_ObjectToString(args[0]);
   auto* vocbase = &GetContextVocBase(isolate);
 
-  if (vocbase->isDropped()) {
+  if (vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
+    // still allow changing back into the _system database even if
+    // the current database has been dropped
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 

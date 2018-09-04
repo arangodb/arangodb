@@ -5754,7 +5754,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
       VPackBuilder builder;
-      idx->toVelocyPack(builder, Index::SERIALIZE_BASICS);
+      idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
 
       fields1.back().name += geoJson ? "[1]" : "[0]";

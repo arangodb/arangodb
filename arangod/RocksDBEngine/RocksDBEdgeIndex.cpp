@@ -558,7 +558,8 @@ double RocksDBEdgeIndex::selectivityEstimate(
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
+                                    std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(
