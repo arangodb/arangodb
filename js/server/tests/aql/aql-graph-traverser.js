@@ -87,9 +87,9 @@ function simpleInboundOutboundSuite () {
 
       c = db._create(gn + 'v2', { numberOfShards: 7 });
       c.insert({ _key: "test" });
-     
+
       c = db._createEdgeCollection(gn + 'e', { numberOfShards: 5 });
-      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" }); 
+      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" });
     },
 
     tearDown: function () {
@@ -2490,7 +2490,62 @@ function complexFilteringSuite () {
         // 1 Filter On D
         assertEqual(stats.filtered, 1);
       }
-    }
+    },
+
+    testModify: function () {
+      var query = `WITH ${vn}
+      FOR v, e, p IN 1..2 OUTBOUND @start @@ecol
+      UPDATE v WITH {updated: true} IN @@vcol
+      FILTER p.vertices[1].left == true
+      SORT v._key
+      RETURN v._key`;
+      var bindVars = {
+        '@ecol': en,
+        '@vcol': vn,
+        start: vertex.A
+      };
+      var cursor = db._query(query, bindVars);
+      assertEqual(cursor.count(), 3);
+      assertEqual(cursor.toArray(), ['B', 'C', 'F']);
+      var stats = cursor.getExtra().stats;
+      assertEqual(stats.writesExecuted, 6);
+      assertEqual(stats.scannedFull, 0);
+      if (isCluster) {
+        // 1 Primary lookup A
+        // 2 Edge Lookups (A)
+        // 2 Primary lookup B,D
+        // 2 Edge Lookups (2 B) (0 D)
+        // 2 Primary Lookups (C, F)
+        if (mmfilesEngine) {
+          assertTrue(stats.scannedIndex <= 13);
+        } else {
+          assertTrue(stats.scannedIndex <= 7);
+        }
+      } else {
+        // 2 Edge Lookups (A)
+        // 2 Primary (B, D) for Filtering
+        // 2 Edge Lookups (B)
+        // All edges are cached
+        // 1 Primary Lookups A -> B (B cached)
+        // 1 Primary Lookups A -> B -> C (A, B cached)
+        // 1 Primary Lookups A -> B -> F (A, B cached)
+        // With traverser-read-cache
+        // assertEqual(stats.scannedIndex, 9);
+
+        // Without traverser-read-cache
+        assertTrue(stats.scannedIndex <= 28);
+        /*
+          if(mmfilesEngine){
+          assertEqual(stats.scannedIndex, 17);
+          } else {
+          assertEqual(stats.scannedIndex, 13);
+          }
+        */
+      }
+      // 1 Filter On D
+      assertEqual(stats.filtered, 3);
+    },
+
   };
 }
 
