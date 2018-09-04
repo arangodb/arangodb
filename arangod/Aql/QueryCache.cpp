@@ -48,7 +48,8 @@ static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 /// @brief create a cache entry
 QueryCacheResultEntry::QueryCacheResultEntry(
     uint64_t hash, QueryString const& queryString,
-    std::shared_ptr<VPackBuilder> queryResult, std::vector<std::string> const& dataSources)
+    std::shared_ptr<VPackBuilder> const& queryResult, 
+    std::vector<std::string> const& dataSources)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -381,8 +382,9 @@ QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
 /// query result!
 QueryCacheResultEntry* QueryCache::store(
     TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
-    std::shared_ptr<VPackBuilder> result,
-    std::vector<std::string> const& dataSources) {
+    std::shared_ptr<VPackBuilder> const& result,
+    std::shared_ptr<VPackBuilder> const& stats,
+    std::vector<std::string>&& dataSources) {
 
   if (!result->slice().isArray()) {
     return nullptr;
@@ -393,7 +395,7 @@ QueryCacheResultEntry* QueryCache::store(
 
   // create the cache entry outside the lock
   auto entry = std::make_unique<QueryCacheResultEntry>(
-      hash, queryString, result, dataSources);
+      hash, queryString, result, std::move(dataSources));
 
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -409,6 +411,27 @@ QueryCacheResultEntry* QueryCache::store(
   // store cache entry
   (*it).second->store(hash, entry.get());
   return entry.release();
+}
+
+/// @brief store a query in the cache
+void QueryCache::store(TRI_vocbase_t* vocbase, std::unique_ptr<QueryCacheResultEntry> entry) {
+  // get the right part of the cache to store the result in
+  auto const part = getPart(vocbase);
+
+  WRITE_LOCKER(writeLocker, _entriesLock[part]);
+
+  auto it = _entries[part].find(vocbase);
+
+  if (it == _entries[part].end()) {
+    // create entry for the current database
+    auto db = std::make_unique<QueryCacheDatabaseEntry>();
+    it = _entries[part].emplace(vocbase, db.get()).first;
+    db.release();
+  }
+
+  // store cache entry
+  (*it).second->store(entry->_hash, entry.get());
+  entry.release();
 }
 
 /// @brief invalidate all queries for the given data sources
