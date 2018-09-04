@@ -34,17 +34,8 @@ It is false in this response.
 @RESTREPLYBODY{code,integer,required,}
 The response code.
 
-@RESTREPLYBODY{vertex,object,required,vertex_representation_1}
+@RESTREPLYBODY{vertex,object,required,vertex_representation}
 The internal attributes for the vertex.
-
-@RESTSTRUCT{_id,vertex_representation_1,string,required,}
-The _id value of the new vertex.
-
-@RESTSTRUCT{_key,vertex_representation_1,string,required,}
-The _key value of the new vertex.
-
-@RESTSTRUCT{_rev,vertex_representation_1,string,required,}
-The _rev value of the new vertex.
 
 @RESTRETURNCODE{202}
 Returned if the request was successful but waitForSync is false.
@@ -56,16 +47,7 @@ It is false in this response.
 @RESTREPLYBODY{code,integer,required,}
 The response code.
 
-@RESTREPLYBODY{vertex,object,required,vertex_representation_2}
-
-@RESTSTRUCT{_id,vertex_representation_2,string,required,}
-The _id value of the new vertex.
-
-@RESTSTRUCT{_key,vertex_representation_2,string,required,}
-The _key value of the new vertex.
-
-@RESTSTRUCT{_rev,vertex_representation_2,string,required,}
-The _rev value of the new vertex.
+@RESTREPLYBODY{vertex,object,required,vertex_representation}
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.

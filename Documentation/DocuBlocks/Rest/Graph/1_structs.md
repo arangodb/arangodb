@@ -30,3 +30,14 @@ Flag if the graph is a SmartGraph (Enterprise only) or not.
 
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
 The name of the sharding attribute in smart graph case (Enterprise Only)
+
+@RESTSTRUCT{_id,vertex_representation,string,required,}
+The _id value of the new vertex.
+
+@RESTSTRUCT{_key,vertex_representation,string,required,}
+The _key value of the new vertex.
+
+@RESTSTRUCT{_rev,vertex_representation,string,required,}
+The _rev value of the new vertex.
+
+
