@@ -187,7 +187,7 @@ static int ParseDocumentOrDocumentHandle(
     v8::Isolate* isolate,
     TRI_vocbase_t* vocbase,
     CollectionNameResolver const* resolver,
-    arangodb::LogicalCollection*& collection,
+    std::shared_ptr<arangodb::LogicalCollection>& collection,
     std::string& collectionName,
     VPackBuilder& builder,
     bool includeRev,
@@ -213,7 +213,7 @@ static int ParseDocumentOrDocumentHandle(
     // we read a collection name from the document id
     // check cross-collection requests
     if (collection != nullptr) {
-      if (!EqualCollection(resolver, collectionName, collection)) {
+      if (!EqualCollection(resolver, collectionName, collection.get())) {
         return TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST;
       }
     }
@@ -227,12 +227,12 @@ static int ParseDocumentOrDocumentHandle(
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
       try {
-        collection = ci->getCollection(vocbase->name(), collectionName).get();
+        collection = ci->getCollection(vocbase->name(), collectionName);
       } catch (...) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
     } else {
-      collection = resolver->getCollectionStruct(collectionName).get();
+      collection = resolver->getCollectionStruct(collectionName);
     }
     if (collection == nullptr) {
       // collection not found
@@ -348,6 +348,7 @@ static void ExistsVocbaseVPack(
   auto transactionContext =
     std::make_shared<transaction::V8Context>(*vocbase, true);
   VPackBuilder builder;
+  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
   std::string collectionName;
   Result res;
 
@@ -358,12 +359,13 @@ static void ExistsVocbaseVPack(
       isolate,
       vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       builder,
       true,
       args[0]
     );
+    col = collection.get();
   }
 
   LocalCollectionGuard g(useCollection ? nullptr : col);
@@ -520,6 +522,7 @@ static void DocumentVocbase(
   auto transactionContext =
     std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
+  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
   std::string collectionName;
 
   {
@@ -528,12 +531,14 @@ static void DocumentVocbase(
       isolate,
       &vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       builder,
       true,
       args[0]
     );
+
+    col = collection.get();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -760,6 +765,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto transactionContext =
     std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
+  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
   std::string collectionName;
 
   {
@@ -768,12 +774,14 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       isolate,
       &vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       builder,
       !options.ignoreRevs,
       args[0]
     );
+
+    col = collection.get();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1736,6 +1744,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   }
 
   arangodb::LogicalCollection* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
   auto transactionContext =
@@ -1754,12 +1763,13 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       isolate,
       &vocbase,
       &(transactionContext->resolver()),
-      col,
+      collection,
       collectionName,
       updateBuilder,
       !options.ignoreRevs,
       args[0]
     );
+    col = collection.get();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
