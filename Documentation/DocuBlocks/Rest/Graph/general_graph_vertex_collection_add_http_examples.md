@@ -27,7 +27,7 @@ It is false in this response.
 The response code.
 
 @RESTREPLYBODY{graph,object,required,graph_representation}
-The information about the newly created graph.
+The information about the modified graph.
 
 @RESTRETURNCODE{202}
 Is returned if the collection could be created and waitForSync is disabled

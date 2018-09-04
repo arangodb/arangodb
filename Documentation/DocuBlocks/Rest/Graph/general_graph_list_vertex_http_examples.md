@@ -1,14 +1,14 @@
 @startDocuBlock general_graph_list_vertex_http_examples
 @brief Lists all vertex collections used in this graph.
 
-@RESTHEADER{GET /_api/gharial/{graph-name}/vertex, List vertex collections}
+@RESTHEADER{GET /_api/gharial/{graph}/vertex, List vertex collections}
 
 @RESTDESCRIPTION
 Lists all vertex collections within this graph.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name,string,required}
+@RESTURLPARAM{graph,string,required}
 The name of the graph.
 
 @RESTRETURNCODES
@@ -23,12 +23,9 @@ It is false in this response.
 @RESTREPLYBODY{code,integer,required,}
 The response code.
 
-@RESTREPLYBODY{collections,array,required,graph_vertex_collection_list}
+@RESTREPLYBODY{collections,array,required,string}
 The list of all vertex collections within this graph.
 Includes collections in edgeDefinitions as well as orphans.
-
-@RESTSTRUCT{collection,graph_vertex_collection_list,string,optional,}
-Name of one vertex collection.
 
 @RESTRETURNCODE{404}
 Returned if no graph with this name could be found.
