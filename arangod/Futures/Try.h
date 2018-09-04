@@ -433,5 +433,31 @@ private:
   std::exception_ptr _exception;
 };
   
+template <class F>
+typename std::enable_if<
+!std::is_same<std::result_of<F>, void>::value,
+Try<std::result_of<F>>>::type
+makeTryWith(F&& func) {
+  using R = std::result_of<F>;
+  try {
+    return Try<R>(in_place, func());
+  } catch(...) {
+    return Try<R>(std::current_exception());
+  }
+}
+  
+template <class F>
+typename std::enable_if<
+std::is_same<std::result_of<F>, void>::value,
+Try<std::result_of<F>>>::type
+makeTryWith(F&& func) {
+  try {
+    func();
+    return Try<void>();
+  } catch(...) {
+    return Try<void>(std::current_exception());
+  }
+}
+  
 }}
 #endif // ARANGOD_FUTURES_TRY_H
