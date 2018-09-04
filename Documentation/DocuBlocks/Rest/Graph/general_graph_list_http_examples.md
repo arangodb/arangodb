@@ -31,7 +31,7 @@ The name of the graph
 An array of definitions for the relations of the graph.
 Each has the following type:
 
-@RESTSTRUCT{orphanCollections,graph_representation,array,required,post_api_gharial_create_orphans}
+@RESTSTRUCT{orphanCollections,graph_representation,array,required,string}
 An array of additional vertex collections.
 Documents within these collections do not have edges within this graph.
 
