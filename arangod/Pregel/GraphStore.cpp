@@ -196,22 +196,29 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     auto shards = _allocateSpace();
     for (auto& pair : shards) {
       for (VertexShardInfo& info : pair.second) {
-        // we might have already loaded these shards
-        if (_loadedShards.find(info.vertexShard) != _loadedShards.end()) {
-          continue;
+        
+        try {
+          // we might have already loaded these shards
+          if (_loadedShards.find(info.vertexShard) != _loadedShards.end()) {
+            continue;
+          }
+          _loadedShards.insert(info.vertexShard);
+          _runningThreads++;
+          TRI_ASSERT(info.numVertices > 0);
+          TRI_ASSERT(vertexOffset < _index.size());
+          TRI_ASSERT(info.edgeDataOffset < _edges->size());
+          scheduler->post([this, &info, vertexOffset] {
+            TRI_DEFER(_runningThreads--);// exception safe
+            _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
+                          vertexOffset, info.edgeDataOffset);
+          }, false);
+          // update to next offset
+          vertexOffset += info.numVertices;
+        } catch(...) {
+          LOG_TOPIC(WARN, Logger::PREGEL) << "unhandled exception while "
+            <<"loading pregel graph";
         }
-        _loadedShards.insert(info.vertexShard);
-        _runningThreads++;
-        TRI_ASSERT(info.numVertices > 0);
-        TRI_ASSERT(vertexOffset < _index.size());
-        TRI_ASSERT(info.edgeDataOffset < _edges->size());
-        scheduler->post([this, &info, vertexOffset] {
-          TRI_DEFER(_runningThreads--);// exception safe
-          _loadVertices(*info.trx, info.vertexShard, info.edgeShards,
-                        vertexOffset, info.edgeDataOffset);
-        }, false);
-        // update to next offset
-        vertexOffset += info.numVertices;
+        
       }
       
       // we can only load one vertex collection at a time
