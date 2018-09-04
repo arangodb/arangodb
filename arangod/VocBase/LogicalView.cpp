@@ -23,16 +23,19 @@
 
 #include "LogicalView.h"
 
-#include "RestServer/ViewTypesFeature.h"
+#include "Aql/PlanCache.h"
+#include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Iterator.h>
 
 namespace arangodb {
 
@@ -112,6 +115,7 @@ LogicalView::LogicalView(
   auto const& viewFactory = viewTypes->factory(dataSourceType);
 
   if (!viewFactory) {
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     LOG_TOPIC(ERR, Logger::VIEWS)
       << "Found view type for which there is no factory, type: "
       << viewType.toString();
@@ -350,6 +354,9 @@ arangodb::Result LogicalViewStorageEngine::updateProperties(
   } catch (...) {
     return { TRI_ERROR_INTERNAL };
   }
+  
+  arangodb::aql::PlanCache::instance()->invalidate(&vocbase());
+  arangodb::aql::QueryCache::instance()->invalidate(&vocbase());
 
   return {};
 }

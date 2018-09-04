@@ -1,6 +1,44 @@
 devel
 -----
 
+* upgraded bundled RocksDB version to 5.16.0
+
+* upgraded bundled Snappy compression library to 1.1.7
+
+* fixed issue #5941 if using breath first search in traversals uniqueness checks
+  on path (vertices and edges) have not been applied. In SmartGraphs the checks
+  have been executed properly.
+
+* added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
+  informational LOG files into RocksDB's database directory.
+
+  This option is turned off by default, but can be enabled for debugging RocksDB
+  internals and performance.
+
+* improved error messages when managing Foxx services
+
+  Install/replace/upgrade will now provide additional information when an error
+  is encountered during setup. Errors encountered during a `require` call will
+  also include information about the underlying cause in the error message.
+
+* fixed some Foxx script names being displayed incorrectly in web UI and Foxx CLI
+
+* major revision of the maintenance feature
+
+* added `uuidv4` and `genRandomBytes` methods to crypto module
+
+* added `hexSlice` methods `hexWrite` to JS Buffer type
+
+* added `Buffer.from`, `Buffer.of`, `Buffer.alloc` and `Buffer.allocUnsafe`
+  for improved compatibility with Node.js
+
+* Foxx HTTP API errors now log stacktraces
+
+* fixed issue #5831: custom queries in the ui could not be loaded if the user
+  only has read access to the _system database.
+
+* fixed issue #6128: ArangoDb Cluster: Task moved from DBS to Coordinator
+
 * fixed some web ui action events related to Running Queries view and Slow
   Queries History view
 
@@ -11,8 +49,8 @@ devel
 
 * fixed issue #6106: Arithmetic operator type casting documentation incorrect
 
-* The arangosh now supports the velocystream transport protocol via the schemas 
-  "vst+tcp://", "vst+ssl://", "vst+unix://" schemes. 
+* The arangosh now supports the velocystream transport protocol via the schemas
+  "vst+tcp://", "vst+ssl://", "vst+unix://" schemes.
 
 * The server will no longer lowercase the input in --server.endpoint. This means
   Unix domain socket paths will now  be treated as specified, previously they were lowercased
@@ -38,7 +76,7 @@ devel
 
 * fixed issue #5884: Subquery nodes are no longer created on DBServers
 
-* intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries 
+* intermediate commits in the RocksDB engine are now only enabled in standalone AQL queries
 
   (not within a JS transaction), standalone truncate as well as for the "import" API
 

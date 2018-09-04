@@ -1,34 +1,34 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all</span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/all</span> &lt;&lt;EOF
 { "collection": "products", "batchSize" : 3 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103536"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103536"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y42--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104510"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104510"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzEvi--_"</span>, 
+      <span class="hljs-string">"Hello2"</span> : <span class="hljs-string">"World2"</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104516"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104516"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzEvm--B"</span>, 
       <span class="hljs-string">"Hello4"</span> : <span class="hljs-string">"World4"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103533"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103533"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y42--_"</span>, 
-      <span class="hljs-string">"Hello3"</span> : <span class="hljs-string">"World3"</span> 
-    }, 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103539"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103539"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XPb9y42--D"</span>, 
-      <span class="hljs-string">"Hello5"</span> : <span class="hljs-string">"World5"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104506"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104506"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzEve--_"</span>, 
+      <span class="hljs-string">"Hello1"</span> : <span class="hljs-string">"World1"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103542"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"104522"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -38,7 +38,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0001385211944580078</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00024700164794921875</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 

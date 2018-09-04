@@ -45,6 +45,8 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include <regex>
+
 extern "C" {
 #include <linenoise.h>
 }
@@ -282,10 +284,10 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a Javascript variable SYS_ARANGO
-std::unique_ptr<V8ClientConnection> V8ShellFeature::setup(
+std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
-  std::unique_ptr<V8ClientConnection> v8connection;
+  std::shared_ptr<V8ClientConnection> v8connection;
 
   ClientFeature* client = nullptr;
 
@@ -293,10 +295,6 @@ std::unique_ptr<V8ClientConnection> V8ShellFeature::setup(
     client = server()->getFeature<ClientFeature>("Client");
 
     if (client != nullptr && client->isEnabled()) {
-      /*auto jwtSecret = client->jwtSecret();
-      if (!jwtSecret.empty()) {
-        V8ClientConnection::setJwtSecret(jwtSecret);
-      }*/
       v8connection = std::make_unique<V8ClientConnection>();
       v8connection->connect(client);
     } else {
@@ -338,7 +336,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
-        [&v8connection]() { v8connection->setInterrupted(true); });
+        [v8connection]() { v8connection->setInterrupted(true); });
   }
 
   v8LineEditor.open(_console->autoComplete());
@@ -435,7 +433,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       // this will change the prompt for the next round
       promptError = true;
     }
-
+    
     if (v8connection != nullptr) {
       v8connection->setInterrupted(false);
     }
@@ -879,16 +877,6 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 void V8ShellFeature::initGlobals() {
   auto context = _isolate->GetCurrentContext();
 
-  // set pretty print default
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "PRETTY_PRINT"),
-      v8::Boolean::New(_isolate, _console->prettyPrint()));
-
-  // add colors for print.js
-  TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING(_isolate, "COLOR_OUTPUT"),
-                               v8::Boolean::New(_isolate, _console->colors()));
-
   // string functions
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
@@ -910,13 +898,36 @@ void V8ShellFeature::initGlobals() {
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to get global context.  ";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "failed to get global context";
     FATAL_ERROR_EXIT();
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
+  
+  // try to append the current version name to the startup directory,
+  // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), ""); 
+  std::string versionedPath = basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
+
+  LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific startup-directory '" << versionedPath << "'";
+  if (basics::FileUtils::isDirectory(versionedPath)) {
+    // version-specific js path exists!
+    _startupDirectory = versionedPath;
+  }
+ 
+  for (auto& it : _moduleDirectory) { 
+    versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
+
+    LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
+    if (basics::FileUtils::isDirectory(versionedPath)) {
+      // version-specific js path exists!
+      it = versionedPath;
+    }
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory << "', effective module-directory is " << _moduleDirectory;
 
   // initialize standard modules
   std::vector<std::string> directories;

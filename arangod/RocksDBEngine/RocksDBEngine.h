@@ -198,7 +198,10 @@ class RocksDBEngine final : public StorageEngine {
 
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
-  void waitForSyncTimeout(double) override {}
+  
+  /// @brief return a list of the currently open WAL files
+  std::vector<std::string> currentWalFiles() const override;
+  
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
@@ -336,7 +339,6 @@ class RocksDBEngine final : public StorageEngine {
   CollectionPair mapObjectToCollection(uint64_t) const;
   IndexTriple mapObjectToIndex(uint64_t) const;
 
-  std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -378,6 +380,8 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
+
+  bool canUseRangeDeleteInWal() const;
 
   rocksdb::Options const& rocksDBOptions() const {
     return _options;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +52,70 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+
+// identical code to RecursiveWriteLocker in vocbase.cpp except for type
+template<typename T>
+class RecursiveMutexLocker {
+ public:
+  RecursiveMutexLocker(
+      T& mutex,
+      std::atomic<std::thread::id>& owner,
+      arangodb::basics::LockerType type,
+      bool acquire,
+      char const* file,
+      int line
+  ): _locker(&mutex, type, false, file, line), _owner(owner), _update(noop) {
+    if (acquire) {
+      lock();
+    }
+  }
+
+  ~RecursiveMutexLocker() {
+    unlock();
+  }
+
+  bool isLocked() {
+    return _locker.isLocked();
+  }
+
+  void lock() {
+    // recursive locking of the same instance is not yet supported (create a new instance instead)
+    TRI_ASSERT(_update != owned);
+
+    if (std::this_thread::get_id() != _owner.load()) { // not recursive
+      _locker.lock();
+      _owner.store(std::this_thread::get_id());
+      _update = owned;
+    }
+  }
+
+  void unlock() {
+    _update(*this);
+  }
+
+ private:
+  arangodb::basics::MutexLocker<T> _locker;
+  std::atomic<std::thread::id>& _owner;
+  void (*_update)(RecursiveMutexLocker& locker);
+
+  static void noop(RecursiveMutexLocker&) {}
+  static void owned(RecursiveMutexLocker& locker) {
+    static std::thread::id unowned;
+    locker._owner.store(unowned);
+    locker._locker.unlock();
+    locker._update = noop;
+  }
+};
+
+#define NAME__(name, line) name ## line
+#define NAME_EXPANDER__(name, line) NAME__(name, line)
+#define NAME(name) NAME_EXPANDER__(name, __LINE__)
+#define RECURSIVE_MUTEX_LOCKER_NAMED(name, lock, owner, acquire) RecursiveMutexLocker<typename std::decay<decltype (lock)>::type> name(lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
+#define RECURSIVE_MUTEX_LOCKER(lock, owner) RECURSIVE_MUTEX_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
+
+}
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -1133,7 +1197,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     loadPlan();
   }
 
-  LOG_TOPIC(INFO, Logger::CLUSTER)
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "View not found: '" << viewID << "' in database '" << databaseID << "'";
 
   return nullptr;
@@ -1362,6 +1426,9 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() /
                                                  interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -1450,6 +1517,9 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -1519,11 +1589,13 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   auto dbServerResult = std::make_shared<int>(-1);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
+  auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>(); // current thread owning 'cacheMutex' write lock (workaround for non-recusrive Mutex)
 
   auto dbServers = getCurrentDBServers();
   std::function<bool(VPackSlice const& result)> dbServerChanged =
       [=](VPackSlice const& result) {
-        MUTEX_LOCKER(locker, *cacheMutex);
+        RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+
         if (result.isObject() && result.length() == (size_t)numberOfShards) {
           std::string tmpError = "";
           for (auto const& p : VPackObjectIterator(result)) {
@@ -1637,7 +1709,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     // using loadPlan, this is necessary for the callback closure to
     // see the new planned state for this collection. Otherwise it cannot
     // recognize completion of the create collection operation properly:
-    MUTEX_LOCKER(locker, *cacheMutex);
+    RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
 
     auto res = ac.sendTransactionWithFailover(transaction);
 
@@ -1753,6 +1825,9 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -1901,6 +1976,9 @@ int ClusterInfo::dropCollectionCoordinator(
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -2291,13 +2369,13 @@ int ClusterInfo::ensureIndexCoordinator(
   try {
     auto start = std::chrono::steady_clock::now();
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
-    while (true) { 
+    while (true) {
       resultBuilder.clear();
       errorCode = ensureIndexCoordinatorWithoutRollback(
         databaseName, collectionID, idString, slice, create, compare,
         resultBuilder, errorMsg, timeout);
 
-      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) { 
+      if (errorCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
         if (std::chrono::duration_cast<std::chrono::seconds>(
               std::chrono::steady_clock::now()-start).count() < 120) {
           std::chrono::duration<size_t, std::milli>
@@ -2336,7 +2414,7 @@ int ClusterInfo::ensureIndexCoordinator(
     oldPlanIndexes.reset(new VPackBuilder());
 
     c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(*(oldPlanIndexes.get()), false, false);
+    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::makeFlags(Index::Serialize::Basics));
     VPackSlice const planIndexes = oldPlanIndexes->slice();
 
     if (planIndexes.isArray()) {
@@ -2350,12 +2428,13 @@ int ClusterInfo::ensureIndexCoordinator(
       }
     }
 
-    if (planValue==nullptr) {
+    if (planValue == nullptr) {
       // hmm :S both empty :S did somebody else clean up? :S
       // should not happen?
       return errorCode;
     }
-    std::string const planIndexesKey = "Plan/Collections/" + databaseName + "/" + collectionID +"/indexes";
+
+    std::string const planIndexesKey = "Plan/Collections/" + databaseName + "/" + collectionID + "/indexes";
     std::vector<AgencyOperation> operations;
     std::vector<AgencyPrecondition> preconditions;
     if (planValue) {
@@ -2426,10 +2505,10 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), false, false);
+    c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
     {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
-      *numberOfShards = c->numberOfShards();
+      *numberOfShards = static_cast<int>(c->numberOfShards());
     }
     VPackSlice const indexes = tmp->slice();
 
@@ -2675,6 +2754,9 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 
@@ -2793,7 +2875,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     READ_LOCKER(readLocker, _planProt.lock);
 
-    c->getIndexesVPack(tmp, false, false);
+    c->getIndexesVPack(tmp, Index::makeFlags(Index::Serialize::Basics));
     indexes = tmp.slice();
 
     if (!indexes.isArray()) {
@@ -2811,7 +2893,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     }
 
     MUTEX_LOCKER(guard, *numberOfShardsMutex);
-    *numberOfShards = c->numberOfShards();
+    *numberOfShards = static_cast<int>(c->numberOfShards());
   }
 
   bool found = false;
@@ -2913,6 +2995,9 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
+      if (!application_features::ApplicationServer::isRetryOK()) {
+        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      }
     }
   }
 }
@@ -3504,10 +3589,6 @@ void ClusterInfo::invalidatePlan() {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
   }
-  {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3594,3 +3675,25 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   }
   return ret;
 }
+
+arangodb::Result ClusterInfo::getShardServers(
+  ShardID const& shardId, std::vector<ServerID>& servers) {
+
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _shardServers.find(shardId);
+  if (it != _shardServers.end()) {
+    servers = (*it).second;
+    return arangodb::Result();
+  }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    << "Strange, did not find shard in _shardServers: " << shardId;
+  return arangodb::Result(TRI_ERROR_FAILED);
+
+}
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

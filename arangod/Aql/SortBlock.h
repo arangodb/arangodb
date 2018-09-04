@@ -42,10 +42,6 @@ class SortBlock final : public ExecutionBlock {
 
   ~SortBlock();
 
-  Type getType() const override final {
-    return Type::SORT;
-  }
-
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 

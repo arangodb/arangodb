@@ -32,7 +32,7 @@ namespace basics {
 
 /**
  * @brief A class to manage and handle cleanup functions on shutdown.
- * Thread save execution. It is meant to collect functions that should
+ * Thread-safe execution. It is meant to collect functions that should
  * be executed on every shutdown we can react to.
  * e.g. FATAL errors
  */

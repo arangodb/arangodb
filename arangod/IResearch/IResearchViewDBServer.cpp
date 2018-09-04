@@ -59,6 +59,7 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
 
   void add(arangodb::iresearch::PrimaryKeyIndexReader const& reader);
   virtual reader_iterator begin() const override;
+  void clear() noexcept { _subReaders.clear(); }
   virtual uint64_t docs_count() const override;
   virtual uint64_t docs_count(const irs::string_ref& field) const override;
   virtual reader_iterator end() const override;
@@ -560,7 +561,7 @@ arangodb::Result IResearchViewDBServer::rename(
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     transaction::Methods& trx,
     std::vector<std::string> const& shards,
-    bool force /*= false*/
+    IResearchView::Snapshot mode /*= IResearchView::Snapshot::Find*/
 ) const {
   auto* state = trx.state();
 
@@ -578,12 +579,16 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     auto* cookie = static_cast<ViewState*>(state->cookie(this));
   #endif
 
-  if (cookie) {
-    return &(cookie->_snapshot);
-  }
-
-  if (!force) {
-    return nullptr;
+  switch (mode) {
+    case IResearchView::Snapshot::Find:
+      return cookie ? &cookie->_snapshot : nullptr;
+    case IResearchView::Snapshot::FindOrCreate:
+      if (cookie) {
+        return &cookie->_snapshot;
+      }
+      break;
+    default:
+      break;
   }
 
   auto* resolver = trx.resolver();
@@ -595,8 +600,19 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     return nullptr;
   }
 
-  auto cookiePtr = irs::memory::make_unique<ViewState>();
-  auto& reader = cookiePtr->_snapshot;
+  std::unique_ptr<ViewState> cookiePtr;
+  CompoundReader* reader = nullptr;
+
+  if (!cookie) {
+    cookiePtr = irs::memory::make_unique<ViewState>();
+    reader = &cookiePtr->_snapshot;
+  } else {
+    reader = &cookie->_snapshot;
+    reader->clear();
+  }
+
+  TRI_ASSERT(reader);
+
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // 'collections_' can be asynchronously modified
 
@@ -618,10 +634,10 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
         continue;
       }
 
-      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(trx, force);
+      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(trx, mode);
 
       if (rdr) {
-        reader.add(*rdr);
+        reader->add(*rdr);
       }
     }
   } catch (arangodb::basics::Exception& e) {
@@ -646,9 +662,11 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     return nullptr;
   }
 
-  state->cookie(this, std::move(cookiePtr));
+  if (cookiePtr) {
+    state->cookie(this, std::move(cookiePtr));
+  }
 
-  return &reader;
+  return reader;
 }
 
 arangodb::Result IResearchViewDBServer::updateProperties(

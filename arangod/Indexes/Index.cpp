@@ -186,6 +186,8 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
       return 5;
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       return 6;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
+      return 7;
     default:
       return 42; /* OPST_CIRCUS */
   }
@@ -482,22 +484,22 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPersistence) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(std::underlying_type<Index::Serialize>::type flags) const {
   auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder, withFigures, forPersistence);
+  toVelocyPack(*builder, flags);
   return builder;
 }
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
+void Index::toVelocyPack(VPackBuilder& builder,
+                         std::underlying_type<Index::Serialize>::type flags) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(
     arangodb::StaticStrings::IndexId,
     arangodb::velocypack::Value(std::to_string(_iid))
   );
-  //builder.add(arangodb::StaticStrings::IndexType, VPackValue(oldtypeName()));
   builder.add(
     arangodb::StaticStrings::IndexType,
     arangodb::velocypack::Value(oldtypeName(type()))
@@ -516,11 +518,12 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
 
   builder.close();
 
-  if (hasSelectivityEstimate() && !ServerState::instance()->isCoordinator()) {
+  if (hasSelectivityEstimate() &&
+      Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
-  if (withFigures) {
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
@@ -745,10 +748,12 @@ bool Index::canUseConditionPart(
             other->isNullValue()) {
           // != null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
                    !other->isNullValue()) {
           // >= non-null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
 
         if (other->isNullValue() &&
@@ -760,6 +765,7 @@ bool Index::canUseConditionPart(
             return false;
           }
           ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
 
         if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -771,6 +777,8 @@ bool Index::canUseConditionPart(
               return false;
             }
           }
+          ::markAsNonNull(op, access, nonNullAttributes);
+          return true;
         }
       } else {
         // !other->isConstant()
@@ -798,21 +806,25 @@ bool Index::canUseConditionPart(
     return false;
   }
 
-  // test if the reference variable is contained on both side of the expression
+  // test if the reference variable is contained on both sides of the expression
   std::unordered_set<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
-      if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
-          variables.find(reference) != variables.end()) {
-        variables.clear();
-        arangodb::aql::Ast::getReferencedVariables(other, variables);
-      }
+    if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
+        variables.find(reference) != variables.end()) {
+      variables.clear();
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   } else {
     // a.b == value  OR  a.b IN values
-    arangodb::aql::Ast::getReferencedVariables(other, variables);
+    if (!other->isConstant()) {
+      // don't look for referenced variables if we only access a 
+      // constant value (there will be no variables then...)
+      arangodb::aql::Ast::getReferencedVariables(other, variables);
+    }
   }
 
   if (variables.find(reference) != variables.end()) {
@@ -931,6 +943,33 @@ void Index::expandInSearchValues(VPackSlice const base,
       }
     }
   }
+}
+
+bool Index::covers(std::unordered_set<std::string> const& attributes) const {
+  // check if we can use covering indexes
+  if (_fields.size() < attributes.size()) {
+    // we will not be able to satisfy all requested projections with this index
+    return false;
+  }
+
+  std::string result;
+  size_t i = 0;
+  for (size_t j = 0; j < _fields.size(); ++j) {
+    bool found = false;
+    result.clear();
+    TRI_AttributeNamesToString(_fields[j], result, false);
+    for (auto const& it : attributes) {
+      if (result == it) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
 }
 
 void Index::warmup(arangodb::transaction::Methods*,

@@ -82,7 +82,6 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-
   void reset() override;
 
  private:
@@ -91,7 +90,9 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
+  uint64_t const _objectId;
   RocksDBKeyBounds const _bounds;
+  
   uint64_t _total;
   uint64_t _returned;
   bool _forward;
@@ -99,9 +100,9 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::ReadOptions& options
-                        ,RocksDBKeyBounds const& bounds
-                        ,bool reverse=false);
+  RocksDBGenericIterator(rocksdb::ReadOptions& options,
+                         RocksDBKeyBounds const& bounds,
+                         bool reverse = false);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() {}

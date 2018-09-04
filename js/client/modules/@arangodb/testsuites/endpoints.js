@@ -48,7 +48,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'endpoints': ['js/client/tests/endpoint-spec.js']
+  'endpoints': [tu.pathForTesting('client/endpoint-spec.js')]
 };
 
 function endpoints (options) {

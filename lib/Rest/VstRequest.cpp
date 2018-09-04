@@ -56,7 +56,6 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
   parseHeaderInformation();
-  _user = "root";
 }
 
 VPackSlice VstRequest::payload(VPackOptions const* options) {

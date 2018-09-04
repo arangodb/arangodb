@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralClientConnection.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 #include "Basics/socket-utils.h"
@@ -212,7 +213,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     }
 
     if (res == 0) {
-      if (isInterrupted()) {
+      if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -243,7 +244,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 //   0 : if the timeout happened
 //   -1: if an error happened, EINTR within the timeout is already caught
 #else
-  // All versions use select:
+  // All other versions use select:
 
   // An fd_set is a fixed size buffer.
   // Executing FD_CLR() or FD_SET() with a value of fd that is negative or is
@@ -294,7 +295,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       timeout = timeout - (end - start);
       start = end;
     } else if (res == 0) {
-      if (isInterrupted()) {
+      if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -311,7 +312,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 #endif
 
   if (res > 0) {
-    if (isInterrupted()) {
+    if (isInterrupted() || application_features::ApplicationServer::isStopping()) {
       _errorDetails = std::string("command locally aborted");
       TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
       return false;

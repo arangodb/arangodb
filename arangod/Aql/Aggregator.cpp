@@ -83,7 +83,7 @@ class MemoryBlockAllocator {
   public:
   /// @brief create a temporary storage instance
   explicit MemoryBlockAllocator(size_t blockSize)
-      : blocks(), blockSize(blockSize), current(nullptr), end(nullptr) {}
+      : blockSize(blockSize), current(nullptr), end(nullptr) {}
 
   /// @brief destroy a temporary storage instance
   ~MemoryBlockAllocator() {
@@ -99,10 +99,10 @@ class MemoryBlockAllocator {
     end = nullptr;
   }
 
-  /// @brief register a short string
+  /// @brief register a short data value
   char* store(char const* p, size_t length) {
     if (current == nullptr || (current + length > end)) {
-      allocateBlock();
+      allocateBlock(length);
     }
 
     TRI_ASSERT(!blocks.empty());
@@ -118,8 +118,9 @@ class MemoryBlockAllocator {
 
   private:
   /// @brief allocate a new block of memory
-  void allocateBlock() {
-    char* buffer = new char[blockSize];
+  void allocateBlock(size_t minLength) {
+    size_t length = std::max(minLength, blockSize);
+    char* buffer = new char[length];
 
     try {
       blocks.emplace_back(buffer);
@@ -128,7 +129,7 @@ class MemoryBlockAllocator {
       throw;
     }
     current = buffer;
-    end = current + blockSize;
+    end = current + length;
   }
 
   /// @brief already allocated blocks

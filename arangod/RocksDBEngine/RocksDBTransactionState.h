@@ -109,8 +109,10 @@ class RocksDBTransactionState final : public TransactionState {
                         TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
   Result addOperation(TRI_voc_cid_t collectionId,
-      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType);
+      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
+      bool& hasPerformedIntermediateCommit);
 
   RocksDBMethods* rocksdbMethods();
 
@@ -168,11 +170,13 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
   /// Not thread safe
-  Result triggerIntermediateCommit();
-
+  Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
+  
   /// @brief check sizes and call internalCommit if too big
-  Result checkIntermediateCommit(uint64_t newSize);
+  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was performed
+  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
 
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction;

@@ -1,29 +1,29 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=103469&amp;chunkSize=400</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-follow?from=104444&amp;chunkSize=400</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-x-arango-replication-frompresent: <span class="hljs-literal">true</span>
-x-arango-replication-lastscanned: <span class="hljs-number">103471</span>
-x-content-type-options: nosniff
-x-arango-replication-lastincluded: <span class="hljs-number">103471</span>
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
 content-type: application/x-arango-dump; charset=utf<span class="hljs-number">-8</span>
-x-arango-replication-checkmore: <span class="hljs-literal">true</span>
-x-arango-replication-lasttick: <span class="hljs-number">103482</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
+x-arango-replication-checkmore: <span class="hljs-literal">true</span>
+x-arango-replication-frompresent: <span class="hljs-literal">true</span>
+x-arango-replication-lastincluded: <span class="hljs-number">104446</span>
+x-arango-replication-lastscanned: <span class="hljs-number">104446</span>
+x-arango-replication-lasttick: <span class="hljs-number">104463</span>
+x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"103471"</span>, 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"104446"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2000</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"1"</span>, 
-  <span class="hljs-string">"cid"</span> : <span class="hljs-string">"103470"</span>, 
+  <span class="hljs-string">"cid"</span> : <span class="hljs-string">"104445"</span>, 
   <span class="hljs-string">"cname"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"data"</span> : { 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"cid"</span> : <span class="hljs-string">"103470"</span>, 
+    <span class="hljs-string">"cid"</span> : <span class="hljs-string">"104445"</span>, 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h4B4326755FEE/103470"</span>, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"103470"</span>, 
+    <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h6F41A1166091/104445"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"104445"</span>, 
     <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
     <span class="hljs-string">"indexes"</span> : [ 
       { 
@@ -48,7 +48,7 @@ x-arango-replication-active: <span class="hljs-literal">true</span>
     }, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"planId"</span> : <span class="hljs-string">"103470"</span>, 
+    <span class="hljs-string">"planId"</span> : <span class="hljs-string">"104445"</span>, 
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"shardKeys"</span> : [ 
       <span class="hljs-string">"_key"</span> 
@@ -57,7 +57,7 @@ x-arango-replication-active: <span class="hljs-literal">true</span>
     }, 
     <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-    <span class="hljs-string">"version"</span> : <span class="hljs-number">6</span>, 
+    <span class="hljs-string">"version"</span> : <span class="hljs-number">7</span>, 
     <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
   } 
 }

@@ -32,9 +32,7 @@
 namespace arangodb {
 
 namespace httpclient {
-
 class SimpleHttpResult;
-
 }
 
 class ManagedDirectory;
@@ -76,7 +74,7 @@ class DumpFeature : public application_features::ApplicationFeature {
     bool force{false};
     bool ignoreDistributeShardsLikeErrors{false};
     bool includeSystemCollections{false};
-    bool overwrite{true};
+    bool overwrite{false};
     bool progress{true};
   };
 

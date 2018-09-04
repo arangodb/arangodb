@@ -58,7 +58,7 @@ MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     ManagedDocumentResult* mmdr, arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
     std::unique_ptr<VPackBuilder> keys)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(indexImpl),
       _context(trx, collection, mmdr, index->fields().size()),
       _keys(std::move(keys)),
@@ -245,10 +245,10 @@ size_t MMFilesEdgeIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                    bool forPersistence) const {
+void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
+  Index::toVelocyPack(builder, flags);
   // hard-coded
   builder.add(
     arangodb::StaticStrings::IndexUnique,
@@ -448,14 +448,14 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
 
     return createInIterator(trx, mmdr, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index

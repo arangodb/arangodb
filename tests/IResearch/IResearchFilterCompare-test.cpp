@@ -42,13 +42,13 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/ExpressionFilter.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "IResearch/AqlHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -90,15 +90,15 @@ struct IResearchFilterSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     #if USE_ENTERPRISE
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
@@ -122,8 +122,10 @@ struct IResearchFilterSetup {
     functions->add(arangodb::aql::Function{
       "_NONDETERM_",
       ".",
-      false, // fake non-deterministic
-      true,
+      arangodb::aql::Function::makeFlags(
+        // fake non-deterministic
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -133,8 +135,12 @@ struct IResearchFilterSetup {
     functions->add(arangodb::aql::Function{
       "_FORWARD_",
       ".",
-      true, // fake deterministic
-      true,
+      arangodb::aql::Function::makeFlags(
+        // fake deterministic
+        arangodb::aql::Function::Flags::Deterministic,
+        arangodb::aql::Function::Flags::Cacheable,
+        arangodb::aql::Function::Flags::CanRunOnDBServer
+      ),
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -378,8 +384,8 @@ SECTION("BinaryEq") {
     irs::Or expected;
     expected.add<irs::empty>();
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER 1 == true RETURN d", expected, &ExpressionContextMock::EMPTY);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(boost(1 == true, 1.5), 'test_analyzer') RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER 1 == true RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(1 == true, 1.5), 'test_analyzer') RETURN d", expected, &ExpressionContextMock::EMPTY);
   }
 
   // boolean expression

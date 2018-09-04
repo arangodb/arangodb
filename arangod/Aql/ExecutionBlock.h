@@ -32,33 +32,6 @@
 
 #include <deque>
 
-#if 0
-
-#define DEBUG_BEGIN_BLOCK() try {  //
-#define DEBUG_END_BLOCK()                                                     \
-  }                                                                           \
-  catch (arangodb::basics::Exception const& ex) {                             \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "arango exception caught in " << __FILE__ << ":" << __LINE__ \
-              << ":" << ex.what();                                            \
-    throw;                                                                    \
-  }                                                                           \
-  catch (std::exception const& ex) {                                          \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "std exception caught in " << __FILE__ << ":" << __LINE__    \
-              << ": " << ex.what();                                           \
-    throw;                                                                    \
-  }                                                                           \
-  catch (...) {                                                               \
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "exception caught in " << __FILE__ << ":" << __LINE__;       \
-    throw;                                                                    \
-  }  //
-
-#else
-
-#define DEBUG_BEGIN_BLOCK()  //
-#define DEBUG_END_BLOCK()    //
-
-#endif
-
 namespace arangodb {
 struct ClusterCommResult;
 
@@ -69,7 +42,6 @@ class Methods;
 namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
-struct QueryProfile;
 
 class ExecutionBlock {
  public:
@@ -79,54 +51,6 @@ class ExecutionBlock {
 
   ExecutionBlock(ExecutionBlock const&) = delete;
   ExecutionBlock operator=(ExecutionBlock const&) = delete;
-
-  /// @brief type of the block. only the blocks actually instantiated are
-  // needed, so e.g. ModificationBlock or ExecutionBlock are omitted.
-  enum class Type {
-    _UNDEFINED,
-    CALCULATION,
-    COUNT_COLLECT,
-    DISTINCT_COLLECT,
-    ENUMERATE_COLLECTION,
-    ENUMERATE_LIST,
-    FILTER,
-    HASHED_COLLECT,
-    INDEX,
-    LIMIT,
-    NO_RESULTS,
-    REMOTE,
-    RETURN,
-    SHORTEST_PATH,
-    SINGLETON,
-    SINGLEOPERATION,
-    SORT,
-    SORTED_COLLECT,
-    SORTING_GATHER,
-    SUBQUERY,
-    TRAVERSAL,
-    UNSORTING_GATHER,
-    REMOVE,
-    INSERT,
-    UPDATE,
-    REPLACE,
-    UPSERT,
-    SCATTER,
-    DISTRIBUTE,
-#ifdef USE_IRESEARCH
-    IRESEARCH_VIEW,
-    IRESEARCH_VIEW_ORDERED,
-    IRESEARCH_VIEW_UNORDERED,
-#endif
-  };
-  // omitted in this list are (because):
-  // WaitingExecutionBlockMock (mock)
-  // ExecutionBlockMock (mock)
-  // ModificationBlock (insert, update, etc.)
-  // BlockWithClients (scatter, distribute)
-  // IResearchViewBlockBase (IResearchView*)
-
-  static std::string typeToString(Type type);
-  static Type typeFromString(std::string const& type);
 
  public:
   /// @brief batch size value
@@ -149,9 +73,6 @@ class ExecutionBlock {
     _dependencies.emplace_back(ep); 
     _dependencyPos = _dependencies.end();
   }
-
-  /// @brief get all dependencies
-  std::vector<ExecutionBlock*> getDependencies() const { return _dependencies; }
 
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
@@ -186,7 +107,7 @@ class ExecutionBlock {
       size_t atMost);
 
   void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state) const;
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
  
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
@@ -213,8 +134,6 @@ class ExecutionBlock {
 
   RegisterId getNrOutputRegisters() const;
 
-  virtual Type getType() const {return Type::_UNDEFINED;}
-
  protected:
   /// @brief request an AqlItemBlock from the memory manager
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
@@ -227,10 +146,12 @@ class ExecutionBlock {
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
+    return inheritRegisters(src, dst, row, 0); 
+  }
 
-  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t,
-                        size_t);
+  void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t srcRow,
+                        size_t dstRow);
 
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if

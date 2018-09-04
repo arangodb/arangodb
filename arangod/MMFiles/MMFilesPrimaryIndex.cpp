@@ -60,7 +60,7 @@ MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
     std::unique_ptr<VPackBuilder> keys)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(index),
       _keys(std::move(keys)),
       _iterator(_keys->slice()) {
@@ -98,7 +98,7 @@ MMFilesAllIndexIterator::MMFilesAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
     MMFilesPrimaryIndexImpl const* indexImpl)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(indexImpl),
       _total(0) {}
 
@@ -158,7 +158,7 @@ MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
     MMFilesPrimaryIndexImpl const* indexImpl)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _index(indexImpl),
       _step(0),
       _total(0) {}
@@ -220,21 +220,19 @@ size_t MMFilesPrimaryIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                       bool forPersistence) const {
+void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder,
+                                       std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
-  {
-    Index::toVelocyPack(builder, withFigures, forPersistence);
-    // hard-coded
-    builder.add(
-      arangodb::StaticStrings::IndexUnique,
-      arangodb::velocypack::Value(true)
-    );
-    builder.add(
-      arangodb::StaticStrings::IndexSparse,
-      arangodb::velocypack::Value(false)
-    );
-  }
+  Index::toVelocyPack(builder, flags);
+  // hard-coded
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(true)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 
@@ -492,14 +490,14 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     // a.b IN values
     if (!valNode->isArray()) {
       // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
 
     return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx, this);
+  return new EmptyIndexIterator(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index

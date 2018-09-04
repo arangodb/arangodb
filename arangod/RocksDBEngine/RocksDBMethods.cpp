@@ -41,6 +41,7 @@ RocksDBSavePoint::RocksDBSavePoint(
     : _trx(trx), _handled(handled) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
+    // only create a savepoint when necessary
     _trx->SetSavePoint();
   }
 }
@@ -48,6 +49,8 @@ RocksDBSavePoint::RocksDBSavePoint(
 RocksDBSavePoint::~RocksDBSavePoint() {
   if (!_handled) {
     try {
+      // only roll back if we create a savepoint and have
+      // not performed an intermediate commit in-between
       rollback();
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, Logger::ROCKSDB) << "caught exception during rollback to savepoint: " << ex.what();
@@ -57,9 +60,22 @@ RocksDBSavePoint::~RocksDBSavePoint() {
   }
 }
 
-void RocksDBSavePoint::commit() {
-  // note: _handled may already be true here
-  _handled = true;  // this will prevent the rollback
+void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
+  if (!_handled && !hasPerformedIntermediateCommit) {
+    // pop the savepoint from the transaction in order to
+    // save some memory for transactions with many operations
+    // this is only safe to do when we have a created a savepoint
+    // when creating the guard, and when there hasn't been an
+    // intermediate commit in the transaction
+    // when there has been an intermediate commit, we must
+    // leave the savepoint alone, because it belonged to another
+    // transaction, and the current transaction will not have any
+    // savepoint
+    _trx->PopSavePoint();
+  }
+  
+  // this will prevent the rollback call in the destructor
+  _handled = true;  
 }
 
 void RocksDBSavePoint::rollback() {
@@ -241,6 +257,15 @@ void RocksDBTrxMethods::SetSavePoint() {
 arangodb::Result RocksDBTrxMethods::RollbackToSavePoint() {
   return rocksutils::convertStatus(
       _state->_rocksTransaction->RollbackToSavePoint());
+}
+
+void RocksDBTrxMethods::PopSavePoint() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  rocksdb::Status s = _state->_rocksTransaction->PopSavePoint();
+  TRI_ASSERT(s.ok());
+#else
+  _state->_rocksTransaction->PopSavePoint();
+#endif
 }
 
 // =================== RocksDBTrxUntrackedMethods ====================

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -154,8 +154,8 @@ Supervision::Supervision()
   _snapshot("Supervision"),
   _transient("Transient"),
   _frequency(1.),
-  _gracePeriod(5.),
-  _okThreshold(1.5),
+  _gracePeriod(10.),
+  _okThreshold(5.),
   _jobId(0),
   _jobIdMax(0),
   _selfShutdown(false),
@@ -556,6 +556,54 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   return ret;
 }
 
+bool Supervision::earlyBird() const {
+
+  std::vector<std::string> tpath {"Sync","ServerStates"};
+  std::vector<std::string> pdbpath {"Plan","DBServers"};
+  std::vector<std::string> pcpath {"Plan","Coordinators"};
+  
+  if (!_snapshot.has(pdbpath)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "No Plan/DBServers key in persistent store";
+    return false;
+  }
+  VPackBuilder dbserversB = _snapshot(pdbpath).toBuilder();
+  VPackSlice dbservers = dbserversB.slice();
+
+  if (!_snapshot.has(pcpath)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "No Plan/Coordinators key in persistent store";
+    return false;
+  }
+  VPackBuilder coordinatorsB = _snapshot(pcpath).toBuilder();
+  VPackSlice coordinators = coordinatorsB.slice();
+
+  if (!_transient.has(tpath)) {
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      << "No Sync/ServerStates key in transient store";
+    return false;
+  }
+  VPackBuilder serverStatesB = _transient(tpath).toBuilder();
+  VPackSlice serverStates = serverStatesB.slice();
+
+  // every db server in plan accounted for in transient store?
+  for (auto const& server : VPackObjectIterator(dbservers)) {
+    auto serverId = server.key.copyString();
+    if (!serverStates.hasKey(serverId)) {
+      return false;
+    }
+  }
+  // every db server in plan accounted for in transient store?
+  for (auto const& server : VPackObjectIterator(coordinators)) {
+    auto serverId = server.key.copyString();
+    if (!serverStates.hasKey(serverId)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 
 // Update local agency snapshot, guarded by callers
 bool Supervision::updateSnapshot() {
@@ -698,7 +746,9 @@ void Supervision::run() {
               upgradeAgency();
             }
 
-            if (_agent->leaderFor() > 10) {
+            if (_agent->leaderFor() > 55 || earlyBird()) {
+              // 55 seconds is less than a minute, which fits to the
+              // 60 seconds timeout in /_admin/cluster/health
               try {
                 doChecks();
               } catch (std::exception const& e) {
@@ -708,6 +758,10 @@ void Supervision::run() {
                 LOG_TOPIC(ERR, Logger::SUPERVISION) <<
                   "Supervision::doChecks() generated an uncaught exception.";
               }
+            } else {
+              LOG_TOPIC(INFO, Logger::SUPERVISION)
+                << "Postponing supervision for now, waiting for incoming "
+                   "heartbeats: " << _agent->leaderFor();
             }
 
             handleJobs();

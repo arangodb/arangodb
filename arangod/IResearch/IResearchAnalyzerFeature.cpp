@@ -35,13 +35,13 @@
 #include "ApplicationServerHelper.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchCommon.h"
-#include "SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
@@ -223,8 +223,12 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
     "TOKENS", // name
     ".,.", // positional arguments (data,analyzer)
-    true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
-    true, // can be run on server
+    // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
+    arangodb::aql::Function::makeFlags(
+      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Cacheable,
+      arangodb::aql::Function::Flags::CanRunOnDBServer
+    ), 
     aqlFnTokens // function implementation
   });
 }
@@ -234,7 +238,7 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 ////////////////////////////////////////////////////////////////////////////////
 void ensureConfigCollection(TRI_vocbase_t& vocbase) {
   static const std::string json =
-    std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\"}";
+    std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"type\": 2}";
 
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     try {
@@ -250,14 +254,14 @@ void ensureConfigCollection(TRI_vocbase_t& vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
+arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
   auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
-    arangodb::iresearch::SystemDatabaseFeature
+    arangodb::SystemDatabaseFeature
   >();
 
   if (!database) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to find feature 'SystemDatabase' while getting the system database";
+      << "failure to find feature '" << arangodb::SystemDatabaseFeature::name() << "' while getting the system database";
 
     return nullptr;
   }

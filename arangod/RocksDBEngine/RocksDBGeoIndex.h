@@ -76,8 +76,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&, bool, bool) const override;
-  // Uses default toVelocyPackFigures
+  void toVelocyPack(velocypack::Builder&,
+    std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 

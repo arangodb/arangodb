@@ -75,7 +75,6 @@ if (USE_IRESEARCH)
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
     IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
-    IResearch/SystemDatabaseFeature.cpp IResearch/SystemDatabaseFeature.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
     IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
     IResearch/AqlHelper.cpp IResearch/AqlHelper.h
@@ -283,6 +282,9 @@ SET(ARANGOD_SOURCES
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionManager.cpp
+  Cluster/ActionBase.cpp
+  Cluster/Action.cpp
+  Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp
@@ -294,17 +296,32 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/CreateCollection.cpp
+  Cluster/CreateDatabase.cpp
   Cluster/CriticalThread.cpp
   Cluster/EngineEqualityCheckFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
+  Cluster/DropCollection.cpp
+  Cluster/DropDatabase.cpp
+  Cluster/DropIndex.cpp
+  Cluster/EnsureIndex.cpp
+  Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
+  Cluster/Maintenance.cpp
+  Cluster/MaintenanceFeature.cpp
+  Cluster/MaintenanceRestHandler.cpp
+  Cluster/MaintenanceWorker.cpp
+  Cluster/NonAction.cpp
   Cluster/ReplicationTimeoutFeature.cpp
+  Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
+  Cluster/SynchronizeShard.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
+  Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
@@ -389,6 +406,7 @@ SET(ARANGOD_SOURCES
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
+  RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -440,6 +458,7 @@ SET(ARANGOD_SOURCES
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
+  RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
@@ -447,6 +466,7 @@ SET(ARANGOD_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SystemDatabaseFeature.cpp RestServer/SystemDatabaseFeature.h
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -478,6 +498,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/TransactionState.cpp
   StorageEngine/WalAccess.cpp
   Transaction/Context.cpp
+  Transaction/CountCache.cpp
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
@@ -531,6 +552,10 @@ SET(ARANGOD_SOURCES
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
 )
+
+if (USE_MAINTAINER_MODE)
+  set(ARANGOD_SOURCES ${ARANGOD_SOURCES} RestHandler/RestTestHandler.cpp)
+endif()
 
 if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)

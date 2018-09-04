@@ -69,7 +69,7 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// @brief estimateCost
   /// Note that all the modifying nodes use this estimateCost method which is
   /// why we can make it final here.
-  double estimateCost(size_t&) const override final;
+  CostEstimate estimateCost() const override final;
 
   /// @brief data modification is non-deterministic
   bool isDeterministic() override final { return false; }

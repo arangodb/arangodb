@@ -128,6 +128,7 @@ MMFilesLogfileManager::MMFilesLogfileManager(
   startsAfter("Database");
   startsAfter("EngineSelector");
   startsAfter("MMFilesEngine");
+  startsAfter("SystemDatabase");
 
   onlyEnabledWith("MMFilesEngine");
 }
@@ -830,7 +831,8 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 // this is useful to ensure that any open writes up to this point have made
 // it into a logfile
 int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
-                                 bool writeShutdownFile, double maxWaitTime) {
+                                 bool writeShutdownFile, double maxWaitTime,
+                                 bool abortWaitOnShutdown) {
   TRI_IF_FAILURE("LogfileManagerFlush") {
     return TRI_ERROR_NO_ERROR;
   }
@@ -875,7 +877,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
     if (res == TRI_ERROR_NO_ERROR) {
       // we need to wait for the collector...
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "entering waitForCollector with lastOpenLogfileId " << lastOpenLogfileId;
-      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime);
+      res = this->waitForCollector(lastOpenLogfileId, maxWaitTime, abortWaitOnShutdown);
 
       if (res == TRI_ERROR_LOCK_TIMEOUT) {
         LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastOpenLogfileId: " << lastOpenLogfileId;
@@ -887,7 +889,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
       // datafile
 
       if (lastSealedLogfileId > 0) {
-        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime);
+        res = this->waitForCollector(lastSealedLogfileId, maxWaitTime, abortWaitOnShutdown);
 
         if (res == TRI_ERROR_LOCK_TIMEOUT) {
           LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "got lock timeout when waiting for WAL flush. lastSealedLogfileId: " << lastSealedLogfileId;
@@ -1723,7 +1725,7 @@ bool MMFilesLogfileManager::executeWhileNothingQueued(std::function<void()> cons
 
 // wait until a specific logfile has been collected
 int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
-                                            double maxWaitTime) {
+                                            double maxWaitTime, bool abortWaitOnShutdown) {
   if (maxWaitTime <= 0.0) {
     maxWaitTime = 24.0 * 3600.0; // wait "forever"
   }
@@ -1736,6 +1738,10 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
   while (true) {
     if (_lastCollectedId >= logfileId) {
       return TRI_ERROR_NO_ERROR;
+    }
+  
+    if (application_features::ApplicationServer::isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
     }
 
     READ_LOCKER(locker, _collectorThreadLock);

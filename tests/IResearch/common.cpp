@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "utils/utf8_path.hpp"
+
 #include "catch.hpp"
 #include "common.h"
 #include "ExpressionContextMock.h"
@@ -29,6 +31,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Basics/files.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "V8/v8-utils.h"
 #include "VocBase/KeyGenerator.h"
 #include "Transaction/StandaloneContext.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -125,6 +130,27 @@ namespace tests {
 
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
+}
+
+// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
+void v8Init() {
+  struct init_t {
+    std::shared_ptr<v8::Platform> platform;
+    init_t() {
+      platform = std::shared_ptr<v8::Platform>(
+        v8::platform::CreateDefaultPlatform(),
+        [](v8::Platform* p)->void {
+          v8::V8::Dispose();
+          v8::V8::ShutdownPlatform();
+          delete p;
+        }
+      );
+      v8::V8::InitializePlatform(platform.get()); // avoid SIGSEGV duing 8::Isolate::New(...)
+      v8::V8::Initialize(); // avoid error: "Check failed: thread_data_table_"
+    }
+  };
+  static const init_t init;
+  (void)(init);
 }
 
 bool assertRules(
@@ -239,6 +265,14 @@ uint64_t getCurrentPlanVersion() {
     { arangodb::AgencyCommManager::path(), "Plan", "Version" }
   );
   return planVersionSlice.getNumber<uint64_t>();
+}
+
+void setDatabasePath(arangodb::DatabasePathFeature& feature) {
+  irs::utf8_path path;
+
+  path /= TRI_GetTempPath();
+  path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
+  const_cast<std::string&>(feature.directory()) = path.utf8();
 }
 
 } // tests

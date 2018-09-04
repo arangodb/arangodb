@@ -26,6 +26,7 @@
 #include <iostream>
 #include <thread>
 
+#include "Basics/exitcodes.h"
 #include "Basics/FileUtils.h"
 #include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
@@ -76,6 +77,10 @@ void InitDatabaseFeature::validateOptions(
   if (_initDatabase || _restoreAdmin) {
     ApplicationServer::forceDisableFeatures(_nonServerFeatures);
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
+  
+    // we can turn off all warnings about environment here, because they
+    // wil show up on a regular start later anyway
+    ApplicationServer::disableFeatures({"Environment"});
   }
 }
 
@@ -151,7 +156,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
 
   bool empty = false;
   std::string message;
-  int code = 2;
+  int code = TRI_EXIT_CODE_RESOLVING_FAILED;
 
   if (FileUtils::exists(path)) {
     if (!FileUtils::isDirectory(path)) {
@@ -176,6 +181,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
 
   if (!empty) {
     message = "database already initialized, refusing to initialize it again";
+    code = TRI_EXIT_DB_NOT_EMPTY;
     goto doexit;
   }
 

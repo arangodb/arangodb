@@ -7,8 +7,24 @@ upgrading to ArangoDB 3.4, and adjust any client programs if necessary.
 The following incompatible changes have been made in ArangoDB 3.4:
 
 
-Supported platforms
--------------------
+Release packages
+----------------
+
+The official ArangoDB release packages for Linux are now built as static executables
+linked with the [musl libc](https://www.musl-libc.org/) standard library. For Linux,
+there are release packages for the Debian-based family of Linux distributions (.deb), 
+and packages for RedHat-based distributions (.rpm). There are no specialized binaries 
+for the individual Linux distributions nor for their individual subversions. 
+
+The release packages are intended to be reasonably portable (see minimum supported
+architectures below) and should run on a variety of different Linux distributions and
+versions.
+
+Release packages are provided for Windows and MacOS as well.
+
+
+Supported architectures
+-----------------------
 
 The minimum supported architecture for the official release packages of ArangoDB is
 now the Nehalem architecture.
@@ -39,6 +55,23 @@ platform: linux
 Note that to get even more target-specific optimizations, it is possible for end
 users to compile ArangoDB on their own with compiler optimizations tailored to the
 target environment.
+
+
+Target host requirements
+------------------------
+
+When the ArangoDB service is started on a Linux host, it will switch to user 
+`arangodb` and group `arangodb` at some point during the startup process.
+This user and group are created during ArangoDB package installation as usual. 
+
+However, if either the group `arangodb` or the user `arangodb` cannot be found in
+the target hosts local `/etc/group` or `/etc/passwd` storage (for example, 
+because system users and groups are stored centrally using NIS, LDAP etc.), then 
+the underlying group-lookup implementation used by ArangoDB will always consult 
+the local nscd (name-service cache daemon) for this. Effectively this requires
+a running nscd instance on hosts that ArangoDB is installed on and that do store
+the operating system users in a place other than the host-local `/etc/group` and
+`/etc/passwd`.
 
 
 Storage engine
@@ -142,6 +175,21 @@ The options `intermediateCommitCount` and `intermediateCommitSize` will have no 
 anymore on transactions started via `/_api/transaction`, or `db._executeTransaction()`.
 
 
+RocksDB background sync thread
+------------------------------
+
+The RocksDB storage engine in 3.4 has a background WAL syncing thread that by default
+syncs RocksDB's WAL to disk every 100 milliseconds. This may cause additional background
+I/Os compared to ArangoDB 3.3, but will distribute the sync calls more evenly over time
+than the all-or-nothing file syncs that were performed by previous versions of ArangoDB.
+
+The syncing interval can be configured by adjusting the configuration option 
+`--rocksdb.sync-interval`.
+
+Note: this option is not supported on Windows platforms. Setting the sync interval to
+to a value greater than 0 will produce a startup warning on Windows.
+
+
 Threading and request handling
 ------------------------------
 
@@ -175,13 +223,15 @@ HTTP REST API
 The following incompatible changes were made in context of ArangoDB's HTTP REST
 APIs:
 
-- The following, partly undocumented REST APIs have been removed in ArangoDB 3.4:
+- The following, partly undocumented internal REST APIs have been removed in ArangoDB 3.4:
 
   - `GET /_admin/test`
   - `GET /_admin/clusterCheckPort`
   - `GET /_admin/cluster-test` 
+  - `GET /_admin/routing/routes`
   - `GET /_admin/statistics/short`
   - `GET /_admin/statistics/long`
+  - `GET /_admin/auth/reload`
 
 - `GET /_api/index` will now return type `geo` for geo indexes, not type `geo1`
   or `geo2` as previous versions did.
@@ -212,8 +262,14 @@ APIs:
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
 - if authentication is turned on, requests to databases by users with insufficient 
-  access rights will be answered with HTTP 401 (forbidden) instead of HTTP 404 (not found).
+  access rights will be answered with HTTP 401 (Forbidden) instead of HTTP 404 (Not found).
 
+- the REST handler for user permissions at `/_api/user` will now return HTTP 404
+  (Not found) when trying to grant or revoke user permissions for a non-existing
+  collection.
+
+  This affects the HTTP PUT calls to the endpoint `/_api/user/<user>/<database>/<collection>` 
+  for collections that do not exist.
 
 The following APIs have been added or augmented:
 
@@ -249,10 +305,9 @@ The following APIs have been added or augmented:
   ```
 
 - `GET /_admin/status` now returns the attribute `operationMode` in addition to
-  `mode`. The attribute `writeOpsEnabled` is now also represented by the new an
+  `mode`. The attribute `writeOpsEnabled` is now also represented by the new
   attribute `readOnly`, which is has an inverted value compared to the original
-  attribute. In future releases the old attributes will be deprecated in favor
-  of the new ones.
+  attribute. The old attributes are deprecated in favor of the new ones.
 
 - `POST /_api/collection` now will process the optional `shardingStrategy` 
   attribute in the response body in cluster mode. 
@@ -313,14 +368,14 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
 - the existing "fulltext-index-optimizer" optimizer rule has been removed 
   because its duty is now handled by the new "replace-function-with-index" rule.
 
-- the behavior of the `fullCount` option for AQL query cursors has changed so that it 
+- the behavior of the `fullCount` option for AQL queries has changed so that it 
   will only take into account `LIMIT` statements on the top level of the query.
 
   `LIMIT` statements in subqueries will not have any effect on the `fullCount` results
   any more.
 
-- the `NEAR`, `WITHIN` and `FULLTEXT` AQL functions do not support accessing
-  collections dynamically anymore.
+- the AQL functions `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `FULLTEXT` do not 
+  support accessing collections dynamically anymore.
 
   The name of the underlying collection and the name of the index attribute to be
   used have to specified using either collection name identifiers, string literals 
@@ -341,7 +396,7 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
       FOR doc IN collection 
         FOR match IN FULLTEXT(PARSE_IDENTIFIER(doc).collection, PARSE_IDENTIFIER(doc).key, "foxx") RETURN doc
 
-- the AQL warning 1577 (collection used in expression) will not occur anymore
+- the AQL warning 1577 ("collection used in expression") will not occur anymore
 
   It was used in previous versions of ArangoDB when the name of a collection was
   used in an expression in an AQL query, e.g.
@@ -381,32 +436,95 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
       0 + " 1"           0 + 1 = 1           0 + 1 = 1        TO_NUMBER(" 1") = 1
       0 + "a1"           0 + 0 = 0           0 + 0 = 0        TO_NUMBER("a1") = 0
 
+- the AQL function `DATE_NOW` is now marked as deterministic internally, meaning that
+  the optimizer may evaluate the function at query compile time and not at query
+  runtime. This will mean that calling the function repeatedly inside the same query will
+  now always produce the same result, whereas in previous versions of ArangoDB the
+  function may have generated different results.
+  
+  Each AQL query that is run will still evalute the result value of the `DATE_NOW` 
+  function independently, but only once at the beginning of the query. This is most
+  often what is desired anyway, but the change makes `DATE_NOW` useless to measure
+  time differences inside a single query.
+
+- the internal AQL function `PASSTHRU` (which simply returns its call argument)
+  has been changed from being non-deterministic to being deterministic, provided its
+  call argument is also deterministic. This change should not affect end users, as
+  `PASSTHRU` is intended to be used for internal testing only. Should end users use
+  this AQL function in any query and need a wrapper to make query parts non-deterministic,
+  the `NOOPT` AQL function can stand in as a non-deterministic variant of `PASSTHRU`
+
+- the AQL query optimizer will by default now create at most 128 different execution
+  plans per AQL query. In previous versions the maximum number of plans was 192.
+
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  but there are some cases in which it creates multiple competing plans. More plans
+  can lead to better optimized queries, however, plan creation has its costs. The
+  more plans are created and shipped through the optimization pipeline, the more
+  time will be spent in the optimizer.
+  To make the optimizer better cope with some edge cases, the maximum number of plans
+  to create is now strictly enforced and was lowered compared to previous versions of
+  ArangoDB.
+
+  Note that this default maximum value can be adjusted globally by setting the startup 
+  option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
+  `maxNumberOfPlans` option.
+
+- When creating query execution plans for a query, the query optimizer was fetching
+  the number of documents of the underlying collections in case multiple query
+  execution plans were generated. The optimizer used these counts as part of its 
+  internal decisions and execution plan costs calculations. 
+
+  Fetching the number of documents of a collection can have measurable overhead in a
+  cluster, so ArangoDB 3.4 now caches the "number of documents" that are referred to
+  when creating query execution plans. This may save a few roundtrips in case the
+  same collections are frequently accessed using AQL queries. 
+
+  The "number of documents" value was not and is not supposed to be 100% accurate 
+  in this stage, as it is used for rough cost estimates only. It is possible however
+  that when explaining an execution plan, the "number of documents" estimated for
+  a collection is using a cached stale value, and that the estimates change slightly
+  over time even if the underlying collection is not modified.
+  
 
 Usage of V8
 -----------
 
-The internal usage of the V8 JavaScript for non-user actions has been reduced 
-in ArangoDB. Several APIs have been rewritten to not depend on V8 and thus do 
-not require using a V8 context for execution.
+The internal usage of the V8 JavaScript engine for non-user actions has been 
+reduced in ArangoDB 3.4. Several APIs have been rewritten to not depend on V8 
+and thus do not require using the V8 engine nor a V8 context for execution
+anymore.
 
 Compared to ArangoDB 3.3, the following parts of ArangoDB can now be used 
-without requiring V8 contexts:
+without the V8 engine:
 
+- agency nodes in a cluster
+- database server nodes in a cluster 
+- cluster plan application on database server nodes
 - all of AQL (with the exception of user-defined functions)
 - the graph modification APIs at endpoint `/_api/gharial`
-- background server statistics gathering
+- background statistics gathering
 
-Reduced usage of V8 by ArangoDB may allow end users to lower the configured 
+Reduced usage of V8 in ArangoDB may allow end users to lower the configured 
 numbers of V8 contexts to start. In terms of configuration options, these
 are:
 
 - `--javascript.v8-contexts`: the maximum number of V8 contexts to create
+  (high-water mark)
 - `--javascript.v8-contexts-minimum`: the minimum number of V8 contexts to 
-  create at server start and to keep around
+  create at server start and to keep around permanently (low-water mark) 
 
 The default values for these startup options have not been changed in ArangoDB
 3.4, but depending on the actual workload, 3.4 ArangoDB instances may need
 less V8 contexts than 3.3.
+
+As mentioned above, agency and database server nodes in a cluster does not
+require V8 for any operation in 3.4, so the V8 engine is turned off entirely on
+such nodes, regardless of the number of configured V8 contexts there.
+
+The V8 engine is still enabled on coordinator servers in a cluster and on single
+server instances. Here the numbe of started V8 contexts may actually be reduced
+in case a lot of the above features are used.
 
 
 Startup option changes
@@ -514,9 +632,39 @@ Client tools
 
 The client tool _arangoimp_ has been renamed to _arangoimport_ for consistency.
   
-Release packages will still install arangoimp as a symlink to arangoimport, 
-so user scripts invoking arangoimp do not need to be changed to work with
-ArangoDB 3.4.
+Release packages will still install _arangoimp_ as a symlink to _arangoimport_, 
+so user scripts invoking _arangoimp_ do not need to be changed to work with
+ArangoDB 3.4. However, user scripts invoking _arangoimp_ should eventually be 
+changed to use _arangoimport_ instead, as that will be the long-term supported 
+way of running imports.
+
+The tools _arangodump_ and _arangorestore_ will now by default work with two
+threads when extracting data from a server or loading data back into a server resp.
+The number of threads to use can be adjusted for both tools by adjusting the
+`--threads` parameter when invoking them. This change is noteworthy because in
+previous versions of ArangoDB both tools were single-threaded and only processed
+one collection at a time, while starting with ArangoDB 3.4 by default they will 
+process two collections at a time, with the intended benefit of completing their
+work faster. However, this may create higher load on servers than in previous
+versions of ArangoDB. If the load produced by _arangodump_ or _arangorestore_ is
+higher than desired, please consider setting their `--threads` parameter to a 
+value of `1` when invoking them.
+
+In the ArangoShell, the undocumented JavaScript module `@arangodb/actions` has
+been removed. This module contained the methods `printRouting` and `printFlatRouting`,
+which were used for debugging purposes only.
+
+In the ArangoShell, the undocumented JavaScript functions `reloadAuth` and `routingCache`
+have been removed from the `internal` module.
+
+
+Foxx applications
+-----------------
+
+The undocumented JavaScript module `@arangodb/database-version` has been
+removed, so it cannot be use from Foxx applications anymore The module only
+provided the current version of the database, so any client-side invocations
+can easily be replaced by using the `db._version()` instead.
 
 
 Miscellaneous changes
@@ -558,6 +706,17 @@ removed in future versions of ArangoDB:
   For cluster mode there is `/_api/cluster/endpoints` to find all current 
   coordinator endpoints.
 
+* accessing collections via their numeric IDs instead of their names. This mostly
+  affects the REST APIs at
+
+  - `/_api/collection/<collection-id>`
+  - `/_api/document/<collection-id>`
+  - `/_api/simple`
+
+  Note that in ArangoDB 3.4 it is still possible to access collections via
+  their numeric ID, but the preferred way to access a collections is by its
+  user-defined name.
+
 * the REST API for WAL tailing at `/_api/replication/logger-follow`:
 
   The `logger-follow` WAL tailing API has several limitations. A better API
@@ -565,6 +724,26 @@ removed in future versions of ArangoDB:
 
   Client applications using the old tailing API at `/_api/replication/logger-follow`
   should switch to the new API eventually.
+
+* the result attributes `mode` and `writeOpsEnabled` in the REST API for querying
+  a server's status at `/_admin/status`:
+
+  `GET /_admin/status` returns the additional attributes `operationMode` and 
+  `readOnly` now, which should be used in favor of the old attributes.
+  
+* creating geo indexes via any APIs with one of the types `geo1` or `geo2`:
+
+  The two previously known geo index types (`geo1`and `geo2`) are deprecated now.
+  Instead, when creating geo indexes, the type `geo` should be used.
+
+  The types `geo1` and `geo2` will still work in ArangoDB 3.4, but may be removed
+  in future versions.
+
+* the legacy mode for Foxx applications from ArangoDB 2.8 or earlier:
+
+  The legacy mode is described in more detail in the [Foxx manual](https://docs.arangodb.com/3.3/Manual/Foxx/LegacyMode.html).
+  To upgrade an existing Foxx application that still uses the legacy mode, please
+  follow the steps described in [the manual](https://docs.arangodb.com/3.3/Manual/Foxx/Migrating2x/).
 
 * the AQL geo functions `NEAR`, `WITHIN`, `WITHIN_RECTANGLE` and `IS_IN_POLYGON`:
 
@@ -591,3 +770,14 @@ removed in future versions of ArangoDB:
   will still work and automatically be rewritten by the AQL query optimizer 
   to the above forms. However, AQL queries using the deprecated AQL functions
   should eventually be adjusted.
+
+* using the `arangoimp` binary instead of `arangoimport` 
+
+  `arangoimp` has been renamed to `arangoimport` for consistency in ArangoDB
+  3.4, and `arangoimp` is just a symbolic link to `arangoimport` now.
+  `arangoimp` is there for compatibility only, but client scripts should 
+  eventually be migrated to use `arangoimport` instead.
+
+* the `foxx-manager` executable is deprecated and will be removed in ArangoDB 4.
+  
+  Please use foxx-cli instead: https://docs.arangodb.com/3.4/Manual/Foxx/Deployment/FoxxCLI/
