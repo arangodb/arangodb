@@ -639,7 +639,6 @@ Note that the default maximum value can be adjusted globally by setting the star
 option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
 `maxNumberOfPlans` option.
 
-
 ### Single document optimizations
 
 In a cluster, the cost of setting up a distributed query can be considerable for
@@ -768,6 +767,19 @@ regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
 The `fullCount` result value will now also be returned for queries that are served
 from the query results cache.
+
+### Relaxed restrictions for LIMIT values
+
+The `offset` and `count` values used in an AQL LIMIT clause can now be expressions, as
+long as the expressions can be resolved at query compile time.
+For example, the following query will now work:
+
+    FOR doc IN collection
+      LIMIT 0, CEIL(@percent * @count / 100) 
+      RETURN doc
+
+Previous versions of ArangoDB required the `offset` and `count` values to be
+either number literals or numeric bind parameter values.
 
 ### Improved sparse index support
 
