@@ -115,6 +115,9 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
       info.trx = _createTransaction();
       info.edgeDataOffset = eCount;
       
+      TRI_voc_cid_t cid = info.trx->addCollectionAtRuntime(info.vertexShard);
+      info.trx->pinData(cid);  // will throw when it fails
+      
       OperationResult opResult = info.trx->count(info.vertexShard,
                                                  transaction::CountType::Normal);
       if (opResult.fail() || _destroyed) {
@@ -138,6 +141,10 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         
         ShardID const& eShard = edgeShards[i];
         info.edgeShards.push_back(eShard);
+
+        cid = info.trx->addCollectionAtRuntime(eShard);
+        info.trx->pinData(cid);  // will throw when it fails
+        
         OperationResult opResult = info.trx->count(eShard, transaction::CountType::Normal);
         if (opResult.fail() || _destroyed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
