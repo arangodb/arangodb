@@ -22,13 +22,13 @@ optimization can be specified as floating point numbers.
 
 - *doc* (document): must be emitted by `FOR doc IN someView`
 
-- *k* (number, _optional_): term frequency, the default is _1.2_.  *k*
-  calibrates the text term frequency scaling.  A *k* value of *0* corresponds to
+- *k* (number, _optional_): term frequency, the default is _1.2_. *k*
+  calibrates the text term frequency scaling. A *k* value of *0* corresponds to
   a binary model (no term frequency), and a large value corresponds to using raw
   term frequency.
 
 - *b* (number, _optional_): determines the scaling by the total text length, the
-  default is _0.75_.  *b* determines the scaling by the total text length.
+  default is _0.75_. *b* determines the scaling by the total text length.
   - b = 1 corresponds to fully scaling the term weight by the total text length
   - b = 0 corresponds to no length normalization.
 

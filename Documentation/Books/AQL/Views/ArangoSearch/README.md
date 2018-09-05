@@ -7,9 +7,10 @@ integrate with and natively expose the full power of the
 to the ArangoDB user.
 
 They provide the capability to:
-* evaluate together documents located in different collections
-* search documents based on AQL boolean expressions and functions
-* sort the result set based on how closely each document matched the search
+
+- evaluate together documents located in different collections
+- search documents based on AQL boolean expressions and functions
+- sort the result set based on how closely each document matched the search
 
 Overview and Significance
 -------------------------
@@ -69,6 +70,7 @@ FOR doc IN myView
   SEARCH doc.someAttr == 'One'
   RETURN doc
 ```
+
 ```js
 [ { someAttr: 'One', anotherAttr: 'One' } ]
 ```
@@ -80,6 +82,7 @@ FOR doc IN myView
   SEARCH doc.anotherAttr == 'One'
   RETURN doc
 ```
+
 ```js
 []
 ```
@@ -88,7 +91,8 @@ FOR doc IN myView
 - This only applies to tests regarding documents emitted from a view. Other
   tests are not affected.
 - In order to use `SEARCH` using all attributes of a linked sources, the special
-`includeAllFields` [link property](../../../Manual/Views/ArangoSearch/DetailedOverview.html#link-properties) was desinged.
+  `includeAllFields` [link property](../../../Manual/Views/ArangoSearch/DetailedOverview.html#link-properties)
+  was designed.
 
 ### SORT
 
@@ -142,7 +146,7 @@ would work as usual.
 ### Comparing analyzed fields
 
 As described in [value analysis](#arangosearch-value-analysis), when a field is
-processed by a specific analyzer, comparison tests are done per word.  For
+processed by a specific analyzer, comparison tests are done per word. For
 example, given the field `text` is analyzed with `"text_en"` and contains the
 string `"a quick brown fox jumps over the lazy dog"`, the following expression
 will be true:
@@ -181,10 +185,11 @@ the search and sort stages to provide the most appropriate match for the
 specified conditions, similar to queries to web search engines.
 
 In plain terms this means a user can for example:
-* request documents where the 'body' attribute best matches 'a quick brown fox'
-* request documents where the 'dna' attribute best matches a DNA sub sequence
-* request documents where the 'name' attribute best matches gender
-* etc... (via custom analyzers described in the next section)
+
+- request documents where the 'body' attribute best matches 'a quick brown fox'
+- request documents where the 'dna' attribute best matches a DNA sub sequence
+- request documents where the 'name' attribute best matches gender
+- etc. (via custom analyzers)
 
 To a limited degree the concept of 'analysis' is even available in
 non-ArangoSearch AQL, e.g. the TOKENS(...) function will utilize the power of
@@ -205,7 +210,6 @@ ArangoSearch filters
 The basic ArangoSearch functionality can be accessed via the `SEARCH` statement
 with common AQL filters and operators, e.g.:
 
-```
 - `AND`
 - `OR`
 - `NOT`
@@ -217,7 +221,6 @@ with common AQL filters and operators, e.g.:
 - `!=`
 - `IN <ARRAY>`
 - `IN <RANGE>`
-```
 
 However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the search and sort stages.
@@ -276,7 +279,7 @@ as long as the field is processed by the view with **storeValues** not
 `EXISTS(doc.someAttr, "analyzer", analyzer)`
 
 Match documents where **doc.someAttr** exists in the document _and_ was indexed
-by the specified **analyzer**.  **analyzer** is optional and defaults to the
+by the specified **analyzer**. **analyzer** is optional and defaults to the
 current context analyzer (e.g. specified by `ANALYZER` function).
 
 `EXISTS(doc.someAttr, type)`
@@ -345,8 +348,8 @@ attribute has to be processed by the view as specified in the link.
 `TOKENS(input, analyzer)`
 
 Split the **input** string with the help of the specified **analyzer** into an
-Array.  The resulting Array can i.e. be used in subsequent `FILTER` or `SEARCH`
-statements with the **IN** operator.  This can be used to better understand how
+Array. The resulting Array can i.e. be used in subsequent `FILTER` or `SEARCH`
+statements with the **IN** operator. This can be used to better understand how
 the specific analyzer is going to behave.
 - *input* string to tokenize
 - *analyzer* one of the [available string_analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
