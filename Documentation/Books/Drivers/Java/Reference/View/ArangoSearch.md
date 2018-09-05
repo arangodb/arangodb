@@ -2,7 +2,7 @@
 # ArangoSearch API
 
 These functions implement the
-[HTTP API for ArangoSearch views](../../../..//HTTP/Views/ArangoSearch.html).
+[HTTP API for ArangoSearch Views](../../../..//HTTP/Views/ArangoSearch.html).
 
 ## ArangoDatabase.createArangoSearch
 
@@ -10,7 +10,7 @@ These functions implement the
 ArangoDatabase.createArangoSearch(String name, ArangoSearchCreateOptions options) : ViewEntity
 ```
 
-Creates a ArangoSearch view with the given _options_, then returns view information from the server.
+Creates a ArangoSearch View with the given _options_, then returns view information from the server.
 
 **Arguments**
 
@@ -41,8 +41,8 @@ Creates a ArangoSearch view with the given _options_, then returns view informat
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-db.createArangoSearch("potatos", new ArangoSearchPropertiesOptions());
-// the ArangoSearch view "potatos" now exists
+db.createArangoSearch("potatoes", new ArangoSearchPropertiesOptions());
+// the ArangoSearch View "potatoes" now exists
 ```
 
 ## ArangoSearch.create
@@ -51,7 +51,7 @@ db.createArangoSearch("potatos", new ArangoSearchPropertiesOptions());
 ArangoSearch.create(ArangoSearchCreateOptions options) : ViewEntity
 ```
 
-Creates a ArangoSearch view with the given _options_, then returns view information from the server.
+Creates a ArangoSearch View with the given _options_, then returns view information from the server.
 
 Alternative for [ArangoDatabase.createArangoSearch](#arangodatabasecreatearangosearch).
 
@@ -80,10 +80,10 @@ Alternative for [ArangoDatabase.createArangoSearch](#arangodatabasecreatearangos
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoSearch view = db.arangoSearch("potatos");
+ArangoSearch view = db.arangoSearch("potatoes");
 
 view.create(new ArangoSearchPropertiesOptions());
-// the ArangoSearch view "potatos" now exists
+// the ArangoSearch View "potatoes" now exists
 ```
 
 ## ArangoSearch.getProperties
@@ -99,7 +99,7 @@ Reads the properties of the specified view.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoSearch view = db.arangoSearch("potatos");
+ArangoSearch view = db.arangoSearch("potatoes");
 
 ArangoSearchPropertiesEntity properties = view.getProperties();
 ```
