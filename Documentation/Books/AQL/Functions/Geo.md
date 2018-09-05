@@ -291,6 +291,19 @@ the query however.
 
 ### NEAR()
 
+{% hint 'warning' %}
+`NEAR` is a *deprecated* AQL function. Use [DISTANCE()](#distance) in a query
+like this instead:
+
+```js
+FOR doc IN doc
+  SORT DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude) ASC
+  RETURN doc
+```
+Assuming there exists a geo-type index on `latitude` and `longitude`, the
+optimizer will recognize it and accelerate the query.
+{% endhint %}
+
 `NEAR(coll, latitude, longitude, limit, distanceName) → docArray`
 
 Return at most *limit* documents from collection *coll* that are near
@@ -314,18 +327,23 @@ contain the distance value in an attribute of that name.
 - returns **docArray** (array): an array of documents, sorted by distance
   (shortest distance first)
 
+### WITHIN()
 
-**Note:** `NEAR` is a *deprecated* AQL function, instead use a query like this:
+{% hint 'warning' %}
+`WITHIN` is a *deprecated* AQL function. Use [DISTANCE()](#distance) in a query
+like this instead:
 
 ```js
 FOR doc IN doc
-  SORT DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude) ASC
+  LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
+  FILTER d <= radius
+  SORT d ASC
   RETURN doc
 ```
+
 Assuming there exists a geo-type index on `latitude` and `longitude`, the
 optimizer will recognize it and accelerate the query.
-
-### WITHIN()
+{% endhint %}
 
 `WITHIN(coll, latitude, longitude, radius, distanceName) → docArray`
 
@@ -348,20 +366,21 @@ value in an attribute of that name.
 - returns **docArray** (array): an array of documents, sorted by distance
   (shortest distance first)
 
-**Note:** `WITHIN` is a *deprecated* AQL function, instead use a query like this:
+### WITHIN_RECTANGLE()
+
+{% hint 'warning' %}
+`WITHIN_RECTANGLE` is a *deprecated* AQL function. Use
+[GEO_CONTAINS](#geocontains) and a GeoJSON polygon instead:
 
 ```js
+LET rect = {type: "Polygon", coordinates: [[[longitude1, latitude1], ...]]]}
 FOR doc IN doc
-  LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
-  FILTER d <= radius
-  SORT d ASC
+  FILTER GEO_CONTAINS(poly, [doc.longitude, doc.latitude])
   RETURN doc
 ```
-
 Assuming there exists a geo-type index on `latitude` and `longitude`, the
 optimizer will recognize it and accelerate the query.
-
-### WITHIN_RECTANGLE()
+{% endhint %}
 
 `WITHIN_RECTANGLE(coll, latitude1, longitude1, latitude2, longitude2) → docArray`
 
@@ -379,15 +398,3 @@ bounding rectangle with the points (*latitude1*, *longitude1*) and (*latitude2*,
 - **longitude2** (number): the top-right longitude portion of the search
   coordinate
 - returns **docArray** (array): an array of documents, in random order
-
-**Note:** `WITHIN_RECTANGLE` is a *deprecated* AQL function, instead use a query
-using a GeoJSON polygon:
-
-```js
-LET rect = {type: "Polygon", coordinates: [[[longitude1, latitude1], ...]]]}
-FOR doc IN doc
-  FILTER GEO_CONTAINS(poly, [doc.longitude, doc.latitude])
-  RETURN doc
-```
-Assuming there exists a geo-type index on `latitude` and `longitude`, the
-optimizer will recognize it and accelerate the query.
