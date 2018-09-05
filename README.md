@@ -22,7 +22,7 @@ ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1
 Key Features in ArangoDB
 ------------------------
 
-- **Multi-Model**: Documents, graphs and key-value pairs — model your data as
+- **Multi-Model**: Documents, graphs and key-value pairs model your data as
   you see fit for your application.
 - **Joins**: Conveniently join what belongs together for flexible ad-hoc
   querying, less data redundancy.
