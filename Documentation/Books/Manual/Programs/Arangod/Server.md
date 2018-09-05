@@ -1,4 +1,4 @@
-# ArangoDB Server Server Options
+# ArangoDB Server _Server_ Options
 
 ## Managing Endpoints
 
