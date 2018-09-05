@@ -42,7 +42,7 @@
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
@@ -174,8 +174,13 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY) {
+  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_PRIMARY &&
+      (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr))) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
     _enableJS = false;
   }
   
@@ -345,15 +350,22 @@ void V8DealerFeature::start() {
     }
   }
 
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
 
-  loadJavaScriptFileInAllContexts(database->systemDatabase(), "server/initialize.js", nullptr);
-
+  loadJavaScriptFileInAllContexts(
+    database.get(), "server/initialize.js", nullptr
+  );
   startGarbageCollection();
 }
 
 V8Context* V8DealerFeature::addContext() {
+  if (application_features::ApplicationServer::isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   V8Context* context = buildContext(nextId());
 
   try {
@@ -361,12 +373,19 @@ V8Context* V8DealerFeature::addContext() {
     // threads can see (yet)
     applyContextUpdate(context);
 
-    DatabaseFeature* database =
-        ApplicationServer::getFeature<DatabaseFeature>("Database");
+    auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+      arangodb::SystemDatabaseFeature
+    >();
+    auto database = sysDbFeature->use();
+
+    TRI_ASSERT(database != nullptr);
 
     // no other thread can use the context when we are here, as the
     // context has not been added to the global list of contexts yet
-    loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
+    loadJavaScriptFileInContext(
+      database.get(), "server/initialize.js", context, nullptr
+    );
+
     return context; 
   } catch (...) {
     delete context;
@@ -790,9 +809,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      bool contextLimitNotExceeded =
-        ((_contexts.size() + _nrInflightContexts < _nrMaxContexts) ||
-         (forceContext == ANY_CONTEXT_OR_PRIORITY && (_contexts.size() + _nrInflightContexts <= _nrMaxContexts)));
+      bool const contextLimitNotExceeded = (_contexts.size() + _nrInflightContexts < _nrMaxContexts);
       
       if (contextLimitNotExceeded &&
           _dynamicContextCreationBlockers == 0 && 
@@ -1041,13 +1058,21 @@ void V8DealerFeature::defineContextUpdate(
 // apply context update is only run on contexts that no other
 // threads can see (yet)
 void V8DealerFeature::applyContextUpdate(V8Context* context) {
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+
   for (auto& p : _contextUpdates) {
     auto vocbase = p.second;
 
     if (vocbase == nullptr) {
-      vocbase = DatabaseFeature::DATABASE->systemDatabase();
+      vocbase = sysDbFeature ? sysDbFeature->use().get() : nullptr;
+
+      if (!vocbase) {
+        continue;
+      }
     }
-  
+
     if (!vocbase->use()) {
       // oops
       continue;
@@ -1328,8 +1353,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   return context.release();
 }
 
-V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
+V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
+
   return {
     _contexts.size(),
     _busyContexts.size(),

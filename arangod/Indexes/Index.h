@@ -266,20 +266,38 @@ class Index {
 
   virtual size_t memory() const = 0;
   
-  // serialization flags for indexes
-
-  // serialize the basics. this cannot be turne off
-  static constexpr unsigned SERIALIZE_BASICS       = 0;
-  // serialize figures for index
-  static constexpr unsigned SERIALIZE_FIGURES      = 1;
-  // serialize object ids for persistence
-  static constexpr unsigned SERIALIZE_OBJECTID     = 1 << 1;
-  // serialize selectivity estimates
-  static constexpr unsigned SERIALIZE_ESTIMATES    = 1 << 2;
+  /// @brief serialization flags for indexes.
+  /// note that these must be mutually exclusive when bit-ORed
+  enum class Serialize : uint8_t {
+    /// @brief serialize figures for index
+    Basics = 0,
+    /// @brief serialize figures for index
+    Figures = 2,
+    /// @brief serialize object ids for persistence
+    ObjectId = 4,
+    /// @brief serialize selectivity estimates
+    Estimates = 8
+  };
+  
+  /// @brief helper for building flags
+  template <typename... Args>
+  static inline constexpr std::underlying_type<Serialize>::type makeFlags(Serialize flag, Args... args) {
+    return static_cast<std::underlying_type<Serialize>::type>(flag) + makeFlags(args...);
+  }
+  
+  static inline constexpr std::underlying_type<Serialize>::type makeFlags() {
+    return static_cast<std::underlying_type<Serialize>::type>(Serialize::Basics);
+  }
+  
+  static inline constexpr bool hasFlag(std::underlying_type<Serialize>::type flags,
+                                       Serialize aflag) {
+    return (flags & static_cast<std::underlying_type<Serialize>::type>(aflag)) != 0;
+  }
 
   /// serialize an index to velocypack, using the serialization flags above
-  virtual void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(unsigned flags) const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&,
+                            std::underlying_type<Index::Serialize>::type flags) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;

@@ -126,7 +126,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   TRI_idx_iid_t iid = oldIndex->id();
 
   VPackBuilder oldDesc;
-  oldIndex->toVelocyPack(oldDesc, Index::SERIALIZE_BASICS);
+  oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
   VPackBuilder overw;
 
   overw.openObject();
@@ -178,7 +178,7 @@ bool UpgradeTasks::upgradeGeoIndexes(
     arangodb::velocypack::Slice const& slice
 ) {
   if (EngineSelectorFeature::engineName() != "rocksdb") {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "No need to upgrade geo indexes!";
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "No need to upgrade geo indexes!";
     return true;
   }
 

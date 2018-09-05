@@ -56,7 +56,7 @@ const testPaths = {
   'http_replication': [tu.pathForTesting('HttpReplication', 'rb')],
   'http_server': [tu.pathForTesting('HttpInterface', 'rb')],
   'ssl_server': [tu.pathForTesting('HttpInterface', 'rb')],
-  'server_http': [tu.pathForTesting('common/tests/http')],
+  'server_http': [tu.pathForTesting('common/http')],
 };
 
 // //////////////////////////////////////////////////////////////////////////////

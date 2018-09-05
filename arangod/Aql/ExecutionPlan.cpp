@@ -1557,6 +1557,12 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
 
   auto offset = node->getMember(0);
   auto count = node->getMember(1);
+      
+  if (offset->type != NODE_TYPE_VALUE || count->type != NODE_TYPE_VALUE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+        "LIMIT offset/count values must be constant numeric values");
+  }
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
