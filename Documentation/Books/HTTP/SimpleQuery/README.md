@@ -1,6 +1,10 @@
 HTTP Interface for Simple Queries
 =================================
 
+{% hint 'warning' %}
+The Simple Queries API is deprecated and superseded by AQL Queries.
+{% endhint %}
+
 Simple Queries
 --------------
 
