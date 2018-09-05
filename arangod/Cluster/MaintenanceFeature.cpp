@@ -101,7 +101,7 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
     _maintenanceThreadsMax = minThreadLimit;
   } else if (_maintenanceThreadsMax >= maxThreadLimit) {
     LOG_TOPIC(WARN, Logger::MAINTENANCE)
-      << "maintenance-threads limited to " << minThreadLimit;
+      << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
 }
