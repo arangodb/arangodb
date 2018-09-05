@@ -1,7 +1,8 @@
-v3.4.0-preview.5
-----------------
+v3.4.0-rc.1
+-----------
 
-* internal preview for testing
+* Release Candidate for 3.4.0, please check the `ReleaseNotes/KnownIssues34.md`
+  file for a list of known issues.
 
 
 devel

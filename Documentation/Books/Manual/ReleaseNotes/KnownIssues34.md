@@ -14,6 +14,16 @@ Installer
 * The windows installer doesn't offer a way to continue the installation if it failed
   because of a locked database.
 
+Windows
+-------
+
+* the ArangoDB starter is currently not part of the package
+
+Ubuntu
+------
+
+* Ubuntu 14.04 is not yet supported
+
 Cluster
 -------
 
