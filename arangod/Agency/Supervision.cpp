@@ -50,6 +50,7 @@ struct HealthRecord {
   std::string syncStatus;
   std::string status;
   std::string endpoint;
+  std::string advertisedEndpoint;
   std::string lastAcked;
   std::string hostId;
   size_t version;
@@ -90,6 +91,10 @@ struct HealthRecord {
         if (node.has("LastAcked")) {
           lastAcked = node.hasAsString("LastAcked").first;
         }
+        if (node.has("AdvertisedEndpoint")) {
+          version = 3;
+          advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
+        }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
         syncStatus = node.hasAsString("LastHeartbeatStatus").first;
@@ -108,6 +113,7 @@ struct HealthRecord {
     shortName = other.shortName;
     syncStatus = other.syncStatus;
     status = other.status;
+    advertisedEndpoint = other.advertisedEndpoint;
     endpoint = other.endpoint;
     hostId = other.hostId;
     version = other.version;
@@ -118,6 +124,7 @@ struct HealthRecord {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
+    obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
