@@ -293,17 +293,14 @@
   * [Backup & Restore](Administration/BackupRestore.md)
   * [Import & Export](Administration/ImportExport.md)
   * [User Management](Administration/ManagingUsers/README.md)
+    * [LDAP Options](Administration/Configuration/Ldap.md)
     * [In Arangosh](Administration/ManagingUsers/InArangosh.md)
   * [Server Configuration](Administration/Configuration/README.md)
     * [Operating System Configuration](Administration/Configuration/OperatingSystem.md)
     * [Managing Endpoints](Administration/Configuration/Endpoint.md)
-    * [SSL Configuration](Administration/Configuration/SSL.md)
-    * [LDAP Options](Administration/Configuration/Ldap.md)
-    * [Logging Options](Administration/Configuration/Logging.md)
     * [General Options](Administration/Configuration/GeneralArangod.md)
     * [Write-Ahead Log Options](Administration/Configuration/Wal.md)
     * [Compaction Options](Administration/Configuration/Compaction.md)
-    * [Cluster Options](Administration/Configuration/Cluster.md)
     * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
     * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
@@ -316,6 +313,7 @@
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)
   * [Cluster](Administration/Cluster/README.md)
+    * [Cluster Options](Administration/Configuration/Cluster.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
 # https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
@@ -324,6 +322,7 @@
     * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
+  * [SSL Configuration](Administration/Configuration/SSL.md)
   * [Encryption at Rest](Security/Encryption/README.md)
   * [Auditing](Security/Auditing/README.md)
     * [Configuration](Security/Auditing/AuditConfiguration.md)
@@ -333,6 +332,7 @@
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
+  * [Logging Options](Administration/Configuration/Logging.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)
