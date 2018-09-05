@@ -352,15 +352,13 @@ static void ExistsVocbaseVPack(
       true,
       args[0]
     );
-    col = collection.get();
   }
 
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_ASSERT(col != nullptr);
-
+  TRI_ASSERT(collection);
   TRI_ASSERT(!collectionName.empty());
   VPackSlice search = builder.slice();
   TRI_ASSERT(search.isObject());
@@ -497,7 +495,6 @@ static void DocumentVocbase(
     TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle>)");
   }
 
-  arangodb::LogicalCollection* col = nullptr;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -507,7 +504,7 @@ static void DocumentVocbase(
   auto transactionContext =
     std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
-  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
 
   {
@@ -523,14 +520,12 @@ static void DocumentVocbase(
       args[0]
     );
 
-    col = collection.get();
-
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
 
-  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(collection);
   TRI_ASSERT(!collectionName.empty());
 
   VPackSlice search = builder.slice();
@@ -738,7 +733,6 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  arangodb::LogicalCollection* col = nullptr;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -748,7 +742,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto transactionContext =
     std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
-  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
 
   {
@@ -764,14 +758,12 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       args[0]
     );
 
-    col = collection.get();
-
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
 
-  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(collection);
   TRI_ASSERT(!collectionName.empty());
 
   VPackSlice toRemove = builder.slice();
@@ -1724,8 +1716,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     parseReplaceAndUpdateOptions(isolate, args, options, operation);
   }
 
-  arangodb::LogicalCollection* col = nullptr;
-  std::shared_ptr<arangodb::LogicalCollection> collection(col, [](arangodb::LogicalCollection*)->void {});
+  std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
   auto transactionContext =
@@ -1750,7 +1741,6 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
       !options.ignoreRevs,
       args[0]
     );
-    col = collection.get();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);

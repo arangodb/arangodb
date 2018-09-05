@@ -107,10 +107,7 @@ arangodb::Result updateLinks(
     VPackSlice currentLinks,
     IResearchViewCoordinator const& view,
     bool partialUpdate,
-    std::unordered_set<TRI_voc_cid_t> currentCids, // intentional copy
-    bool& modified,
-    VPackBuilder& viewNewProperties,
-    std::unordered_set<TRI_voc_cid_t>& newCids
+    std::unordered_set<TRI_voc_cid_t> currentCids // intentional copy
 ) {
   if (!newLinks.isObject()) {
     newLinks = VPackSlice::emptyObjectSlice();
@@ -158,21 +155,13 @@ arangodb::Result updateLinks(
 
         // do not need to drop link afterwards
         currentCids.erase(collection->id());
-        modified = true;
       }
     } else {
       if (!linkMeta.init(link, error)) {
         return { TRI_ERROR_BAD_PARAMETER, error };
       }
 
-      // append link definition
-      {
-        VPackObjectBuilder const guard(&viewNewProperties, collectionNameOrId);
-        linkMeta.json(viewNewProperties);
-      }
-
       currentCids.erase(collection->id()); // already processed
-      newCids.emplace(collection->id()); // new collection
 
       if (existingLink) {
         if (*existingLink == linkMeta) {
@@ -190,7 +179,6 @@ arangodb::Result updateLinks(
       }
 
       res = createLink(*collection, view, link, builder);
-      modified = true;
     }
 
     if (!res.ok()) {
@@ -222,7 +210,6 @@ arangodb::Result updateLinks(
 
       builder.clear();
       res = dropLink(*link, *collection, builder);
-      modified = true;
     } else {
       auto link = currentLinks.get(collection->name());
 
@@ -234,13 +221,7 @@ arangodb::Result updateLinks(
           // inconsistent links
           return { TRI_ERROR_BAD_PARAMETER };
         }
-
-        viewNewProperties.add(collectiondId, link);
-      } else {
-        viewNewProperties.add(collection->name(), link);
       }
-
-      newCids.emplace(collection->id());
     }
 
     if (!res.ok()) {
@@ -536,25 +517,16 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       currentLinks.close();
     }
 
-    arangodb::velocypack::Builder viewNewProperties;
-    bool modified = false;
-    std::unordered_set<TRI_voc_cid_t> newCids;
     auto links = slice.hasKey(StaticStrings::LinksField)
                ? slice.get(StaticStrings::LinksField)
                : arangodb::velocypack::Slice::emptyObjectSlice(); // used for !partialUpdate
-
-
-    viewNewProperties.openObject();
 
     return updateLinks(
       links,
       currentLinks.slice(),
       *this,
       partialUpdate,
-      currentCids,
-      modified,
-      viewNewProperties,
-      newCids
+      currentCids
     );
   } catch (arangodb::basics::Exception& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
@@ -617,18 +589,12 @@ Result IResearchViewCoordinator::drop() {
       }
     }
 
-    arangodb::velocypack::Builder builder;
-    bool modified;
-    std::unordered_set<TRI_voc_cid_t> newCids;
     auto res = updateLinks(
       arangodb::velocypack::Slice::emptyObjectSlice(),
       arangodb::velocypack::Slice::emptyObjectSlice(),
       *this,
       false,
-      currentCids,
-      modified,
-      builder,
-      newCids
+      currentCids
     );
 
     if (!res.ok()) {

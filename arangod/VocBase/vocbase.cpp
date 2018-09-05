@@ -1396,21 +1396,29 @@ int TRI_vocbase_t::renameView(
 
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
 
-  _dataSourceByName.emplace(newName, view);
-  _dataSourceByName.erase(oldName);
-
   // stores the parameters on disk
   auto* databaseFeature =
     application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   TRI_ASSERT(databaseFeature);
   auto doSync = databaseFeature->forceSyncProperties();
-  auto res = view->rename(std::string(newName), doSync);
+  auto res = itr1->second->rename(std::string(newName), doSync);
+
+  if (!res.ok()) {
+    return res.errorNumber(); // rename failed
+  }
+
+  auto itr2 = _dataSourceByName.emplace(newName, itr1->second);
+
+  TRI_ASSERT(itr2.second);
+  _dataSourceByName.erase(itr1);
+
+  checkCollectionInvariants();
 
   // invalidate all entries in the plan and query cache now
   arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  return res.errorNumber();
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief renames a collection
@@ -1506,7 +1514,17 @@ int TRI_vocbase_t::renameCollection(
     application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   TRI_ASSERT(databaseFeature);
   auto doSync = databaseFeature->forceSyncProperties();
-  auto res = collection->rename(std::string(newName), doSync);
+  auto res = itr1->second->rename(std::string(newName), doSync);
+
+  if (!res.ok()) {
+    return res.errorNumber(); // rename failed
+  }
+
+  auto col = std::static_pointer_cast<arangodb::LogicalCollection>(itr1->second); // cast validated above
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  TRI_ASSERT(engine);
+  res = engine->renameCollection(*this, *col, oldName); // tell the engine
 
   if (!res.ok()) {
     return res.errorNumber(); // rename failed
@@ -1515,13 +1533,7 @@ int TRI_vocbase_t::renameCollection(
   // The collection is renamed. Now swap cache entries.
   auto it2 = _dataSourceByName.emplace(newName, itr1->second);
   TRI_ASSERT(it2.second);
-
-  try {
-    _dataSourceByName.erase(oldName);
-  } catch (...) {
-    _dataSourceByName.erase(newName);
-    throw;
-  }
+  _dataSourceByName.erase(itr1);
 
   checkCollectionInvariants();
   locker.unlock();
@@ -1537,14 +1549,7 @@ int TRI_vocbase_t::renameCollection(
   arangodb::aql::QueryCache::instance()->invalidate(
       this, std::vector<std::string>{oldName, newName});
 
-  // Tell the engine.
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  TRI_ASSERT(engine != nullptr);
-
-  auto res2 = engine->renameCollection(*this, *collection, oldName);
-
-  return res2.errorNumber();
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief locks a collection for usage, loading or manifesting it
