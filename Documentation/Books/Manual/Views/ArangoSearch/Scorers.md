@@ -5,7 +5,7 @@ ArangoSearch Scorers are special functions that allow to sort documents from a
 view by their score regarding the analyzed fields.
 
 Details about their usage in AQL can be found in the
-[ArangoSearch `SORT` section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
+[ArangoSearch `SORT` section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sorting).
 
 - BM25: order results based on the [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 

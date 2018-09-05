@@ -549,7 +549,7 @@ functions known as BM11 (for *b* = `1`,  corresponds to fully scaling the term w
 the total text length) and BM15 (for *b* = `0`, corresponds to no length normalization)
 
 Sorts documents using the [**Best Matching 25** algorithm](https://en.wikipedia.org/wiki/Okapi_BM25).
-See the [`BM25()` section in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.htm)
+See the [`BM25()` section in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.html)
 for details.
 
 ### TFIDF()
