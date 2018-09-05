@@ -237,6 +237,7 @@
 
 * [Installation](Installation/README.md)
   * [Linux](Installation/Linux.md)
+    * [Operating System Configuration](Installation/LinuxOSConfiguration.md)
   * [Mac OS X](Installation/MacOSX.md)
   * [Windows](Installation/Windows.md)
   * [Compiling](Installation/Compiling.md)
@@ -318,7 +319,6 @@
   * [Import & Export](Administration/ImportExport.md)
   * [User Management](Administration/ManagingUsers/README.md)
     * [In Arangosh](Administration/ManagingUsers/InArangosh.md)
-#    * [Operating System Configuration](Administration/Configuration/OperatingSystem.md)
 #    * [Durability](Administration/Configuration/Durability.md)
   * [Master/Slave](Administration/MasterSlave/README.md)
     * [Setting up](Administration/MasterSlave/SettingUp.md)
