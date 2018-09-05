@@ -30,6 +30,7 @@
 #include "Cluster/DropDatabase.h"
 #include "Cluster/DropIndex.h"
 #include "Cluster/EnsureIndex.h"
+#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/NonAction.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
@@ -43,14 +44,14 @@ using namespace arangodb::maintenance;
 Action::Action(
   MaintenanceFeature& feature,
   ActionDescription const& description) : _action(nullptr) {
-  TRI_ASSERT(description.has("name"));
+  TRI_ASSERT(description.has(NAME));
   create(feature, description);
 }
 
 Action::Action(
   MaintenanceFeature& feature,
   ActionDescription&& description) : _action(nullptr) {
-  TRI_ASSERT(description.has("name"));
+  TRI_ASSERT(description.has(NAME));
   create(feature, std::move(description));
 }
 
@@ -58,7 +59,7 @@ Action::Action(
   MaintenanceFeature& feature,
   std::shared_ptr<ActionDescription> const &description)
   : _action(nullptr) {
-  TRI_ASSERT(description->has("name"));
+  TRI_ASSERT(description->has(NAME));
   create(feature, *description);
 }
 
@@ -70,23 +71,23 @@ Action::~Action() {}
 void Action::create(
   MaintenanceFeature& feature, ActionDescription const& description) {
   std::string name = description.name();
-  if (name == "CreateCollection") {
+  if (name == CREATE_COLLECTION) {
     _action.reset(new CreateCollection(feature, description));
-  } else if (name == "CreateDatabase") {
+  } else if (name == CREATE_DATABASE) {
     _action.reset(new CreateDatabase(feature, description));
-  } else if (name == "DropCollection") {
+  } else if (name == DROP_COLLECTION) {
     _action.reset(new DropCollection(feature, description));
-  } else if (name == "DropDatabase") {
+  } else if (name == DROP_DATABASE) {
     _action.reset(new DropDatabase(feature, description));
-  } else if (name == "DropIndex") {
+  } else if (name == DROP_INDEX) {
     _action.reset(new DropIndex(feature, description));
-  } else if (name == "EnsureIndex") {
+  } else if (name == ENSURE_INDEX) {
     _action.reset(new EnsureIndex(feature, description));
-  } else if (name == "ResignShardLeadership") {
+  } else if (name == RESIGN_SHARD_LEADERSHIP) {
     _action.reset(new ResignShardLeadership(feature, description));
-  } else if (name == "SynchronizeShard") {
+  } else if (name == SYNCHRONIZE_SHARD) {
     _action.reset(new SynchronizeShard(feature, description));
-  } else if (name == "UpdateCollection") {
+  } else if (name == UPDATE_COLLECTION) {
     _action.reset(new UpdateCollection(feature, description));
   } else {
     _action.reset(new NonAction(feature, description));

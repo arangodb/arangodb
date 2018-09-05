@@ -53,7 +53,7 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::vector<std::string> const cmp {
-  "journalSize", "waitForSync", "doCompact", "indexBuckets"};
+  JOURNAL_SIZE, StaticStrings::WaitForSyncString, DO_COMPACT, INDEX_BUCKETS};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
@@ -212,7 +212,7 @@ void handlePlanShard(
           errors.shards.end()) {
         actions.emplace_back(
           ActionDescription(
-            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, colname},
+            {{NAME, UPDATE_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname},
             {SHARD, shname}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
             {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()}},
             properties));
@@ -251,7 +251,7 @@ void handlePlanShard(
         errors.shards.end()) {
       actions.emplace_back(
         ActionDescription(
-          {{NAME, "CreateCollection"}, {COLLECTION, colname}, {SHARD, shname},
+          {{NAME, CREATE_COLLECTION}, {COLLECTION, colname}, {SHARD, shname},
            {DATABASE, dbname}, {SERVER_ID, serverId}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     } else {
@@ -295,7 +295,7 @@ void handleLocalShard(
 
     if (drop) {
       actions.emplace_back(
-        ActionDescription({{NAME, "DropCollection"},
+        ActionDescription({{NAME, DROP_COLLECTION},
             {DATABASE, dbname}, {COLLECTION, colname}}));
     } else {
       // The shard exists in both Plan and Local
@@ -358,13 +358,13 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
-  auto pdbs = plan.get("Databases");
+  auto pdbs = plan.get(DATABASES);
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
-          ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
+          ActionDescription({{NAME, CREATE_DATABASE}, {DATABASE, dbname}}));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating database " << dbname
@@ -376,15 +376,15 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   // Drop databases, which are no longer in plan
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
-    if (!plan.hasKey(std::vector<std::string> {"Databases", dbname})) {
+    if (!plan.hasKey(std::vector<std::string> {DATABASES, dbname})) {
       actions.emplace_back(
-        ActionDescription({{NAME, "DropDatabase"}, {DATABASE, dbname}}));
+        ActionDescription({{NAME, DROP_DATABASE}, {DATABASE, dbname}}));
     }
   }
 
   // Check errors for databases, which are no longer in plan and remove from errors
   for (auto& database : errors.databases) {
-    if (!plan.hasKey(std::vector<std::string>{"Databases", database.first})) {
+    if (!plan.hasKey(std::vector<std::string>{DATABASES, database.first})) {
       database.second.reset();
     }
   }
@@ -496,7 +496,7 @@ arangodb::Result arangodb::maintenance::executePlan (
 
   // build difference between plan and local
   std::vector<ActionDescription> actions;
-  report.add(VPackValue("agency"));
+  report.add(VPackValue(AGENCY));
   { VPackArrayBuilder a(&report);
     diffPlanLocal(plan, local, serverId, errors, actions); }
 
@@ -523,7 +523,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   }
 
   TRI_ASSERT(report.isOpenObject());
-  report.add(VPackValue("actions"));
+  report.add(VPackValue(ACTIONS));
   { VPackArrayBuilder a(&report);
     // enact all
     for (auto const& action : actions) {
@@ -591,7 +591,7 @@ arangodb::Result arangodb::maintenance::phaseOne (
 
   arangodb::Result result;
 
-  report.add(VPackValue("phaseOne"));
+  report.add(VPackValue(PHASE_ONE));
   { VPackObjectBuilder por(&report);
 
     // Execute database changes
@@ -779,7 +779,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
   for (auto const& database : VPackObjectIterator(local)) {
     auto const dbName = database.key.copyString();
 
-    std::vector<std::string> const cdbpath {"Databases", dbName, serverId};
+    std::vector<std::string> const cdbpath {DATABASES, dbName, serverId};
 
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
@@ -921,8 +921,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
   // Let's find database errors for databases which do not occur in Local
   // but in Plan:
-  VPackSlice planDatabases = plan.get("Databases");
-  VPackSlice curDatabases = cur.get("Databases");
+  VPackSlice planDatabases = plan.get(DATABASES);
+  VPackSlice curDatabases = cur.get(DATABASES);
   if (planDatabases.isObject() && curDatabases.isObject()) {
     for (auto const& p : allErrors.databases) {
       VPackSlice planDbEntry = planDatabases.get(p.first);
@@ -1066,7 +1066,7 @@ arangodb::Result arangodb::maintenance::phaseTwo (
 
   arangodb::Result result;
 
-  report.add(VPackValue("phaseTwo"));
+  report.add(VPackValue(PHASE_TWO));
   { VPackObjectBuilder p2(&report);
 
     // agency transactions

@@ -648,7 +648,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
       std::vector<ActionDescription> actions;
       std::string dbname = "_system";
-      std::string prop = "journalSize";
+      std::string prop = arangodb::maintenance::JOURNAL_SIZE;
 
       auto cb =
         node.second(dbname).children().begin()->second->toBuilder();
