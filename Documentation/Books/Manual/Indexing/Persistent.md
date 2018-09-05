@@ -161,7 +161,7 @@ Persistent Indexes and Server Language
 --------------------------------------
 
 The order of index entries in persistent indexes adheres to the configured
-[server language](../Administration/Configuration/GeneralArangod.md#default-language).
+[server language](../Programs/Arangod/Global.md#default-language).
 If, however, the server is restarted with a different language setting as when
 the persistent index was created, not all documents may be returned anymore and
 the sort order of those which are returned can be wrong (whenever the persistent

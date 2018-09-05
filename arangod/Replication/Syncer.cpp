@@ -569,7 +569,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
                                                      TRI_COL_TYPE_DOCUMENT));
 
   // resolve collection by uuid, name, cid (in that order of preference)
-  auto* col = resolveCollection(vocbase, slice).get();
+  auto col = resolveCollection(vocbase, slice);
 
   if (col != nullptr && col->type() == type &&
       (!_state.master.simulate32Client() || col->name() == name)) {
@@ -586,7 +586,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   }
 
   // conflicting collections need to be dropped from 3.3 onwards
-  col = vocbase.lookupCollection(name).get();
+  col = vocbase.lookupCollection(name);
 
   if (col != nullptr) {
     if (col->system()) {
@@ -658,7 +658,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!uuid.isString() || uuid.compareString(col->guid()) == 0);
 
   if (dst != nullptr) {
-    *dst = col;
+    *dst = col.get();
   }
 
   return Result();
