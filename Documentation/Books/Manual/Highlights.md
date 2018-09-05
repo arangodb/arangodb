@@ -54,7 +54,7 @@ Version 3.2
 
 - **Enterprise**: Working with some of our largest customers, we have added
   further security and scalability features to ArangoDB Enterprise like
-  [LDAP integration](Administration/Configuration/Ldap.md),
+  [LDAP integration](Programs/Arangod/Ldap.md),
   [Encryption at Rest](Security/Encryption/README.md), and the brand new
   [Satellite Collections](Satellites.md).
 
@@ -68,7 +68,7 @@ Version 3.1
   of your application layer to shard your graph efficiently to your machines
   and let traversals run locally.
 
-- **Encryption Control**: Choose your level of [SSL encryption](Administration/Configuration/SSL.md)
+- **Encryption Control**: Choose your level of [SSL encryption](Programs/Arangod/Ssl.md)
 
 - [**Auditing**](Security/Auditing/README.md): Keep a detailed log
   of all the important things that happened in ArangoDB.
