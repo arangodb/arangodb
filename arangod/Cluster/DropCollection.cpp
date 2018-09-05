@@ -41,6 +41,8 @@ DropCollection::DropCollection(
   ActionBase(feature, d) {
 
   std::stringstream error;
+  
+  _labels.emplace(FAST_TRACK);
 
   if (!d.has(COLLECTION)) {
     error << "collection must be specified. ";
