@@ -15,4 +15,4 @@ This chapter describes AQL features related to query executions and query perfor
 parts of the plan are responsible. The query-profiler can show you execution statistics for every
 stage of the query execution.
 
-* [The AQL query result cache](QueryCache.md): an optional query result cache is used to avoid repeated calculation of the same query results.
+* [The AQL query result cache](QueryCache.md): an optional query results cache is used to avoid repeated calculation of the same query results.
