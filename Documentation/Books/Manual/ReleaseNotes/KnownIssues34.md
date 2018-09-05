@@ -30,7 +30,8 @@ Modify documents in cluster using AQL and an incorrect custom shard key
 
     UPDATE { _key: "123", shardKey: "wrongKey"} WITH { foo: "bar" } IN mycollection
 
-* If your setup could run into this issue you may want to deactivate the optimizing rule `restrict-to-single-shard` here, as [described in our documentation](../../AQL/ExecutionAndPerformance/Optimizer.html#turning-specific-optimizer-rules-off). More details about this issue could be found in the issue [6399](https://github.com/arangodb/arangodb/issues/6399) .
+* If your setup could run into this issue you may want to deactivate the optimizing rule `restrict-to-single-shard` here, as [described in our documentation](../../AQL/ExecutionAndPerformance/Optimizer.html#turning-specific-optimizer-rules-off).
+More details about this issue could be found in the issue [6399](https://github.com/arangodb/arangodb/issues/6399) .
 
 ArangoSearch
 ------------
