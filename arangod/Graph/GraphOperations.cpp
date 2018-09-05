@@ -156,10 +156,14 @@ OperationResult GraphOperations::eraseEdgeDefinition(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection& coll) {
-            resIn = methods::Collections::drop(&_vocbase, &coll, false,
-                                               -1.0);
-          });
+        &_vocbase,
+        collection,
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+          TRI_ASSERT(coll);
+          resIn =
+            methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
+        }
+      );
 
       if (found.fail()) {
         res = trx.finish(result.result);
@@ -176,6 +180,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
   if (result.ok() && res.fail()) {
     return OperationResult(res);
   }
+
   return result;
 }
 
@@ -410,10 +415,14 @@ OperationResult GraphOperations::eraseOrphanCollection(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-          &_vocbase, collection, [&](LogicalCollection& coll) {
-            resIn = methods::Collections::drop(&_vocbase, &coll, false,
-                                               -1.0);
-          });
+        &_vocbase,
+        collection,
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+          TRI_ASSERT(coll);
+          resIn =
+            methods::Collections::drop(&_vocbase, coll.get(), false, -1.0);
+        }
+      );
 
       if (found.fail()) {
         return OperationResult(res);
@@ -426,6 +435,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
   if (result.ok() && res.fail()) {
     return OperationResult(res);
   }
+
   return result;
 }
 
