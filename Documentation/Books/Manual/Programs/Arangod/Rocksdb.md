@@ -1,22 +1,22 @@
-RocksDB engine options
-======================
+# ArangoDB Server RocksDB Options
 
 RocksDB is a highly configurable key-value store used to power our RocksDB
 storage engine. Most of the options on this page are pass-through options to the
 underlying RocksDB instance, and we change very few of their default settings.
 
-Depending [on the storage engine you have chosen](GeneralArangod.md#storage-engine) the availability
-and the scope of these options changes. 
+Depending on the [storage engine you have chosen](Server.md#storage-engine)
+the availability and the scope of these options changes. 
 
-In case you have chosen `mmfiles` some of the following options apply to persistent indexes.
+In case you have chosen `mmfiles` some of the following options apply to
+persistent indexes.
 In case of `rocksdb` it will apply to all data stored as well as indexes.
 
 ## Pass-through options
 
 `--rocksdb.wal-directory`
 
-Absolute path for the RocksDB WAL files. If left empty, this will use a subdirectory
-`journals` inside the data directory.
+Absolute path for the RocksDB WAL files. If left empty, this will use a
+subdirectory `journals` inside the data directory.
 
 ### Write buffers
 
@@ -204,11 +204,10 @@ By decreasing this option's value, the server will start the removal of obsolete
 WAL files earlier after server start. This is useful in testing environments that
 are space-restricted and do not require keeping much WAL file data at all.
 
-
 `--rocksdb.max-transaction-size`
 
 Transaction size limit (in bytes). Transactions store all keys and values in
-RAM, so large transactions run the risk of causing out-of-memory sitations.
+RAM, so large transactions run the risk of causing out-of-memory situations.
 This setting allows you to ensure that does not happen by limiting the size of
 any individual transaction. Transactions whose operations would consume more
 RAM than this threshold value will abort automatically with error 32 ("resource
