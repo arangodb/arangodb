@@ -5,9 +5,9 @@ IResearch library.
 
 ArangoSearch allows one to:
 
-* join documents located in different collections to one result list
-* filter documents based on AQL boolean expressions and functions
-* sort the result set based on how closely each document matched the filter
+- join documents located in different collections to one result list
+- filter documents based on AQL boolean expressions and functions
+- sort the result set based on how closely each document matched the filter
 
 A concept of value "analysis" that is meant to break up a given value into
 a set of sub-values internally tied together by metadata which influences both
@@ -16,10 +16,10 @@ specified conditions, similar to queries to web search engines.
 
 In plain terms this means a user can for example:
 
-* request documents where the `body` attribute best matches `a quick brown fox`
-* request documents where the `dna` attribute best matches a DNA sub sequence
-* request documents where the `name` attribute best matches gender
-* etc. (via custom analyzers)
+- request documents where the `body` attribute best matches `a quick brown fox`
+- request documents where the `dna` attribute best matches a DNA sub sequence
+- request documents where the `name` attribute best matches gender
+- etc. (via custom analyzers)
 
 ## The IResearch Library
 
@@ -39,7 +39,8 @@ the behavior of the engine.
 
 ## Using ArangoSearch Views
 
-To get more familiar with ArangoSearch usage, you may start with [Getting Started](GettingStarted.md) simple guide and then explore details of ArangoSearch in
- [Detailed Overview](DetailedOverview.md),
- [Analyzers](Analyzers.md)
- and [Scorers](Scorers.md) topics.
+To get more familiar with ArangoSearch usage, you may start with
+[Getting Started](GettingStarted.md) simple guide and then explore details of
+ArangoSearch in [Detailed Overview](DetailedOverview.md),
+[Analyzers](Analyzers.md) and
+[Scorers](Scorers.md) topics.
