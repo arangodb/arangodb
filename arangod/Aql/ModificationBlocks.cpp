@@ -86,11 +86,19 @@ bool ModificationBlock::skipEmptyValues(VPackSlice values,
                                         AqlItemBlock const* src, 
                                         AqlItemBlock* dst, 
                                         size_t& dstRow) {
+  TRI_ASSERT(src != nullptr);
   TRI_ASSERT(_wasTaken.size() == n);
     
   if (values.isArray() && values.length() > 0) {
     return false;
   }
+  
+  if (dst == nullptr) {
+    // fast-track exit. we don't have any output to write, so we
+    // better try not to copy any of the register values from src to dst
+    return true;
+  }
+
 
   for (size_t i = 0; i < n; ++i) {
     if (_wasTaken[i]) {
