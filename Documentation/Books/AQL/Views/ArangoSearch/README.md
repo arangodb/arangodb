@@ -11,8 +11,8 @@ They provide the capability to:
 * search documents based on AQL boolean expressions and functions
 * sort the result set based on how closely each document matched the search
 
-Overview and Pitfalls
----------------------
+Overview and Significance
+-------------------------
 
 Looking up documents in an ArangoSearch View is done via the `FOR` keyword:
 
@@ -29,14 +29,16 @@ FOR doc IN someView
   SEARCH searchExpression
 ```
 
-### `SEARCH`
+### SEARCH
 
 `SEARCH` expressions look a lot like `FILTER` operations, but have some noteable
-differences and pitfalls.
+differences.
 
 First of all, filters and functions in `SEARCH`, when applied to documents
 _emitted from an ArangoSearch View_, work _only_ on attributes linked in the
-view! For example, given a collection `myCol` with the following documents:
+view.
+
+For example, given a collection `myCol` with the following documents:
 
 ```js
 [
@@ -85,8 +87,10 @@ FOR doc IN myView
 - This only applies to the expression after the `SEARCH` keyword.
 - This only applies to tests regarding documents emitted from a view. Other
   tests are not affected.
+- In order to use `SEARCH` using all attributes of a linked sources, the special
+`includeAllFields` [link property](DetailedOverview.md#link-properties) was desinged.
 
-### `SORT`
+### SORT
 
 The document search via the `SEARCH` keyword and the sorting via the
 ArangoSearch functions, namely `BM25()` and `TFIDF()`, are closely intertwined.
@@ -103,9 +107,8 @@ ranking by weighing sub-expressions in `SEARCH` differently.
 
 ### Arrays and trackListPositions
 
-Unless [**trackListPositions**
-](../../../Manual/Views/ArangoSearch/DetailedOverview.html#link-properties) is
-set to `true`, which it is not by default, arrays behave differently. Namely
+Unless [**trackListPositions**](../../../Manual/Views/ArangoSearch/DetailedOverview.html#link-properties)
+is set to `true`, which it is not by default, arrays behave differently. Namely
 they behave like a disjunctive superposition of their values - this is best
 shown with an example.
 
@@ -202,17 +205,19 @@ ArangoSearch filters
 The basic ArangoSearch functionality can be accessed via the `SEARCH` statement
 with common AQL filters and operators, e.g.:
 
-- *AND*
-- *OR*
-- *NOT*
-- *==*
-- *<=*
-- *>=*
-- *<*
-- *>*
-- *!=*
-- *IN \<ARRAY\>*
-- *IN \<RANGE\>*
+```
+- `AND`
+- `OR`
+- `NOT`
+- `==`
+- `<=`
+- `>=`
+- `<`
+- `>`
+- `!=`
+- `IN <ARRAY>`
+- `IN <RANGE>`
+```
 
 However, the full power of ArangoSearch is harnessed and exposed via functions,
 during both the search and sort stages.
@@ -224,27 +229,26 @@ The supported AQL context functions are:
 
 ### ANALYZER()
 
-`ANALYZER(search-expression, analyzer)`
+`ANALYZER(searchExpression, analyzer)`
 
-Override analyzer in a context of **search-expression** with another one,
+Override analyzer in a context of **searchExpression** with another one,
 denoted by a specified **analyzer** argument, making it available for search
 functions.
 
-- *search-expression* - any valid search expression
+- *searchExpression* - any valid search expression
 - *analyzer* - string with the analyzer to imbue, i.e. *"text_en"* or one of the
-  other [available string
-  analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+  other [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
 By default, context contains `Identity` analyzer.
 
 ### BOOST()
 
-`BOOST(search-expression, boost)`
+`BOOST(searchExpression, boost)`
 
-Override boost in a context of **search-expression** with a specified value,
+Override boost in a context of **searchExpression** with a specified value,
 making it available for scorer functions.
 
-- *search-expression* - any valid search expression
+- *searchExpression* - any valid search expression
 - *boost* - numeric boost value
 
 By default, context contains boost value equal to `1.0`.
@@ -254,17 +258,20 @@ The supported search functions are:
 ### EXISTS()
 
 Note: Will only match values when the specified attribute has been processed
-with the link property **storeValues** set to anything other than **none**.
+with the link property **storeValues** set to **"id"** (by default it's
+**"none"**).
 
 `EXISTS(doc.someAttr)`
 
-Match documents **doc** where the attribute **someAttr** exists in the document.
+Match documents **doc** where the attribute **someAttr** exists in the
+document.
 
 This also works with sub-attributes, e.g.
 
 `EXISTS(doc.someAttr.anotherAttr)`
 
-as long as the field is processed by the view with **storeValues** not **none**.
+as long as the field is processed by the view with **storeValues** not
+**none**.
 
 `EXISTS(doc.someAttr, "analyzer", analyzer)`
 
@@ -279,8 +286,7 @@ Match documents where the **doc.someAttr** exists in the document
 
 - *doc.someAttr* - the path of the attribute to exist in the document
 - *analyzer* - string with the analyzer used, i.e. *"text_en"* or one of the
-  other [available string
-  analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+  other [available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 - *type* - data type as string; one of:
     - **bool**
     - **boolean**
@@ -295,7 +301,7 @@ specified by `ANALYZER` function) will be used.
 
 ```
 PHRASE(doc.someAttr, 
-       phrasePart [, skipTokens, phrasePart [, ... skipTokens, phrasePart]]
+       phrasePart [, skipTokens] [, phrasePart | , phrasePart, skipTokens]*
        [, analyzer])
 ```
 
@@ -343,18 +349,17 @@ Array.  The resulting Array can i.e. be used in subsequent `FILTER` or `SEARCH`
 statements with the **IN** operator.  This can be used to better understand how
 the specific analyzer is going to behave.
 - *input* string to tokenize
-- *analyzer* one of the [available string
-  analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
+- *analyzer* one of the [available string_analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
 ### MIN_MATCH()
 
-`MIN_MATCH(search-expression, [..., search-expression], min-match-count)`
+`MIN_MATCH(searchExpression [, searchExpression]*, minMatchCount)`
 
-Match documents where at least **min-match-count** of the specified
-**search-expression**s are satisfied.
+Match documents where at least **minMatchCount** of the specified
+**searchExpression**s are satisfied.
 
-- *search-expression* - any valid search expression
-- *min-match-count* - minimum number of search-expressions that should be
+- *searchExpression* - any valid search expression
+- *minMatchCount* - minimum number of *searchExpression*s that should be
   satisfied
 
 For example,
@@ -363,7 +368,8 @@ For example,
 MIN_MATCH(doc.text == 'quick', doc.text == 'brown', doc.text == 'fox', 2)
 ```
 
-if `doc.text`, as analyzed by the current analyzer, contains
+if `doc.text`, as analyzed by the current analyzer, contains 2 out of 'quick',
+'brown' and 'fox', it will be included as matched one.
 
 ### Searching examples
 
@@ -468,8 +474,8 @@ to match documents where 'description' best matches 'a quick brown fox'
     FOR doc IN someView SEARCH ANALYZER(doc.description IN TOKENS('a quick brown fox', 'text_en'), 'text_en')
       RETURN doc
 
-ArangoSearch `SORT()`
------------------
+ArangoSearch sorting
+--------------------
 
 A major feature of ArangoSearch Views is their capability of sorting results
 based on the creation-time search conditions and zero or more sorting functions.
@@ -508,11 +514,11 @@ FOR doc IN someCollection
     SORT TFIDF(doc) // !!! Error
 ```
 ```js
-FOR doc IN someView
+FOR doc IN someCollection
     RETURN BM25(doc) // !!! Error
 ```
 ```js
-FOR doc IN someView
+FOR doc IN someCollection
     SORT BM25(doc.someAttr) // !!! Error
 ```
 ```js
@@ -534,14 +540,17 @@ you do in other places.
 
 `BM25(doc, k, b)`
 
-- *doc* (document): must be emitted by `FOR doc IN someView`
-- *k* (number, _optional_): term frequency, the default is _1.2_
-- *b* (number, _optional_): term frequency, the default is _0.75_
+- *k* (number, _optional_): calibrates the text term frequency scaling, the default is
+_1.2_. A *k* value of _0_ corresponds to a binary model (no term frequency), and a large
+value corresponds to using raw term frequency
+- *b* (number, _optional_): determines the scaling by the total text length, the default
+is _0.75_. At the extreme values of the coefficient *b*, BM25 turns into ranking
+functions known as BM11 (for *b* = `1`,  corresponds to fully scaling the term weight by
+the total text length) and BM15 (for *b* = `0`, corresponds to no length normalization)
 
-Sorts documents using the [**Best Matching 25**
-algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). See the [`BM25()` section
-in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.html) for
-details.
+Sorts documents using the [**Best Matching 25** algorithm](https://en.wikipedia.org/wiki/Okapi_BM25).
+See the [`BM25()` section in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.htm)
+for details.
 
 ### TFIDF()
 
@@ -551,10 +560,11 @@ details.
 - *withNorms* (bool, _optional_): specifying whether scores should be
   normalized, the default is _false_
 
-Sorts documents using the [**term frequency–inverse document frequency**
-algorithm](https://en.wikipedia.org/wiki/TF-IDF). See the [`TFIDF()` section in
-ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.html) for
-details.
+Sorts documents using the
+[**term frequency–inverse document frequency** algorithm](https://en.wikipedia.org/wiki/TF-IDF).
+See the
+[`TFIDF()` section in ArangoSearch Scorers](../../../Manual/Views/ArangoSearch/Scorers.html)
+for details.
 
 
 ### Sorting examples

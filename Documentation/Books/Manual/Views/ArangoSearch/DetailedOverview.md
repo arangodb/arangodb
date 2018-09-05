@@ -47,8 +47,8 @@ standalone index.
 
 To simplify query syntax ArangoSearch provides a concept of [named
 analyzers](Analyzers.md) which are merely aliases for type+configuration of
-IResearch analyzers.  Management of named analyzers is exposed via REST, GUI and
-JavaScript APIs.
+IResearch analyzers. <!-- Management of named analyzers is exposed via REST, GUI and
+JavaScript APIs. -->
 
 ## View definition/modification
 

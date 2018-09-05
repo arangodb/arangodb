@@ -118,11 +118,18 @@ Modify Properties
 
 <!-- arangod/V8Server/v8-views.cpp -->
 
-`view.properties(view-property-modification)`
+`view.properties(view-property-modification, partialUpdate)`
 
-Modifies the properties of the *view*.  The format of the result is specific to
-each of the supported [View Types](README.md).  Currently, the only supported
-view type is `arangosearch`, and its properties can be found in [](../../Views/ArangoSearch/DetailedOverview.md#view-properties).
+Modifies the properties of the *view*. The format of the result is specific to
+each of the supported [View Types](README.md). *partialUpdate* is an optional
+boolean parameter (`true` by default) that determines how
+*view-property-modification* is merged with current view *properties* (adds or 
+updates *view-property-modification* properties to current if `true` and, 
+additionally, removes all other properties if `false`).
+
+Currently, the only supported view type is `arangosearch`, and its properties
+can be found in
+[](../../Views/ArangoSearch/DetailedOverview.md#view-properties).
 
 **Examples**
 

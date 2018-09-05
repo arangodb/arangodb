@@ -4,8 +4,8 @@ ArangoSearch Scorers
 ArangoSearch Scorers are special functions that allow to sort documents from a
 view by their score regarding the analyzed fields.
 
-Details about their usage in AQL can be found in the [ArangoSearch `SORT`
-section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
+Details about their usage in AQL can be found in the
+[ArangoSearch `SORT` section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
 
 - BM25: order results based on the [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 
@@ -13,10 +13,10 @@ section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
 
 ### `BM25()` - Best Matching 25 Algorithm
 
-IResearch provides a 'bm25' scorer implementing the [BM25
-algorithm](https://en.wikipedia.org/wiki/Okapi_BM25).  Optionally, the term
-frequency **k** and coefficient **b** of the algorithm can be specified as
-floating point numbers.
+IResearch provides a 'bm25' scorer implementing the
+[BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). Optionally, free
+parameters **k** and **b** of the algorithm typically using for advanced
+optimization can be specified as floating point numbers.
 
 `BM25(doc, k, b)`
 
@@ -37,8 +37,8 @@ functions known as BM11 (for b = 1) and BM15 (for b = 0).
 
 ### `TFIDF()` - Term Frequency – Inverse Document Frequency Algorithm
 
-Sorts documents using the [**term frequency–inverse document frequency**
-algorithm](https://en.wikipedia.org/wiki/TF-IDF).
+Sorts documents using the
+[**term frequency–inverse document frequency** algorithm](https://en.wikipedia.org/wiki/TF-IDF).
 
 `TFIDF(doc, withNorms)`
 

@@ -17,7 +17,7 @@ FOR vertexVariableName, edgeVariableName, pathVariableName IN traversalExpressio
 
 For this special case see [the graph traversals chapter](../Graphs/Traversals.md).
 
-For views, there is an optional `SEARCH` keyword:
+For views, there is a special (optional) `SEARCH` keyword:
 
 ```js
 FOR variableName IN viewName SEARCH searchExpression
