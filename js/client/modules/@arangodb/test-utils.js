@@ -285,10 +285,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (count === 0) {
     results['ALLTESTS'] = {
-      status: false,
+      status: true,
       skipped: true
     };
-    results.status = false;
+    results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 

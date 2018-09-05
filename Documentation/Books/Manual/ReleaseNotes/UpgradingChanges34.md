@@ -175,6 +175,21 @@ The options `intermediateCommitCount` and `intermediateCommitSize` will have no 
 anymore on transactions started via `/_api/transaction`, or `db._executeTransaction()`.
 
 
+RocksDB background sync thread
+------------------------------
+
+The RocksDB storage engine in 3.4 has a background WAL syncing thread that by default
+syncs RocksDB's WAL to disk every 100 milliseconds. This may cause additional background
+I/Os compared to ArangoDB 3.3, but will distribute the sync calls more evenly over time
+than the all-or-nothing file syncs that were performed by previous versions of ArangoDB.
+
+The syncing interval can be configured by adjusting the configuration option 
+`--rocksdb.sync-interval`.
+
+Note: this option is not supported on Windows platforms. Setting the sync interval to
+to a value greater than 0 will produce a startup warning on Windows.
+
+
 Threading and request handling
 ------------------------------
 
@@ -470,33 +485,52 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   that when explaining an execution plan, the "number of documents" estimated for
   a collection is using a cached stale value, and that the estimates change slightly
   over time even if the underlying collection is not modified.
+
+- AQL query results that are served from the AQL query results cache can now return
+  the *fullCount* attribute as part of the query statistics. Alongside the *fullCount*
+  attribute, other query statistics will be returned. However, these statistics will
+  reflect figures generated during the initial query execution, so especially a
+  query's *executionTime* figure may be misleading for a cached query result.
   
 
 Usage of V8
 -----------
 
-The internal usage of the V8 JavaScript for non-user actions has been reduced 
-in ArangoDB. Several APIs have been rewritten to not depend on V8 and thus do 
-not require using a V8 context for execution.
+The internal usage of the V8 JavaScript engine for non-user actions has been 
+reduced in ArangoDB 3.4. Several APIs have been rewritten to not depend on V8 
+and thus do not require using the V8 engine nor a V8 context for execution
+anymore.
 
 Compared to ArangoDB 3.3, the following parts of ArangoDB can now be used 
-without requiring V8 contexts:
+without the V8 engine:
 
+- agency nodes in a cluster
+- database server nodes in a cluster 
+- cluster plan application on database server nodes
 - all of AQL (with the exception of user-defined functions)
 - the graph modification APIs at endpoint `/_api/gharial`
-- background server statistics gathering
+- background statistics gathering
 
-Reduced usage of V8 by ArangoDB may allow end users to lower the configured 
+Reduced usage of V8 in ArangoDB may allow end users to lower the configured 
 numbers of V8 contexts to start. In terms of configuration options, these
 are:
 
 - `--javascript.v8-contexts`: the maximum number of V8 contexts to create
+  (high-water mark)
 - `--javascript.v8-contexts-minimum`: the minimum number of V8 contexts to 
-  create at server start and to keep around
+  create at server start and to keep around permanently (low-water mark) 
 
 The default values for these startup options have not been changed in ArangoDB
 3.4, but depending on the actual workload, 3.4 ArangoDB instances may need
 less V8 contexts than 3.3.
+
+As mentioned above, agency and database server nodes in a cluster does not
+require V8 for any operation in 3.4, so the V8 engine is turned off entirely on
+such nodes, regardless of the number of configured V8 contexts there.
+
+The V8 engine is still enabled on coordinator servers in a cluster and on single
+server instances. Here the numbe of started V8 contexts may actually be reduced
+in case a lot of the above features are used.
 
 
 Startup option changes
@@ -749,3 +783,7 @@ removed in future versions of ArangoDB:
   3.4, and `arangoimp` is just a symbolic link to `arangoimport` now.
   `arangoimp` is there for compatibility only, but client scripts should 
   eventually be migrated to use `arangoimport` instead.
+
+* the `foxx-manager` executable is deprecated and will be removed in ArangoDB 4.
+  
+  Please use foxx-cli instead: https://docs.arangodb.com/3.4/Manual/Foxx/Deployment/FoxxCLI/

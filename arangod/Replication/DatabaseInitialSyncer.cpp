@@ -86,6 +86,9 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   return std::chrono::seconds(2);
 }
 
+std::string const kTypeString = "type";
+std::string const kDataString = "data";
+
 }  // namespace
 
 namespace arangodb {
@@ -329,8 +332,8 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.openObject();
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
-  builder.add("waitForCollectorQueue", VPackValue(true));
-  builder.add("maxWaitTime", VPackValue(180.0));
+  builder.add("waitForCollectorQueue", VPackValue(false));
+  builder.add("maxWaitTime", VPackValue(300.0));
   builder.close();
 
   VPackSlice bodySlice = builder.slice();
@@ -350,11 +353,6 @@ Result DatabaseInitialSyncer::sendFlush() {
   _config.flushed = true;
   return Result();
 }
-
-namespace {
-std::string const kTypeString = "type";
-std::string const kDataString = "data";
-}  // namespace
 
 /// @brief handle a single dump marker
 Result DatabaseInitialSyncer::parseCollectionDumpMarker(
