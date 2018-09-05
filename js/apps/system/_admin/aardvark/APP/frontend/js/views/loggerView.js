@@ -201,6 +201,9 @@
 
       var count = 0;
       _.each($('#logEntries').children(), function (elem) {
+        if ($(elem).css('display') === 'flex') {
+          $(elem).css('display', 'block');
+        }
         if ($(elem).css('display') === 'block') {
           count++;
         }

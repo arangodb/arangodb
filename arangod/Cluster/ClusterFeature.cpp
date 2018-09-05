@@ -335,12 +335,20 @@ void ClusterFeature::prepare() {
     auto ci = ClusterInfo::instance();
     double start = TRI_microtime();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // in maintainer mode, a developer does not want to spend that much time
+    // waiting for extra nodes to start up
+    constexpr double waitTime = 5.0;
+#else
+    constexpr double waitTime = 15.0;
+#endif
+
     while (true) {
       LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Waiting for DBservers to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
-          (DBServers.size() > 1 || TRI_microtime() - start > 15.0)) {
+          (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Found " << DBServers.size() << " DBservers.";
         break;
       }

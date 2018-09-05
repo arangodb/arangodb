@@ -285,10 +285,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (count === 0) {
     results['ALLTESTS'] = {
-      status: false,
+      status: true,
       skipped: true
     };
-    results.status = false;
+    results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 
@@ -684,7 +684,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   }
 
   args = ['--color',
-          '-I', fs.join('UnitTests', 'arangodbRspecLib'),
+          '-I', fs.join('tests', 'arangodbRspecLib'),
           '--format', 'd',
           '--format', 'j',
           '--out', jsonFN,

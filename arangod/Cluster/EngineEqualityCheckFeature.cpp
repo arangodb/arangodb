@@ -105,7 +105,7 @@ void EngineEqualityCheckFeature::start() {
   if (ServerState::instance()->isCoordinator()) {
     LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "running storage engine equality check";
 
-    if (!equalStorageEngines()) {
+    if (!::equalStorageEngines()) {
       LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "the usage of different storage engines in the cluster is unsupported and may cause issues";
       FATAL_ERROR_EXIT();
     }

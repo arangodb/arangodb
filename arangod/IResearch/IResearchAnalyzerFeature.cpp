@@ -261,7 +261,7 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
 
   if (!database) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to find feature 'SystemDatabase' while getting the system database";
+      << "failure to find feature '" << arangodb::SystemDatabaseFeature::name() << "' while getting the system database";
 
     return nullptr;
   }

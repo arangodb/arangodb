@@ -1,6 +1,28 @@
 devel
 -----
 
+* upgraded bundled RocksDB version to 5.16.0
+
+* upgraded bundled Snappy compression library to 1.1.7
+
+* fixed issue #5941 if using breath first search in traversals uniqueness checks
+  on path (vertices and edges) have not been applied. In SmartGraphs the checks
+  have been executed properly.
+
+* added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
+  informational LOG files into RocksDB's database directory.
+
+  This option is turned off by default, but can be enabled for debugging RocksDB
+  internals and performance.
+
+* improved error messages when managing Foxx services
+
+  Install/replace/upgrade will now provide additional information when an error
+  is encountered during setup. Errors encountered during a `require` call will
+  also include information about the underlying cause in the error message.
+
+* fixed some Foxx script names being displayed incorrectly in web UI and Foxx CLI
+
 * major revision of the maintenance feature
 
 * added `uuidv4` and `genRandomBytes` methods to crypto module

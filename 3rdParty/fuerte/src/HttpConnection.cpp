@@ -39,7 +39,11 @@ using namespace arangodb::fuerte::v1;
 using namespace arangodb::fuerte::v1::http;
 
 int on_message_began(http_parser* parser) { return 0; }
-int on_status(http_parser* parser, const char* at, size_t len) { return 0; }
+int on_status(http_parser* parser, const char* at, size_t len) {
+  RequestItem* data = static_cast<RequestItem*>(parser->data);
+  data->_response->header.meta.emplace(std::string("http/") + std::to_string(parser->http_major) + '.' + std::to_string(parser->http_minor), std::string(at, len));
+  return 0; 
+}
 int on_header_field(http_parser* parser, const char* at, size_t len) {
   RequestItem* data = static_cast<RequestItem*>(parser->data);
   if (data->last_header_was_a_value) {
