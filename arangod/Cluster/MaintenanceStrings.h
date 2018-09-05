@@ -26,29 +26,45 @@
 namespace arangodb {
 namespace maintenance {
 
+extern std::string const ACTIONS;
+extern std::string const AGENCY;
 extern std::string const COLLECTION;
+extern std::string const CREATE_COLLECTION;
+extern std::string const CREATE_DATABASE;
 extern std::string const DATABASE;
+extern std::string const DO_COMPACT;
+extern std::string const DROP_COLLECTION;
+extern std::string const DROP_DATABASE;
+extern std::string const DROP_INDEX;
 extern std::string const DB;
 extern std::string const EDGE;
+extern std::string const ENSURE_INDEX;
 extern std::string const FIELDS;
 extern std::string const FOLLOWER_ID;
 extern std::string const GLOB_UID;
 extern std::string const ID;
 extern std::string const INDEX;
+extern std::string const INDEX_BUCKETS;
 extern std::string const INDEXES;
+extern std::string const JOURNAL_SIZE;
 extern std::string const KEY;
 extern std::string const LOCAL_LEADER;
 extern std::string const NAME;
 extern std::string const OBJECT_ID;
 extern std::string const OP;
+extern std::string const PHASE_ONE;
+extern std::string const PHASE_TWO;
 extern std::string const PRIMARY;
+extern std::string const RESIGN_SHARD_LEADERSHIP;
 extern std::string const SELECTIVITY_ESTIMATE;
 extern std::string const SERVER_ID;
 extern std::string const SERVERS;
 extern std::string const SHARD;
 extern std::string const SHARDS;
+extern std::string const SYNCHRONIZE_SHARD;
 extern std::string const THE_LEADER;
 extern std::string const UNDERSCORE;
+extern std::string const UPDATE_COLLECTION;
 
 }}
 

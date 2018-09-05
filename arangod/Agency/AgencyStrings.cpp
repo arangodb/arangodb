@@ -27,14 +27,15 @@
 
 std::string const arangodb::consensus::DATABASES = "Databases";
 std::string const arangodb::consensus::COLLECTIONS = "Collections";
+std::string const arangodb::consensus::VERSION = "Version";
 
 std::string const arangodb::consensus::CURRENT = "Current"; 
-std::string const arangodb::consensus::CURRENT_VERSION = CURRENT + "/Version";
+std::string const arangodb::consensus::CURRENT_VERSION = CURRENT + VERSION;
 std::string const arangodb::consensus::CURRENT_COLLECTIONS = CURRENT + "/" + COLLECTIONS + "/";
 std::string const arangodb::consensus::CURRENT_DATABASES = CURRENT + "/" + DATABASES + "/";
 
 std::string const arangodb::consensus::PLAN = "Plan"; 
-std::string const arangodb::consensus::PLAN_VERSION = PLAN + "/Version"; 
+std::string const arangodb::consensus::PLAN_VERSION = PLAN + VERSION; 
 std::string const arangodb::consensus::PLAN_COLLECTIONS = PLAN + "/" + COLLECTIONS + "/"; 
 std::string const arangodb::consensus::PLAN_DATABASES = PLAN + "/" + DATABASES + "/";
 
