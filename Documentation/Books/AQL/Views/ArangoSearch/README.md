@@ -88,7 +88,7 @@ FOR doc IN myView
 - This only applies to tests regarding documents emitted from a view. Other
   tests are not affected.
 - In order to use `SEARCH` using all attributes of a linked sources, the special
-`includeAllFields` [link property](DetailedOverview.md#link-properties) was desinged.
+`includeAllFields` [link property](../../../Manual/Views/ArangoSearch/DetailedOverview.html#link-properties) was desinged.
 
 ### SORT
 
