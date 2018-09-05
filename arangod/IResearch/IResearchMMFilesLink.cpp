@@ -80,14 +80,25 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 
 void IResearchMMFilesLink::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    unsigned flags
+    std::underlying_type<arangodb::Index::Serialize>::type flags
 ) const {
-  TRI_ASSERT(!builder.isOpenObject());
-  builder.openObject();
-  bool success = json(builder, flags & arangodb::Index::SERIALIZE_OBJECTID);
-  TRI_ASSERT(success);
+  if (builder.isOpenObject()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
 
-  if (flags & arangodb::Index::SERIALIZE_FIGURES) {
+  builder.openObject();
+
+  if (!json(builder)) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to generate link definition for IResearch view MMFiles link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
+  }
+
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     VPackBuilder figuresBuilder;
 
     figuresBuilder.openObject();

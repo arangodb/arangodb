@@ -242,9 +242,7 @@ else()
   set(ARANGODB_WINDOWS_PATCH 1337)
 endif()
 
-set(ARANGODB_WINDOWS_REVISION "1")
-
-message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_PATCH} / ${ARANGODB_WINDOWS_REVISION}")
+message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
 ################################################################################
 # SNAP version
@@ -1047,9 +1045,9 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
-set(ROCKSDB_LIBS rocksdb;snappystatic)
+set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb snappystatic)
+add_dependencies(rocksdb ${SNAPPY_LIB})
 
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)

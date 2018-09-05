@@ -45,7 +45,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  audit: [tu.pathForTesting('server/tests/audit')]
+  audit: [tu.pathForTesting('server/audit')]
 };
 
 const sharedConf = {
@@ -78,9 +78,7 @@ function auditLog(options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['audit'] = [ 'auditlog' ];
-
-  testFns['auditlog'] = auditLog;
+  testFns['audit'] = auditLog;
 
   // turn off test by default.
   opts['skipAudit'] = true;

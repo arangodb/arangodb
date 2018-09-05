@@ -265,7 +265,9 @@ struct TRI_vocbase_t {
   std::vector<std::shared_ptr<arangodb::LogicalView>> views();
 
   /// @brief returns all known collections
-  std::vector<arangodb::LogicalCollection*> collections(bool includeDeleted);
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections(
+    bool includeDeleted
+  );
 
   void processCollections(std::function<void(arangodb::LogicalCollection*)> const& cb, bool includeDeleted);
 
@@ -340,7 +342,7 @@ struct TRI_vocbase_t {
   /// this means that the system will assign a new collection id automatically
   /// using a cid of > 0 is supported to import dumps from other servers etc.
   /// but the functionality is not advertised
-  arangodb::LogicalCollection* createCollection(
+  std::shared_ptr<arangodb::LogicalCollection> createCollection(
       arangodb::velocypack::Slice parameters);
 
   /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise

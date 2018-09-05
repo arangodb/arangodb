@@ -1096,7 +1096,7 @@ arangodb::Result IResearchView::appendVelocyPackDetailed(
 
           linkBuilder.openObject();
 
-          if (!ptr->json(linkBuilder, false)) {
+          if (!ptr->json(linkBuilder)) {
             LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
               << "failed to generate json for IResearch link '" << ptr->id()
               << "' while generating json for IResearch view '" << id() << "'";
@@ -1900,7 +1900,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
         return &cookie->_snapshot;
       }
       break;
-    case Snapshot::SyncAndCreate:
+    case Snapshot::SyncAndReplace:
       // ingore existing cookie, recreate snapshot
       if (!const_cast<IResearchView*>(this)->sync()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
