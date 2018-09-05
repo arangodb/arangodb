@@ -640,11 +640,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
     metadata->writeUnlock();
-    if (oldLimit > newLimit) {
-      _globalAllocation -= (oldLimit - newLimit);
-    } else {
-      _globalAllocation += (newLimit - oldLimit);
-    }
+    _globalAllocation -= oldLimit;
+    _globalAllocation += newLimit;
     return;
   }
 
