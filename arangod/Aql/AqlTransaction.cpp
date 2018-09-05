@@ -81,9 +81,8 @@ Result AqlTransaction::processCollectionCoordinator(
 
 Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   TRI_voc_cid_t cid = 0;
+  auto col = resolver()->getCollectionStruct(collection->name());
 
-  arangodb::LogicalCollection const* col =
-      resolver()->getCollectionStruct(collection->name());
   if (col != nullptr) {
     cid = col->id();
   } else {
@@ -94,7 +93,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
       addCollection(cid, collection->name(), collection->accessType());
 
   if (res.ok() && col != nullptr) {
-    collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));
+    collection->setCollection(col.get());
   }
 
   return res;

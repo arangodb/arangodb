@@ -131,33 +131,33 @@ fi
 echo == Starting agency ...
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
-    port=$(( $AG_BASE + $aid ))
-    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
+    PORT=$(( $AG_BASE + $aid ))
+    AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
     $ARANGOD \
         -c none \
         --agency.activate true \
         --agency.compaction-step-size $COMP \
         --agency.compaction-keep-size $KEEP \
         --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --agency.my-address $TRANSPORT://$ADDRESS:$port \
+        --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
         --agency.pool-size $NRAGENTS \
         --agency.size $NRAGENTS \
         --agency.supervision true \
         --agency.supervision-frequency $SFRE \
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
-        --database.directory cluster/data$port \
+        --database.directory cluster/data$PORT \
         --javascript.enabled false \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$port \
+        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --server.statistics false \
-        --log.file cluster/$port.log \
+        --log.file cluster/$PORT.log \
         --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee cluster/$PORT.stdout 2>&1 &
+        2>&1 | tee cluster/$PORT.stdout &
 done
 
 start() {
@@ -198,7 +198,7 @@ start() {
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
-        | tee cluster/$PORT.stdout 2>&1 &
+        2>&1 | tee cluster/$PORT.stdout &
 }
 
 PORTTOPDB=`expr $DB_BASE + $NRDBSERVERS - 1`

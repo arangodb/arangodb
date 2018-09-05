@@ -102,7 +102,9 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a collection name
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::LogicalCollection const* getCollectionStruct(std::string const& name) const;
+  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(
+    std::string const& name
+  ) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
@@ -185,8 +187,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection struct map
   //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<std::string, arangodb::LogicalCollection const*>
-      _resolvedNames;
+  mutable std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalCollection>> _resolvedNames;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection name map
