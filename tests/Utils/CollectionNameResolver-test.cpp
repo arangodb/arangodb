@@ -186,7 +186,7 @@ SECTION("test_getDataSource") {
     CHECK((true == !resolver.getView("testViewGUID")));
   }
 
-  auto* collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(collectionJson->slice());
   auto view = vocbase.createView(viewJson->slice());
 
   CHECK((false == collection->deleted()));
