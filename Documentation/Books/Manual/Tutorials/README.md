@@ -56,9 +56,9 @@ Languages and Integrations
 - [Spring Data Demo](https://www.arangodb.com/tutorials/spring-data/):
   Basic Spring Data Usage with a Game of Thrones dataset
 
- Tutorial | Language | Driver
-----------|----------|---------
+Tutorial | Language | Driver
+---------|----------|-------
 [Node.js in 10 Minutes](https://www.arangodb.com/tutorials/tutorial-node-js/) | JavaScript | [ArangoJS](https://github.com/arangodb/arangojs)
 [Java in 10 Minutes](https://www.arangodb.com/tutorials/tutorial-sync-java-driver/) | Java | [ArangoDB-Java-Driver](https://github.com/arangodb/arangodb-java-driver)
-[PHP in 10 Minutes](https://www.arangodb.com/tutorials/tutorial-php/)| PHP | [ArangoDB-PHP]( 	https://github.com/arangodb/arangodb-php)
-[Python in 10 Minutes](https://www.arangodb.com/tutorials/tutorial-python/)| Python | [pyArango](https://github.com/tariqdaouda/pyArango)
+[PHP in 10 Minutes](https://www.arangodb.com/tutorials/tutorial-php/) | PHP | [ArangoDB-PHP](https://github.com/arangodb/arangodb-php)
+[Python in 10 Minutes](https://www.arangodb.com/tutorials/tutorial-python/) | Python | [pyArango](https://github.com/tariqdaouda/pyArango)
