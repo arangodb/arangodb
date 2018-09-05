@@ -733,7 +733,9 @@ def loadProgramOptionBlocks():
 
             # Output table header with column labels (one table per section)
             output.append('\n<h2>{} Options</h2>'.format(groupName.title()))
-            output.append('<table class="program-options"><thead><tr>')
+            if program in ['arangod']:
+                output.append('\nAlso see <a href="{0}.html">{0} details</a>.'.format(groupName.title()))
+            output.append('\n<table class="program-options"><thead><tr>')
             output.append('<th>{}</th><th>{}</th><th>{}</th>'.format('Name', 'Type', 'Description'))
             output.append('</tr></thead><tbody>')
 
