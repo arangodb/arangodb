@@ -1495,6 +1495,7 @@ function processQuery (query, explain) {
 
   var printNode = function (node) {
     preHandle(node);
+    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
