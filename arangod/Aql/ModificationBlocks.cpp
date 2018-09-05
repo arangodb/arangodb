@@ -880,10 +880,14 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
   VPackBuilder insertBuilder;
   VPackBuilder updateBuilder;
 
+  enum OpType {
+    INSERT,
+    UPDATE
+  };
+
   // loop over all blocks
   size_t dstRow = 0;
-  std::vector<size_t> insRows;
-  std::vector<size_t> upRows;
+  std::vector<OpType> opTypes;
   for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
     auto* res = it->get();
 
@@ -895,8 +899,6 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
     // Prepare both builders
     insertBuilder.openArray();
     updateBuilder.openArray();
-    insRows.clear();
-    upRows.clear();
 
     std::string key;
 
@@ -906,11 +908,11 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
     _wasTaken.clear();
     _wasTaken.reserve(n);
 
+    opTypes.clear();
+    opTypes.reserve(n);
+
     for (size_t i = 0; i < n; ++i) {
       AqlValue const& a = res->getValueReference(i, docRegisterId);
-
-      // only copy 1st row of registers inherited from previous frame(s)
-      inheritRegisters(res, result.get(), i, dstRow);
 
       errorMessage.clear();
       int errorCode = TRI_ERROR_NO_ERROR;
@@ -938,7 +940,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
                 
               VPackBuilder tmp = VPackCollection::merge(toUpdate, _tempBuilder.slice(), false, false);
               updateBuilder.add(tmp.slice());
-              upRows.emplace_back(dstRow);
+              opTypes.push_back(UPDATE);
             } else {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             }
@@ -953,7 +955,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
               !_collection->getCollection()->skipForAqlWrite(toInsert, "")) {
             tookThis = true;
             insertBuilder.add(toInsert);
-            insRows.emplace_back(dstRow);
+            opTypes.push_back(INSERT);
           }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -966,7 +968,6 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
       }
 
       _wasTaken.push_back(tookThis);
-      ++dstRow;
     }
     // done with collecting a block
 
@@ -975,58 +976,102 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
     VPackSlice toInsert = insertBuilder.slice();
     VPackSlice toUpdate = updateBuilder.slice();
-
-    if (!toInsert.isNone()) {
-      TRI_ASSERT(toInsert.isArray());
-      if (toInsert.length() != 0) {
-        OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
-        if (producesOutput) {
-          VPackSlice resultList = opRes.slice();
-          TRI_ASSERT(resultList.isArray());
-          size_t i = 0;
-          for (auto const& elm : VPackArrayIterator(resultList)) {
-            bool wasError =
-                arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-            if (!wasError) {
-              // return $NEW
-              result->emplaceValue(insRows[i], _outRegNew, elm.get("new"));
-            }
-            ++i;
-          }
-        }
-        handleBabyResult(opRes.countErrorCodes,
-                          static_cast<size_t>(toInsert.length()),
-                          ep->_options.ignoreErrors);
+    
+    if (toInsert.length() == 0 && toUpdate.length() == 0) {
+      // nothing to do 
+      if (skipEmptyValues(toInsert, n, res, result.get(), dstRow)) {
+        it->release();
+        returnBlock(res);
+        continue;
       }
     }
 
-    if (!toUpdate.isNone()) {
-      TRI_ASSERT(toUpdate.isArray());
-      if (toUpdate.length() != 0) {
-        OperationResult opRes;
-        if (ep->_isReplace) {
-          // replace
-          opRes = _trx->replace(_collection->name(), toUpdate, options);
+    OperationResult opResInsert;
+    VPackSlice resultListInsert = VPackSlice::emptyArraySlice();
+
+    if (toInsert.isArray() && toInsert.length() > 0) {
+      opResInsert = _trx->insert(_collection->name(), toInsert, options);
+    
+      if (opResInsert.fail()) {
+        THROW_ARANGO_EXCEPTION(opResInsert.result);
+      }
+      
+      handleBabyResult(opResInsert.countErrorCodes,
+                       static_cast<size_t>(toInsert.length()),
+                       ep->_options.ignoreErrors);
+
+      resultListInsert = opResInsert.slice();
+      if (!resultListInsert.isArray()) {
+        resultListInsert = VPackSlice::emptyArraySlice();
+      }
+    }
+    
+    OperationResult opResUpdate;
+    VPackSlice resultListUpdate = VPackSlice::emptyArraySlice();
+    
+    if (toUpdate.isArray() && toUpdate.length() > 0) {
+      if (ep->_isReplace) {
+        opResUpdate = _trx->replace(_collection->name(), toUpdate, options);
+      } else {
+        opResUpdate = _trx->update(_collection->name(), toUpdate, options);
+      }
+      
+      if (opResUpdate.fail()) {
+        THROW_ARANGO_EXCEPTION(opResUpdate.result);
+      }
+      
+      handleBabyResult(opResUpdate.countErrorCodes,
+                       static_cast<size_t>(toUpdate.length()),
+                       ep->_options.ignoreErrors);
+    
+      resultListUpdate = opResUpdate.slice();
+      if (!resultListUpdate.isArray()) {
+        resultListUpdate = VPackSlice::emptyArraySlice();
+      }
+    }
+
+    TRI_ASSERT(resultListInsert.isArray());
+    TRI_ASSERT(resultListUpdate.isArray());
+    
+    if (resultListInsert.length() == 0 && resultListUpdate.length() == 0) {
+      // nothing to do 
+      if (skipEmptyValues(resultListInsert, n, res, result.get(), dstRow)) {
+        it->release();
+        returnBlock(res);
+        continue;
+      }
+    }
+   
+    auto iterInsert = VPackArrayIterator(resultListInsert);
+    auto iterUpdate = VPackArrayIterator(resultListUpdate);
+    size_t opTypeIndex = 0;
+
+    for (size_t i = 0; i < n; ++i) {
+      TRI_ASSERT(i < _wasTaken.size());
+      if (_wasTaken[i]) {
+        // fetch operation type (insert or update/replace)
+        TRI_ASSERT(opTypeIndex < opTypes.size());
+        auto opType = opTypes[opTypeIndex++];
+
+        VPackArrayIterator* iter;
+        if (opType == INSERT) {
+          iter = &iterInsert;
         } else {
-          // update
-          opRes = _trx->update(_collection->name(), toUpdate, options);
+          iter = &iterUpdate;
         }
-        handleBabyResult(opRes.countErrorCodes,
-                          static_cast<size_t>(toUpdate.length()),
-                          ep->_options.ignoreErrors);
-        if (producesOutput) {
-          VPackSlice resultList = opRes.slice();
-          TRI_ASSERT(resultList.isArray());
-          size_t i = 0;
-          for (auto const& elm : VPackArrayIterator(resultList)) {
-            bool wasError =
-                arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-            if (!wasError) {
-              // return $NEW
-              result->emplaceValue(upRows[i], _outRegNew, elm.get("new"));
-            }
-            ++i;
+
+        TRI_ASSERT(iter->valid());
+        auto elm = iter->value();
+        bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+        
+        if (!wasError) {
+          inheritRegisters(res, result.get(), i, dstRow);
+
+          if (ep->_outVariableNew != nullptr) {
+            // return $NEW
+            result->emplaceValue(dstRow, _outRegNew, elm.get("new"));
           }
+          ++dstRow;
         }
       }
     }
