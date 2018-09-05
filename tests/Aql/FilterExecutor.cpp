@@ -26,6 +26,7 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemRow.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/BlockFetcherInterfaces.h"
 
@@ -44,13 +45,14 @@ namespace aql {
 SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
   std::unique_ptr<AqlItemRow> result;
+  ExecutorInfos infos(0, 0);
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input.steal(), false);
-      FilterExecutor testee(fetcher);
+      FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
         std::tie(state, result) = testee.produceRow();
@@ -61,7 +63,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input.steal(), true);
-      FilterExecutor testee(fetcher);
+      FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
         std::tie(state, result) = testee.produceRow();
