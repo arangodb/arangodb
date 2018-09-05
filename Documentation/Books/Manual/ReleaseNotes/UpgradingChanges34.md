@@ -485,6 +485,12 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   that when explaining an execution plan, the "number of documents" estimated for
   a collection is using a cached stale value, and that the estimates change slightly
   over time even if the underlying collection is not modified.
+
+- AQL query results that are served from the AQL query results cache can now return
+  the *fullCount* attribute as part of the query statistics. Alongside the *fullCount*
+  attribute, other query statistics will be returned. However, these statistics will
+  reflect figures generated during the initial query execution, so especially a
+  query's *executionTime* figure may be misleading for a cached query result.
   
 
 Usage of V8
