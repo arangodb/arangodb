@@ -67,7 +67,7 @@ class SharedQueryState {
     
     bool res = cb();
     if (_hasHandler) {
-      if (ADB_UNLIKELY(!executeHandler())) {
+      if (ADB_UNLIKELY(!executeContinueCallback())) {
         return false; // likely shutting down
       }
     } else {
@@ -76,7 +76,7 @@ class SharedQueryState {
       _condition.notify_one();
     }
     
-    bool res;
+    return res;
   }
   
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
@@ -92,10 +92,11 @@ class SharedQueryState {
   
 private:
   
-  /// execute the handler. must hold _mutex
-  bool executeHandler() const;
+  /// execute the _continueCallback. must hold _mutex
+  bool executeContinueCallback() const;
 
  private:
+  
   std::mutex _mutex;
   std::condition_variable _condition;
   
