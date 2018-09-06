@@ -60,6 +60,7 @@ class Future {
   
 public:
   
+  /// @brief Constructs a Future with no shared state.
   static Future<T> makeEmpty() {
     return Future<T>();
   }
@@ -78,10 +79,15 @@ public:
   /// Construct a Future from a `T` constructed from `args`
   
   Future(Future const& o) = delete;
-  Future(Future<T>&& o) noexcept : _state(std::move(o._state)) {}
+  Future(Future<T>&& o) noexcept : _state(std::move(o._state)) {
+    o._state = nullptr;
+  }
   Future& operator=(Future const&) = delete;
   Future& operator=(Future<T>&& o) noexcept {
-    _state = std::move(o._state);
+    detach();
+    std::swap(_state, o._state);
+    TRI_ASSERT(o._state == nullptr);
+    return *this;
   }
   
   ~Future() {
@@ -204,24 +210,25 @@ public:
   
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
-  template <typename F>
-  typename std::enable_if<std::is_same<std::result_of<F>, void>::value>::value
-    then(F&& func) & {
-    getState().onCallback(std::forward(func));
+  template <typename F,
+            typename R = typename std::result_of<F&&(Try<T>&&)>::type>
+  typename std::enable_if<std::is_same<R, void>::value>::type
+    then(F&& func) {
+    getState().setCallback(std::forward<F>(func));
   }
   
   // Variant: function returns a value
   // e.g. f.then([](Try<T>&& t){ return t.value(); });
   // @return a Future what will get the result of func
   template <typename F,
-  typename R = typename std::result_of<F>::type,
+  typename R = typename std::result_of<F&&(Try<T>&&)>::type,
   typename std::enable_if<!std::is_same<R, void>::value &&
                           !isFuture<R>::value>::type = 0>
   Future<R> then(F&& func) && {
     //static_assert<>
     Promise<R> promise;
     auto future = promise.get_future();
-    getState().onCallback([fn = std::forward<F>(func),
+    getState().setCallback([fn = std::forward<F>(func),
                            pr = std::move(promise)](Try<T>&& t) {
       try {
         pr.set_value(fn(std::move(t)));
@@ -233,7 +240,7 @@ public:
   }
 
   template <typename F,
-  typename R = typename std::result_of<F>::type,
+  typename R = typename std::result_of<F&&(Try<T>&&)>::type,
   typename std::enable_if<!std::is_same<R, void>::value &&
                           isFuture<R>::value>::type = 0>
   Future<typename isFuture<R>::inner> then(F&& func) && {
@@ -242,7 +249,7 @@ public:
     
     Promise<B> promise;
     auto future = promise.get_future();
-    getState().onCallback([fn = std::forward<F>(func),
+    getState().setCallback([fn = std::forward<F>(func),
                            pr = std::move(promise)](Try<T>&& t) {
       try {
         fn(std::move(t)).then([pr2 = std::move(pr)](Try<B>&& t) {
@@ -299,6 +306,8 @@ private:
 private:
   detail::SharedState<T>* _state;
 };
+  
+  
 
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {

@@ -57,6 +57,7 @@ public:
     _state = std::move(o._state);
     _retrieved = o._retrieved;
     o._retrieved = false;
+    return *this;
   }
   
   bool valid() const noexcept {

@@ -90,7 +90,7 @@ class SharedState {
   /// May call from any thread
   bool hasCallback() const noexcept {
     auto const state = _state.load(std::memory_order_acquire);
-    return _state == State::OnlyCallback || _state == State::Done;
+    return state == State::OnlyCallback || state == State::Done;
   }
   
   /// True if state is OnlyResult or Done.
@@ -251,9 +251,9 @@ class SharedState {
     
     // in case the scheduler throws away this lamda
     _attached.fetch_add(1);
-    SharedStateScope scope(this); // calls this->detachOne()
-    SchedulerFeature::SCHEDULER->post([stateRef = std::move(scope)]() {
-      SharedState* state = stateRef._core;
+    SharedStateScope scope(this); // will call detachOne()
+    SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
+      SharedState* state = ref._state;
       state->_callback(std::move(state->_result));
     });
   }

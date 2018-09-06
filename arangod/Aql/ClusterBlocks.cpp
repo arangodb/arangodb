@@ -861,7 +861,7 @@ Result RemoteBlock::sendAsyncRequest(
 }
 
 /// @brief local helper to send a request
-std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
+/*std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   auto cc = ClusterComm::instance();
@@ -886,7 +886,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
 
   return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
                          std::move(url), body, headers, defaultTimeOut);
-}
+}*/
 
 /// @brief initializeCursor, could be called multiple times
 std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(

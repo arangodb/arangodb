@@ -270,7 +270,7 @@ class ApplicationServer {
   void setupDependencies(bool failOnMissing);
 
   std::vector<ApplicationFeature*> const& getOrderedFeatures() { return _orderedFeatures; }
-
+  
  private:
   // throws an exception that a requested feature was not found
   [[ noreturn ]] static void throwFeatureNotFoundException(std::string const& name);
