@@ -56,7 +56,7 @@ void GeneralServer::startListening() {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "trying to bind to endpoint '"
                                               << it.first << "' for requests";
 
-    // distribute endpoints acorss all io contexts
+    // distribute endpoints across all io contexts
     IoContext &ioContext = _contexts[i % _numIoThreads];
     bool ok = openEndpoint(ioContext, it.second);
 

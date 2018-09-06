@@ -128,6 +128,8 @@ public:
 
     void start();
     void stop();
+
+    bool runningInThisThread() { return _thread.runningInThisThread(); }
   private:
 
   };

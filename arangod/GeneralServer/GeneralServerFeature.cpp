@@ -100,6 +100,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+static uint64_t const _maxIoThreads = 64;
+
 rest::RestHandlerFactory* GeneralServerFeature::HANDLER_FACTORY = nullptr;
 rest::AsyncJobManager* GeneralServerFeature::JOB_MANAGER = nullptr;
 GeneralServerFeature* GeneralServerFeature::GENERAL_SERVER = nullptr;
@@ -110,13 +112,19 @@ GeneralServerFeature::GeneralServerFeature(
     : ApplicationFeature(server, "GeneralServer"),
       _allowMethodOverride(false),
       _proxyCheck(true),
-      _numIoThreads(8) {
+      _numIoThreads(0) {
   setOptional(true);
   startsAfter("AQLPhase");
 
   startsAfter("Endpoint");
   startsAfter("Upgrade");
   startsAfter("SslServer");
+
+  _numIoThreads = (std::max)(static_cast<uint64_t>(1),
+    static_cast<uint64_t>(TRI_numberProcessors() / 4));
+  if (_numIoThreads > _maxIoThreads) {
+    _numIoThreads = _maxIoThreads;
+  }
 
   // TODO The following features are too high
   // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
@@ -202,8 +210,14 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   // we need at least one io thread and context
-  if (_numIoThreads <= 0) {
+  if (_numIoThreads == 0) {
+    LOG_TOPIC(WARN, Logger::FIXME)
+      << "Need at least one io-context thread.";
     _numIoThreads = 1;
+  } else if (_numIoThreads > _maxIoThreads) {
+    LOG_TOPIC(WARN, Logger::FIXME)
+      << "IO-contexts are limited to " << _maxIoThreads;
+      _numIoThreads = _maxIoThreads;
   }
 }
 

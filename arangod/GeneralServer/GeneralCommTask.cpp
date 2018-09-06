@@ -456,17 +456,10 @@ void GeneralCommTask::handleRequestDirectly(
   auto self = shared_from_this();
   handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
-    // TODO we could reduce all of this to strand::dispatch ?
-    if (doLock || !_peer->runningInThisThread()) {
-      // Note that the latter is for the case that a handler was put to sleep
-      // and woke up in a different thread.
-      auto h = handler->shared_from_this();
-
-      _peer->post(
-          [self, this, stat, h]() { addResponse(*(h->response()), stat); });
-    } else {
-      addResponse(*handler->response(), stat);
-    }
+    auto h = handler->shared_from_this();
+    // Pass the response the io context
+    _peer->post(
+        [self, this, stat, h]() { addResponse(*(h->response()), stat); });
   });
 }
 

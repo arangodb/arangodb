@@ -89,7 +89,7 @@ class Socket {
     _context.post(handler);
   }
 
-  bool runningInThisThread() { return true; }
+  bool runningInThisThread() { return _context.runningInThisThread(); }
 
  public:
   virtual std::string peerAddress() const = 0;
