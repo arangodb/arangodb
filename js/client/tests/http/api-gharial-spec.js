@@ -571,7 +571,6 @@ describe('_api/gharial', () => {
 
       // now delete the created edge definition
       let req2 = request.delete(url + '/' + gName + '/edge/' + collection + '?dropCollection=true');
-      print(req2);
       expect(req2.statusCode).to.equal(202);
     };
 
@@ -584,7 +583,6 @@ describe('_api/gharial', () => {
     expect(g1.__orphanCollections.length).to.equal(1);
 
     graph._drop(gName, true);
-      print(db._collections());
   });
 
 });
