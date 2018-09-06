@@ -1,58 +1,47 @@
 ArangoSearch Scorers
 ====================
 
-ArangoSearch accesses scorers directly by their internal names. The
-name (in upper-case) of the scorer is the function name to be used in the
-['SORT' section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sort).
-Function arguments, (excluding the first argument), are serialized as a
-string representation of a JSON array and passed directly to the corresponding
-scorer. The first argument to any scorer function is the reference to the 
-current document emitted by the `FOR` statement, i.e. it would be 'doc' for this
-statement:
+ArangoSearch Scorers are special functions that allow to sort documents from a
+view by their score regarding the analyzed fields.
 
-```js
-FOR doc IN someView
-```
-
-IResearch provides a 'bm25' scorer implementing the
-[BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). This scorer
-optionally takes 'k' and 'b' positional parameters.
-
-The user is able to run queries with the said scorer, e.g.
-
-```js
-SORT BM25(doc, 1.2, 0.75)
-```
-
-The function arguments will then be serialized into a JSON representation:
-
-```json
-[ 1.2, 0.75 ]
-```
-
-and passed to the scorer implementation.
-
-Similarly an administrator may choose to deploy a custom DNA analyzer 'DnaRank'.
-
-The user is then immediately able to run queries with the said scorer, e.g.
-
-```js
-SORT DNARANK(doc, 123, 456, "abc", { "def": "ghi" })
-```
-
-The function arguments will then be serialized into a JSON representation:
-
-```json
-[ 123, 456, "abc", { "def": "ghi" } ]
-```
-
-and passed to the scorer implementation.
-
-Runtime-plugging functionality for scores is not available in ArangoDB at this
-point in time, so ArangoDB comes with a few default-initialized scores:
-
-- *attribute-name*: order results based on the value of **attribute-name**
+Details about their usage in AQL can be found in the
+[ArangoSearch `SORT` section](../../../AQL/Views/ArangoSearch/index.html#arangosearch-sorting).
 
 - BM25: order results based on the [BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25)
 
 - TFIDF: order results based on the [TFIDF algorithm](https://en.wikipedia.org/wiki/TF-IDF)
+
+### `BM25()` - Best Matching 25 Algorithm
+
+IResearch provides a 'bm25' scorer implementing the
+[BM25 algorithm](https://en.wikipedia.org/wiki/Okapi_BM25). Optionally, free
+parameters **k** and **b** of the algorithm typically using for advanced
+optimization can be specified as floating point numbers.
+
+`BM25(doc, k, b)`
+
+- *doc* (document): must be emitted by `FOR doc IN someView`
+
+- *k* (number, _optional_): term frequency, the default is _1.2_. *k*
+  calibrates the text term frequency scaling. A *k* value of *0* corresponds to
+  a binary model (no term frequency), and a large value corresponds to using raw
+  term frequency.
+
+- *b* (number, _optional_): determines the scaling by the total text length, the
+  default is _0.75_. *b* determines the scaling by the total text length.
+  - b = 1 corresponds to fully scaling the term weight by the total text length
+  - b = 0 corresponds to no length normalization.
+
+At the extreme values of the coefficient *b*, BM25 turns into the ranking
+functions known as BM11 (for b = 1) and BM15 (for b = 0).
+
+### `TFIDF()` - Term Frequency – Inverse Document Frequency Algorithm
+
+Sorts documents using the
+[**term frequency–inverse document frequency** algorithm](https://en.wikipedia.org/wiki/TF-IDF).
+
+`TFIDF(doc, withNorms)`
+
+- *doc* (document): must be emitted by `FOR doc IN someView`
+- *withNorms* (bool, _optional_): specifying whether norms should be used via
+  **with-norms**, the default is _false_

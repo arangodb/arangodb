@@ -1058,12 +1058,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // restore the old behavior afterwards
             TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
 
-            collection =
-                vocbase->createCollection(b2.slice());
+            collection = vocbase->createCollection(b2.slice()).get();
           } else {
             // collection will be kept
-            collection =
-                vocbase->createCollection(b2.slice());
+            collection = vocbase->createCollection(b2.slice()).get();
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {

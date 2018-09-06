@@ -1,13 +1,11 @@
-LDAP
-====
+# ArangoDB Server LDAP Options
 
 {% hint 'info' %}
 This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
 {% endhint %}
 
-Basics Concepts
----------------
+## Basics Concepts
 
 The basic idea is that one can keep the user authentication setup for
 an ArangoDB instance (single or cluster) outside of ArangoDB in an LDAP
@@ -189,8 +187,7 @@ Assuming you have the TLS CAcert file that is given to the server at
 
 You can use TLS with any of the following authentication mechanisms.
 
-Authentication methods
-----------------------
+## Authentication methods
 
 In order to authenticate users in LDAP we have two options available.
 We need to pick exactly one them.
@@ -268,9 +265,7 @@ all `person` objects where the `uid` is equal to the given username.
 From these the `dn` will be extracted and used as `{{USER}}` in
 the roles later on.
 
-
-Fetching roles for a user
--------------------------
+## Fetching roles for a user
 
 After authentication, the next step is to derive authorization
 information from the authenticated LDAP user.
@@ -303,7 +298,7 @@ user is associated with from an attribute in the LDAP user object.
 If the configuration option
 
     --ldap.roles-attribute-name
-    
+
 configuration option is set, then the value of that
 option is the name of the attribute being used.
 
@@ -433,8 +428,7 @@ In combination with the `superuser-role` we could make all
     --ldap.superuser-role=project-a
 
 
-Complete configuration examples
--------------------------------
+## Complete configuration examples
 
 In this section we would like to present complete examples
 for a successful LDAP configuration of ArangoDB.

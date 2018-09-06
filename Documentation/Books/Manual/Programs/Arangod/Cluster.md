@@ -1,11 +1,8 @@
-Clusters Options
-================
+# ArangoDB Server Clusters Options
 
-Agency endpoint
----------------
+## Agency endpoint
 
 <!-- arangod/Cluster/ClusterFeature.h -->
-
 
 List of agency endpoints:
 `--cluster.agency-endpoint endpoint`
@@ -29,11 +26,9 @@ alternative endpoint if one of them becomes unavailable.
 --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002 ...
 ```
 
-My address
-----------
+## My address
 
 <!-- arangod/Cluster/ClusterFeature.h -->
-
 
 This server's address / endpoint:
 `--cluster.my-address endpoint`
@@ -51,21 +46,21 @@ for the server's id, ArangoDB will refuse to start.
 
 **Examples**
 
-Listen only on interface with address `192.168.1.1`
+Listen only on interface with address `192.168.1.1`:
+
 ```
 --cluster.my-address tcp://192.168.1.1:8530
 ```
 
-Listen on all ipv4 and ipv6 addresses, which are configured on port `8530`
+Listen on all ipv4 and ipv6 addresses, which are configured on port `8530`:
+
 ```
 --cluster.my-address ssl://[::]:8530
 ```
 
-My role
--------
+## My role
 
 <!-- arangod/Cluster/ClusterFeature.h -->
-
 
 This server's role:
 `--cluster.my-role [dbserver|coordinator]`
@@ -73,9 +68,8 @@ This server's role:
 The server's role. Is this instance a db server (backend data server)
 or a coordinator (frontend server for external and application access)
 
-Require existing ID
--------------------
- 
+## Require existing ID
+
 Require an existing server id: `--cluster.require-persisted-id bool`
 
 If set to true, then the instance will only start if a UUID file is found 
@@ -85,8 +79,7 @@ start, and not a new one. For the first start, the UUID file must either be
 created manually in the database directory, or the option must be set to 
 false for the initial startup and only turned on for restarts.
 
-More advanced options
----------------------
+## More advanced options
 
 {% hint 'warning' %}
 These options should generally remain untouched.
@@ -94,13 +87,13 @@ These options should generally remain untouched.
 
 <!-- arangod/Cluster/ClusterFeature.h -->
 
+Synchronous replication timing:
+`--cluster.synchronous-replication-timeout-factor double`
 
-Synchronous replication timing: `--cluster.synchronous-replication-timeout-factor double`
-
-Strech or clinch timeouts for internal synchroneous replication
+Stretch or clinch timeouts for internal synchronous replication
 mechanism between db servers. All such timeouts are affected by this
 change. Please change only with intent and great care. Default at `1.0`.
 
-System replication factor: `--cluster.system-replication-factorinteger`
+System replication factor: `--cluster.system-replication-factor integer`
 
 Change default replication factor for system collections. Default at `2`.

@@ -65,7 +65,7 @@ struct Collections {
     bool const _responsibleForTrx;
   };
 
-  typedef std::function<void(LogicalCollection&)> const& FuncCallback;
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> const& FuncCallback;
   typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
