@@ -24,62 +24,24 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Try.h"
+#include "Futures/Future.h"
 
 #include "catch.hpp"
 
 using namespace arangodb::futures;
 
-// from folly Utilities.h
-#if __cpp_lib_as_const || _MSC_VER
-  /* using override */ using std::as_const;
-#else
-  template <class T>
-  constexpr T const& as_const(T& t) noexcept {
-    return t;
-  }
-
-  template <class T>
-  void as_const(T const&&) = delete;
-#endif
-
 namespace {
-  
-  class A {
-  public:
-    explicit A(int x) : x_(x) {}
-    
-    int x() const {
-      return x_;
-    }
-    
-  private:
-    int x_;
-  };
-  
-  template <bool Nothrow>
-  class HasCtors {
-  public:
-    explicit HasCtors(int) noexcept(Nothrow) {}
-    HasCtors(HasCtors&&) noexcept(Nothrow) {}
-    HasCtors& operator=(HasCtors&&) noexcept(Nothrow) {}
-    HasCtors(HasCtors const&) noexcept(Nothrow) {}
-    HasCtors& operator=(HasCtors const&) noexcept(Nothrow) {}
-  };
-  
-  class MoveConstructOnly {
-  public:
-    MoveConstructOnly() = default;
-    MoveConstructOnly(const MoveConstructOnly&) = delete;
-    MoveConstructOnly(MoveConstructOnly&&) = default;
-  };
-  
-  class MutableContainer {
-  public:
-    mutable MoveConstructOnly val;
-  };
+  auto makeValid() {
+    auto valid = makeFuture<int>(42);
+    REQUIRE(valid.valid());
+    return valid;
+  }
+  auto makeInvalid() {
+    auto invalid = Future<int>::makeEmpty();
+    REQUIRE(invalid.valid());
+    return invalid;
+  }
 } // namespace
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -89,209 +51,94 @@ namespace {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("Futures TryTest", "[futures][Try]") {
+TEST_CASE("Future Test", "[futures]") {
 
   
 SECTION("Basic") {
-  A a(5);
-  Try<A> t_a(std::move(a));
-  
-  //Try<Unit> t_void;
-  
-  REQUIRE(5 == t_a.get().x());
+  auto f = Future<int>::makeEmpty();
+  REQUIRE_THROWS(f.isReady());
 }
   
-SECTION("In place") {
-  Try<A> t_a(in_place, 5);
-  
-  REQUIRE(5 == t_a.get().x());
+SECTION("Default ctor") {
+  Future<void> abc{};
 }
   
-SECTION("In place nested") {
-  Try<Try<A>> t_t_a(in_place, in_place, 5);
-  
-  REQUIRE(5 == t_t_a.get().get().x());
-}
-  
-SECTION("Assignment with throwing ctor") {
-  struct MyException : std::exception {};
-  struct ThrowingCopyConstructor {
-    int& counter_;
-    explicit ThrowingCopyConstructor(int& counter) : counter_(counter) {
-      ++counter_;
-    }
-    
-    [[noreturn]] ThrowingCopyConstructor(
-                                         const ThrowingCopyConstructor& other) noexcept(false)
-    : counter_(other.counter_) {
-      throw MyException{};
-    }
-    
-    ThrowingCopyConstructor& operator=(const ThrowingCopyConstructor&) = delete;
-    
-    ~ThrowingCopyConstructor() {
-      --counter_;
-    }
+SECTION("requires only move ctor") {
+  struct MoveCtorOnly {
+    explicit MoveCtorOnly(int id) : id_(id) {}
+    MoveCtorOnly(const MoveCtorOnly&) = delete;
+    MoveCtorOnly(MoveCtorOnly&&) = default;
+    void operator=(MoveCtorOnly const&) = delete;
+    void operator=(MoveCtorOnly&&) = delete;
+    int id_;
   };
   
-  int counter = 0;
-  
   {
-    Try<ThrowingCopyConstructor> t1{in_place, counter};
-    Try<ThrowingCopyConstructor> t2{in_place, counter};
-    REQUIRE(2 == counter);
-    REQUIRE_THROWS(t2 = t1);
-    REQUIRE_THROWS(t2 = t1);
-    REQUIRE(1 == counter);
-    REQUIRE_FALSE(t2.hasValue());
-    REQUIRE(t1.hasValue());
-  }
-  REQUIRE(0 == counter);
-  {
-    Try<ThrowingCopyConstructor> t1{in_place, counter};
-    Try<ThrowingCopyConstructor> t2;
-    REQUIRE(1 == counter);
-    REQUIRE_THROWS(t2 = t1);
-    REQUIRE(1 == counter);
-    REQUIRE_FALSE(t2.hasValue());
-    REQUIRE(t1.hasValue());
-  }
-  REQUIRE(0 == counter);
-}
-  
-  // TODO assignmentWithThrowingMoveConstructor
-  
-SECTION("emplace") {
-  Try<A> t;
-  A& t_a = t.emplace(10);
-  REQUIRE(t.hasValue());
-  REQUIRE(t_a.x() == 10);
-}
- 
-SECTION("emplace void") {
-  struct MyException : std::exception {};
-  Try<void> t;
-  t.emplace();
-  REQUIRE(t.hasValue());
-  t.set_exception(MyException());
-  REQUIRE_FALSE(t.hasValue());
-  REQUIRE(t.hasException());
-  t.emplace();
-  REQUIRE(t.hasValue());
-  REQUIRE_FALSE(t.hasException());
-}
-  
-SECTION("MoveConstRvalue") {
-  // tests to see if Try returns a const Rvalue, this is required in the case
-  // where for example MutableContainer has a mutable member that is move only
-  // and you want to fetch the value from the Try and move it into a member
-  {
-    const Try<MutableContainer> t{in_place};
-    auto val = MoveConstructOnly(std::move(t).get().val);
-    static_cast<void>(val);
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    REQUIRE(f.valid());
+    REQUIRE(f.isReady());
+    auto v = std::move(f).get();
+    REQUIRE(v.id_ == 42);
   }
   {
-    const Try<MutableContainer> t{in_place};
-    auto val = (*(std::move(t))).val;
-    static_cast<void>(val);
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    REQUIRE(f.valid());
+    REQUIRE(f.isReady());
+    auto v = std::move(f).get();
+    REQUIRE(v.id_ == 42);
+  }
+  {
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    REQUIRE(f.valid());
+    REQUIRE(f.isReady());
+    auto v = std::move(f).get(std::chrono::milliseconds(10));
+    REQUIRE(v.id_ == 42);
+  }
+  {
+    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    REQUIRE(f.valid());
+    REQUIRE(f.isReady());
+    auto v = std::move(f).get(std::chrono::milliseconds(10));
+    REQUIRE(v.id_ == 42);
   }
 }
   
-// Make sure we can copy Trys for copyable types
-SECTION("copy") {
-  Try<int> t;
-  auto t2 = t;
-}
-
-// But don't choke on move-only types
-SECTION("moveOnly") {
-  Try<std::unique_ptr<int>> t;
-  std::vector<Try<std::unique_ptr<int>>> v;
-  v.reserve(10);
+SECTION("ctor post condition") {
+  auto const except = std::logic_error("foo");
+  auto const ewrap = std::make_exception_ptr(std::logic_error("foo"));
+  
+#define DOIT(CREATION_EXPR)    \
+do {                         \
+auto f1 = (CREATION_EXPR);   \
+REQUIRE(f1.valid());         \
+auto f2 = std::move(f1);     \
+REQUIRE_FALSE(f1.valid());  \
+REQUIRE(f2.valid());        \
+} while (false)
+  
+  //DOIT(makeValid());
+  
+  auto f1 = (Future<int>(42));
+  REQUIRE(f1.valid());
+  auto f2 = std::move(f1);
+  REQUIRE_FALSE(f1.valid());
+  REQUIRE(f2.valid());
+  
+  /*DOIT(Future<int>(42));
+  DOIT(Future<int>{42});
+  //DOIT(Future<Unit>());
+  //DOIT(Future<Unit>{});
+  DOIT(makeFuture());
+  DOIT(makeFuture(Unit{}));
+  DOIT(makeFuture<Unit>(Unit{}));
+  DOIT(makeFuture(42));
+  DOIT(makeFuture<int>(42));
+  DOIT(makeFuture<int>(except));
+  DOIT(makeFuture<int>(ewrap));
+  DOIT(makeFuture(Try<int>(42)));
+  DOIT(makeFuture<int>(Try<int>(42)));
+  DOIT(makeFuture<int>(Try<int>(ewrap)));*/
+#undef DOIT
 }
   
-SECTION("exception") {
-    using ML = std::exception_ptr&;
-    using MR = std::exception_ptr&&;
-    using CL = std::exception_ptr const&;
-    using CR = std::exception_ptr const&&;
-    
-    {
-      auto obj = Try<int>();
-      using ActualML = decltype(obj.exception());
-      using ActualMR = decltype(std::move(obj).exception());
-      using ActualCL = decltype(as_const(obj).exception());
-      using ActualCR = decltype(std::move(as_const(obj)).exception());
-      REQUIRE((std::is_same<ML, ActualML>::value));
-      REQUIRE((std::is_same<MR, ActualMR>::value));
-      REQUIRE((std::is_same<CL, ActualCL>::value));
-      REQUIRE((std::is_same<CR, ActualCR>::value));
-    }
-    
-    {
-      auto obj = Try<int>(3);
-      REQUIRE_THROWS(obj.exception());
-      REQUIRE_THROWS(std::move(obj).exception());
-      REQUIRE_THROWS(as_const(obj).exception());
-      REQUIRE_THROWS(std::move(as_const(obj)).exception());
-    }
-    
-    {
-      auto obj = Try<int>(std::make_exception_ptr<int>(-3));
-      bool didThrow = false;
-      try {
-        obj.throwIfFailed();
-      } catch(int x) {
-        didThrow = true;
-        REQUIRE(x == -3);
-      } catch(...) {
-        FAIL("invalid exception type");
-      }
-      REQUIRE(didThrow);
-      
-      /*EXPECT_EQ(-3, *obj.exception().get_exception<int>());
-      EXPECT_EQ(-3, *std::move(obj).exception().get_exception<int>());
-      EXPECT_EQ(-3, *as_const(obj).exception().get_exception<int>());
-      EXPECT_EQ(-3, *std::move(as_const(obj)).exception().get_exception<int>());*/
-    }
-    
-    {
-      auto obj = Try<void>();
-      using ActualML = decltype(obj.exception());
-      using ActualMR = decltype(std::move(obj).exception());
-      using ActualCL = decltype(as_const(obj).exception());
-      using ActualCR = decltype(std::move(as_const(obj)).exception());
-      REQUIRE((std::is_same<ML, ActualML>::value));
-      REQUIRE((std::is_same<MR, ActualMR>::value));
-      REQUIRE((std::is_same<CL, ActualCL>::value));
-      REQUIRE((std::is_same<CR, ActualCR>::value));
-    }
-    
-    {
-      auto obj = Try<void>();
-      REQUIRE_THROWS(obj.exception());
-      REQUIRE_THROWS(std::move(obj).exception());
-      REQUIRE_THROWS(as_const(obj).exception());
-      REQUIRE_THROWS(std::move(as_const(obj)).exception());
-    }
-    
-    {
-      auto obj = Try<void>(std::make_exception_ptr<int>(-3));
-      bool didThrow = false;
-      try {
-        obj.throwIfFailed();
-      } catch(int x) {
-        didThrow = true;
-        REQUIRE(x == -3);
-      } catch(...) {
-        FAIL("invalid exception type");
-      }
-      REQUIRE(didThrow);
-      /*EXPECT_EQ(-3, *obj.exception().get_exception<int>());
-      EXPECT_EQ(-3, *std::move(obj).exception().get_exception<int>());
-      EXPECT_EQ(-3, *as_const(obj).exception().get_exception<int>());
-      EXPECT_EQ(-3, *std::move(as_const(obj)).exception().get_exception<int>());*/
-    }
-  }
- 
 }

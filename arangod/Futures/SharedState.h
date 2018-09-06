@@ -29,10 +29,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
-namespace arangodb {
-namespace futures {
-  
-namespace detail {
+namespace arangodb { namespace futures { namespace detail {
 
 template<typename T>
 class SharedState {
@@ -63,6 +60,11 @@ class SharedState {
   
  public:
   
+  /// State will be Start
+  static SharedState* make() {
+    return new SharedState();
+  }
+  
   /// State will be OnlyResult
   /// Result held will be move-constructed from `t`
   static SharedState* make(Try<T>&& t) {
@@ -84,30 +86,18 @@ class SharedState {
   SharedState(SharedState&&) noexcept = delete;
   SharedState& operator=(SharedState&&) = delete;
   
+  /// True if state is OnlyCallback or Done.
   /// May call from any thread
   bool hasCallback() const noexcept {
-    constexpr auto allowed = State::OnlyCallback | State::Done;
-    auto const state = state_.load(std::memory_order_acquire);
-    return State() != (state & allowed);
+    auto const state = _state.load(std::memory_order_acquire);
+    return _state == State::OnlyCallback || _state == State::Done;
   }
   
-  /// May call from any thread
-  ///
   /// True if state is OnlyResult or Done.
-  ///
-  /// Identical to `this->ready()`
+  /// May call from any thread
   bool hasResult() const noexcept {
-    auto const state = state_.load(std::memory_order_acquire);
+    auto const state = _state.load(std::memory_order_acquire);
     return state == State::OnlyResult || state == State::OnlyResult;
-  }
-  
-  /// May call from any thread
-  ///
-  /// True if state is OnlyResult or Done.
-  ///
-  /// Identical to `this->hasResult()`
-  bool ready() const noexcept {
-    return hasResult();
   }
   
   /// Call only from consumer thread (since the consumer thread can modify the
@@ -156,14 +146,14 @@ class SharedState {
     while (true) {
       switch (state) {
         case State::Start:
-          if (state_.compare_exchange_strong(state, State::OnlyCallback, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::OnlyCallback, std::memory_order_release)) {
             return;
           }
           TRI_ASSERT(state == State::OnlyResult); // race with setResult
           [[gnu::fallthrough]];
           
         case State::OnlyResult:
-          if (state_.compare_exchange_strong(state, State::Done, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_release)) {
             doCallback();
             return;
           }
@@ -185,22 +175,21 @@ class SharedState {
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
     TRI_ASSERT(!hasResult());
+    // call move constructor of content
+    ::new (&_result) Try<T>(std::move(t));
     
-    _result = std::move(t);
-    auto state = state_.load(std::memory_order_acquire);
+    auto state = _state.load(std::memory_order_acquire);
     while (true) {
       switch (state) {
         case State::Start:
-          if (state_.compare_exchange_strong(
-                                             state, State::OnlyResult, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::OnlyResult, std::memory_order_release)) {
             return;
           }
           TRI_ASSERT(state == State::OnlyCallback); // race with setCallback
           [[gnu::fallthrough]];
           
         case State::OnlyCallback:
-          if (state_.compare_exchange_strong(
-                                             state, State::Done, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_release)) {
             doCallback();
             return;
           }
@@ -244,6 +233,7 @@ class SharedState {
   ~SharedState() {
     TRI_ASSERT(_attached == 0);
     TRI_ASSERT(hasResult());
+    _result.~Try<T>();
   }
   
   /// detach promise or future from shared state
@@ -269,8 +259,10 @@ class SharedState {
   }
   
 private:
-  std::function<void<Try<T>&&>> _callback;
-  Try<T> _result;
+  std::function<void(Try<T>&&)> _callback;
+  union { // avoids having to construct the result
+    Try<T> _result;
+  };
   std::atomic<State> _state;
   std::atomic<uint8_t> _attached;
 };

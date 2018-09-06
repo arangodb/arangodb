@@ -20,18 +20,20 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_SHARED_STATE_H
-#define ARANGOD_FUTURES_SHARED_STATE_H 1
+#ifndef ARANGOD_FUTURES_PROMISE_H
+#define ARANGOD_FUTURES_PROMISE_H 1
 
 #include <atomic>
 #include <chrono>
+#include <future>
 
-#include "Futures/SharedState.h""
+#include "Futures/SharedState.h"
 
 namespace arangodb {
 namespace futures {
   
-/// Simple Future library based on Facebooks Folly
+/// producer side of future-promise pair
+/// accesses on Promise have to be synchronized externally
 template<typename T>
 class Promise {
 public:
@@ -43,7 +45,7 @@ public:
   
   /// @brief Constructs a Promise with no shared state.
   /// After construction, valid() == true.
-  Promise() : _state(SharedState::make()), _retrieved(false) {}
+  Promise() : _state(detail::SharedState<T>::make()), _retrieved(false) {}
   
   Promise(Promise const& o) = delete;
   Promise(Promise<T>&& o) noexcept
@@ -62,8 +64,8 @@ public:
   }
   
   bool isFulfilled() const noexcept {
-    if (_core) {
-      return _core->hasResult();
+    if (_state) {
+      return _state->hasResult();
     }
     return true;
   }
@@ -85,13 +87,13 @@ public:
   /// Functionally equivalent to `setTry(Try<T>(std::forward<M>(value)))`
   template <class M>
   void set_value(M&& value) {
-   setTry(Try<T>(std::forward<M>(v)));
+   setTry(Try<T>(std::forward<M>(value)));
   }
   
   /// Fulfill the Promise with the specified Try (value or exception).
   void setTry(Try<T>&& t) {
     throwIfFulfilled();
-    getCore().setResult(std::move(t));
+    getState().setResult(std::move(t));
   }
   
   /// Fulfill this Promise with the result of a function that takes no
@@ -99,12 +101,12 @@ public:
   template <class F>
   void setWith(F&& func) {
     throwIfFulfilled();
-    getCore().setResult(makeTryWith(std::forward<F>(func())));
+    getState().setResult(makeTryWith(std::forward<F>(func())));
   }
   
   std::future<T> get_future() {
     if (_retrieved) {
-      throw std::future_error(std::future_already_retrieved);
+      throw std::future_error(std::future_errc::future_already_retrieved);
     }
     _retrieved = true;
     return std::future<T>(_state);
@@ -118,7 +120,7 @@ private:
   }
   
   // convenience method that checks if _state is set
-  inline SharedState<T>& getState() {
+  inline detail::SharedState<T>& getState() {
     if (!_state) {
       throw std::future_error(std::future_errc::no_state);
     }
@@ -127,7 +129,7 @@ private:
   
   inline void throwIfFulfilled() const {
     if (isFulfilled()) {
-      throw std::future_error(std::promise_already_satisfied);
+      throw std::future_error(std::future_errc::promise_already_satisfied);
     }
   }
   
@@ -137,7 +139,7 @@ private:
         _state->detachFuture();
       }
       if (!_state->hasResult()) {
-        _state->setResult(Try<T>(std::future_exception(std::broken_promise)));
+        _state->setResult(Try<T>(std::future_error(std::future_errc::broken_promise)));
       }
       _state->detachPromise();
       _state = nullptr;
@@ -145,7 +147,7 @@ private:
   }
   
 private:
-  SharedState<T>* _state;
+  detail::SharedState<T>* _state;
   /// Whether the Future has been retrieved (a one-time operation)
   bool _retrieved;
 };  

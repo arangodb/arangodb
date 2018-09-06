@@ -85,7 +85,7 @@ public:
   /// Construct a Try with an exception_ptr
   /// @param e The exception_ptr
   explicit Try(std::exception_ptr e) noexcept
-    : _content(Content::Exception), _exception(std::move(e)){}
+    : _exception(std::move(e)), _content(Content::Exception){}
   
   /// TODO folly uses in_place_t to differentiate between constructors
   /// Construct a Try with an exception type
