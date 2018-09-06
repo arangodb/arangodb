@@ -379,7 +379,6 @@ describe('_api/gharial', () => {
     // G2 = A -------------^    // A points to Y in G1
     //      A ---- b ----> B    // A points to B in G2
 
-    // TODO tests failing because of no proper cleanup (angeblich)
     var graph = require("@arangodb/general-graph");
     // G1
     var g1 = graph._create("firstGraph",
@@ -545,6 +544,47 @@ describe('_api/gharial', () => {
       expect(req.statusCode).to.equal(200);
       expect(req.json.edge).to.deep.equal(doc);
     });
+  });
+
+    it('should not create multiple orphan collection entries', () => {
+    var graph = require("@arangodb/general-graph");
+
+    // create an empty graph
+    var gName = "firstGraph";
+    var collection = "firstEdge";
+    var from = "firstTo";
+    var to = "firstTo";
+    var g1 = graph._create("firstGraph");
+
+    // create a simple edge definition
+    const edgeDef = {
+      collection: collection,
+      from: [from],
+      to: [to]
+    };
+
+    var createAndDropEdgeDefinition = function () {
+      let req = request.post(url + '/' + gName + '/edge', {
+        body: JSON.stringify(edgeDef)
+      });
+      expect(req.statusCode).to.equal(202);
+
+      // now delete the created edge definition
+      let req2 = request.delete(url + '/' + gName + '/edge/' + collection + '?dropCollection=true');
+      print(req2);
+      expect(req2.statusCode).to.equal(202);
+    };
+
+    createAndDropEdgeDefinition();
+    createAndDropEdgeDefinition();
+    createAndDropEdgeDefinition();
+
+    g1 = graph._graph(gName);
+    expect(g1.__orphanCollections).to.deep.equal([from]);
+    expect(g1.__orphanCollections.length).to.equal(1);
+
+    graph._drop(gName, true);
+      print(db._collections());
   });
 
 });
