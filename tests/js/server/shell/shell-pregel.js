@@ -37,7 +37,7 @@ var console = require("console");
 var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
 
-var graphName = "UnitTest_pregel";
+const graphName = "UnitTest_pregel";
 var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
