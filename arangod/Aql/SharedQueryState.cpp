@@ -63,7 +63,7 @@ void SharedQueryState::setContinueHandler(std::function<void()> const& handler) 
 }
 
 /// execute the _continueCallback. must hold _mutex
-bool ShareQueryState::executeContinueCallback() const {
+bool SharedQueryState::executeContinueCallback() const {
   TRI_ASSERT(_hasHandler);
   auto scheduler = SchedulerFeature::SCHEDULER;
   TRI_ASSERT(scheduler != nullptr);
