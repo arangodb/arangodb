@@ -458,8 +458,8 @@ function ahuacatlProfilerTestSuite () {
       // call, they don't show up in the statistics.
 
       const genNodeList = () => [
-        {}, // SingletonBlock
-        {}, // CalculationBlock
+        {type: SingletonBlock, calls: 0, items: 0},
+        {type: CalculationBlock, calls: 0, items: 0},
         {type: NoResultsBlock, calls: 1, items: 0},
         {type: EnumerateListBlock, calls: 1, items: 0},
         {type: ReturnBlock, calls: 1, items: 0},

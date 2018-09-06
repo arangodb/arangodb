@@ -45,6 +45,8 @@ UpdateCollection::UpdateCollection(
   ActionBase(feature, desc) {
 
   std::stringstream error;
+  
+  _labels.emplace(FAST_TRACK);
 
   if (!desc.has(COLLECTION)) {
     error << "collection must be specified. ";

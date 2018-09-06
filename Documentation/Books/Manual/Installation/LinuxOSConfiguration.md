@@ -1,13 +1,11 @@
-Operating System Configuration
-==============================
+Linux Operating System Configuration
+====================================
 
 File Systems
 ------------
 
-_Linux only_
-
 We recommend to **not** use BTRFS on linux, it's known to not work
-well in conjunction with ArangoDB.  We experienced that arangodb
+well in conjunction with ArangoDB.  We experienced that ArangoDB
 facing latency issues on accessing its database files on BTRFS
 partitions.  In conjunction with BTRFS and AUFS we also saw data loss
 on restart.
@@ -15,8 +13,6 @@ on restart.
 
 Virtual Memory Page Sizes
 --------------------------
-
-_Linux only_
 
 By default, ArangoDB uses Jemalloc as the memory allocator. Jemalloc does a good
 job of reducing virtual memory fragmentation, especially for long-running
@@ -37,8 +33,6 @@ before executing `arangod`.
 
 Swap Space
 ----------
-
-_Linux only_
 
 It is recommended to assign swap space for a server that is running arangod.
 Configuring swap space can prevent the operating system's OOM killer from
@@ -107,8 +101,6 @@ should be started with interleave on such system. This can be achieved using
 Max Memory Mappings
 -------------------
 
-_Linux only_
-
 Linux kernels by default restrict the maximum number of memory mappings of a
 single process to about 64K mappings. While this value is sufficient for most
 workloads, it may be too low for a process that has lots of parallel threads
@@ -137,8 +129,6 @@ looking at.
 Environment Variables
 ---------------------
 
-_Linux only_
-
 It is recommended to set the environment variable `GLIBCXX_FORCE_NEW` to 1 on
 systems that use glibc++ in order to disable the memory pooling built into
 glibc++. That memory pooling is unnecessary because Jemalloc will already do
@@ -157,4 +147,3 @@ before starting `arangod`.
 While it is possible to compile ArangoDB on 32bit system, this is not a
 recommended environment. 64bit systems can address a significantly bigger
 memory region.
-
