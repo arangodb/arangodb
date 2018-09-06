@@ -1,8 +1,6 @@
-SSL Configuration
-=================
+# ArangoDB Server SSL Options
 
-SSL Endpoints
--------------
+## SSL Endpoints
 
 Given a hostname:
 
@@ -27,7 +25,7 @@ If SSL encryption is used, this option must be used to specify the filename of
 the server private key. The file must be PEM formatted and contain both the
 certificate and the server's private key.
 
-The file specified by *filename* can be generated using openssl:
+The file specified by *filename* can be generated using OpenSSL:
 
 ```
 # create private key in file "server.key"
@@ -108,7 +106,6 @@ abort the startup.
 Set to true if SSL session caching should be used.
 
 *value* has a default value of *false* (i.e. no caching).
-
 
 ### SSL peer certificate
 

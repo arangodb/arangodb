@@ -97,10 +97,15 @@ OperationResult GraphManager::createCollection(std::string const& name,
                                                VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-
-  Result res = methods::Collections::create(&ctx()->vocbase(), name, colType,
-                                            options, waitForSync, true,
-                                            [&](LogicalCollection& coll) {});
+  Result res = methods::Collections::create(
+    &ctx()->vocbase(),
+    name,
+    colType,
+    options,
+    waitForSync,
+    true,
+    [](std::shared_ptr<LogicalCollection> const&)->void {}
+  );
 
   return OperationResult(res);
 }
@@ -534,23 +539,33 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& edgeColl : graph->edgeCollections()) {
     bool found = false;
     Result res = methods::Collections::lookup(
-        vocbase, edgeColl, [&found, &innerRes, &graph](LogicalCollection& col) {
-          if (col.type() != TRI_COL_TYPE_EDGE) {
-            innerRes.reset(
-                TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                "Collection: '" + col.name() + "' is not an EdgeCollection");
-          } else {
-            innerRes = graph->validateCollection(col);
-            found = true;
-          }
-        });
+      vocbase,
+      edgeColl,
+      [&found, &innerRes, &graph](
+        std::shared_ptr<LogicalCollection> const& col
+      )->void {
+        TRI_ASSERT(col);
+        if (col->type() != TRI_COL_TYPE_EDGE) {
+          innerRes.reset(
+            TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
+            "Collection: '" + col->name() + "' is not an EdgeCollection"
+          );
+        } else {
+          innerRes = graph->validateCollection(*col);
+          found = true;
+        }
+      }
+    );
+
     if (innerRes.fail()) {
       return innerRes;
     }
+
     // Check if we got an error other then CollectionNotFound
     if (res.fail() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
+
     if (!found) {
       edgeCollectionsToCreate.emplace(edgeColl);
     }
@@ -563,14 +578,21 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   for (auto const& vertexColl : graph->vertexCollections()) {
     bool found = false;
     Result res = methods::Collections::lookup(
-        vocbase, vertexColl,
-        [&found, &innerRes, &graph](LogicalCollection& col) {
-          innerRes = graph->validateCollection(col);
-          found = true;
-        });
+      vocbase,
+      vertexColl,
+      [&found, &innerRes, &graph](
+        std::shared_ptr<LogicalCollection> const& col
+      )->void {
+        TRI_ASSERT(col);
+        innerRes = graph->validateCollection(*col);
+        found = true;
+      }
+    );
+
     if (innerRes.fail()) {
       return innerRes;
     }
+
     // Check if we got an error other then CollectionNotFound
     if (res.fail() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
@@ -582,8 +604,6 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
       }
     }
   }
-
-
 
 #ifdef USE_ENTERPRISE
   {
@@ -603,8 +623,15 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   // Create Document Collections
   for (auto const& vertexColl : documentCollectionsToCreate) {
     Result res = methods::Collections::create(
-        vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT, options, waitForSync, true,
-        [&](LogicalCollection& coll) {});
+      vocbase,
+      vertexColl,
+      TRI_COL_TYPE_DOCUMENT,
+      options,
+      waitForSync,
+      true,
+      [](std::shared_ptr<LogicalCollection> const&)->void {}
+    );
+
     if (res.fail()) {
       return res;
     }
@@ -612,16 +639,23 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    Result res = methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
-                                              options, waitForSync, true,
-                                              [&](LogicalCollection& coll) {});
+    Result res = methods::Collections::create(
+      vocbase,
+      edgeColl,
+      TRI_COL_TYPE_EDGE,
+      options,
+      waitForSync,
+      true,
+      [](std::shared_ptr<LogicalCollection> const&)->void {}
+    );
+
     if (res.fail()) {
       return res;
     }
   }
 
   return TRI_ERROR_NO_ERROR;
-};
+}
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
@@ -859,15 +893,22 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
          boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection, [&](LogicalCollection& coll) {
-            dropResult = methods::Collections::drop(&ctx()->vocbase(), &coll,
-                                                    false, -1.0);
-          });
+        &ctx()->vocbase(),
+        collection,
+        [&](std::shared_ptr<LogicalCollection> const& coll)->void {
+          TRI_ASSERT(coll);
+          dropResult = methods::Collections::drop(
+            &ctx()->vocbase(), coll.get(), false, -1.0
+          );
+        }
+      );
+
       if (dropResult.fail()) {
         LOG_TOPIC(WARN, Logger::GRAPHS)
             << "While removing graph `" << graph.name() << "`: "
             << "Dropping collection `" << collection << "` failed with error "
             << dropResult.errorNumber() << ": " << dropResult.errorMessage();
+
         // save the first error:
         if (firstDropError.ok()) {
           firstDropError = dropResult;

@@ -20,6 +20,8 @@ view in ArangoDB.
 New geo index implementation
 ----------------------------
 
+### S2 based geo index
+
 The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
 functionality. The new geo index allows indexing points, but also indexing of more
 complex geographical objects. The new implementation is much faster than the previous one for
@@ -31,6 +33,11 @@ geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
+
+### AQL Editor GeoJSON Support
+
+As a feature on top, the web ui embedded AQL editor now supports also displaying all
+GeoJSON supported data. 
 
 
 RocksDB storage engine
@@ -632,7 +639,6 @@ Note that the default maximum value can be adjusted globally by setting the star
 option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
 `maxNumberOfPlans` option.
 
-
 ### Single document optimizations
 
 In a cluster, the cost of setting up a distributed query can be considerable for
@@ -758,6 +764,22 @@ hence `LIMIT` statements in subqueries will not have any effect on the
 This is a change to previous versions of ArangoDB, in which the `fullCount`
 value was produced by the sequential last `LIMIT` statement in a query,
 regardless if the `LIMIT` was on the top level of the query or in a subquery.
+
+The `fullCount` result value will now also be returned for queries that are served
+from the query results cache.
+
+### Relaxed restrictions for LIMIT values
+
+The `offset` and `count` values used in an AQL LIMIT clause can now be expressions, as
+long as the expressions can be resolved at query compile time.
+For example, the following query will now work:
+
+    FOR doc IN collection
+      LIMIT 0, CEIL(@percent * @count / 100) 
+      RETURN doc
+
+Previous versions of ArangoDB required the `offset` and `count` values to be
+either number literals or numeric bind parameter values.
 
 ### Improved sparse index support
 

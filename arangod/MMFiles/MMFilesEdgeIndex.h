@@ -162,7 +162,8 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, unsigned flags) const override;
+  void toVelocyPack(VPackBuilder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
