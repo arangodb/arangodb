@@ -109,14 +109,14 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
   _config->vertexCollectionShards();
   std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
   _config->edgeCollectionShards();
-  size_t numShards = SIZE_T_MAX;
+  size_t numShards = SIZE_MAX;
   
   // Allocating some memory
   uint64_t vCount = 0;
   uint64_t eCount = 0;
   for (auto const& pair : vertexCollMap) {
     std::vector<ShardID> const& vertexShards = pair.second;
-    if (numShards == SIZE_T_MAX) {
+    if (numShards == SIZE_MAX) {
       numShards = vertexShards.size();
     } else if (numShards != vertexShards.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
