@@ -56,29 +56,46 @@ namespace {
     arangodb::application_features::ApplicationServer server;
     
     FuturesTestSetup() : server(nullptr, nullptr) {
-      std::vector<arangodb::application_features::ApplicationFeature*> features;
+      using namespace arangodb::application_features;
+      std::vector<ApplicationFeature*> features;
       
-      features.emplace_back(new arangodb::application_features::GreetingsFeaturePhase(server, false));
+      features.emplace_back(new GreetingsFeaturePhase(server, false));
       features.emplace_back(new arangodb::FileDescriptorsFeature(server));
       features.emplace_back(new arangodb::SchedulerFeature(server));
       
       for (auto& f : features) {
-        arangodb::application_features::ApplicationServer::server->addFeature(f);
+        ApplicationServer::server->addFeature(f);
       }
-      arangodb::application_features::ApplicationServer::server->setupDependencies(false);
+      ApplicationServer::server->setupDependencies(false);
+      
+      ApplicationServer::setStateUnsafe(ServerState::IN_WAIT);
       
       auto orderedFeatures = server.getOrderedFeatures();
       for (auto& f : orderedFeatures) {
         f->prepare();
       }
+      
       for (auto& f : orderedFeatures) {
         f->start();
       }
       
-      arangodb::application_features::ApplicationServer::setPreparedUnsafe()
     }
     
     ~FuturesTestSetup() {
+      using namespace arangodb::application_features;
+      ApplicationServer::setStateUnsafe(ServerState::IN_STOP);
+      
+      auto orderedFeatures = server.getOrderedFeatures();
+      for (auto& f : orderedFeatures) {
+        f->beginShutdown();
+      }
+      for (auto& f : orderedFeatures) {
+        f->stop();
+      }
+      for (auto& f : orderedFeatures) {
+        f->unprepare();
+      }
+      
       arangodb::application_features::ApplicationServer::server = nullptr;
     }
     

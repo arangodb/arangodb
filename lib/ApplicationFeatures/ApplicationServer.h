@@ -271,6 +271,12 @@ class ApplicationServer {
 
   std::vector<ApplicationFeature*> const& getOrderedFeatures() { return _orderedFeatures; }
   
+  static void setStateUnsafe(ServerState state) {
+    if (server) {
+      server->_state.store(state);
+    }
+  }
+  
  private:
   // throws an exception that a requested feature was not found
   [[ noreturn ]] static void throwFeatureNotFoundException(std::string const& name);

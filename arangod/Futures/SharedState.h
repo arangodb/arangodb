@@ -97,7 +97,7 @@ class SharedState {
   /// May call from any thread
   bool hasResult() const noexcept {
     auto const state = _state.load(std::memory_order_acquire);
-    return state == State::OnlyResult || state == State::OnlyResult;
+    return state == State::OnlyResult || state == State::Done;
   }
   
   /// Call only from consumer thread (since the consumer thread can modify the
