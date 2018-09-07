@@ -33,8 +33,8 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -799,11 +799,11 @@ void Agent::activateAgency() {
 
 /// Load persistent state called once
 void Agent::load() {
-
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-
-  auto vocbase = database->systemDatabase();
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  arangodb::SystemDatabaseFeature::ptr vocbase =
+    sysDbFeature ? sysDbFeature->use() : nullptr;
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
   if (vocbase == nullptr) {
@@ -818,7 +818,8 @@ void Agent::load() {
     // setPersistedState method, which acquires _outputLock and _waitForCV.
 
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
-    if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
+
+    if (!_state.loadCollections(vocbase.get(), queryRegistry, _config.waitForSync())) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
           << "Failed to load persistent state on startup.";
       FATAL_ERROR_EXIT();
@@ -839,7 +840,7 @@ void Agent::load() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
 
-  _constituent.start(vocbase, queryRegistry);
+  _constituent.start(vocbase.get(), queryRegistry);
   persistConfiguration(term());
 
   if (_config.supervision()) {
@@ -1436,44 +1437,13 @@ void Agent::lead() {
   // Then we will copy the _readDB to the _spearhead and start service.
 }
 
+
 // How long back did I take over leadership, result in seconds
 int64_t Agent::leaderFor() const {
   return std::chrono::duration_cast<std::chrono::duration<int64_t>>(
     std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
 
-// Notify inactive pool members of configuration change()
-void Agent::notifyInactive() const {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
-
-  std::unordered_map<std::string, std::string> pool = _config.pool();
-  std::string path = "/_api/agency_priv/inform";
-
-  Builder out;
-  {
-    VPackObjectBuilder o(&out);
-    out.add("term", VPackValue(term()));
-    out.add("id", VPackValue(id()));
-    out.add("active", _config.activeToBuilder()->slice());
-    out.add("pool", _config.poolToBuilder()->slice());
-    out.add("min ping", VPackValue(_config.minPing()));
-    out.add("max ping", VPackValue(_config.maxPing()));
-    out.add("timeoutMult", VPackValue(_config.timeoutMult()));
-  }
-
-  std::unordered_map<std::string, std::string> headerFields;
-  for (auto const& p : pool) {
-    if (p.first != id()) {
-      cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
-                       path, std::make_shared<std::string>(out.toJson()),
-                       headerFields, nullptr, 1.0, true);
-    }
-  }
-}
 
 void Agent::updatePeerEndpoint(query_t const& message) {
   VPackSlice slice = message->slice();
@@ -1509,7 +1479,6 @@ void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
   if (_config.updateEndpoint(id, ep)) {
     if (!challengeLeadership()) {
       persistConfiguration(term());
-      notifyInactive();
     }
   }
 

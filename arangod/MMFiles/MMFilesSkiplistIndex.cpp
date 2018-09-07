@@ -508,7 +508,7 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
                       MMFilesSkiplistIndexElement const*,
                       MMFilesSkiplistCmpType)> const& CmpElmElm,
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
-    : IndexIterator(collection, trx, index),
+    : IndexIterator(collection, trx),
       _skiplistIndex(skiplist),
       _context(trx, collection, mmdr, index->fields().size()),
       _numPaths(numPaths),
@@ -1188,7 +1188,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(&_collection, trx, this);
+      return new EmptyIndexIterator(&_collection, trx);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {

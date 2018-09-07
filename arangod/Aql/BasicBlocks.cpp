@@ -48,32 +48,18 @@ SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
 /// above
 std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   // Create a deep copy of the register values given to us:
   if (items != nullptr) {
     // build a whitelist with all the registers that we will copy from above
     _inputRegisterValues.reset(items->slice(pos, _whitelist));
   }
 
-  // This could be omitted if ExecutionBlock::initializeCursor() was called
-  // here.
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    // Set block type in per-block statistics.
-    // Intentionally using operator[], which inserts a new element if it can't
-    // find one.
-    _engine->_stats.nodes[getPlanNode()->id()].type = this->getType();
-  }
-
   _done = false;
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -129,9 +115,6 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
   _done = true;
   TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
@@ -161,7 +144,6 @@ bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
 
 /// @brief internal function to get another block
 std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   while (true) {  // will be left by break or return
     if (_upstreamState == ExecutionState::DONE) {
       // quickfix to avoid needless getBlock calls.
@@ -205,14 +187,10 @@ std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
   }
 
   return {_upstreamState, true};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -301,15 +279,10 @@ std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
   _inflight = 0;
 
   return {getHasMoreState(), TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
-
   _state = State::INITFULLCOUNT;
   _count = 0;
   _remainingOffset = _offset;
@@ -317,14 +290,10 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
   _limitSkipped = 0;
 
   return ExecutionBlock::initializeCursor(items, pos);
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result_, size_t& skipped_) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result_ == nullptr && skipped_ == 0);
 
   switch (_state) {
@@ -437,9 +406,6 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
   _limitSkipped = 0;
 
   return {getHasMoreState(), TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 ExecutionState LimitBlock::getHasMoreState() {
@@ -451,13 +417,13 @@ ExecutionState LimitBlock::getHasMoreState() {
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
     size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   
   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
 
   auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
     return res;
   }
 
@@ -515,16 +481,12 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
 
   traceGetSomeEnd(stripped.get(), res.first);
   return {res.first, std::move(stripped)};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief make the return block return the results inherited from above,
 /// without creating new blocks
 /// returns the id of the register the final result can be found in
 RegisterId ReturnBlock::returnInheritedResults() {
-  DEBUG_BEGIN_BLOCK();
   _returnInheritedResults = true;
 
   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
@@ -532,20 +494,13 @@ RegisterId ReturnBlock::returnInheritedResults() {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
 
   return it->second.registerId;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief initializeCursor, only call base
 std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
   _done = true;
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
 }
 
 std::pair<ExecutionState, arangodb::Result> NoResultsBlock::getOrSkipSome(

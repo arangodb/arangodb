@@ -67,6 +67,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+std::string const dataString("data");
+std::string const keyString("key");
+std::string const typeString("type");
+}
+
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
 
@@ -125,9 +131,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
           "received invalid JSON data for collection " + collectionName};
     }
 
-    std::string const attributeName = pair.key.copyString();
-
-    if (attributeName == "type") {
+    if (pair.key.isEqualString(::typeString)) {
       if (pair.value.isNumber()) {
         int v = pair.value.getNumericValue<int>();
         if (v == 2301) {
@@ -137,19 +141,16 @@ static Result restoreDataParser(char const* ptr, char const* pos,
           type = static_cast<TRI_replication_operation_e>(v);
         }
       }
-    }
-
-    else if (attributeName == "data") {
+    } else if (pair.key.isEqualString(::dataString)) {
       if (pair.value.isObject()) {
         doc = pair.value;
 
-        if (doc.hasKey(StaticStrings::KeyString)) {
-          key = doc.get(StaticStrings::KeyString).copyString();
+        VPackSlice k = doc.get(StaticStrings::KeyString);
+        if (k.isString()) {
+          key = k.copyString();
         }
       }
-    }
-
-    else if (attributeName == "key") {
+    } else if (pair.key.isEqualString(::keyString)) {
       if (key.empty()) {
         key = pair.value.copyString();
       }
@@ -674,14 +675,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
 void RestReplicationHandler::handleCommandClusterInventory() {
   std::string const& dbName = _request->databaseName();
-  bool found;
-  bool includeSystem = true;
-
-  std::string const& value = _request->value("includeSystem", found);
-
-  if (found) {
-    includeSystem = StringUtils::boolean(value);
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
@@ -796,13 +790,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
   }
   VPackSlice const slice = parsedRequest->slice();
 
-  bool found;
-  bool force = false;
-  std::string const& value = _request->value("force", found);
-
-  if (found) {
-    force = StringUtils::boolean(value);
-  }
+  bool force = _request->parsedValue("force", false);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
@@ -1072,7 +1060,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(LogicalCollection::VERSION_31));
+  toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
   if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
@@ -1141,17 +1129,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 #ifdef USE_ENTERPRISE
-  {
-    bool force = false;
-    bool found = false;
-    std::string const& forceVal = _request->value("force", found);
-
-    if (found) {
-      force = StringUtils::boolean(forceVal);
-    }
-    if (ignoreHiddenEnterpriseCollection(colName, force)) {
-      return {TRI_ERROR_NO_ERROR};
-    }
+  bool force = _request->parsedValue("force", false);
+  if (ignoreHiddenEnterpriseCollection(colName, force)) {
+    return {TRI_ERROR_NO_ERROR};
   }
 #endif
 
@@ -1278,7 +1258,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   // Now loop over the markers and insert the docs, ignoring _key and _id
   for (auto const& p : latest) {
     VPackSlice const marker = allMarkersSlice.at(p.second);
-    VPackSlice const typeSlice = marker.get("type");
+    VPackSlice const typeSlice = marker.get(::typeString);
     TRI_replication_operation_e type = REPLICATION_INVALID;
     if (typeSlice.isNumber()) {
       int typeInt = typeSlice.getNumericValue<int>();
@@ -1289,7 +1269,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
       }
     }
     if (type == REPLICATION_MARKER_DOCUMENT) {
-      VPackSlice const doc = marker.get("data");
+      VPackSlice const doc = marker.get(::dataString);
       TRI_ASSERT(doc.isObject());
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
@@ -1324,9 +1304,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
-    af->userManager()->outdate();
+    af->userManager()->triggerLocalReload();
+    af->userManager()->triggerGlobalReload();
   }
-  af->tokenCache()->invalidateBasicCache();
 
   return Result{queryResult.code};
 }
@@ -1337,11 +1317,8 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
 Result RestReplicationHandler::processRestoreDataBatch(
     transaction::Methods& trx, std::string const& collectionName) {
-  VPackBuilder builder;
-
   std::unordered_map<std::string, VPackValueLength> latest;
   VPackBuilder allMarkers;
-
   parseBatch(collectionName, latest, allMarkers);
 
   // First remove all keys of which the last marker we saw was a deletion
@@ -1354,7 +1331,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
 
     for (auto const& p : latest) {
       VPackSlice const marker = allMarkersSlice.at(p.second);
-      VPackSlice const typeSlice = marker.get("type");
+      VPackSlice const typeSlice = marker.get(::typeString);
       TRI_replication_operation_e type = REPLICATION_INVALID;
       if (typeSlice.isNumber()) {
         int typeInt = typeSlice.getNumericValue<int>();
@@ -1394,18 +1371,18 @@ Result RestReplicationHandler::processRestoreDataBatch(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() && collectionName == "_users");
 
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
-  builder.clear();
-  if (ServerState::instance()->isCoordinator() && collectionName == "_users") {
-    // Special-case for _users, we need to remove the _key and _id from the
-    // marker
+  VPackBuilder builder;
+  {
     VPackArrayBuilder guard(&builder);
 
     for (auto const& p : latest) {
       VPackSlice const marker = allMarkersSlice.at(p.second);
-      VPackSlice const typeSlice = marker.get("type");
+      VPackSlice const typeSlice = marker.get(::typeString);
       TRI_replication_operation_e type = REPLICATION_INVALID;
       if (typeSlice.isNumber()) {
         int typeInt = typeSlice.getNumericValue<int>();
@@ -1416,40 +1393,22 @@ Result RestReplicationHandler::processRestoreDataBatch(
         }
       }
       if (type == REPLICATION_MARKER_DOCUMENT) {
-        VPackSlice const doc = marker.get("data");
+        VPackSlice const doc = marker.get(::dataString);
         TRI_ASSERT(doc.isObject());
-        // In the _users case we silently remove the _key value.
-        builder.openObject();
-        for (auto const& it : VPackObjectIterator(doc)) {
-          if (StringRef(it.key) != StaticStrings::KeyString &&
-              StringRef(it.key) != StaticStrings::IdString) {
-            builder.add(it.key);
-            builder.add(it.value);
+        if (isUsersOnCoordinator) {
+          // In the _users case we silently remove the _key value.
+          builder.openObject();
+          for (auto const& it : VPackObjectIterator(doc)) {
+            if (StringRef(it.key) != StaticStrings::KeyString &&
+                StringRef(it.key) != StaticStrings::IdString) {
+              builder.add(it.key);
+              builder.add(it.value);
+            }
           }
-        }
-        builder.close();
-        builder.add(doc);
-      }
-    }
-  } else {
-    VPackArrayBuilder guard(&builder);
-
-    for (auto const& p : latest) {
-      VPackSlice const marker = allMarkersSlice.at(p.second);
-      VPackSlice const typeSlice = marker.get("type");
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-      if (typeSlice.isNumber()) {
-        int typeInt = typeSlice.getNumericValue<int>();
-        if (typeInt == 2301) {  // pre-3.0 type for edges
-          type = REPLICATION_MARKER_DOCUMENT;
+          builder.close();
         } else {
-          type = static_cast<TRI_replication_operation_e>(typeInt);
+          builder.add(doc);
         }
-      }
-      if (type == REPLICATION_MARKER_DOCUMENT) {
-        VPackSlice const doc = marker.get("data");
-        TRI_ASSERT(doc.isObject());
-        builder.add(doc);
       }
     }
   }
@@ -1477,11 +1436,11 @@ Result RestReplicationHandler::processRestoreDataBatch(
   // Now go through the individual results and check each error, if it was
   // TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, then we have to call
   // replace on the document:
+  builder.clear(); // documents for replace operation
   VPackSlice resultSlice = opRes.slice();
-  VPackBuilder replBuilder;  // documents for replace operation
   {
     VPackArrayBuilder guard(&oldBuilder);
-    VPackArrayBuilder guard2(&replBuilder);
+    VPackArrayBuilder guard2(&builder);
     VPackArrayIterator itRequest(requestSlice);
     VPackArrayIterator itResult(resultSlice);
 
@@ -1492,11 +1451,10 @@ Result RestReplicationHandler::processRestoreDataBatch(
         error = result.get(StaticStrings::ErrorNum);
         if (error.isNumber()) {
           int code = error.getNumericValue<int>();
-          if (code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-            replBuilder.add(*itRequest);
-          } else {
+          if (code != TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
             return code;
           }
+          builder.add(*itRequest);
         } else {
           return Result(TRI_ERROR_INTERNAL);
         }
@@ -1505,13 +1463,19 @@ Result RestReplicationHandler::processRestoreDataBatch(
       itResult.next();
     }
   }
+
+  if (builder.slice().length() == 0) {
+    // no replace operations to perform
+    return Result();
+  }
+
   try {
     OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
-    opRes = trx.replace(collectionName, replBuilder.slice(), options);
+    opRes = trx.replace(collectionName, builder.slice(), options);
     if (opRes.fail()) {
       return opRes.result;
     }
@@ -1536,7 +1500,6 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
     std::string errorMsg = "collection declaration is invalid";
     return {TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg};
   }
-
 
   VPackSlice const parameters = collection.get("parameters");
 
@@ -1598,7 +1561,7 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
       if (! ServerState::instance()->isCoordinator()) {
-        arangodb::velocypack::Slice value = idxDef.get("type");
+        arangodb::velocypack::Slice value = idxDef.get(StaticStrings::IndexType);
         if (value.isString()) {
           std::string const typeString = value.copyString();
           if ((typeString == "primary") ||(typeString == "edge")) {
@@ -1710,7 +1673,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   Result res;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
-    VPackSlice type = idxDef.get("type");
+    VPackSlice type = idxDef.get(StaticStrings::IndexType);
     if (type.isString() &&
         (type.copyString() == "primary" || type.copyString() == "edge")) {
       // must ignore these types of indexes during restore
@@ -1852,13 +1815,6 @@ void RestReplicationHandler::handleCommandSync() {
 
   // will throw if invalid
   config.validate();
-
-  double waitForSyncTimeout = VelocyPackHelper::getNumericValue(body, "waitForSyncTimeout", 5.0);
-
-  // wait until all data in current logfile got synced
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::shared_ptr<InitialSyncer> syncer;
@@ -2122,7 +2078,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     auto res = trx.begin();
 
     if (res.ok()) {
-      auto countRes = trx.count(col->name(), false);
+      auto countRes = trx.count(col->name(), transaction::CountType::Normal);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2177,7 +2133,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
       // referenceChecksum is the stringified number of documents in the
       // collection
-      uint64_t num = col->numberDocuments(trx.get());
+      uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
       referenceChecksum = std::to_string(num);
     }
 
@@ -2322,7 +2278,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   AccessMode::Type access = AccessMode::Type::READ;
-  if (StringRef(EngineSelectorFeature::ENGINE->typeName()) == "rocksdb") {
+  if (EngineSelectorFeature::ENGINE->typeName() == "rocksdb") {
     // we need to lock in EXCLUSIVE mode here, because simply locking
     // in READ mode will not stop other writers in RocksDB. In order
     // to stop other writers, we need to fetch the EXCLUSIVE lock
@@ -2526,8 +2482,6 @@ void RestReplicationHandler::handleCommandLoggerState() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
 
-  engine->waitForSyncTimeout(10.0); // only for mmfiles
-
   VPackBuilder builder;
   auto res = engine->createLoggerState(&_vocbase, builder);
 
@@ -2610,14 +2564,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
-  arangodb::LogicalCollection* col = nullptr;
+  std::shared_ptr<arangodb::LogicalCollection> col;
 
   if (!uuid.empty()) {
-    col = _vocbase.lookupCollectionByUuid(uuid).get();
+    col = _vocbase.lookupCollectionByUuid(uuid);
   }
 
   if (col != nullptr) {
-    col = _vocbase.lookupCollection(name).get();
+    col = _vocbase.lookupCollection(name);
   }
 
   if (col != nullptr && col->type() == type) {
@@ -2670,7 +2624,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
 #endif
 
   if (dst != nullptr) {
-    *dst = col;
+    *dst = col.get();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2714,12 +2668,7 @@ void RestReplicationHandler::grantTemporaryRights() {
 }
 
 ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
-  global = false;
-  bool found = false;
-  std::string const& value = _request->value("global", found);
-  if (found) {
-    global = StringUtils::boolean(value);
-  }
+  global = _request->parsedValue("global", false);
 
   if (global &&
       _request->databaseName() != StaticStrings::SystemDatabase) {

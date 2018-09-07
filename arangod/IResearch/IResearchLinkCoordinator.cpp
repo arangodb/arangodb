@@ -175,8 +175,7 @@ bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const 
 
 void IResearchLinkCoordinator::toVelocyPack(
     arangodb::velocypack::Builder& builder,
-    bool withFigures,
-    bool //forPeristence
+    std::underlying_type<arangodb::Index::Serialize>::type flags
 ) const {
   TRI_ASSERT(_view);
   TRI_ASSERT(!builder.isOpenObject());
@@ -198,7 +197,7 @@ void IResearchLinkCoordinator::toVelocyPack(
     arangodb::velocypack::Value(_view->guid())
   );
 
-  if (withFigures) {
+  if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
     builder.add(
       "figures",
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)

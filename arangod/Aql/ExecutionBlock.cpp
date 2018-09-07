@@ -54,69 +54,6 @@ static std::string const& stateToString(ExecutionState state) {
   return unknownString;
 }
 
-struct ExecutionBlockTypeHash {
-  size_t operator()(ExecutionBlock::Type value) const noexcept {
-    typedef std::underlying_type<decltype(value)>::type UnderlyingType;
-    return std::hash<UnderlyingType>()(UnderlyingType(value));
-  }
-};
-
-std::unordered_map<std::string, arangodb::aql::ExecutionBlock::Type> const NamesToBlockTypeMap = {
-  { "-undefined-",                 arangodb::aql::ExecutionBlock::Type::_UNDEFINED},
-  { "CalculationBlock",            arangodb::aql::ExecutionBlock::Type::CALCULATION},
-  { "CountCollectBlock",           arangodb::aql::ExecutionBlock::Type::COUNT_COLLECT},
-  { "DistinctCollectBlock",        arangodb::aql::ExecutionBlock::Type::DISTINCT_COLLECT},
-  { "EnumerateCollectionBlock",    arangodb::aql::ExecutionBlock::Type::ENUMERATE_COLLECTION},
-  { "EnumerateListBlock",          arangodb::aql::ExecutionBlock::Type::ENUMERATE_LIST},
-  { "FilterBlock",                 arangodb::aql::ExecutionBlock::Type::FILTER},
-  { "HashedCollectBlock",          arangodb::aql::ExecutionBlock::Type::HASHED_COLLECT},
-  { "IndexBlock",                  arangodb::aql::ExecutionBlock::Type::INDEX},
-  { "LimitBlock",                  arangodb::aql::ExecutionBlock::Type::LIMIT},
-  { "NoResultsBlock",              arangodb::aql::ExecutionBlock::Type::NO_RESULTS},
-  { "RemoteBlock",                 arangodb::aql::ExecutionBlock::Type::REMOTE},
-  { "ReturnBlock",                 arangodb::aql::ExecutionBlock::Type::RETURN},
-  { "ShortestPathBlock",           arangodb::aql::ExecutionBlock::Type::SHORTEST_PATH},
-  { "SingletonBlock",              arangodb::aql::ExecutionBlock::Type::SINGLETON},
-  { "SingleOperationBlock",        arangodb::aql::ExecutionBlock::Type::SINGLEOPERATION},
-  { "SortBlock",                   arangodb::aql::ExecutionBlock::Type::SORT},
-  { "SortedCollectBlock",          arangodb::aql::ExecutionBlock::Type::SORTED_COLLECT},
-  { "SortingGatherBlock",          arangodb::aql::ExecutionBlock::Type::SORTING_GATHER},
-  { "SubqueryBlock",               arangodb::aql::ExecutionBlock::Type::SUBQUERY},
-  { "TraversalBlock",              arangodb::aql::ExecutionBlock::Type::TRAVERSAL},
-  { "UnsortingGatherBlock",        arangodb::aql::ExecutionBlock::Type::UNSORTING_GATHER},
-  { "RemoveBlock",                 arangodb::aql::ExecutionBlock::Type::REMOVE},
-  { "InsertBlock",                 arangodb::aql::ExecutionBlock::Type::INSERT},
-  { "UpdateBlock",                 arangodb::aql::ExecutionBlock::Type::UPDATE},
-  { "ReplaceBlock",                arangodb::aql::ExecutionBlock::Type::REPLACE},
-  { "UpsertBlock",                 arangodb::aql::ExecutionBlock::Type::UPSERT},
-  { "ScatterBlock",                arangodb::aql::ExecutionBlock::Type::SCATTER},
-  { "DistributeBlock",             arangodb::aql::ExecutionBlock::Type::DISTRIBUTE},
-#ifdef USE_IRESEARCH
-  { "IResearchViewBlock",          arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW},
-  { "IResearchViewOrderedBlock",   arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_ORDERED},
-  { "IResearchViewUnorderedBlock", arangodb::aql::ExecutionBlock::Type::IRESEARCH_VIEW_UNORDERED}
-#endif
-};
-
-std::unordered_map<
-  arangodb::aql::ExecutionBlock::Type,
-  std::reference_wrapper<const std::string>,
-  ExecutionBlockTypeHash
-> blockTypeToNamesMap;
-
-struct BlockTypeToNameMapInitializer {
-  BlockTypeToNameMapInitializer() {
-    blockTypeToNamesMap.reserve(NamesToBlockTypeMap.size());
-    std::for_each(NamesToBlockTypeMap.begin(),
-                  NamesToBlockTypeMap.end(),
-                  [](std::pair<std::string const&, arangodb::aql::ExecutionBlock::Type> const& p) {
-        blockTypeToNamesMap.emplace(p.second, p.first);
-    });
-  }
-
-
-} initializeBlockTypeToNameMap;
-
 } // namespace
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
@@ -196,7 +133,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   }
 
   for (auto& it : _buffer) {
-    delete it;
+    returnBlock(it);
   }
   _buffer.clear();
 
@@ -205,13 +142,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   _pos = 0;
   _skipped = 0;
   _collector.clear();
-
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    // Set block type in per-block statistics.
-    // Intentionally using operator[], which inserts a new element if it can't
-    // find one.
-    _engine->_stats.nodes[getPlanNode()->id()].type = this->getType();
-  }
 
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   TRI_ASSERT(_dependencyPos == _dependencies.end());
@@ -255,7 +185,9 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
 // Trace the start of a getSome call
 void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _getSomeBegin = TRI_microtime();
+    if (_getSomeBegin == 0) {
+      _getSomeBegin = TRI_microtime();
+    }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
       auto node = getPlanNode();
       LOG_TOPIC(INFO, Logger::QUERIES)
@@ -267,15 +199,18 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
 }
 
 // Trace the end of a getSome call, potentially with result
-void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) const {
+void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) {
   TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     ExecutionNode const* en = getPlanNode();
     ExecutionStats::Node stats;
     stats.calls = 1;
     stats.items = result != nullptr ? result->size() : 0;
-    stats.runtime = TRI_microtime() - _getSomeBegin;
-    stats.type = getType();
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0;
+    }
+    
     auto it = _engine->_stats.nodes.find(en->id());
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
@@ -323,8 +258,6 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 //      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
   traceGetSomeBegin(atMost);
     
   auto res = getSomeWithoutRegisterClearout(atMost);
@@ -336,7 +269,6 @@ ExecutionBlock::getSome(size_t atMost) {
   clearRegisters(res.second.get());
   traceGetSomeEnd(res.second.get(), res.first);
   return res;
-  DEBUG_END_BLOCK();
 }
 
 /// @brief request an AqlItemBlock from the memory manager
@@ -361,64 +293,34 @@ void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
-  DEBUG_BEGIN_BLOCK();
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto const& value = src->getValueReference(srcRow, i);
+    if (planNode->_regsToClear.find(i) != planNode->_regsToClear.end()) {
+      continue;
+    }
 
-      if (!value.isEmpty()) {
-        AqlValue a = value.clone();
-        AqlValueGuard guard(a, true);
+    auto const& value = src->getValueReference(srcRow, i);
 
-        dst->setValue(dstRow, i, a);
-        guard.steal();
+    if (!value.isEmpty()) {
+      AqlValue a = value.clone();
+      AqlValueGuard guard(a, true);
+
+      TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
+      dst->setValue(dstRow, i, a);
+      guard.steal();
     }
   }
-  DEBUG_END_BLOCK();
-}
-
-/// @brief copy register data from one block (src) into another (dst)
-/// register values are cloned
-void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
-                                      AqlItemBlock* dst, size_t row) {
-  DEBUG_BEGIN_BLOCK();
-  RegisterId const n = src->getNrRegs();
-  auto planNode = getPlanNode();
-
-  for (RegisterId i = 0; i < n; i++) {
-    if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto const& value = src->getValueReference(row, i);
-
-      if (!value.isEmpty()) {
-        AqlValue a = value.clone();
-        AqlValueGuard guard(a, true);
-
-        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        dst->setValue(0, i, a);
-        guard.steal();
-      }
-    }
-  }
-
-  DEBUG_END_BLOCK();
 }
 
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
 std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-
-  if (_upstreamState == ExecutionState::DONE) {
-  }
-
   throwIfKilled();  // check if we were aborted
 
   auto res = _dependencies[0]->getSome(atMost);
@@ -439,7 +341,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   }
 
   return {res.first, false};
-  DEBUG_END_BLOCK();
 }
 
 /// @brief getSomeWithoutRegisterClearout, same as above, however, this
@@ -449,7 +350,6 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 /// cleanup can use this method, internal use only
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(atMost > 0);
 
   std::unique_ptr<AqlItemBlock> result;
@@ -473,16 +373,13 @@ ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   }
 
   return {state, std::move(result)};
-  DEBUG_END_BLOCK();
 }
 
 void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
-  DEBUG_BEGIN_BLOCK();
   // Clear out registers not needed later on:
   if (result != nullptr) {
     result->clearRegisters(getPlanNode()->_regsToClear);
   }
-  DEBUG_END_BLOCK();
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
@@ -694,25 +591,4 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
     planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
   return outputNrRegs;
-}
-
-std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
-  auto got = ::blockTypeToNamesMap.find(type);
-  if (got == ::blockTypeToNamesMap.end()) {
-  // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                                   std::string("when converting ExecutionBlock::Type to string: got invalid type"));
-  }
-  return got->second;
-}
-
-ExecutionBlock::Type ExecutionBlock::typeFromString(std::string const& type) {
-  auto got = ::NamesToBlockTypeMap.find(type);
-  if (got == ::NamesToBlockTypeMap.end()) {
-  // to please compiler in non-maintainer mode
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
-                                   std::string("when converting string to ExecutionBlock::Type: got invalid string '" + type + "'"));
-    return arangodb::aql::ExecutionBlock::Type::_UNDEFINED;
-  }
-  return got->second;
 }

@@ -266,7 +266,7 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
       std::shared_ptr<asio_ns::deadline_timer> timer(
           newDeadlineTimer(boost::posix_time::millisec(timeout)));
       timer->async_wait(
-          [this, callback, isV8, t](const asio::error_code& error) {
+          [this, callback, isV8, t, timer](const asio::error_code& error) {
             if (error != asio::error::operation_aborted) {
               post(callback, isV8, t);
             }
@@ -278,7 +278,7 @@ void Scheduler::post(std::function<void()> const callback, bool isV8,
     callback();
   });
 
-  // no exception happen, cancel guards
+  // no exception happened, cancel guards
   guardV8.cancel();
   guardQueue.cancel();
 }
@@ -375,6 +375,8 @@ void Scheduler::drain() {
 void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
   auto counters = getCounters();
 
+  // if you change the names of these attributes, please make sure to
+  // also change them in StatisticsWorker.cpp:computePerSeconds
   b.add("scheduler-threads", VPackValue(numRunning(counters)));
   b.add("in-progress", VPackValue(numWorking(counters)));
   b.add("queued", VPackValue(numQueued(counters)));
@@ -427,7 +429,7 @@ bool Scheduler::canPostDirectly() const noexcept {
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void()> const& callback,
                            bool isV8) {
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
-  TRI_ASSERT(fifo != FIFO8 || (fifo == FIFO8 && isV8));
+  TRI_ASSERT(fifo != FIFO8 || isV8);
 
   size_t p = static_cast<size_t>(fifo);
   auto job = std::make_unique<FifoJob>(callback, isV8);

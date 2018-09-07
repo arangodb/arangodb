@@ -76,10 +76,30 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+  if (!canUse(auth::Level::RO, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+  //if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
     generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
 
     return;
+  }
+
+  // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+  try {
+    arangodb::velocypack::Builder viewBuilder;
+
+    viewBuilder.openObject();
+
+    auto res = view->toVelocyPack(viewBuilder, true, false);
+
+    if (!res.ok()) {
+      generateError(res);
+
+      return; // skip view
+    }
+  } catch(...) {
+    generateError(arangodb::Result(TRI_ERROR_INTERNAL));
+
+    return; // skip view
   }
 
   arangodb::velocypack::Builder builder;
@@ -256,10 +276,30 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       // end of parameter parsing
       // .......................................................................
 
-      if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+      if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+      //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
         generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
 
         return;
+      }
+
+      // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+      try {
+        arangodb::velocypack::Builder viewBuilder;
+
+        viewBuilder.openObject();
+
+        auto res = view->toVelocyPack(viewBuilder, true, false);
+
+        if (!res.ok()) {
+          generateError(res);
+
+          return; // skip view
+        }
+      } catch(...) {
+        generateError(arangodb::Result(TRI_ERROR_INTERNAL));
+
+        return; // skip view
       }
 
       auto newNameStr = newName.copyString();
@@ -278,7 +318,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     // end of parameter parsing
     // .........................................................................
 
-    if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+    if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+    //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
       generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
 
       return;
@@ -303,29 +344,35 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       body, partialUpdate, true
     );  // TODO: not force sync?
 
-    if (result.ok()) {
-      VPackBuilder updated;
-
-      updated.openObject();
-
-      auto res = view->toVelocyPack(updated, true, false);
-
-      updated.close();
-
-      if (!res.ok()) {
-        generateError(res);
-
-        return;
-      }
-
-      generateResult(rest::ResponseCode::OK, updated.slice());
-
-      return;
-    } else {
+    if (!result.ok()) {
       generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(), result.errorMessage());
 
       return;
     }
+
+    view = _vocbase.lookupView(view->id()); // ensure have the latest definition
+
+    if (!view) {
+      generateError(arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+
+      return;
+    }
+
+    arangodb::velocypack::Builder updated;
+
+    updated.openObject();
+
+    auto res = view->toVelocyPack(updated, true, false);
+
+    updated.close();
+
+    if (!res.ok()) {
+      generateError(res);
+
+      return;
+    }
+
+    generateResult(rest::ResponseCode::OK, updated.slice());
   } catch (...) {
     // TODO: cleanup?
     throw;
@@ -363,7 +410,8 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
+  if (!canUse(auth::Level::RW, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+  //if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check auth after ensuring that the view exists
     generateError(Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
     return;
@@ -427,8 +475,22 @@ void RestViewHandler::getViews() {
 
   for (auto view: views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
+      if (!canUse(auth::Level::RO, view->vocbase())) { // as per https://github.com/arangodb/backlog/issues/459
+      //if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
         continue; // skip views that are not authorised to be read
+      }
+
+      // skip views for which the full view definition cannot be generated, as per https://github.com/arangodb/backlog/issues/459
+      try {
+        arangodb::velocypack::Builder viewBuilder;
+
+        viewBuilder.openObject();
+
+        if (!view->toVelocyPack(viewBuilder, true, false).ok()) {
+          continue; // skip view
+        }
+      } catch(...) {
+        continue; // skip view
       }
 
       arangodb::velocypack::Builder viewBuilder;

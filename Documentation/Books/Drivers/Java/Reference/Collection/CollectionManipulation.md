@@ -73,8 +73,8 @@ Creates a collection with the given _options_ for this collection's name, then r
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-db.createCollection("potatos", new CollectionCreateOptions());
-// the document collection "potatos" now exists
+db.createCollection("potatoes", new CollectionCreateOptions());
+// the document collection "potatoes" now exists
 ```
 
 ## ArangoCollection.create
@@ -144,9 +144,9 @@ Alternative for [ArangoDatabase.createCollection](#arangodatabasecreatecollectio
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 collection.create(new CollectionCreateOptions());
-// the document collection "potatos" now exists
+// the document collection "potatoes" now exists
 ```
 
 ## ArangoCollection.load

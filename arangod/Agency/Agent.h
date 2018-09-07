@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -306,9 +306,6 @@ class Agent final : public arangodb::Thread,
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
-
-  /// @brief Notify inactive pool members of changes in configuration
-  void notifyInactive() const;
 
   /// @brief Leader election delegate
   Constituent _constituent;

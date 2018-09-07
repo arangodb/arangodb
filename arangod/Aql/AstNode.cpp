@@ -158,7 +158,10 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
-    {static_cast<int>(NODE_TYPE_VIEW), "view"}};
+    {static_cast<int>(NODE_TYPE_VIEW), "view"},
+    {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
+    {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
+};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -420,6 +423,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER: {
       value.type = VALUE_TYPE_STRING;
@@ -581,6 +585,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_AND:
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
+    case NODE_TYPE_FOR_VIEW:
       break;
   }
 
@@ -669,6 +674,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_FCALL:
     case NODE_TYPE_FOR:
@@ -697,7 +703,8 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
-    case NODE_TYPE_WITH: {
+    case NODE_TYPE_WITH: 
+    case NODE_TYPE_FOR_VIEW: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -755,7 +762,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr && !isDataSource()) {
+  if (computedValue != nullptr) {
     delete[] computedValue;
   }
 }
@@ -764,8 +771,9 @@ AstNode::~AstNode() {
 std::string AstNode::getString() const {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
-             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_FCALL_USER || type == NODE_TYPE_VIEW);
+             type == NODE_TYPE_PARAMETER_DATASOURCE ||
+             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW ||
+             type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS || type == NODE_TYPE_FCALL_USER);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string(getStringValue(), getStringLength());
 }
@@ -1060,8 +1068,9 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   if (verbose) {
     builder.add("typeID", VPackValue(static_cast<int>(type)));
   }
-  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
+  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW ||
+      type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS || 
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     TRI_ASSERT(getStringValue() != nullptr);
@@ -1545,8 +1554,8 @@ bool AstNode::isSimple() const {
       auto conversion = func->getArgumentConversion(i);
 
       if (member->type == NODE_TYPE_COLLECTION &&
-          (conversion == Function::CONVERSION_REQUIRED ||
-           conversion == Function::CONVERSION_OPTIONAL)) {
+          (conversion == Function::Conversion::Required ||
+           conversion == Function::Conversion::Optional)) {
         // collection attribute: no need to check for member simplicity
         continue;
       } else {
@@ -1734,12 +1743,12 @@ bool AstNode::canRunOnDBServer() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
-    if (func->canRunOnDBServer) {
+    if (func->hasFlag(Function::Flags::CanRunOnDBServer)) {
       setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-    } else {
-      setFlag(DETERMINED_RUNONDBSERVER);
+      return true;
     }
-    return func->canRunOnDBServer;
+    setFlag(DETERMINED_RUNONDBSERVER);
+    return false;
   }
 
   if (type == NODE_TYPE_FCALL_USER) {
@@ -1827,8 +1836,8 @@ bool AstNode::isDeterministic() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be deterministic
     auto func = static_cast<Function*>(getData());
-
-    if (!func->isDeterministic) {
+    
+    if (!func->hasFlag(Function::Flags::Deterministic)) {
       setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
       return false;
     }
@@ -1868,7 +1877,7 @@ bool AstNode::isCacheable() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be cacheable
     auto func = static_cast<Function*>(getData());
-    return func->isCacheable();
+    return func->hasFlag(Function::Flags::Cacheable);
   }
 
   if (type == NODE_TYPE_FCALL_USER) {
@@ -1940,6 +1949,16 @@ bool AstNode::containsDynamicAttributeName() const {
 
 /// @brief clone a node, recursively
 AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
+
+/// @brief validate that given node is an object with const-only values
+bool AstNode::isConstObject() const {
+  if (type != NODE_TYPE_OBJECT) {
+    return false;
+  }
+
+  return isConstant();
+}
+
 
 /// @brief append a string representation of the node to a string buffer
 /// the string representation does not need to be JavaScript-compatible
@@ -2064,7 +2083,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     return;
   }
 
-  if (type == NODE_TYPE_PARAMETER) {
+  if (type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE) {
     // not used by V8
     buffer->appendChar('@');
     buffer->appendText(getStringValue(), getStringLength());
@@ -2330,6 +2349,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
@@ -2353,6 +2373,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
+    case NODE_TYPE_FOR_VIEW:
       break;
   }
 
@@ -2501,6 +2522,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_PARAMETER_DATASOURCE:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
     case NODE_TYPE_COLLECT_COUNT:
@@ -2526,6 +2548,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
+    case NODE_TYPE_FOR_VIEW:
       break;
   }
   return ret;

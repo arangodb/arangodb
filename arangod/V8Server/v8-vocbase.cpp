@@ -460,28 +460,6 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reloads the authentication info from collection _users
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
-  }
-
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
-  if (um != nullptr) {
-    um->outdate();
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1351,29 +1329,26 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject = globals->Get(_DbCacheKey)->ToObject();
   }
 
-  arangodb::LogicalCollection* collection = nullptr;
-
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
         cacheObject->GetRealNamedProperty(cacheName)->ToObject();
-
-    collection = TRI_UnwrapClass<arangodb::LogicalCollection>(
-        value, WRP_VOCBASE_COL_TYPE);
+    auto* collection = UnwrapCollection(value);
 
     // check if the collection is from the same database
-    if (collection != nullptr && &(collection->vocbase()) == &vocbase) {
+    if (collection && &(collection->vocbase()) == &vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
       // caller may have already acquired the collection's status lock
       // with that transaction. if we now lock again, we may deadlock!
-      TRI_vocbase_col_status_e status = collection->status();
-      TRI_voc_cid_t cid = collection->id();
-      uint32_t internalVersion = collection->internalVersion();
+      auto status = collection->status();
+      auto cid = collection->id();
+      auto internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
-          collection->isLocal()) {
+      if (status != TRI_VOC_COL_STATUS_DELETED
+          && cid > 0
+          && collection->isLocal()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {
@@ -1403,15 +1378,16 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject->Delete(cacheName);
   }
 
+  std::shared_ptr<arangodb::LogicalCollection> collection;
+
   try {
     if (ServerState::instance()->isCoordinator()) {
-      auto ci = ClusterInfo::instance()->getCollection(
-        vocbase.name(), std::string(key)
-      );
-      auto colCopy = ci->clone();
-      collection = colCopy.release();  // will be delete on garbage collection
+      auto* ci = arangodb::ClusterInfo::instance();
+
+      collection = ci
+        ? ci->getCollection(vocbase.name(), std::string(key)) : nullptr;
     } else {
-      collection = vocbase.lookupCollection(std::string(key)).get();
+      collection = vocbase.lookupCollection(std::string(key));
     }
   } catch (...) {
     // do not propagate exception from here
@@ -1429,10 +1405,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
 
   if (result.IsEmpty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      // TODO Do we need this?
-      delete collection;
-    }
     TRI_V8_RETURN_UNDEFINED();
   }
 
@@ -1610,7 +1582,9 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const name = TRI_ObjectToString(args[0]);
   auto* vocbase = &GetContextVocBase(isolate);
 
-  if (vocbase->isDropped()) {
+  if (vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
+    // still allow changing back into the _system database even if
+    // the current database has been dropped
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -1936,21 +1910,16 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::vector<std::string> names;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  bool haveRocks = engine->typeName() == RocksDBEngine::EngineName;
-  if (haveRocks) {
-    names = static_cast<RocksDBEngine*>(engine)->currentWalFiles();
-  }
+  std::vector<std::string> names = engine->currentWalFiles();
   std::sort(names.begin(), names.end());
 
   // already create an array of the correct size
-  v8::Handle<v8::Array> result = v8::Array::New(isolate);
+  uint32_t const n = static_cast<uint32_t>(names.size());
+  v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
-  size_t const n = names.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    result->Set(static_cast<uint32_t>(i), TRI_V8_STD_STRING(isolate, names[i]));
+  for (uint32_t i = 0; i < n; ++i) {
+    result->Set(i, TRI_V8_STD_STRING(isolate, names[i]));
   }
 
   TRI_V8_RETURN(result);
@@ -2042,7 +2011,7 @@ void TRI_InitV8VocBridge(
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_path"),
                        JS_PathDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_currentWalFiles"),
-                       JS_CurrentWalFiles);
+                       JS_CurrentWalFiles, true);
   TRI_AddMethodVocbase(isolate, ArangoNS, TRI_V8_ASCII_STRING(isolate, "_versionFilename"),
                        JS_VersionFilenameDatabase, true);
   TRI_AddMethodVocbase(isolate, ArangoNS,
@@ -2146,9 +2115,6 @@ void TRI_InitV8VocBridge(
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "ENDPOINTS"), JS_Endpoints, true);
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING(isolate, "RELOAD_AUTH"),
-                               JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRANSACTION"),
                                JS_Transaction, true);

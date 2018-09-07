@@ -109,23 +109,21 @@ LogicalCollection* Collections::Context::coll() const { return &_coll; }
 
 void Collections::enumerate(
     TRI_vocbase_t* vocbase,
-    std::function<void(LogicalCollection&)> const& func) {
+    std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func
+) {
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::shared_ptr<LogicalCollection>> colls =
         ClusterInfo::instance()->getCollections(vocbase->name());
 
     for (std::shared_ptr<LogicalCollection> const& c : colls) {
       if (!c->deleted()) {
-        func(*c);
+        func(c);
       }
     }
   } else {
-    std::vector<arangodb::LogicalCollection*> colls =
-        vocbase->collections(false);
-
-    for (LogicalCollection* c : colls) {
+    for (auto& c: vocbase->collections(false)) {
       if (!c->deleted()) {
-        func(*c);
+        func(c);
       }
     }
   }
@@ -153,7 +151,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
       }
 
       if (coll) {
-        func(*coll);
+        func(coll);
 
         return Result();
       }
@@ -179,7 +177,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                     "No access to collection '" + name + "'");
     }
     try {
-      func(*coll);
+      func(coll);
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -211,8 +209,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     if (!exec->canUseDatabase(vocbase->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "cannot create collection in " + vocbase->name());
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -275,9 +271,9 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       }
 
       // reload otherwise collection might not be in yet
-      func(*col);
+      func(col);
     } else {
-      arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
+      auto col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);
 
       // do not grant rights on system collections
@@ -293,7 +289,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
         });
       }
 
-      func(*col);
+      func(col);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -393,9 +389,6 @@ Result Collections::updateProperties(LogicalCollection* coll,
     bool canModify = exec->canUseCollection(coll->name(), auth::Level::RW);
     if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 
@@ -533,9 +526,6 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
         !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "Insufficient rights to drop collection " + coll->name());
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                     "server is in read-only mode");
     }
   }
 
@@ -573,15 +563,12 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 Result Collections::warmup(TRI_vocbase_t& vocbase,
                            LogicalCollection const& coll) {
   ExecContext const* exec = ExecContext::CURRENT;  // disallow expensive ops
-
-  if (!exec->isSuperuser() && ServerState::readOnly()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
-                                   "server is in read-only mode");
+  if (!exec->canUseCollection(coll.name(), auth::Level::RO)) {
+    return Result(TRI_ERROR_FORBIDDEN);
   }
 
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id());
-
     return warmupOnCoordinator(vocbase.name(), cid);
   }
 

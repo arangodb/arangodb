@@ -139,36 +139,6 @@ arangodb::LogicalDataSource::Type const& readType(
 
 } // namespace
 
-/// @brief This the "copy" constructor used in the cluster
-///        it is required to create objects that survive plan
-///        modifications and can be freed
-LogicalCollection::LogicalCollection(LogicalCollection const& other)
-    : LogicalDataSource(other),
-      _internalVersion(0),
-      _isAStub(other._isAStub),
-      _type(other.type()),
-      _status(other.status()),
-      _isSmart(other.isSmart()),
-      _isLocal(false),
-      _waitForSync(other.waitForSync()),
-      _version(other._version),
-      _allowUserKeys(other.allowUserKeys()),
-      _keyOptions(other._keyOptions),
-      _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(*this)),
-      _clusterEstimateTTL(0),
-      _followers(), // intentionally empty here
-      _sharding() {
-  TRI_ASSERT(_physical != nullptr);
-
-  _sharding = std::make_unique<ShardingInfo>(*other._sharding.get(), this);
-  
-  if (ServerState::instance()->isDBServer() ||
-      !ServerState::instance()->isRunningInCluster()) {
-    _followers.reset(new FollowerInfo(this));
-  }
-}
-
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(
@@ -194,18 +164,18 @@ LogicalCollection::LogicalCollection(
      ),
      Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)
    ),
+      _version(Helper::readNumericValue<uint32_t>(info, "version", currentVersion())),
       _internalVersion(0),
-      _isAStub(isAStub),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
         info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN)
       ),
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
+      _isAStub(isAStub),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
-      _version(Helper::readNumericValue<uint32_t>(info, "version",
-                                                  currentVersion())),
+
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
       _keyOptions(nullptr),
       _keyGenerator(),
@@ -230,7 +200,7 @@ LogicalCollection::LogicalCollection(
   }
 
   TRI_ASSERT(!guid().empty());
-  
+
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 
@@ -240,9 +210,9 @@ LogicalCollection::LogicalCollection(
   if (!keyOpts.isNone()) {
     _keyOptions = VPackBuilder::clone(keyOpts).steal();
   }
-  
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
-  
+
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
@@ -253,7 +223,7 @@ LogicalCollection::LogicalCollection(
   // together.
   prepareIndexes(info.get("indexes"));
 }
-   
+
 LogicalCollection::~LogicalCollection() {}
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
@@ -261,7 +231,7 @@ LogicalCollection::~LogicalCollection() {}
 
   return category;
 }
-  
+
 // SECTION: sharding
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
@@ -364,8 +334,23 @@ void LogicalCollection::invokeOnAllElements(
 }
 
 // @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
-  return getPhysical()->numberDocuments(trx);
+uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx, transaction::CountType type) {
+  // detailed results should have been handled in the levels above us
+  TRI_ASSERT(type != transaction::CountType::Detailed);
+
+  int64_t documents = transaction::CountCache::NotPopulated;
+  if (type == transaction::CountType::ForceCache) {
+    // always return from the cache, regardless what's in it
+    documents = _countCache.get();
+  } else if (type == transaction::CountType::TryCache) {
+    documents = _countCache.get(transaction::CountCache::Ttl);
+  }
+  if (documents == transaction::CountCache::NotPopulated) {
+    documents = static_cast<int64_t>(getPhysical()->numberDocuments(trx));
+    _countCache.store(documents);
+  }
+  TRI_ASSERT(documents >= 0);
+  return static_cast<uint64_t>(documents);
 }
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
@@ -436,16 +421,16 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 }
 
 // SECTION: Indexes
-std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate) {
   READ_LOCKER(readlock, _clusterEstimatesLock);
   if (doNotUpdate) {
     return _clusterEstimates;
   }
 
   double ctime = TRI_microtime(); // in seconds
-  auto needEstimateUpdate = [this,ctime](){
+  auto needEstimateUpdate = [this, ctime]() {
     if(_clusterEstimates.empty()) {
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not available";
       return true;
     } else if (ctime - _clusterEstimateTTL > 60.0) {
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
@@ -454,22 +439,21 @@ std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates
     return false;
   };
 
-  if (needEstimateUpdate()){
+  if (needEstimateUpdate()) {
     readlock.unlock();
     WRITE_LOCKER(writelock, _clusterEstimatesLock);
 
-    if(needEstimateUpdate()){
+    if (needEstimateUpdate()) {
       selectivityEstimatesOnCoordinator(vocbase().name(), name(), _clusterEstimates);
       _clusterEstimateTTL = TRI_microtime();
     }
-
     return _clusterEstimates;
   }
 
   return _clusterEstimates;
 }
 
-void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
   WRITE_LOCKER(lock, _clusterEstimatesLock);
   _clusterEstimates = std::move(estimates);
 }
@@ -479,9 +463,10 @@ LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }
 
-void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                        bool forPersistence, std::function<bool(arangodb::Index const*)> const& filter) const {
-  getPhysical()->getIndexesVPack(result, withFigures, forPersistence, filter);
+void LogicalCollection::getIndexesVPack(VPackBuilder& result,
+                                        std::underlying_type<Index::Serialize>::type flags,
+                                        std::function<bool(arangodb::Index const*)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, flags, filter);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -602,7 +587,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
                                              "statusString", "version",
-                                             "distributeShardsLike", "objectId"};
+                                             "distributeShardsLike", "objectId",
+                                             "indexes"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
 
@@ -622,7 +608,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, false, false);
+  getIndexesVPack(result, Index::makeFlags());
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
@@ -674,7 +660,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   // Indexes
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, false, forPersistence);
+  auto flags = Index::makeFlags();
+  if (forPersistence) {
+    flags = Index::makeFlags(Index::Serialize::ObjectId);
+  }
+  getIndexesVPack(result, flags);
 
   // Cluster Specific
   result.add("isSmart", VPackValue(_isSmart));

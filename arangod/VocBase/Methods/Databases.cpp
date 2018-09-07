@@ -31,6 +31,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -128,8 +129,6 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -298,7 +297,12 @@ arangodb::Result Databases::create(std::string const& dbName,
   // Entirely Foxx related:
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      TRI_ExpireFoxxQueueDatabaseCache(databaseFeature->systemDatabase());
+      auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+        arangodb::SystemDatabaseFeature
+      >();
+      auto database = sysDbFeature->use();
+
+      TRI_ExpireFoxxQueueDatabaseCache(database.get());
     } catch(...) {
       // it is of no real importance if cache invalidation fails, because
       // the cache entry has a ttl
@@ -354,8 +358,6 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   if (exec != nullptr) {
     if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && ServerState::readOnly()) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 

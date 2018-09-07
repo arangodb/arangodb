@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -239,6 +239,9 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action", "Script", "FoxxQueues", "Frontend"}
   );
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
+    
     // console mode inactive. so we can turn off V8
     disabledFeatures.emplace_back("V8Platform");
     disabledFeatures.emplace_back("V8Dealer");

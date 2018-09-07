@@ -31,6 +31,7 @@ ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
   startsAfter("DatabasePhase");
 
   startsAfter("Cluster");
+  startsAfter("Maintenance");
   startsAfter("ReplicationTimeout");
 }
 

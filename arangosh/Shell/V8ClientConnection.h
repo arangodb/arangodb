@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 
+#include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
@@ -58,7 +59,7 @@ class V8ClientConnection {
   ~V8ClientConnection();
 
  public:
-  void setInterrupted(bool value);
+  void setInterrupted(bool interrupted);
   bool isConnected();
   
   void connect(ClientFeature*);
@@ -66,8 +67,8 @@ class V8ClientConnection {
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }
-  std::string const& username() const { return _username; }
-  std::string const& password() const { return _password; }
+  std::string username() const { return _builder.user(); }
+  std::string password() const { return _builder.password(); }
   int lastHttpReturnCode() const { return _lastHttpReturnCode; }
   std::string lastErrorMessage() const { return _lastErrorMessage; }
   std::string const& version() const { return _version; }
@@ -107,7 +108,8 @@ class V8ClientConnection {
                   ClientFeature*);
   
  private:
-  void init(ClientFeature*);
+  
+  void createConnection();
 
   v8::Local<v8::Value> requestData(
       v8::Isolate* isolate, fuerte::RestVerb verb,
@@ -124,10 +126,12 @@ class V8ClientConnection {
                                      std::unique_ptr<fuerte::Response> response,
                                      fuerte::ErrorCondition ec);
 
+  /// @brief shuts down the connection _connection and resets the pointer
+  /// to a nullptr
+  void shutdownConnection();
+
  private:
   std::string _databaseName;
-  std::string _username;
-  std::string _password;
   std::chrono::duration<double> _requestTimeout;
   
   int _lastHttpReturnCode;
@@ -136,8 +140,9 @@ class V8ClientConnection {
   std::string _version;
   std::string _mode;
   
-  std::shared_ptr<fuerte::Connection> _connection;
   fuerte::EventLoopService _loop;
+  fuerte::ConnectionBuilder _builder;
+  std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
 };
 }  // namespace arangodb

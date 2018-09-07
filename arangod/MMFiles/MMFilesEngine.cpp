@@ -750,6 +750,17 @@ void MMFilesEngine::waitForSyncTimeout(double maxWait) {
   }
   MMFilesLogfileManager::instance()->waitForSync(maxWait);
 }
+  
+/// @brief return a list of the currently open WAL files
+std::vector<std::string> MMFilesEngine::currentWalFiles() const {
+  std::vector<std::string> result;
+
+  for (auto const& it : MMFilesLogfileManager::instance()->ranges()) {
+    result.push_back(it.filename);
+  }
+
+  return result;
+}
 
 Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool writeShutdownFile) {
@@ -3485,7 +3496,10 @@ Result MMFilesEngine::handleSyncKeys(
   return handleSyncKeysMMFiles(syncer, &col, keysId);
 }
 
-Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){
+Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) {
+  // wait at most 10 seconds until everything is synced
+  waitForSyncTimeout(10.0); 
+
   MMFilesLogfileManagerState const s = MMFilesLogfileManager::instance()->state();
   builder.openObject();  // Base
   // "state" part

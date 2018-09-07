@@ -1,7 +1,7 @@
 Manually Upgrading a _Cluster_ Deployment
 =========================================
 
-This page will guide you through the process of a manual upgrade of a [_cluster_](../../Scalability/Cluster/README.md)
+This page will guide you through the process of a manual upgrade of a [_cluster_](../../Architecture/DeploymentModes/Cluster/README.md)
 setup. The different nodes in a _cluster_ can be upgraded one at a time without
 incurring downtime of the _cluster_ and very short downtimes of the single nodes.
 
@@ -15,7 +15,7 @@ Preparations
 The ArangoDB installation packages (e.g. for Debian or Ubuntu) set up a
 convenient standalone instance of `arangod`. During installation, this instance's
 database will be upgraded (see [`--database.auto-upgrade` in General
-Options](../../Administration/Configuration/GeneralArangod.md#database-upgrade))
+Options](../../Programs/Arangod/Database.md#auto-upgrade))
 and the service will be (re)started.
 
 You have to make sure that your _cluster_ deployment is independent of this

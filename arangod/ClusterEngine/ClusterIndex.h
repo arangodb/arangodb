@@ -46,8 +46,8 @@ class ClusterIndex : public Index {
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
-  void toVelocyPack(velocypack::Builder& builder, bool withFigures,
-                    bool forPersistence) const override;
+  void toVelocyPack(velocypack::Builder& builder,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   IndexType type() const override { return _indexType; }
 

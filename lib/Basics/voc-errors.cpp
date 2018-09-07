@@ -346,4 +346,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
+  REG_ERROR(ERROR_ACTION_ALREADY_REGISTERED, "maintenance action already registered");
+  REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
+  REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
+  REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
 }

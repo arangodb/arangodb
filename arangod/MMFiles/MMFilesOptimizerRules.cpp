@@ -44,7 +44,7 @@ void MMFilesOptimizerRules::registerResources() {
   
   // remove SORT RAND() if appropriate
   OptimizerRulesFeature::registerRule("remove-sort-rand", removeSortRandRule, 
-               OptimizerRule::removeSortRandRule_pass5, false, true);
+               OptimizerRule::removeSortRandRule, false, true);
 }
 
 /// @brief remove SORT RAND() if appropriate
@@ -112,7 +112,11 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::INDEX: {
+        case EN::INDEX:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+#endif
+        {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization

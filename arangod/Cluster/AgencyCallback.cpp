@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,11 +30,13 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 
 AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
@@ -60,8 +62,12 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Callback getValues to agency was not successful: "
-             << result.errorCode() << " " << result.errorMessage();
+    if (!application_features::ApplicationServer::isStopping()) {
+      // only log errors if we are not already shutting down...
+      // in case of shutdown this error is somewhat expected
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) << "Callback getValues to agency was not successful: "
+               << result.errorCode() << " " << result.errorMessage();
+    }
     return;
   }
 
@@ -123,7 +129,8 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
+  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))
+    && application_features::ApplicationServer::isRetryOK()) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure

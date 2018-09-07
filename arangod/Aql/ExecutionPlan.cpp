@@ -402,9 +402,9 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 
-  size_t nrItems = 0;
-  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
-  builder.add("estimatedNrItems", VPackValue(nrItems));
+  CostEstimate estimate = _root->getCost();
+  builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
+  builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   builder.add("initialize", VPackValue(_isResponsibleForInitialize));
   builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
@@ -462,8 +462,8 @@ ExecutionNode* ExecutionPlan::createCalculation(
         auto conversion = func->getArgumentConversion(i);
 
         if (member->type == NODE_TYPE_COLLECTION &&
-            (conversion == Function::CONVERSION_REQUIRED ||
-             conversion == Function::CONVERSION_OPTIONAL)) {
+            (conversion == Function::Conversion::Required ||
+             conversion == Function::Conversion::Optional)) {
           // collection attribute: no need to check for member simplicity
           args->changeMember(i, _ast->createNodeValueString(member->getStringValue(), member->getStringLength()));
         }
@@ -489,7 +489,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
         // FOR part
         Variable* v = _ast->variables()->createTemporaryVariable();
-        AstNode* forNode = _ast->createNodeFor(v, node);
+        AstNode* forNode = _ast->createNodeFor(v, node, nullptr);
         // RETURN part
         AstNode* returnNode = _ast->createNodeReturn(_ast->createNodeReference(v));
 
@@ -766,11 +766,8 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         std::string const name = member->getString();
-        auto value = member->getMember(0);
-
-        TRI_ASSERT(value->isConstant());
-
         if (name == "method") {
+          auto value = member->getMember(0);
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getString());
@@ -841,14 +838,15 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
   }
 }
 
-/// @brief create an execution plan element from an AST FOR node
+/// @brief create an execution plan element from an AST FOR (non-view) node
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 3);
 
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
+  // TODO: process FOR options here if we want to use them later
 
   // fetch 1st operand (out variable name)
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -863,7 +861,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     std::string const collectionName = expression->getString();
     auto collections = _ast->query()->collections();
     auto collection = collections->get(collectionName);
-
+    
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
@@ -893,9 +891,14 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
         "no view for EnumerateView"
       );
     }
+  
+    auto* options = node->getMemberUnchecked(2);
+    if (options->type == NODE_TYPE_NOP) {
+      options = nullptr;
+    }
 
     en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, view, *v, nullptr, {}
+      *this, nextId(), vocbase, view, *v, nullptr, options, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
@@ -910,6 +913,87 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
         new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
     previous = calc;
   }
+
+  TRI_ASSERT(en != nullptr);
+
+  return addDependency(previous, en);
+}
+
+/// @brief create an execution plan element from an AST FOR (view) node
+ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
+                                              AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR_VIEW);
+  TRI_ASSERT(node->numMembers() == 4);
+
+  auto const* variable = node->getMember(0);
+  auto const* expression = node->getMember(1);
+
+  // fetch 1st operand (out variable name)
+  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
+  auto v = static_cast<Variable*>(variable->getData());
+  TRI_ASSERT(v != nullptr);
+
+  ExecutionNode* en = nullptr;
+
+  // peek at second operand
+  if (expression->type != NODE_TYPE_VIEW) {
+    // called for a non-view...
+    if (expression->type == NODE_TYPE_COLLECTION) {
+      std::string const name = expression->getString();
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
+            ": " + name);
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "SEARCH condition used on non-view");
+    }
+  }
+
+  TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
+  std::string const viewName = expression->getString();
+    
+  if (!_ast->query()->collections()->get(viewName)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no view for EnumerateView");
+  }
+
+#ifdef USE_IRESEARCH
+  auto& vocbase = _ast->query()->vocbase();
+
+  std::shared_ptr<LogicalView> view;
+
+  if (ServerState::instance()->isSingleServer()) {
+    view = vocbase.lookupView(viewName);
+  } else {
+    // need cluster wide view
+    TRI_ASSERT(ClusterInfo::instance());
+    view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+  }
+
+  if (!view) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "no view for EnumerateView"
+    );
+  }
+  
+  auto* search = node->getMember(2);
+  TRI_ASSERT(search->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(search->numMembers() == 1);
+
+  auto* options = node->getMemberUnchecked(3);
+  if (options->type == NODE_TYPE_NOP) {
+    options = nullptr;
+  } else if (!options->isConstObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS);
+  }
+  
+  en = registerNode(new iresearch::IResearchViewNode(
+    *this, nextId(), vocbase, view, *v, search->getMember(0), options, {}
+  ));
+#else
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+#endif
 
   TRI_ASSERT(en != nullptr);
 
@@ -1074,7 +1158,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST FILTER node
 ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
 
   auto expression = node->getMember(0);
@@ -1472,6 +1557,12 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
 
   auto offset = node->getMember(0);
   auto count = node->getMember(1);
+      
+  if (offset->type != NODE_TYPE_VALUE || count->type != NODE_TYPE_VALUE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+        "LIMIT offset/count values must be constant numeric values");
+  }
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
@@ -1918,6 +2009,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeFor(en, member);
         break;
       }
+      
+      case NODE_TYPE_FOR_VIEW: {
+        en = fromNodeForView(en, member);
+        break;
+      }
 
       case NODE_TYPE_TRAVERSAL: {
         en = fromNodeTraversal(en, member);
@@ -1929,7 +2025,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_FILTER: {
+      case NODE_TYPE_FILTER: { 
         en = fromNodeFilter(en, member);
         break;
       }
@@ -2082,7 +2178,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   void after(ExecutionNode* en) override final {
     // Add variables set here to _valid:
-    for (auto& v : en->getVariablesSetHere()) {
+    for (auto const& v : en->getVariablesSetHere()) {
       _valid.emplace(v);
       _varSetBy->emplace(v->id, en);
     }
@@ -2104,6 +2200,10 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
 void ExecutionPlan::findVarUsage() {
+  if (varUsageComputed()) {
+    return;
+  }
+
   // reset all counters
   for (auto& counter : _typeCounts) {
     counter = 0;

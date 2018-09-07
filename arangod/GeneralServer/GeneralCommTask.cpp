@@ -130,8 +130,77 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
-GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
-    GeneralRequest& req) {
+GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
+  
+  // Step 1: In the shutdown phase we simply return 503:
+  if (application_features::ApplicationServer::isStopping()) {
+    auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+    addResponse(*res, nullptr);
+    return RequestFlow::Abort;
+  }
+  
+  bool found;
+  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+  if (found) { // log request source in cluster for debugging
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
+    << "\",\"" << source << "\"";
+  }
+  
+  // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
+  std::string const& path = req.requestPath();
+  ServerState::Mode mode = ServerState::mode();
+  switch (mode) {
+    case ServerState::Mode::MAINTENANCE: {
+      // In the bootstrap phase, we would like that coordinators answer the
+      // following endpoints, but not yet others:
+      if ((!ServerState::instance()->isCoordinator() &&
+           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+           path.find("/_api/aql") == std::string::npos)) {
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+            std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+            addResponse(*res, nullptr);
+            return RequestFlow::Abort;
+          }
+      break;
+    }
+    case ServerState::Mode::REDIRECT: {
+      bool found = false;
+      std::string const& val = req.header(StaticStrings::AllowDirtyReads, found);
+      if (found && StringUtils::boolean(val)) {
+        break; // continue with auth check
+      }
+    }
+    // intentionally falls through
+    case ServerState::Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/cluster/health") == std::string::npos &&
+          path.find("/_admin/log") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_admin/server/availability") == std::string::npos &&
+          path.find("/_admin/status") == std::string::npos &&
+          path.find("/_admin/statistics") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          (mode == ServerState::Mode::TRYAGAIN ||
+           path.find("/_api/version") == std::string::npos) &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Redirect/Try-again: refused path: " << path;
+        std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
+        addResponse(*res, nullptr);
+        return RequestFlow::Abort;
+      }
+      break;
+    }
+    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::INVALID:
+      // no special handling required
+      break;
+  }
+  
+  // Step 3: Try to resolve vocbase and use
   if (!::resolveRequestContext(req)) { // false if db not found
     if (_auth->isActive()) {
       // prevent guessing database names (issue #5030)
@@ -151,69 +220,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
   }
   TRI_ASSERT(req.requestContext() != nullptr);
 
-  // check source
-  bool found;
-  std::string const& source =
-      req.header(StaticStrings::ClusterCommSource, found);
-  if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
-                                       << "\",\"" << source << "\"";
-  }
-
-  std::string const& path = req.requestPath();
-
-  // In the shutdown phase we simply return 503:
-  if (application_features::ApplicationServer::isStopping()) {
-    std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-    addResponse(*res, nullptr);
-    return RequestFlow::Abort;
-  }
-
-  // In the bootstrap phase, we would like that coordinators answer the
-  // following endpoints, but not yet others:
-  ServerState::Mode mode = ServerState::mode();
-  switch (mode) {
-    case ServerState::Mode::MAINTENANCE: {
-      if ((!ServerState::instance()->isCoordinator() &&
-           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-           path.find("/_api/aql") == std::string::npos)) {
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-            std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-            addResponse(*res, nullptr);
-            return RequestFlow::Abort;
-          }
-      break;
-    }
-    case ServerState::Mode::REDIRECT:
-    case ServerState::Mode::TRYAGAIN: {
-      if (path.find("/_admin/shutdown") == std::string::npos &&
-          path.find("/_admin/cluster/health") == std::string::npos &&
-          path.find("/_admin/log") == std::string::npos &&
-          path.find("/_admin/server/role") == std::string::npos &&
-          path.find("/_admin/server/availability") == std::string::npos &&
-          path.find("/_admin/status") == std::string::npos &&
-          path.find("/_admin/statistics") == std::string::npos &&
-          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-          path.find("/_api/cluster/") == std::string::npos &&
-          path.find("/_api/replication") == std::string::npos &&
-          path.find("/_api/version") == std::string::npos &&
-          path.find("/_api/wal") == std::string::npos) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Redirect/Try-again: refused path: " << path;
-        std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
-        addResponse(*res, nullptr);
-        return RequestFlow::Abort;
-      }
-      break;
-    }
-    case ServerState::Mode::DEFAULT:
-    case ServerState::Mode::INVALID:
-      // no special handling required
-      break;
-  }
-
-  // now check the authentication will determine if the user can access
+  // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
   const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
@@ -225,6 +232,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     return RequestFlow::Abort;
   }
 
+  // Step 5: Update global HLC timestamp from authorized requests
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
@@ -246,8 +254,9 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
   }
-
-  // TODO add server ID on coordinators ?
+  if (mode == ServerState::Mode::REDIRECT) {
+    res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
 }
 
 /// Push this request into the execution pipeline
@@ -487,8 +496,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 /// @brief checks the access rights for a specified path
 ////////////////////////////////////////////////////////////////////////////////
 
-rest::ResponseCode GeneralCommTask::canAccessPath(
-    GeneralRequest& request) const {
+rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
@@ -496,17 +504,17 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 
-  std::string const& path = request.requestPath();
-  std::string const& username = request.user();
-  rest::ResponseCode result = request.authenticated()
-                                  ? rest::ResponseCode::OK
-                                  : rest::ResponseCode::UNAUTHORIZED;
+  std::string const& path = req.requestPath();
+  std::string const& username = req.user();
+  rest::ResponseCode result = req.authenticated()
+                                ? rest::ResponseCode::OK
+                                : rest::ResponseCode::UNAUTHORIZED;
 
-  VocbaseContext* vc = static_cast<VocbaseContext*>(request.requestContext());
+  VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE &&
       !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(&request);
+    events::NotAuthorized(&req);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -516,11 +524,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!request.authenticated()) {
+  if (!req.authenticated()) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
-    ConnectionInfo const& ci = request.connectionInfo();
+    ConnectionInfo const& ci = req.connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_auth->authenticationUnixSockets()) {
@@ -553,7 +561,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
-      } else if (request.requestType() == RequestType::POST &&
+      } else if (req.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call

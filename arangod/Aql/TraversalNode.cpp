@@ -474,13 +474,6 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-/// @brief the cost of a traversal node
-double TraversalNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-  return depCost + (incoming * _options->estimateCost(nrItems));
-}
-
 void TraversalNode::prepareOptions() {
   if (_optionsBuilt) {
     return;

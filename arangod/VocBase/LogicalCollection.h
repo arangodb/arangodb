@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -51,6 +52,7 @@ class PhysicalCollection;
 class Result;
 class ShardingInfo;
 class StringRef;
+
 namespace transaction {
 class Methods;
 }
@@ -83,27 +85,17 @@ class LogicalCollection: public LogicalDataSource {
     bool isAStub,
     uint64_t planVersion = 0
   );
-
+  LogicalCollection(LogicalCollection const&) = delete;
   virtual ~LogicalCollection();
 
   enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
 
- protected:  // If you need a copy outside the class, use clone below.
-  explicit LogicalCollection(LogicalCollection const&);
-
- private:
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-
- public:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
-
-  virtual std::unique_ptr<LogicalCollection> clone() {
-    return std::unique_ptr<LogicalCollection>(new LogicalCollection(*this));
-  }
 
   /// @brief hard-coded minimum version number for collections
   static constexpr uint32_t minimumVersion() { return VERSION_30; }
@@ -146,7 +138,7 @@ class LogicalCollection: public LogicalDataSource {
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
   std::string statusString() const;
 
-  uint64_t numberDocuments(transaction::Methods*) const;
+  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
@@ -213,7 +205,7 @@ class LogicalCollection: public LogicalDataSource {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+  void getIndexesVPack(velocypack::Builder&, uint8_t,
                        std::function<bool(arangodb::Index const*)> const& filter =
                          [](arangodb::Index const*) -> bool { return true; }) const;
 
@@ -338,6 +330,8 @@ class LogicalCollection: public LogicalDataSource {
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  
+  transaction::CountCache& countCache() { return _countCache; }
 
   ChecksumResult checksum(bool, bool) const;
 
@@ -363,21 +357,29 @@ class LogicalCollection: public LogicalDataSource {
 
   void increaseInternalVersion();
 
+  transaction::CountCache _countCache;
+
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information
-  //
+  
+  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  
+  /// @brief collection format version
+  uint32_t _version;
+  
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-
-  bool const _isAStub;
-
+  
   // @brief Collection type
   TRI_col_type_e const _type;
-
+  
   // @brief Current state of this colletion
   TRI_vocbase_col_status_e _status;
+
+  /// @brief is this a global collection on a DBServer
+  bool const _isAStub;
 
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool _isSmart;
@@ -387,19 +389,15 @@ class LogicalCollection: public LogicalDataSource {
 
   bool _waitForSync;
 
-  uint32_t _version;
-
   bool const _allowUserKeys;
 
   // SECTION: Key Options
-  // TODO Really VPack?
-  std::shared_ptr<velocypack::Buffer<uint8_t> const>
-      _keyOptions;  // options for key creation
+  
+  // @brief options for key creation, TODO Really VPack?
+  std::shared_ptr<velocypack::Buffer<uint8_t> const> _keyOptions;
   std::unique_ptr<KeyGenerator> _keyGenerator;
  
   std::unique_ptr<PhysicalCollection> _physical;
-
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
@@ -411,7 +409,8 @@ class LogicalCollection: public LogicalDataSource {
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
   std::unique_ptr<FollowerInfo> _followers;
-
+  
+  /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding; 
 };
 

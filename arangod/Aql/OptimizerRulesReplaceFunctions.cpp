@@ -212,7 +212,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
         AstNode * base = ast->createNodeAttributeAccess(accessNodeLon, accessBase);
 
         VPackBuilder builder;
-        idx->toVelocyPack(builder,true,false);
+        idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
         bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
 
         accessNodeLat = ast->createNodeIndexedAccess(base, ast->createNodeValueInt(geoJson ? 1 : 0));
@@ -237,7 +237,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   auto* query = ast->query();
   NearOrWithinParams params(funAstNode,isNear);
 
-  if(isNear && (!params.limit || params.limit->isNullValue())){
+  if (isNear && (!params.limit || params.limit->isNullValue())) {
     params.limit = ast->createNodeValueInt(100);
   }
 
@@ -400,15 +400,15 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
                                   cname.c_str());
   }
 
-  if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
+  if (coll->type != NODE_TYPE_COLLECTION) {
    aql::addCollectionToQuery(ast->query(), cname, false);
-   coll = ast->createNodeCollection(coll->getStringValue(),
+   coll = ast->createNodeCollection(coll->getStringValue(), coll->getStringLength(),
                                     AccessMode::Type::READ);
   }
 
   // FOR part
   Variable* collVar = ast->variables()->createTemporaryVariable();
-  AstNode* forNode = ast->createNodeFor(collVar, coll);
+  AstNode* forNode = ast->createNodeFor(collVar, coll, nullptr);
 
   // Create GEO_CONTAINS function
   AstNode* loop = ast->createNodeArray(5);
@@ -437,7 +437,7 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode, Ex
     fargs->addMember(arr);
   } else {
     VPackBuilder builder;
-    index->toVelocyPack(builder,true,false);
+    index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
     bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
     if (geoJson) {
       fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));

@@ -76,20 +76,18 @@ install(
     ${PROJECT_SOURCE_DIR}/js/actions
     ${PROJECT_SOURCE_DIR}/js/apps
     ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
-  REGEX       "^.*/server/tests$"                          EXCLUDE
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX       "^.*/aardvark/APP/node_modules$"             EXCLUDE
-  REGEX       "^.*/aardvark/APP/test$"                     EXCLUDE
+  REGEX       "^.*/aardvark/APP/frontend/js/lib"           EXCLUDE
+  REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
 
 if (USE_ENTERPRISE)
   install(
     DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
-    REGEX       "^.*/server/tests$"                        EXCLUDE
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
     REGEX       "^.*/aardvark/APP/node_modules$"           EXCLUDE
-    REGEX       "^.*/aardvark/APP/test$"                   EXCLUDE
   )
 endif ()
 

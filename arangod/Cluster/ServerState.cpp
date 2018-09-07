@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -794,6 +794,10 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
     if (!r.successful()) {
       return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
     }
+    // This is propagated to all servers via the heartbeat, which happens
+    // once per second. So to ensure that every server has taken note of
+    // the change, we delay here for 2 seconds.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
   }
   setReadOnly(mode);
   return Result();
