@@ -727,16 +727,16 @@ Function UpgradeExisting
   DetailPrint "Checking whether an existing database needs upgrade: "
   push ${ARANGO_EXIT_ALREADY_RUNNING}
   pop $0
-  ${While} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
-    ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
-    DetailPrint "done Checking whether an existing database needs upgrade: $0"
-    ${If} $0 ==  ${ARANGO_EXIT_ALREADY_RUNNING}
-      MessageBox MB_RETRYCANCEL "Another ArangoDB is currently locking your database, please stop it, and then click retry." IDCANCEL abortUpgrade IDRETRY retryUpgrade
-      abortUpgrade:
-        Abort
-      retryUpgrade:
-    ${EndIf}
-  ${EndWhile}
+retryDetectUpgradeNeeded:
+  ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
+  DetailPrint "done Checking whether an existing database needs upgrade: $0"
+  ${If} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
+  ${OrIf} $0 == ${ARANGO_EXIT_COULD_NOT_LOCK}
+    MessageBox MB_RETRYCANCEL "Another ArangoDB is currently locking your database, please stop it, and then click retry." IDCANCEL abortUpgrade IDRETRY retryDetectUpgradeNeeded
+  abortUpgrade:
+    Abort
+  ${EndIf}
+
   ${If} $0 != 0
   ${AndIf} $0 != ${ARANGO_EXIT_UPGRADE_REQUIRED}
     !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
