@@ -43,19 +43,15 @@ template<typename Iterator, typename Pred>
 inline void pop_heap(Iterator first, Iterator last, Pred comp) {
   #ifdef _MSC_VER
     if (1 < std::distance(first, last)) {
-      #if _MSC_VER >= 1915
+      #if _MSC_FULL_VER < 190024000
+        std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
+      #else
         #if _MSC_FULL_VER >= 191526726
           std::_Pop_heap_unchecked(&*first, &*last, comp);
         #else
           std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
-        #endif                
-      #else
-        #if _MSC_FULL_VER < 190024000
-          std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
-        #else
-          std::_Pop_heap_unchecked(std::Unchecked(first), std::_Unchecked(last), comp);
-        #endif
-      #endif
+        #endif        
+      #endif      
     }
   #else
     std::pop_heap(first, last, comp);
