@@ -45,7 +45,7 @@ UpdateCollection::UpdateCollection(
   ActionBase(feature, desc) {
 
   std::stringstream error;
-  
+
   _labels.emplace(FAST_TRACK);
 
   if (!desc.has(COLLECTION)) {
@@ -154,8 +154,6 @@ bool UpdateCollection::first() {
         if (!_result.ok()) {
           LOG_TOPIC(ERR, Logger::MAINTENANCE) << "failed to update properties"
             " of collection " << shard << ": " << _result.errorMessage();
-          _feature.storeShardError(database, collection, shard,
-            _description.get(SERVER_ID), _result);
         }
       });
 
@@ -165,8 +163,6 @@ bool UpdateCollection::first() {
             << "in database " + database;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
-
-      return false;
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -174,8 +170,11 @@ bool UpdateCollection::first() {
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << "UpdateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+  }
 
-    return false;
+  if (_result.fail()) {
+    _feature.storeShardError(database, collection, shard,
+      _description.get(SERVER_ID), _result);
   }
 
   notify();
