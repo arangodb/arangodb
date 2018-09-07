@@ -1303,7 +1303,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
     bool allowDropSystem,
     double timeout
 ) {
-  auto* collection = lookupCollection(cid).get();
+  auto collection = lookupCollection(cid);
 
   if (!collection) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -1328,7 +1328,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
     int res;
     {
       READ_LOCKER(readLocker, _inventoryLock);
-      res = dropCollectionWorker(collection, state, timeout);
+      res = dropCollectionWorker(collection.get(), state, timeout);
     }
 
     if (state == DROP_PERFORM) {
@@ -1356,10 +1356,16 @@ arangodb::Result TRI_vocbase_t::dropCollection(
 }
 
 /// @brief renames a view
-int TRI_vocbase_t::renameView(
-    std::shared_ptr<arangodb::LogicalView> const& view,
+arangodb::Result TRI_vocbase_t::renameView(
+    TRI_voc_cid_t cid,
     std::string const& newName
 ) {
+  auto const view = lookupView(cid);
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
   // lock collection because we are going to copy its current name
   std::string oldName = view->name();
 
@@ -1422,11 +1428,17 @@ int TRI_vocbase_t::renameView(
 }
 
 /// @brief renames a collection
-int TRI_vocbase_t::renameCollection(
-    arangodb::LogicalCollection* collection,
+arangodb::Result TRI_vocbase_t::renameCollection(
+    TRI_voc_cid_t cid,
     std::string const& newName,
     bool doOverride
 ) {
+  auto collection = lookupCollection(cid);
+
+  if (!collection) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
   if (collection->system()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1520,11 +1532,10 @@ int TRI_vocbase_t::renameCollection(
     return res.errorNumber(); // rename failed
   }
 
-  auto col = std::static_pointer_cast<arangodb::LogicalCollection>(itr1->second); // cast validated above
   auto* engine = EngineSelectorFeature::ENGINE;
 
   TRI_ASSERT(engine);
-  res = engine->renameCollection(*this, *col, oldName); // tell the engine
+  res = engine->renameCollection(*this, *collection, oldName); // tell the engine
 
   if (!res.ok()) {
     return res.errorNumber(); // rename failed
