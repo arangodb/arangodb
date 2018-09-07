@@ -20,3 +20,7 @@ db.demo.save({
 db._drop("animals");
 db._create("animals"); 
 collectionAlreadyThere.push("animals");
+
+db._dropView("demoView");
+db._createView("demoView", "arangosearch");
+collectionAlreadyThere.push("demoView");
