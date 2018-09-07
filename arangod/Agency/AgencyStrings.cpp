@@ -25,6 +25,8 @@
 
 #include <string>
 
+using namespace arangodb::consensus;
+
 std::string const arangodb::consensus::DATABASES = "Databases";
 std::string const arangodb::consensus::COLLECTIONS = "Collections";
 std::string const arangodb::consensus::VERSION = "Version";
