@@ -41,6 +41,30 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
+std::unordered_map<
+  std::string,
+  std::function<std::unique_ptr<ActionBase>(
+                  MaintenanceFeature&,ActionDescription const&)>> factories {
+  {CREATE_COLLECTION, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new CreateCollection(f,a)); }},
+  {CREATE_DATABASE, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new CreateDatabase(f,a)); }},
+  {DROP_COLLECTION, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new DropCollection(f,a)); }},
+  {DROP_DATABASE, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new DropDatabase(f,a)); }},
+  {DROP_INDEX, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new DropIndex(f,a)); }},    
+  {ENSURE_INDEX, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new EnsureIndex(f,a)); }},
+  {RESIGN_SHARD_LEADERSHIP, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new ResignShardLeadership(f,a)); }},
+  {SYNCHRONIZE_SHARD, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new SynchronizeShard(f,a)); }},    
+  {UPDATE_COLLECTION, [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new UpdateCollection(f,a)); }},
+};
+
 Action::Action(
   MaintenanceFeature& feature,
   ActionDescription const& description) : _action(nullptr) {
@@ -70,28 +94,12 @@ Action::~Action() {}
 
 void Action::create(
   MaintenanceFeature& feature, ActionDescription const& description) {
-  std::string name = description.name();
-  if (name == CREATE_COLLECTION) {
-    _action.reset(new CreateCollection(feature, description));
-  } else if (name == CREATE_DATABASE) {
-    _action.reset(new CreateDatabase(feature, description));
-  } else if (name == DROP_COLLECTION) {
-    _action.reset(new DropCollection(feature, description));
-  } else if (name == DROP_DATABASE) {
-    _action.reset(new DropDatabase(feature, description));
-  } else if (name == DROP_INDEX) {
-    _action.reset(new DropIndex(feature, description));
-  } else if (name == ENSURE_INDEX) {
-    _action.reset(new EnsureIndex(feature, description));
-  } else if (name == RESIGN_SHARD_LEADERSHIP) {
-    _action.reset(new ResignShardLeadership(feature, description));
-  } else if (name == SYNCHRONIZE_SHARD) {
-    _action.reset(new SynchronizeShard(feature, description));
-  } else if (name == UPDATE_COLLECTION) {
-    _action.reset(new UpdateCollection(feature, description));
-  } else {
-    _action.reset(new NonAction(feature, description));
+
+  auto factory = factories.find(description.name());
+  if (factory != factories.end()) {
+    _action = factory->second(feature, description);
   }
+  
 }
 
 ActionDescription const& Action::describe() const {
