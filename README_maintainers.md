@@ -490,7 +490,7 @@ enable suid process dumping:
 
 make the above change permanent:
 
-`echo "sys.fs.suid_dumpable = 1 >> /etc/sysctl.d/99-suid-coredump.conf` 
+`echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf` 
 
 Analyzing Coredumps on Linux
 ============================
