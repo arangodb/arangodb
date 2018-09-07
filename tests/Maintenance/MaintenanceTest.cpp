@@ -662,6 +662,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
         node.first, errors, actions);
 
+      /*
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
       }
@@ -674,7 +675,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
         auto const props = action.properties();
 
       }
-
+      */
     }
   }
 
