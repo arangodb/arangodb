@@ -1,8 +1,6 @@
-Command-Line Options for Logging
-================================
+# ArangoDB Server Log Options
 
-Log levels and topics
----------------------
+## Log levels and topics
 
 ArangoDB's log output is grouped into topics. `--log.level` can be specified
 multiple times at startup, for as many topics as needed. The log verbosity and
@@ -111,7 +109,6 @@ will be printed in UTC / Zulu time. The date and time format used in logs
 is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
 is used, a `Z` will be appended to indicate Zulu time.
 
-
 ### Escaping
 
 `--log.escape value`
@@ -135,14 +132,12 @@ is set to a very verbose level (e.g. debug or trace).
 
 The default value for this option is `true`.
 
-
 ### Color logging
 
 `--log.color value`
 
 Logging to terminal output is by default colored. Colorful logging can be 
 turned off by setting the value to false.
-
 
 ### Source file and Line number
 
