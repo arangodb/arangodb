@@ -52,7 +52,7 @@ namespace {
     return std::forward<T>(value);
   }
   
-  struct FuturesTestSetup {
+  struct SchedulerTestSetup {
     arangodb::application_features::ApplicationServer server;
     
     FuturesTestSetup() : server(nullptr, nullptr) {
@@ -245,11 +245,10 @@ STMT; \
 #undef DOIT
   }
   
-  FuturesTestSetup setup;
-  
 SECTION("hasPreconditionValid") {
     // Ops that require validity; precondition: valid();
     // throw FutureInvalid if !valid()
+  SchedulerTestSetup setup;
     
 #define DOIT(STMT)                     \
 do {                                 \
@@ -268,7 +267,13 @@ REQUIRE_THROWS(STMT); \
     DOIT(f.hasException());
     DOIT(f.get());
     //DOIT(std::move(f).then());
+    DOIT(std::move(f).then([](int&&) -> void {}));
     DOIT(std::move(f).then([](auto&&) -> void {}));
+  
+    /*auto lamda = [](int&&) -> void {};
+  arangodb::futures::detail::callableResult<int, decltype(lamda)> g;
+  static_assert(std::is_same<decltype(g)::Arg, int&&>::value, "");
+  static_assert(!arangodb::futures::detail::isTry<decltype(g)::Arg>::value, "");*/
     
 #undef DOIT
   }

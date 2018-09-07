@@ -29,6 +29,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include "Futures/function/cxx_function.hpp"
+
 namespace arangodb { namespace futures { namespace detail {
 
 template<typename T>
@@ -139,8 +141,9 @@ class SharedState {
   void setCallback(F&& func) {
     TRI_ASSERT(!hasCallback());
     
-    // construct callback_ first; if that fails, context_ will not leak
+    // construct _callback first; if that fails, context_ will not leak
     _callback = std::forward<F>(func);
+    //::new (&_callback) Callback(std::forward<F>(func));
     
     auto state = _state.load(std::memory_order_acquire);
     while (true) {
@@ -259,7 +262,8 @@ class SharedState {
   }
   
 private:
-  std::function<void(Try<T>&&)> _callback;
+  using Callback = cxx_function::unique_function<void(Try<T>&&)>;
+  Callback _callback;
   union { // avoids having to construct the result
     Try<T> _result;
   };

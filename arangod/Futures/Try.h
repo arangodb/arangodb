@@ -24,6 +24,7 @@
 #define ARANGOD_FUTURES_TRY_H 1
 
 #include "Basics/Common.h"
+#include "Futures/backports.h"
 
 #include <exception>
 #include <type_traits>
@@ -31,21 +32,6 @@
 
 namespace arangodb {
 namespace futures {
-  
-/// Backports from C++17 of:
-/// std::in_place_t
-/// std::in_place
-  
-#if __cplusplus == 201402L
-  struct in_place_tag {};
-  using in_place_t = in_place_tag (&)(in_place_tag);
-  inline in_place_tag in_place(in_place_tag = {}) {
-    return {};
-  }
-#else
-  using in_place_t = std::in_place_t;
-  using in_place = std::in_place;
-#endif
   
 /// Try<T> is a wrapper that contains either an instance of T, an exception, or
 /// nothing. Exceptions are stored as exception_ptrs so that the user can
@@ -458,6 +444,28 @@ makeTryWith(F&& func) {
     return Try<void>(std::current_exception());
   }
 }
+  
+/// test for Try parameter in templates
+template<typename T>
+struct isTry {
+  static constexpr bool value = false;
+  typedef T inner;
+};
+template<typename T>
+struct isTry<Try<T>> {
+  static constexpr bool value = true;
+  typedef T inner;
+};
+template<typename T>
+struct isTry<Try<T>&> {
+  static constexpr bool value = true;
+  typedef T inner;
+};
+template<typename T>
+struct isTry<Try<T>&&> {
+  static constexpr bool value = true;
+  typedef T inner;
+};
   
 }}
 #endif // ARANGOD_FUTURES_TRY_H

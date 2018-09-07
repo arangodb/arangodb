@@ -28,9 +28,13 @@
 #include <future>
 
 #include "Futures/SharedState.h"
+#include "Futures/Future.h"
 
 namespace arangodb {
 namespace futures {
+  
+template<typename T>
+class Future;
   
 /// producer side of future-promise pair
 /// accesses on Promise have to be synchronized externally
@@ -49,7 +53,13 @@ public:
   
   Promise(Promise const& o) = delete;
   Promise(Promise<T>&& o) noexcept
-    : _state(std::move(o._state)), _retrieved(o._retrieved) {}
+    : _state(std::move(o._state)), _retrieved(o._retrieved) {
+      o._state = nullptr;
+    }
+  
+  ~Promise() {
+    this->detach();
+  }
   
   Promise& operator=(Promise const&) = delete;
   Promise& operator=(Promise<T>&& o) noexcept {
@@ -88,7 +98,13 @@ public:
   /// Functionally equivalent to `setTry(Try<T>(std::forward<M>(value)))`
   template <class M>
   void set_value(M&& value) {
-   setTry(Try<T>(std::forward<M>(value)));
+    static_assert(!std::is_same<T, void>::value, "Use set_value() instead");
+    setTry(Try<T>(std::forward<M>(value)));
+  }
+  
+  template <class B = T>
+  typename std::enable_if<std::is_same<void, B>::value>::type set_value() {
+    setTry(Try<void>());
   }
   
   /// Fulfill the Promise with the specified Try (value or exception).
@@ -105,20 +121,16 @@ public:
     getState().setResult(makeTryWith(std::forward<F>(func())));
   }
   
-  std::future<T> get_future() {
+  arangodb::futures::Future<T> get_future() {
     if (_retrieved) {
       throw std::future_error(std::future_errc::future_already_retrieved);
     }
     _retrieved = true;
-    return std::future<T>(_state);
+    return arangodb::futures::Future<T>(_state);
   }
   
 private:
   //Promise(SharedState<T>* state) : _state(state), _retrieved(false) {}
-  
-  ~Promise() {
-    detach();
-  }
   
   // convenience method that checks if _state is set
   inline detail::SharedState<T>& getState() {
@@ -154,4 +166,4 @@ private:
 };  
 }}
 
-#endif // ARANGOD_FUTURES_SHARED_STATE_H
+#endif // ARANGOD_FUTURES_PROMISE_H
