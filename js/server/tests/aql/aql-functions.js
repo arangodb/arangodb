@@ -2935,9 +2935,9 @@ function ahuacatlFunctionsTestSuite () {
     
     testSum : function () {
       var data = [
-        [ 0, [ ] ],
-        [ 0, [ null ] ],
-        [ 0, [ null, null ] ],
+        [ null, [ ] ],
+        [ null, [ null ] ],
+        [ null, [ null, null ] ],
         [ 1, [ 1, null, null ] ],
         [ 2, [ 1, null, null, 1 ] ],
         [ 15, [ 1, 2, 3, 4, 5 ] ],
@@ -2952,7 +2952,11 @@ function ahuacatlFunctionsTestSuite () {
 
       data.forEach(function (value) {
         var actual = getQueryResults("RETURN SUM(" + JSON.stringify(value[1]) + ")");
-        assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        } else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 
@@ -3111,9 +3115,9 @@ function ahuacatlFunctionsTestSuite () {
     
     testCxxSum : function () {
       var data = [
-        [ 0, [ ] ],
-        [ 0, [ null ] ],
-        [ 0, [ null, null ] ],
+        [ null, [ ] ],
+        [ null, [ null ] ],
+        [ null, [ null, null ] ],
         [ 1, [ 1, null, null ] ],
         [ 2, [ 1, null, null, 1 ] ],
         [ 15, [ 1, 2, 3, 4, 5 ] ],
@@ -3128,7 +3132,11 @@ function ahuacatlFunctionsTestSuite () {
 
       data.forEach(function (value) {
         var actual = getQueryResults("RETURN SUM(NOOPT(" + JSON.stringify(value[1]) + "))");
-        assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        if (value[0] === null) {
+          assertNull(actual[0]);
+        } else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
       });
     },
 

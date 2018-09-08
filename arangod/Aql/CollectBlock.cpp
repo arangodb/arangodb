@@ -456,6 +456,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       cur = _buffer.front();
       _currentGroup.firstRow = 0; 
       _currentGroup.lastRow = 0; 
+      _currentGroup.rowsAreValid = false;
     }
   }
 
@@ -508,8 +509,10 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
         }
         res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       } else {
-        res->emplaceValue(
+        res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
+/*        res->emplaceValue(
             row, _aggregateRegisters[j].first, arangodb::basics::VelocyPackHelper::NullValue());
+*/
       }
       ++j;
     }

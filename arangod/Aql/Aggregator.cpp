@@ -161,6 +161,7 @@ AqlValue AggregatorMax::stealValue() {
 void AggregatorSum::reset() {
   sum = 0.0;
   invalid = false;
+  invoked = false;
 }
 
 void AggregatorSum::reduce(AqlValue const& cmpValue) {
@@ -173,6 +174,7 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
       double const number = cmpValue.toDouble(trx);
       if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
+        invoked = true;
         sum += number;
         return;
       }
@@ -183,7 +185,7 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
 }
 
 AqlValue AggregatorSum::stealValue() {
-  if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+  if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
     return AqlValue(AqlValueHintNull());
   }
 

@@ -119,6 +119,7 @@ struct AggregatorSum final : public Aggregator {
 
   double sum;
   bool invalid;
+  bool invoked;
 };
 
 struct AggregatorAverage final : public Aggregator {
