@@ -226,11 +226,12 @@ struct AggregatorMax final : public Aggregator {
 
 struct AggregatorSum final : public Aggregator {
   explicit AggregatorSum(transaction::Methods* trx)
-      : Aggregator(trx), sum(0.0), invalid(false) {}
+      : Aggregator(trx), sum(0.0), invalid(false), invoked(false) {}
 
   void reset() override {
     sum = 0.0;
     invalid = false;
+    invoked = false;
   }
 
   void reduce(AqlValue const& cmpValue) override {
@@ -243,6 +244,7 @@ struct AggregatorSum final : public Aggregator {
         double const number = cmpValue.toDouble(trx);
         if (!std::isnan(number) && number != HUGE_VAL &&
             number != -HUGE_VAL) {
+          invoked = true;
           sum += number;
           return;
         }
@@ -253,7 +255,7 @@ struct AggregatorSum final : public Aggregator {
   }
 
   AqlValue stealValue() override {
-    if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
+    if (invalid || !invoked || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
       return AqlValue(AqlValueHintNull());
     }
 
@@ -266,6 +268,7 @@ struct AggregatorSum final : public Aggregator {
 
   double sum;
   bool invalid;
+  bool invoked;
 };
 
 /// @brief the single-server variant of AVERAGE
