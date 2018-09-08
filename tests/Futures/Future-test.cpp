@@ -55,7 +55,7 @@ namespace {
   struct SchedulerTestSetup {
     arangodb::application_features::ApplicationServer server;
     
-    FuturesTestSetup() : server(nullptr, nullptr) {
+    SchedulerTestSetup() : server(nullptr, nullptr) {
       using namespace arangodb::application_features;
       std::vector<ApplicationFeature*> features;
       
@@ -81,7 +81,7 @@ namespace {
       
     }
     
-    ~FuturesTestSetup() {
+    ~SchedulerTestSetup() {
       using namespace arangodb::application_features;
       ApplicationServer::setStateUnsafe(ServerState::IN_STOP);
       
@@ -270,15 +270,10 @@ REQUIRE_THROWS(STMT); \
     DOIT(std::move(f).then([](int&&) -> void {}));
     DOIT(std::move(f).then([](auto&&) -> void {}));
   
-    /*auto lamda = [](int&&) -> void {};
-  arangodb::futures::detail::callableResult<int, decltype(lamda)> g;
-  static_assert(std::is_same<decltype(g)::Arg, int&&>::value, "");
-  static_assert(!arangodb::futures::detail::isTry<decltype(g)::Arg>::value, "");*/
-    
 #undef DOIT
   }
   
-/*SECTION("hasPostconditionValid") {
+SECTION("hasPostconditionValid") {
     // Ops that preserve validity -- postcondition: valid()
     
 #define DOIT(STMT)          \
@@ -294,14 +289,14 @@ REQUIRE(f.valid()); \
     DOIT(swallow(f.isReady()));
     DOIT(swallow(f.hasValue()));
     DOIT(swallow(f.hasException()));
-    DOIT(swallow(f.value()));
+    DOIT(swallow(f.get()));
     DOIT(swallow(f.getTry()));
-    DOIT(swallow(f.poll()));
-    DOIT(f.raise(std::logic_error("foo")));
-    DOIT(f.cancel());
+    //DOIT(swallow(f.poll()));
+    //DOIT(f.raise(std::logic_error("foo")));
+    //DOIT(f.cancel());
     DOIT(swallow(f.getTry()));
     DOIT(f.wait());
-    DOIT(std::move(f.wait()));
+    //DOIT(std::move(f.wait()));
     
 #undef DOIT
   }
@@ -312,7 +307,7 @@ SECTION("hasPostconditionInvalid") {
 #define DOIT(CTOR, STMT)     \
 do {                       \
 auto f = (CTOR);         \
-REQUIRE_NOTHROW(STMT);   \
+STMT;   \
 REQUIRE_FALSE(f.valid()); \
 } while (false)
     
@@ -350,13 +345,13 @@ REQUIRE_FALSE(f.valid()); \
     
     // other consuming ops
     auto const swallow = [](auto) {};
-    DOIT(makeValid(), swallow(std::move(f).wait()));
-    DOIT(makeValid(), swallow(std::move(f.wait())));
+    //DOIT(makeValid(), swallow(std::move(f).wait()));
+    //DOIT(makeValid(), swallow(std::move(f.wait())));
     DOIT(makeValid(), swallow(std::move(f).get()));
     DOIT(makeValid(), swallow(std::move(f).get(std::chrono::milliseconds(10))));
-    DOIT(makeValid(), swallow(std::move(f).semi()));
+    //DOIT(makeValid(), swallow(std::move(f).semi()));
     
 #undef DOIT
-}*/
+}
   
 }

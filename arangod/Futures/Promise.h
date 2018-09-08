@@ -102,6 +102,7 @@ public:
     setTry(Try<T>(std::forward<M>(value)));
   }
   
+  /// set void value
   template <class B = T>
   typename std::enable_if<std::is_same<void, B>::value>::type set_value() {
     setTry(Try<void>());

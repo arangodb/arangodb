@@ -58,7 +58,8 @@ namespace detail {
     typename std::conditional<is_invocable<F, T&&>::value, T&&, Try<T>&&>::type>::type Arg;
 
     static_assert(std::is_same<typename std::decay<Arg>::type,
-                               typename std::decay<T>::type>::value, "");
+                               typename std::decay<T>::type>::value, "Must accept type of future");
+    static_assert(is_invocable<F, Arg>::value, "Function must be invocable with T");
     
     // typedef  std::invoke_result_t<F, Args...>; TODO c++17
     typedef typename std::result_of<F(Arg)>::type Return; /// return type of function
@@ -138,7 +139,7 @@ public:
   /// waits and moves the result out
   T get() && {
     wait();
-    return std::move(*this).result().get();
+    return Future<T>(std::move(*this)).result().get();
   }
   
   template<class Rep, class Period >
@@ -150,7 +151,18 @@ public:
   template<class Rep, class Period >
   T get(const std::chrono::duration<Rep,Period>& duration) && {
     wait_for(duration);
-    return std::move(*this).result().get();
+    return Future<T>(std::move(*this)).result().get();
+  }
+  
+  /// Blocks until the future is fulfilled. Returns the Try of the result
+  Try<T>& getTry() & {
+    wait();
+    return getStateTryChecked();
+  }
+  
+  Try<T>&& getTry() && {
+    wait();
+    return std::move(getStateTryChecked());
   }
   
   /// Returns a reference to the result value if it is ready, with a reference
@@ -285,9 +297,9 @@ public:
     
     Promise<B> promise;
     auto future = promise.get_future();
-    getState().setCallback([fn(std::forward<F>(func)),
-                            pr = Promise<B>()] (Try<T>&& t) mutable {
-      /*try {
+    getState().setCallback([fn =std::forward<F>(func),
+                            pr = std::move(promise)] (Try<T>&& t) mutable {
+      try {
         if (t.hasException()) {
           pr.set_exception(std::move(t).exception());
         } else {
@@ -296,7 +308,7 @@ public:
         }
       } catch(...) {
         pr.set_exception(std::current_exception());
-      }*/
+      }
     });
     return std::move(future);
   }
@@ -306,17 +318,77 @@ public:
   template <typename F, typename R = detail::callableResult<T, F>>
   typename std::enable_if<!isTry<typename R::Arg>::value &&
                           R::ReturnsFuture::value,
-                          Future<typename R::Return>>::type
+                          typename R::FutureT>::type
   then(F&& func) && {
-    //static_assert<std::is_same<A>
+    typedef typename R::ReturnsFuture::inner B;
+    static_assert(!isFuture<B>::value, "");
+    
+    Promise<B> promise;
+    auto future = promise.get_future();
+    getState().setCallback([fn = std::forward<F>(func),
+                            pr = std::move(promise)] (Try<T>&& t) mutable {
+      try {
+        if (t.hasException()) {
+          pr.set_exception(std::move(t).exception());
+        } else {
+          fn(std::move(t).get()).then([pr = std::move(pr)] (Try<B>&& t) mutable {
+            pr.setTry(t);
+          });
+        }
+      } catch(...) {
+        pr.set_exception(std::current_exception());
+      }
+    });
+    return std::move(future);
   }
   
   /// Variant: callable accepts Try<T&&>, returns value
   ///  e.g. f.then([](T&& t){ return t; });
+  template <typename F, typename R = detail::callableResult<T, F>>
+  typename std::enable_if<isTry<typename R::Arg>::value &&
+                          !R::ReturnsFuture::value,
+                          typename R::FutureT>::type
+  then(F&& func) && {
+    typedef typename R::ReturnsFuture::inner B;
+    static_assert(!isFuture<B>::value, "");
+    
+    Promise<B> promise;
+    auto future = promise.get_future();
+    getState().setCallback([fn = std::forward<F>(func),
+                            pr = std::move(promise)] (Try<T>&& t) mutable {
+      try {
+        pr.set_value(fn(std::move(t)));
+      } catch(...) {
+        pr.set_exception(std::current_exception());
+      }
+    });
+    return std::move(future);
+  }
   
   /// Variant: callable accepts Try<T&&>, returns future
   ///  e.g. f.then([](T&& t){ return makeFuture<T>(t); });
-
+  template <typename F, typename R = detail::callableResult<T, F>>
+  typename std::enable_if<isTry<typename R::Arg>::value &&
+                          R::ReturnsFuture::value,
+                          typename R::FutureT>::type
+  then(F&& func) && {
+    typedef typename R::ReturnsFuture::inner B;
+    static_assert(!isFuture<B>::value, "");
+    
+    Promise<B> promise;
+    auto future = promise.get_future();
+    getState().setCallback([fn = std::forward<F>(func),
+                            pr = std::move(promise)] (Try<T>&& t) mutable {
+      try {
+        fn(std::move(t)).then([pr = std::move(pr)] (Try<B>&& t) mutable {
+          pr.setTry(t);
+        });
+      } catch(...) {
+        pr.set_exception(std::current_exception());
+      }
+    });
+    return std::move(future);
+  }
   
   /// @brief Variant: function returns void and accepts Try<T>&&
   /// When this Future has completed, execute func which is a function that
@@ -327,29 +399,54 @@ public:
     getState().setCallback(std::forward<F>(func));
   }
 
-  /*
-  template <typename F,
-  typename R = typename std::result_of<F&&(Try<T>&&)>::type,
-  typename std::enable_if<!std::is_same<R, void>::value &&
-                          isFuture<R>::value>::type = 0>
-  Future<typename isFuture<R>::inner> then(F&& func) && {
-    typedef typename isFuture<R>::inner B;
-    static_assert(!isFuture<B>::value, "");
-    
-    Promise<B> promise;
+  
+  /// Set an error continuation for this Future where the continuation can
+  /// be called with a known exception type and returns a `T`
+  template <typename F, typename ExceptionType>
+  typename std::enable_if<is_invocable_r<T, F, ExceptionType>::value,
+  Future<T>>::type
+  thenError(F&& func) && {
+    Promise<T> promise;
     auto future = promise.get_future();
     getState().setCallback([fn = std::forward<F>(func),
-                           pr = std::move(promise)](Try<T>&& t) {
-      try {
-        fn(std::move(t)).then([pr2 = std::move(pr)](Try<B>&& t) {
-          pr2.set_value(std::move(t));
-        });
-      } catch(...) {
-        pr.set_exception(std::current_exception);
+                            pr = std::move(promise)] (Try<T>&& t) mutable {
+      if (t.hasException()) {
+        try {
+          std::rethrow_exception(std::move(t).exception());
+        } catch(ExceptionType const& e) {
+          pr.set_value(std::move(fn(e)));
+        }
+      } else {
+        pr.setTry(std::move(t));
       }
     });
     return std::move(future);
-  }*/
+  }
+  
+  /// Set an error continuation for this Future where the continuation can
+  /// be called with a known exception type and returns a `Future<T>`
+  template <typename F, typename ExceptionType>
+  typename std::enable_if<is_invocable_r<Future<T>, F, ExceptionType>::value,
+                          Future<T>>::type
+  thenError(F&& func) && {
+    Promise<T> promise;
+    auto future = promise.get_future();
+    getState().setCallback([fn = std::forward<F>(func),
+                            pr = std::move(promise)] (Try<T>&& t) mutable {
+      if (t.hasException()) {
+        try {
+          std::rethrow_exception(std::move(t).exception());
+        } catch(ExceptionType const& e) {
+          fn(e).then([pr = std::move(pr)](Try<T>&& t) {
+            pr.setTry(std::move(t));
+          });
+        }
+      } else {
+        pr.setTry(std::move(t));
+      }
+    });
+    return std::move(future);
+  }
   
 private:
   
@@ -395,8 +492,6 @@ private:
 private:
   detail::SharedState<T>* _state;
 };
-  
-  
 
 template <class T>
 Future<typename std::decay<T>::type> makeFuture(T&& t) {
