@@ -96,9 +96,9 @@ void Action::create(
   MaintenanceFeature& feature, ActionDescription const& description) {
 
   auto factory = factories.find(description.name());
-  if (factory != factories.end()) {
-    _action = factory->second(feature, description);
-  }
+  _action = (factory != factories.end()) ?
+    factory->second(feature, description) :
+    std::unique_ptr<ActionBase>(new NonAction(feature, description));
   
 }
 
