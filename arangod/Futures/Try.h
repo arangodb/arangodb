@@ -71,13 +71,7 @@ public:
   /// Construct a Try with an exception_ptr
   /// @param e The exception_ptr
   explicit Try(std::exception_ptr e) noexcept
-    : _exception(std::move(e)), _content(Content::Exception){}
-  
-  /// TODO folly uses in_place_t to differentiate between constructors
-  /// Construct a Try with an exception type
-  /// @param e The exception
-  template <typename E>
-  Try(E e) : _exception(std::make_exception_ptr(e)) { }
+    : _exception(std::move(e)), _content(Content::Exception) {}
   
   // Move constructor
   Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
@@ -419,12 +413,9 @@ private:
   std::exception_ptr _exception;
 };
   
-template <class F>
-typename std::enable_if<
-!std::is_same<std::result_of<F>, void>::value,
-Try<std::result_of<F>>>::type
-makeTryWith(F&& func) {
-  using R = std::result_of<F>;
+template <class F, typename R = typename std::result_of<F()>::type>
+typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type
+makeTryWith(F&& func) noexcept {
   try {
     return Try<R>(in_place, func());
   } catch(...) {
@@ -432,11 +423,9 @@ makeTryWith(F&& func) {
   }
 }
   
-template <class F>
-typename std::enable_if<
-std::is_same<std::result_of<F>, void>::value,
-Try<std::result_of<F>>>::type
-makeTryWith(F&& func) {
+template <class F, typename R = typename std::result_of<F()>::type>
+typename std::enable_if<std::is_same<R, void>::value, Try<void>>::type
+makeTryWith(F&& func) noexcept {
   try {
     func();
     return Try<void>();

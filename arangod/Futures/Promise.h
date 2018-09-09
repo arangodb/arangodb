@@ -23,21 +23,19 @@
 #ifndef ARANGOD_FUTURES_PROMISE_H
 #define ARANGOD_FUTURES_PROMISE_H 1
 
-#include <atomic>
-#include <chrono>
 #include <future>
 
 #include "Futures/SharedState.h"
-#include "Futures/Future.h"
 
 namespace arangodb {
 namespace futures {
   
-template<typename T>
+template <typename T>
 class Future;
   
 /// producer side of future-promise pair
-/// accesses on Promise have to be synchronized externally
+/// accesses on Promise have to be synchronized externally to
+/// be thread-safe
 template<typename T>
 class Promise {
 public:
@@ -66,7 +64,7 @@ public:
     detach();
     _state = std::move(o._state);
     _retrieved = o._retrieved;
-    o._retrieved = false;
+    o._state = nullptr;
     return *this;
   }
   
@@ -87,11 +85,11 @@ public:
   }
   
   /// Fulfill the Promise with exception `e` *as if* by
-  ///   `setException(make_exception_wrapper<E>(e))`.
+  ///   `set_exception(std::make_exception_ptr<E>(e))`.
   template <class E>
   typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
   set_exception(E const& e) {
-    setTry(Try<T>(e));
+    set_exception(std::make_exception_ptr<E>(e));
   }
   
   /// Fulfill the Promise with the specified value using perfect forwarding.
@@ -119,19 +117,13 @@ public:
   template <class F>
   void setWith(F&& func) {
     throwIfFulfilled();
-    getState().setResult(makeTryWith(std::forward<F>(func())));
+    getState().setResult(makeTryWith(std::forward<F>(func)));
   }
   
-  arangodb::futures::Future<T> get_future() {
-    if (_retrieved) {
-      throw std::future_error(std::future_errc::future_already_retrieved);
-    }
-    _retrieved = true;
-    return arangodb::futures::Future<T>(_state);
-  }
+  arangodb::futures::Future<T> get_future();
   
 private:
-  //Promise(SharedState<T>* state) : _state(state), _retrieved(false) {}
+  Promise(detail::SharedState<T>* state) : _state(state), _retrieved(false) {}
   
   // convenience method that checks if _state is set
   inline detail::SharedState<T>& getState() {
@@ -153,7 +145,8 @@ private:
         _state->detachFuture();
       }
       if (!_state->hasResult()) {
-        _state->setResult(Try<T>(std::future_error(std::future_errc::broken_promise)));
+        auto ptr = std::make_exception_ptr(std::future_error(std::future_errc::broken_promise));
+        _state->setResult(Try<T>(std::move(ptr)));
       }
       _state->detachPromise();
       _state = nullptr;
@@ -164,7 +157,9 @@ private:
   detail::SharedState<T>* _state;
   /// Whether the Future has been retrieved (a one-time operation)
   bool _retrieved;
-};  
+};
 }}
-
 #endif // ARANGOD_FUTURES_PROMISE_H
+
+#include "Future.h"
+#include "Promise-inl.h"

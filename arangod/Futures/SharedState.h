@@ -26,10 +26,9 @@
 #include <atomic>
 
 #include "Futures/Try.h"
+#include "Futures/function/cxx_function.hpp"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-
-#include "Futures/function/cxx_function.hpp"
 
 namespace arangodb { namespace futures { namespace detail {
 
@@ -224,7 +223,7 @@ class SharedState {
   /// empty shared state
   SharedState () : _state(State::Start), _attached(2) {}
   
-  /// use to construct a read future
+  /// use to construct a ready future
   explicit SharedState(Try<T>&& t)
     : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {}
   
@@ -251,6 +250,7 @@ class SharedState {
   void doCallback() {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
+    TRI_ASSERT(SchedulerFeature::SCHEDULER);
     
     // in case the scheduler throws away this lamda
     _attached.fetch_add(1);
