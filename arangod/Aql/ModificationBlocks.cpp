@@ -69,7 +69,7 @@ ModificationBlock::~ModificationBlock() {}
 
 /// @brief skips over the taken rows if the input value is no
 /// array or empty. updates dstRow in this case and returns true!
-bool ModificationBlock::skipEmptyValues(VPackSlice values,
+bool ModificationBlock::skipEmptyValues(VPackSlice const& values,
                                         size_t n, 
                                         AqlItemBlock const* src, 
                                         AqlItemBlock* dst, 
@@ -347,15 +347,15 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
+  bool const ignoreDocumentNotFound = ep->_options.ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
-  options.ignoreRevs = ep->getOptions().ignoreRevs;
+  options.ignoreRevs = ep->_options.ignoreRevs;
   options.returnOld = producesOutput;
-  options.isRestore = ep->getOptions().useIsRestore;
+  options.isRestore = ep->_options.useIsRestore;
  
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
@@ -460,8 +460,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     auto iter = VPackArrayIterator(resultList);
     for (size_t i = 0; i < n; ++i) {
       TRI_ASSERT(i < _operations.size());
-      if (_operations[i] == APPLY_RETURN) {
-        TRI_ASSERT(result != nullptr);
+      if (_operations[i] == APPLY_RETURN && result != nullptr) {
         TRI_ASSERT(iter.valid());
         auto elm = iter.value();
         bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
@@ -590,8 +589,7 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
     auto iter = VPackArrayIterator(resultList);
     for (size_t i = 0; i < n; ++i) {
       TRI_ASSERT(i < _operations.size());
-      if (_operations[i] == APPLY_RETURN) {
-        TRI_ASSERT(result != nullptr);
+      if (_operations[i] == APPLY_RETURN && result != nullptr) {
         TRI_ASSERT(iter.valid());
         auto elm = iter.value();
         bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
@@ -648,7 +646,7 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0;  // default initialization
 
-  bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
+  bool const ignoreDocumentNotFound = ep->_options.ignoreDocumentNotFound;
   bool producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
   
   // check if we're a DB server in a cluster
@@ -676,8 +674,8 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnOld = (producesOutput && ep->_outVariableOld != nullptr);
   options.returnNew = (producesOutput && ep->_outVariableNew != nullptr);
-  options.ignoreRevs = ep->getOptions().ignoreRevs;
-  options.isRestore = ep->getOptions().useIsRestore;
+  options.ignoreRevs = ep->_options.ignoreRevs;
+  options.isRestore = ep->_options.useIsRestore;
   
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
@@ -802,8 +800,7 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     auto iter = VPackArrayIterator(resultList);
     for (size_t i = 0; i < n; ++i) {
       TRI_ASSERT(i < _operations.size());
-      if (_operations[i] == APPLY_RETURN) {
-        TRI_ASSERT(result != nullptr);
+      if (_operations[i] == APPLY_RETURN && result != nullptr) {
         TRI_ASSERT(iter.valid());
         auto elm = iter.value();
         bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
@@ -886,8 +883,8 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
   options.mergeObjects = ep->_options.mergeObjects;
   options.keepNull = !ep->_options.nullMeansRemove;
   options.returnNew = producesOutput;
-  options.ignoreRevs = ep->getOptions().ignoreRevs;
-  options.isRestore = ep->getOptions().useIsRestore;
+  options.ignoreRevs = ep->_options.ignoreRevs;
+  options.isRestore = ep->_options.useIsRestore;
   
   std::unique_ptr<AqlItemBlock> result;
   if (producesOutput || ep->producesResults()) {
@@ -1064,7 +1061,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
     for (size_t i = 0; i < n; ++i) {
       TRI_ASSERT(i < _operations.size());
-      if (_operations[i] == APPLY_UPDATE || _operations[i] == APPLY_INSERT) {
+      if ((_operations[i] == APPLY_UPDATE || _operations[i] == APPLY_INSERT) && result != nullptr) {
         // fetch operation type (insert or update/replace)
         VPackArrayIterator* iter;
         if (_operations[i] == APPLY_INSERT) {

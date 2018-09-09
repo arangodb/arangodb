@@ -40,8 +40,8 @@ class ExecutionEngine;
 class ModificationBlock : public ExecutionBlock {
  protected:
   enum ModOperationType : uint8_t {
-    IGNORE_SKIP = 0, // do not apply, do not produce a result
-    IGNORE_RETURN = 1, // do not apply, but pass the row to the next block
+    IGNORE_SKIP = 0, // do not apply, do not produce a result - used for skipping over suppressed errors
+    IGNORE_RETURN = 1, // do not apply, but pass the row to the next block - used for smart graphs and such
     APPLY_RETURN = 2, // apply it and return the result, used for all non-UPSERT operations
     APPLY_UPDATE = 3, // apply it and return the result, used only used for UPSERT
     APPLY_INSERT = 4, // apply it and return the result, used only used for UPSERT
@@ -65,7 +65,7 @@ class ModificationBlock : public ExecutionBlock {
   
   /// @brief skips over the taken rows if the input value is no
   /// array or empty. updates dstRow in this case and returns true!
-  bool skipEmptyValues(VPackSlice values,
+  bool skipEmptyValues(VPackSlice const& values,
                        size_t n, 
                        AqlItemBlock const* src, 
                        AqlItemBlock* dst, 
