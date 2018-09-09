@@ -21,7 +21,7 @@
   * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
-  * [Datacenter to datacenter Replication on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
+  * [DC2DC on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB Server](Programs/Arangod/README.md)
     * [Options](Programs/Arangod/Options.md)
