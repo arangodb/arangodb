@@ -54,6 +54,8 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));
+  
+  builder.add("producesResults", VPackValue(_producesResults));
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -68,7 +70,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 
   _options.toVelocyPack(builder);
 }
-
+  
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.

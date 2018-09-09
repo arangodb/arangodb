@@ -38,6 +38,15 @@ struct Collection;
 class ExecutionEngine;
 
 class ModificationBlock : public ExecutionBlock {
+ protected:
+  enum ModOperationType : uint8_t {
+    IGNORE_SKIP = 0, // do not apply, do not produce a result
+    IGNORE_RETURN = 1, // do not apply, but pass the row to the next block
+    APPLY_RETURN = 2, // apply it and return the result, used for all non-UPSERT operations
+    APPLY_UPDATE = 3, // apply it and return the result, used only used for UPSERT
+    APPLY_INSERT = 4, // apply it and return the result, used only used for UPSERT
+  };
+
  public:
   ModificationBlock(ExecutionEngine*, ModificationNode const*);
 
@@ -54,15 +63,16 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief the actual work horse
   virtual std::unique_ptr<AqlItemBlock> work() = 0;
   
-  /// @brief processes the final result
-  void trimResult(std::unique_ptr<AqlItemBlock>& result, size_t numRowsWritten);
-
   /// @brief skips over the taken rows if the input value is no
   /// array or empty. updates dstRow in this case and returns true!
-  bool skipEmptyValues(arangodb::velocypack::Slice values, 
-                       size_t n, AqlItemBlock const* src, 
+  bool skipEmptyValues(VPackSlice values,
+                       size_t n, 
+                       AqlItemBlock const* src, 
                        AqlItemBlock* dst, 
                        size_t& dstRow);
+  
+  /// @brief processes the final result
+  void trimResult(std::unique_ptr<AqlItemBlock>& result, size_t numRowsWritten);
 
   /// @brief extract a key from the AqlValue passed
   int extractKey(AqlValue const&, std::string& key);
@@ -107,9 +117,8 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief a Builder object, reused for various tasks to save a few memory allocations
   velocypack::Builder _tempBuilder;
-  
-  /// @brief bit vector for the items we picked from upstream's current block
-  std::vector<bool> _wasTaken;
+
+  std::vector<ModOperationType> _operations;
 };
 
 class RemoveBlock : public ModificationBlock {
