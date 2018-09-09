@@ -310,8 +310,7 @@ function ClusterCollectionSuite () {
       try {
         db._create("UnitTestsClusterCrud");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
       }
 
@@ -326,8 +325,7 @@ function ClusterCollectionSuite () {
       try {
         db._create("1234");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
 
@@ -342,8 +340,7 @@ function ClusterCollectionSuite () {
       try {
         db._create("");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
@@ -355,15 +352,13 @@ function ClusterCollectionSuite () {
     testCreateIllegalName3 : function () {
       try {
         db._drop("_foo");
-      }
-      catch (e) {
+      } catch (e) {
       }
 
       try {
         db._create("_foo");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
 
@@ -378,8 +373,7 @@ function ClusterCollectionSuite () {
       try {
         db._create("bigreplication", {replicationFactor: 8});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       db._drop('bigreplication');
@@ -395,7 +389,6 @@ function ClusterCollectionSuite () {
       db._drop('bigreplication');
     },
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test create
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,8 +397,7 @@ function ClusterCollectionSuite () {
       try {
         db._create("bigreplication", {replicationFactor: 8}, {enforceReplicationFactor: true});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       db._drop('bigreplication');
