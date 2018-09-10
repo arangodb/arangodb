@@ -24,11 +24,15 @@
 #define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Rest/CommonDefines.h"
 #include "Statistics/figures.h"
 
 namespace arangodb {
 namespace basics {
+
+extern Mutex TRI_RequestsStatisticsMutex;
 
 extern std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics;
 extern std::vector<double> const TRI_BytesSentDistributionVectorStatistics;
@@ -39,7 +43,8 @@ extern StatisticsCounter TRI_AsyncRequestsStatistics;
 extern StatisticsCounter TRI_HttpConnectionsStatistics;
 extern StatisticsCounter TRI_TotalRequestsStatistics;
 
-extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
+constexpr size_t MethodRequestsStatisticsSize = ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
+extern std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
 
 extern StatisticsDistribution TRI_BytesReceivedDistributionStatistics;
 extern StatisticsDistribution TRI_BytesSentDistributionStatistics;

@@ -177,7 +177,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
 
   if (res.fail()) {
     LOG_TOPIC(WARN, Logger::STATISTICS) << "removing outdated statistics failed: " << res.errorMessage();
-  } 
+  }
 }
 
 void StatisticsWorker::historian() {
@@ -277,7 +277,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  
+
   query.queryOptions().cache = false;
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
@@ -316,7 +316,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  
+
   query.queryOptions().cache = false;
 
   aql::QueryResult queryResult = query.executeSync(_queryRegistry);
@@ -372,7 +372,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       serverV8dirty += extractNumber(v8Contexts, "dirtyPerSecond");
       serverV8free += extractNumber(v8Contexts, "freePerSecond");
       serverV8max += extractNumber(v8Contexts, "maxPerSecond");
-          
+
       VPackSlice threads = server.get("threads");
       serverThreadsRunning += extractNumber(threads, "runningPerSecond");
       serverThreadsWorking += extractNumber(threads, "workingPerSecond");
@@ -582,7 +582,7 @@ void StatisticsWorker::computePerSeconds(VPackBuilder& result,
   result.add("server", VPackValue(VPackValueType::Object));
   result.add("physicalMemory", currentServer.get("physicalMemory"));
   result.add("uptime", currentServer.get("uptime"));
-  
+
   VPackSlice currentV8Context = currentServer.get("v8Context");
   result.add("v8Context", VPackValue(VPackValueType::Object));
   if (currentV8Context.isObject()) {
@@ -761,7 +761,7 @@ void StatisticsWorker::avgPercentDistributon(
     VPackBuilder& builder,
     VPackSlice const& now, VPackSlice const& last,
     VPackBuilder const& cuts) const {
-  
+
   uint32_t n = static_cast<uint32_t>(cuts.slice().length() + 1);
   double count = 0;
   std::vector<double> result(n, 0);
@@ -806,7 +806,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
-  std::vector<StatisticsCounter> methodRequests;
+  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
@@ -1026,7 +1026,7 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
     // this is somewhat an expected error
     return;
   }
-    
+
   // check if the collection already existed. this is acceptable too
   if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     LOG_TOPIC(WARN, Logger::STATISTICS)
@@ -1036,8 +1036,8 @@ void StatisticsWorker::createCollection(std::string const& collection) const {
 
   // check if the index on the collection must be created
   r = methods::Collections::lookup(
-    &_vocbase, 
-    collection, 
+    &_vocbase,
+    collection,
     [&](std::shared_ptr<LogicalCollection> const& coll)->void {
       TRI_ASSERT(coll);
 
@@ -1090,7 +1090,7 @@ void StatisticsWorker::run() {
       // compute cluster id just once
       _clusterId = ServerState::instance()->getId();
     }
-    
+
     createCollections();
   } catch (...) {
     // do not fail hard here, as we are inside a thread!
