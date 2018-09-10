@@ -805,7 +805,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
   size_t returned = _returned;
   _returned = 0;
   ExecutionState state = getHasMoreState();
-  traceSkipSomeEnd(returned, ExecutionState::WAITING);
+  traceSkipSomeEnd(returned, state);
   return {state, returned};
 }
 

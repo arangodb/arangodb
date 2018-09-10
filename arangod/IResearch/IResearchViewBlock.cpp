@@ -342,6 +342,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       auto upstreamRes = getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
+        traceSkipSomeEnd(0, upstreamRes.first);
         return {upstreamRes.first, 0};
       }
       _upstreamState = upstreamRes.first;
