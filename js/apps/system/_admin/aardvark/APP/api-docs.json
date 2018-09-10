@@ -7360,7 +7360,7 @@
                     {
                         "description": "Drop the collection as well.\nCollection will only be dropped if it is not used in other graphs.\n\n", 
                         "in": "query", 
-                        "name": "dropCollection", 
+                        "name": "dropCollections", 
                         "required": false, 
                         "type": "boolean"
                     }
