@@ -206,7 +206,7 @@ class doc_iterator : public irs::doc_iterator {
       doc_.value = posting_->doc;
 
       if (field_->meta().features.check<frequency>()) {
-        freq_.value = posting_->freq; 
+        freq_.value = posting_->freq;
       }
 
       const_cast<posting*>(posting_)->doc_code = type_limits<type_t::doc_id_t>::invalid();
@@ -308,7 +308,7 @@ class term_iterator : public irs::term_iterator {
     return pdoc_itr_;
   }
 
-  virtual bool next() override {   
+  virtual bool next() override {
     if (itr_increment_) {
       ++itr_;
     }
@@ -425,7 +425,7 @@ void field_data::write_prox( posting& p, int_block_pool::iterator& where,
   p.pos = pos_;
 }
 
-field_data::field_data( 
+field_data::field_data(
     const string_ref& name,
     byte_block_pool::inserter* byte_writer,
     int_block_pool::inserter* int_writer )
@@ -469,7 +469,7 @@ data_output& field_data::norms(columnstore_writer& writer) {
 }
 
 void field_data::new_term(
-  posting& p, doc_id_t did, const payload* pay, const offset* offs 
+  posting& p, doc_id_t did, const payload* pay, const offset* offs
 ) {
   // where pointers to data starts
   p.int_start = int_writer_->pool_offset();
@@ -550,7 +550,7 @@ void field_data::add_term(
         write_offset( p, it, offs );
       }
     }
-  } else { // exists in current doc           
+  } else { // exists in current doc
     max_term_freq_ = std::max( ++p.freq, max_term_freq_ );
     if ( features.check< position >() ) {
       ++it;
@@ -564,15 +564,15 @@ void field_data::add_term(
 }
 
 bool field_data::invert(
-    token_stream& stream, 
-    const flags& features, 
+    token_stream& stream,
+    const flags& features,
     doc_id_t id) {
   REGISTER_TIMER_DETAILED();
 
   // accumulate field features
   meta_.features |= features;
 
-  // TODO: should check feature consistency 
+  // TODO: should check feature consistency
   // among features & meta_.features()
 
   auto& attrs = stream.attributes();
@@ -603,7 +603,7 @@ bool field_data::invert(
     if (offs) {
       pay = attrs.get<payload>().get();
     }
-  } 
+  }
 
   init(id); // initialize field_data for the supplied doc_id
 
@@ -696,7 +696,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
   {
     static struct less_t {
-      bool operator()(const field_data* lhs, const field_data* rhs) {
+      bool operator() (const field_data* lhs, const field_data* rhs) const {
         return lhs->meta().name < rhs->meta().name;
       };
     } less;

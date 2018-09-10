@@ -39,7 +39,7 @@
 NS_ROOT
 
 segment_writer::column::column(
-    const string_ref& name, 
+    const string_ref& name,
     columnstore_writer& columnstore) {
   this->name.assign(name.c_str(), name.size());
   this->handle = columnstore.push_column();
@@ -125,7 +125,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   // flush columnstore and columns indices
   if (col_writer_->flush() && !columns_.empty()) {
     static struct less_t {
-      bool operator()(const column* lhs, const column* rhs) {
+      bool operator()(const column* lhs, const column* rhs) const {
         return lhs->name < rhs->name;
       };
     } less;
