@@ -235,6 +235,7 @@ struct AggregatorSum final : public Aggregator {
   }
 
   void reduce(AqlValue const& cmpValue) override {
+    invoked = true;
     if (!invalid) {
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
@@ -244,7 +245,6 @@ struct AggregatorSum final : public Aggregator {
         double const number = cmpValue.toDouble(trx);
         if (!std::isnan(number) && number != HUGE_VAL &&
             number != -HUGE_VAL) {
-          invoked = true;
           sum += number;
           return;
         }

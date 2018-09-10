@@ -122,7 +122,6 @@ function optimizerRuleTestSuite() {
       assertEqual("hash", nodes[0].collectOptions.method);
 
       assertEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual("collect-in-cluster", plan.rules.indexOf(ruleName));
       
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
@@ -141,7 +140,6 @@ function optimizerRuleTestSuite() {
       assertEqual("sorted", nodes[0].collectOptions.method);
    
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual("collect-in-cluster", plan.rules.indexOf(ruleName));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
@@ -164,7 +162,6 @@ function optimizerRuleTestSuite() {
       assertEqual("hash", nodes[0].collectOptions.method);
 
       assertEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual("collect-in-cluster", plan.rules.indexOf(ruleName));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
@@ -187,7 +184,6 @@ function optimizerRuleTestSuite() {
       assertEqual("sorted", nodes[0].collectOptions.method);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual("collect-in-cluster", plan.rules.indexOf(ruleName));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
