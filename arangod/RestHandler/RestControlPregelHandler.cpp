@@ -111,7 +111,10 @@ void RestControlPregelHandler::startExecution() {
   }
 
   // extract the parameters
-  auto parameters = std::make_shared<VPackBuilder>(body.get("params"));
+  auto parameters = body.get("params");
+  if (!parameters.isObject()) {
+    parameters = VPackSlice::emptyObjectSlice();
+  }
 
   // extract the collections
   std::vector<std::string> vertexCollections;
@@ -154,7 +157,7 @@ void RestControlPregelHandler::startExecution() {
 
   auto res = pregel::PregelFeature::startExecution(
       _vocbase, algorithm, vertexCollections, edgeCollections,
-      parameters->slice());
+      parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;
