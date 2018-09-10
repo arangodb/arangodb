@@ -558,7 +558,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++14")
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
 endif ()
 
 if (CMAKE_COMPILER_IS_CLANG)
@@ -573,9 +573,9 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-# need c++14
+# need c++17
 # XXX this should really be set on a per target level using cmake compile_features capabilties
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 # need threads
 find_package(Threads REQUIRED)
