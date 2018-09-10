@@ -68,11 +68,11 @@ RestStatus RestBatchHandler::executeVst() {
   return RestStatus::DONE;
 }
 
-void RestBatchHandler::processSubHandlerResult(std::shared_ptr<RestHandler> const& handler) {
+void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
   HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
   HttpResponse* partResponse =
-      dynamic_cast<HttpResponse*>(handler->response());
+      dynamic_cast<HttpResponse*>(handler.response());
 
   if (partResponse == nullptr) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -230,12 +230,12 @@ bool RestBatchHandler::executeNextHandler() {
       // ignore any errors here, will be handled later by inspecting the response
       try {
         ExecContextScope scope(nullptr);// workaround because of assertions
-        handler->runHandler([this, self, handler](RestHandler*) {
-          processSubHandlerResult(handler);
+        handler->runHandler([this, self](RestHandler *handler) {
+          processSubHandlerResult(*handler);
 
         });
       } catch (...) {
-        processSubHandlerResult(handler);
+        processSubHandlerResult(*handler.get());
       }
     }
   );

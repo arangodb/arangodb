@@ -320,11 +320,12 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     table.reset();
   }
 
-  return std::make_tuple(ok, metadata, table);
+  return std::make_tuple(ok, std::move(metadata), std::move(table));
 }
 
 void Manager::unregisterCache(uint64_t id) {
   _lock.writeLock();
+  _accessStats.purgeRecord(id);
   auto it = _caches.find(id);
   if (it == _caches.end()) {
     _lock.writeUnlock();
@@ -639,11 +640,8 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
     metadata->writeUnlock();
-    if (oldLimit > newLimit) {
-      _globalAllocation -= (oldLimit - newLimit);
-    } else {
-      _globalAllocation += (newLimit - oldLimit);
-    }
+    _globalAllocation -= oldLimit;
+    _globalAllocation += newLimit;
     return;
   }
 

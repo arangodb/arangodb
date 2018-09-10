@@ -41,13 +41,13 @@ const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'shell_replication': [tu.pathForTesting('common/tests/replication')],
-  'replication_aql': [tu.pathForTesting('server/tests/replication')],
-  'replication_fuzz': [tu.pathForTesting('server/tests/replication')],
-  'replication_random': [tu.pathForTesting('server/tests/replication')],
-  'replication_ongoing': [tu.pathForTesting('server/tests/replication')],
-  'replication_static': [tu.pathForTesting('server/tests/replication')],
-  'replication_sync': [tu.pathForTesting('server/tests/replication')]
+  'shell_replication': [tu.pathForTesting('common/replication')],
+  'replication_aql': [tu.pathForTesting('server/replication')],
+  'replication_fuzz': [tu.pathForTesting('server/replication')],
+  'replication_random': [tu.pathForTesting('server/replication')],
+  'replication_ongoing': [tu.pathForTesting('server/replication')],
+  'replication_static': [tu.pathForTesting('server/replication')],
+  'replication_sync': [tu.pathForTesting('server/replication')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -81,7 +81,7 @@ function replicationFuzz (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_fuzz');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -140,7 +140,7 @@ function replicationRandom (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_random');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -199,7 +199,7 @@ function replicationAql (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_aql');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -410,7 +410,7 @@ function replicationSync (options) {
                          startStopHandlers) {
       let message;
       let res = true;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {"log.level" : "replication=trace", "--log.level": "replication=trace"}, 'slave_sync');
       let state = (typeof slave === 'object');
 
       if (state) {

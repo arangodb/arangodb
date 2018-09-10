@@ -2542,9 +2542,9 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+        auto newNode = std::make_unique<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
-            outVariable, usedIndexes, std::move(condition), opts));
+            outVariable, usedIndexes, std::move(condition), opts);
 
         auto n = newNode.release();
 
@@ -2555,6 +2555,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
+          n->needsGatherNodeSort(true);
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
@@ -6147,7 +6148,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
       VPackBuilder builder;
-      idx->toVelocyPack(builder, Index::SERIALIZE_BASICS);
+      idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(
           builder.slice(), "geoJson", false);
 

@@ -61,6 +61,8 @@ class CollectionNameResolver {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a collection id
+  /// @return the local collection on dbserver / standalone
+  ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalCollection> getCollection(
     TRI_voc_cid_t id
@@ -69,6 +71,8 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a
   ///        collection name, stringified id (or uuid for dbserver / standalone)
+  /// @return the local collection on dbserver / standalone
+  ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalCollection> getCollection(
     std::string const& nameOrId
@@ -99,10 +103,16 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   TRI_voc_cid_t getCollectionId(std::string const& name) const;
 
+ private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a collection name
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::LogicalCollection const* getCollectionStruct(std::string const& name) const;
+  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(
+    std::string const& name
+  ) const;
+
+ public:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
@@ -126,6 +136,8 @@ class CollectionNameResolver {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a data-source struct for a data-source id
+  /// @return the local data-source on dbserver / standalone
+  ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalDataSource> getDataSource(
     TRI_voc_cid_t id
@@ -134,6 +146,8 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a data-source struct for a
   ///        data-source name, stringified id (or uuid for dbserver/standalone)
+  /// @return the local data-source on dbserver / standalone
+  ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalDataSource> getDataSource(
     std::string const& nameOrId
@@ -141,12 +155,16 @@ class CollectionNameResolver {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a view id
+  /// @return the local view on dbserver / standalone
+  ///         the cluster view on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalView> getView(TRI_voc_cid_t id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a
   ///        view name, stringified id (or uuid for dbserver / standalone)
+  /// @return the local view on dbserver / standalone
+  ///         the cluster view on coordinator
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<LogicalView> getView(
     std::string const& nameOrId
@@ -185,8 +203,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection struct map
   //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<std::string, arangodb::LogicalCollection const*>
-      _resolvedNames;
+  mutable std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalCollection>> _resolvedNames;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection name map

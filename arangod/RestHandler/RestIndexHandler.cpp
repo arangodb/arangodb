@@ -96,10 +96,14 @@ RestStatus RestIndexHandler::getIndexes() {
       return RestStatus::DONE;
     }
 
-    bool withFigures = _request->parsedValue("withStats", false);
-
+    auto flags = Index::makeFlags(Index::Serialize::Estimates);
+    if (_request->parsedValue("withStats", false)) {
+      flags = Index::makeFlags(Index::Serialize::Estimates, Index::Serialize::Figures);
+    }
+    bool withLinks = _request->parsedValue("withLinks", false);
+    
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(coll, withFigures, indexes);
+    Result res = methods::Indexes::getAll(coll, flags, withLinks, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());

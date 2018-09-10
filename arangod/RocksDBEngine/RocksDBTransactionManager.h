@@ -52,6 +52,7 @@ class RocksDBTransactionManager final : public TransactionManager {
   // register a transaction
   void registerTransaction(TRI_voc_tid_t transactionId,
                            std::unique_ptr<TransactionData> data) override {
+    TRI_ASSERT(data == nullptr);
     ++_nrRunning;
   }
 

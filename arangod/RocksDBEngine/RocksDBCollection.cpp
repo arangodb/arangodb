@@ -411,7 +411,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
       {"path", "statusString"}, true, /*forPersistence*/ true);
   VPackBuilder indexInfo;
 
-  idx->toVelocyPack(indexInfo, Index::SERIALIZE_OBJECTID);
+  idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
   res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
     _logicalCollection.vocbase().id(),
     _logicalCollection.id(),
@@ -501,7 +501,7 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         {"path", "statusString"}, true, /*forPersistence*/ true);
     VPackBuilder indexInfo;
 
-    newIdx->toVelocyPack(indexInfo, Index::SERIALIZE_OBJECTID);
+    newIdx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::ObjectId));
 
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
@@ -859,8 +859,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   resultMarkerTick = 0;
 
   LocalDocumentId const documentId = LocalDocumentId::create();
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   Result res(newObjectForInsert(trx, slice, isEdgeCollection,

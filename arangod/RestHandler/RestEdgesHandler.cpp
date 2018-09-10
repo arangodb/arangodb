@@ -286,7 +286,7 @@ bool RestEdgesHandler::readEdges() {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
-      collectionName = trx->resolver()->getCollectionName(trx->cid());
+      collectionName = trx->resolver()->getCollectionNameCluster(trx->cid());
     }
     generateTransactionError(collectionName, res, "");
     return false;
@@ -437,7 +437,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     if (ServerState::instance()->isDBServer()) {
       // If we are a DBserver, we want to use the cluster-wide collection
       // name for error reporting:
-      collectionName = trx->resolver()->getCollectionName(trx->cid());
+      collectionName = trx->resolver()->getCollectionNameCluster(trx->cid());
     }
     generateTransactionError(collectionName, res, "");
     return false;

@@ -5,7 +5,7 @@ Write-ahead log
 
 This module provides functionality for administering the write-ahead logs.
 Most of these functions only return sensible values when invoked with the 
-[mmfiles engine being active](../../Administration/Configuration/GeneralArangod.md#storage-engine).
+[MMFiles engine being active](../../Programs/Arangod/Server.md#storage-engine).
 
 Configuration
 -------------

@@ -463,10 +463,34 @@ In order to use automatic coredump analysis with the unittests you need to confi
 Please note that we can't support [Ubuntu Apport](https://wiki.ubuntu.com/Apport).
 Please use `apport-unpack` to send us the bare coredumps.
 
-Solaris Coredumps
-=================
-Solaris configures the system corefile behaviour via the `coreadm` programm.
-see https://docs.oracle.com/cd/E19455-01/805-7229/6j6q8svhr/ for more details.
+In order to get coredumps from binaries changing their UID the system needs to be told that its allowed to write cores from them.
+Default ArangoDB installations will do exactly that, so the following is neccessary to make the system produce coredumps from
+production arangodb instances:
+
+Edit `/etc/security/limits.conf` to contain:
+```
+arangodb        -       core            infinity
+```
+
+Edit the systemd unit file `/lib/systemd/system/arangodb3.service` (USE infinity!!!):
+
+```
+## setting for core files
+# Any dir that is writable by the user running arangod
+WorkingDirectory=/var/lib/arangodb3
+# core limit - set this to infinity to enable cores
+LimitCORE=0
+```
+
+enable new systemd settings:
+`systemctl daemon-reload &&  systemctl restart arangodb3.service`
+
+enable suid process dumping:
+`echo 1 >/proc/sys/fs/suid_dumpable`
+
+make the above change permanent:
+
+`echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf` 
 
 Analyzing Coredumps on Linux
 ============================
