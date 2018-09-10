@@ -75,10 +75,14 @@ void FlushFeature::prepare() {
 }
 
 void FlushFeature::start() {
-  _flushThread.reset(new FlushThread(_flushInterval));
+  {
+    WRITE_LOCKER(lock, _threadLock);
+    _flushThread.reset(new FlushThread(_flushInterval));
+  }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback(
     [this]() -> Result {
+      READ_LOCKER(lock, _threadLock);
       if (!this->_flushThread->start()) {
         LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
         FATAL_ERROR_ABORT();
@@ -93,6 +97,7 @@ void FlushFeature::start() {
 
 void FlushFeature::beginShutdown() {
   // pass on the shutdown signal
+  READ_LOCKER(lock, _threadLock);
   if (_flushThread != nullptr) {
     _flushThread->beginShutdown();
   }
@@ -102,13 +107,21 @@ void FlushFeature::stop() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "stopping FlushThread";
   // wait until thread is fully finished
 
-  if (_flushThread != nullptr) {
-    while (_flushThread->isRunning()) {
+  FlushThread* thread = nullptr;
+  {
+    READ_LOCKER(lock, _threadLock);
+    thread = _flushThread.get();
+  }
+  if (thread != nullptr) {
+    while (thread->isRunning()) {
       std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
-    _isRunning.store(false);
-    _flushThread.reset();
+    {
+      WRITE_LOCKER(wlock, _threadLock);
+      _isRunning.store(false);
+      _flushThread.reset();
+    }
   }
 }
 
