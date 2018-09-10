@@ -65,11 +65,16 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _pos(0),
       _done(false),
       _profile(engine->getQuery()->queryOptions().profile),
-      _getSomeBegin(0),
+      _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _skipped(0),
       _collector(&engine->_itemBlockManager) {
   TRI_ASSERT(_trx != nullptr);
+   
+  // already insert ourselves into the statistics results 
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    _engine->_stats.nodes.emplace(ep->id(), ExecutionStats::Node());
+  }
 }
 
 ExecutionBlock::~ExecutionBlock() {
@@ -185,7 +190,7 @@ std::pair<ExecutionState, Result> ExecutionBlock::shutdown(int errorCode) {
 // Trace the start of a getSome call
 void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin == 0) {
+    if (_getSomeBegin <= 0.0) {
       _getSomeBegin = TRI_microtime();
     }
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -208,7 +213,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
     stats.items = result != nullptr ? result->size() : 0;
     if (state != ExecutionState::WAITING) {
       stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0;
+      _getSomeBegin = 0.0;
     }
     
     auto it = _engine->_stats.nodes.find(en->id());

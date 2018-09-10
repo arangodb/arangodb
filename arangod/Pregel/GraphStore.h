@@ -56,12 +56,9 @@ struct VertexShardInfo {
   ShardID vertexShard;
   std::vector<ShardID> edgeShards;
   std::unique_ptr<transaction::Methods> trx;
-  /// number of vertices
+  /// number of vertices / edges
   size_t numVertices = 0;
-  // hold the current position where the ith vertex shard can
-  // start to write its data. At the end the offset should equal the
-  // sum of the counts of all ith edge shards
-  size_t edgeDataOffset = 0;
+  size_t numEdges = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
