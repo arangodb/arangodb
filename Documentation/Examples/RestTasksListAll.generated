@@ -6,19 +6,9 @@ x-content-type-options: nosniff
 
 [ 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-gc"</span>, 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1535998691.2189655</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
-    <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
-    <span class="hljs-string">"offset"</span> : <span class="hljs-number">245.162793</span>, 
-    <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function (params) { require('@arangodb/statistics').garbageCollector(); } )(params);"</span>, 
-    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
-  }, 
-  { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1535998691.2188492</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1536609443.965798</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">20</span>, 
@@ -28,7 +18,7 @@ x-content-type-options: nosniff
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-collector"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-collector"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1535998691.2187197</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1536609443.9656959</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">10</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">1</span>, 
@@ -36,9 +26,19 @@ x-content-type-options: nosniff
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"84"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-gc"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1536609443.9658847</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
+    <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
+    <span class="hljs-string">"offset"</span> : <span class="hljs-number">327.215937</span>, 
+    <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function (params) { require('@arangodb/statistics').garbageCollector(); } )(params);"</span>, 
+    <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"85"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"user-defined task"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1535998681.2532163</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1536609434.008119</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">0.000001</span>, 

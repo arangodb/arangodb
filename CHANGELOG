@@ -1,4 +1,4 @@
-v3.3.15 (XXXX-XX-XX)
+v3.3.15 (2018-09-10)
 --------------------
 
 * fixed an issue in the "sorted" AQL COLLECT variant, that may have led to producing
