@@ -46,8 +46,7 @@ TEST_CASE("cache::FrequencyBuffer", "[cache]") {
 
     FrequencyBuffer<uint8_t> buffer(1024);
     REQUIRE(buffer.memoryUsage() ==
-            sizeof(FrequencyBuffer<uint8_t>) + sizeof(std::vector<uint8_t>) +
-                1024);
+            sizeof(FrequencyBuffer<uint8_t>) + 1024);
 
     for (size_t i = 0; i < 512; i++) {
       buffer.insertRecord(two);

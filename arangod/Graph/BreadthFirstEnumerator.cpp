@@ -239,14 +239,14 @@ bool BreadthFirstEnumerator::pathContainsVertex(size_t index, StringRef vertex) 
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
-    // Massive logic error, only valid pointers should inserted in _schreier
+    // Massive logic error, only valid pointers should be inserted into _schreier
     TRI_ASSERT(step != nullptr);
     if (step->vertex == vertex) {
       // We have the given vertex on this path
       return true;
     }
     if (index == 0) {
-      //We have checked the compelte path
+      // We have checked the complete path
       return false;
     }
     index = step->sourceIdx;
@@ -258,7 +258,7 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index, graph::EdgeDocumentT
   while (index != 0) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
-    // Massive logic error, only valid pointers should inserted in _schreier
+    // Massive logic error, only valid pointers should be inserted into _schreier
     TRI_ASSERT(step != nullptr);
     if (step->edge.equals(edge)) {
       // We have the given vertex on this path

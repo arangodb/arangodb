@@ -732,7 +732,7 @@ std::string DistributeBlock::createKey(VPackSlice input) const {
 arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
   if (res->status == CL_COMM_TIMEOUT ||
       res->status == CL_COMM_BACKEND_UNAVAILABLE) {
-    return { res->getErrorCode(), res->stringifyErrorMessage()};
+    return { res->getErrorCode(), res->stringifyErrorMessage() };
   }
   if (res->status == CL_COMM_ERROR) {
     std::string errorMessage = std::string("Error message received from shard '") +
