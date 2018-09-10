@@ -316,8 +316,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void DatabaseFeature::prepare() {}
-
 void DatabaseFeature::start() {
   // set singleton
   DATABASE = this;

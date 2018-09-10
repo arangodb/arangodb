@@ -598,9 +598,12 @@ ArangoCollection.prototype.refresh = function () {
 // / @brief gets all indexes
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats) {
-  var requestResult = this._database._connection.GET(this._indexurl() +
-    '&withStats=' + (withStats || false));
+ArangoCollection.prototype.getIndexes = ArangoCollection.prototype.indexes = function (withStats, withLinks) {
+  let url = this._indexurl() + '&withStats=' + (withStats || false);
+  if (withLinks) {
+    url += '&withLinks=true';
+  }
+  var requestResult = this._database._connection.GET(url);
 
   arangosh.checkRequestResult(requestResult);
 

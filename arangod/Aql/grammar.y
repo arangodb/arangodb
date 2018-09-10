@@ -903,12 +903,12 @@ sort_direction:
   ;
 
 limit_statement:
-    T_LIMIT simple_value {
+    T_LIMIT expression {
       auto offset = parser->ast()->createNodeValueInt(0);
       auto node = parser->ast()->createNodeLimit(offset, $2);
       parser->ast()->addOperation(node);
     }
-  | T_LIMIT simple_value T_COMMA simple_value {
+  | T_LIMIT expression T_COMMA expression {
       auto node = parser->ast()->createNodeLimit($2, $4);
       parser->ast()->addOperation(node);
     }

@@ -21,16 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DatabaseFeature.h"
+#include "SystemDatabaseFeature.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
-#include "SystemDatabaseFeature.h"
-
 namespace {
-
 static std::string const FEATURE_NAME("SystemDatabase");
-
 }
 
 namespace arangodb {
@@ -69,7 +66,7 @@ void SystemDatabaseFeature::start() {
   FATAL_ERROR_EXIT();
 }
 
-void SystemDatabaseFeature::stop() {
+void SystemDatabaseFeature::unprepare() {
   _vocbase.store(nullptr);
 }
 

@@ -20,6 +20,8 @@ view in ArangoDB.
 New geo index implementation
 ----------------------------
 
+### S2 based geo index
+
 The geo index in ArangoDB has been reimplemented based on [S2 library](http://s2geometry.io/)
 functionality. The new geo index allows indexing points, but also indexing of more
 complex geographical objects. The new implementation is much faster than the previous one for
@@ -31,6 +33,11 @@ geographical data: `GEO_POINT`, `GEO_MULTIPOINT`, `GEO_POLYGON`, `GEO_LINESTRING
 
 Additionally there are new geo AQL functions `GEO_CONTAINS`, `GEO_INTERSECTS` and `GEO_EQUALS`
 for querying and comparing GeoJSON objects.
+
+### AQL Editor GeoJSON Support
+
+As a feature on top, the web ui embedded AQL editor now supports also displaying all
+GeoJSON supported data. 
 
 
 RocksDB storage engine
@@ -632,7 +639,6 @@ Note that the default maximum value can be adjusted globally by setting the star
 option `--query.optimizer-max-plans` or on a per-query basis by setting a query's
 `maxNumberOfPlans` option.
 
-
 ### Single document optimizations
 
 In a cluster, the cost of setting up a distributed query can be considerable for
@@ -759,6 +765,22 @@ This is a change to previous versions of ArangoDB, in which the `fullCount`
 value was produced by the sequential last `LIMIT` statement in a query,
 regardless if the `LIMIT` was on the top level of the query or in a subquery.
 
+The `fullCount` result value will now also be returned for queries that are served
+from the query results cache.
+
+### Relaxed restrictions for LIMIT values
+
+The `offset` and `count` values used in an AQL LIMIT clause can now be expressions, as
+long as the expressions can be resolved at query compile time.
+For example, the following query will now work:
+
+    FOR doc IN collection
+      LIMIT 0, CEIL(@percent * @count / 100) 
+      RETURN doc
+
+Previous versions of ArangoDB required the `offset` and `count` values to be
+either number literals or numeric bind parameter values.
+
 ### Improved sparse index support
 
 The AQL query optimizer can now use sparse indexes in more cases than it was able to
@@ -868,8 +890,8 @@ However, streaming cursors are enabled for the following parts of ArangoDB in 3.
 Native implementations
 ----------------------
 
-The following internal and external functionality has been ported from JavaScript-based
-implementations to C++-based implementations in ArangoDB 3.4:
+The following internal and user-facing functionality has been ported from 
+JavaScript-based implementations to C++-based implementations in ArangoDB 3.4:
 
 * the statistics gathering background thread
 * the REST APIs for
@@ -879,24 +901,23 @@ implementations to C++-based implementations in ArangoDB 3.4:
     - edge management
 * the implementations of all built-in AQL functions
 * all other parts of AQL except user-defined functions
+* database creation and setup
 * all the DBserver internal maintenance tasks for shard creation, index
   creation and the like in the cluster
 
-By making the listed functionality not use and depend on the V8 JavaScript engine,
-the respective functionality can now be invoked more efficiently, without requiring
-the conversion of data between ArangoDB's native format and V8's
-internal format. For the maintenance operations this will lead to
+By making the listed functionality not use and not depend on the V8 JavaScript 
+engine, the respective functionality can now be invoked more efficiently in the
+server, without requiring the conversion of data between ArangoDB's native format 
+and V8's internal formats. For the maintenance operations this will lead to
 improved stability in the cluster.
-
-As less functionality depends on the V8 JavaScript engine, an ArangoDB 3.4 server
-will not require as many V8 contexts as previous versions.
-This should reduce problems with servers running out of available V8 contexts or
-using a lot of memory just for keeping V8 contexts around.
 
 As a consequence, ArangoDB agency and database server nodes in an ArangoDB 3.4 
 cluster will now turn off the V8 JavaScript engine at startup entirely and automatically.
-The V8 engine will still be enabled on cluster coordinators, single server and
-active failover instances. 
+The V8 engine will still be enabled on cluster coordinators, single servers and
+active failover instances. But even the latter instance types will not require as 
+many V8 contexts as previous versions of ArangoDB.
+This should reduce problems with servers running out of available V8 contexts or
+using a lot of memory just for keeping V8 contexts around.
 
 
 Foxx

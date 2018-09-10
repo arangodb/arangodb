@@ -64,7 +64,7 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
       caches.emplace_back(manager.createCache(CacheType::Plain));
     }
 
-    bool doneRebalancing = false;
+    std::atomic<bool> doneRebalancing(false);
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
         int status = rebalancer.rebalance();

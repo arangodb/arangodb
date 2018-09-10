@@ -15,7 +15,7 @@ Preparations
 The ArangoDB installation packages (e.g. for Debian or Ubuntu) set up a
 convenient standalone instance of `arangod`. During installation, this instance's
 database will be upgraded (see [`--database.auto-upgrade` in General
-Options](../../Administration/Configuration/GeneralArangod.md#database-upgrade))
+Options](../../Programs/Arangod/Database.md#auto-upgrade))
 and the service will be (re)started.
 
 You have to make sure that your _cluster_ deployment is independent of this

@@ -45,11 +45,10 @@ in terms of used V8 contexts and server threads. If you run out
 of these resources, your query may abort with a
 [**cluster backend unavailable**](../../Manual/Appendix/ErrorCodes.html) error.
 
-To overcome these mentioned limitations, you may want to
-[increase the number of available V8 contexts](../../Manual/Administration/Configuration/GeneralArangod.html#v8-contexts)
-(at the expense of increased memory usage),
-and
-[the number of available server threads](../../Manual/Administration/Configuration/GeneralArangod.html#server-threads).
+To overcome these mentioned limitations, you may want to increase the
+[number of available V8 contexts](../../Manual/Programs/Arangod/Javascript.html#v8-contexts)
+(at the expense of increased memory usage), and the
+[number of available server threads](../../Manual/Programs/Arangod/Server.html#server-threads).
 
 ### Deployment Details
 
