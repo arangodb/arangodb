@@ -41,6 +41,50 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
+using factories_t = std::unordered_map<
+  std::string, std::function<std::unique_ptr<ActionBase>(
+                               MaintenanceFeature&,ActionDescription const&)>>;
+
+static factories_t const factories = factories_t {
+
+  {CREATE_COLLECTION,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new CreateCollection(f,a)); }},
+
+  {CREATE_DATABASE,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new CreateDatabase(f,a)); }},
+
+  {DROP_COLLECTION,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new DropCollection(f,a)); }},
+
+  {DROP_DATABASE,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new DropDatabase(f,a)); }},
+
+  {DROP_INDEX,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new DropIndex(f,a)); }},    
+
+  {ENSURE_INDEX,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new EnsureIndex(f,a)); }},
+
+  {RESIGN_SHARD_LEADERSHIP,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new ResignShardLeadership(f,a)); }},
+
+  {SYNCHRONIZE_SHARD,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new SynchronizeShard(f,a)); }},    
+
+  {UPDATE_COLLECTION,
+   [](MaintenanceFeature& f,ActionDescription const& a) {
+      return std::unique_ptr<ActionBase>(new UpdateCollection(f,a)); }},
+  
+};
+
 Action::Action(
   MaintenanceFeature& feature,
   ActionDescription const& description) : _action(nullptr) {
@@ -70,50 +114,6 @@ Action::~Action() {}
 
 void Action::create(
   MaintenanceFeature& feature, ActionDescription const& description) {
-
-  using factories_t = std::unordered_map<
-    std::string, std::function<std::unique_ptr<ActionBase>(
-    MaintenanceFeature&,ActionDescription const&)>>;
-
-  static factories_t const factories = factories_t {
-
-    {CREATE_COLLECTION,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new CreateCollection(f,a)); }},
-
-    {CREATE_DATABASE,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new CreateDatabase(f,a)); }},
-
-    {DROP_COLLECTION,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new DropCollection(f,a)); }},
-
-    {DROP_DATABASE,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new DropDatabase(f,a)); }},
-
-    {DROP_INDEX,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new DropIndex(f,a)); }},    
-
-    {ENSURE_INDEX,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new EnsureIndex(f,a)); }},
-
-    {RESIGN_SHARD_LEADERSHIP,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new ResignShardLeadership(f,a)); }},
-
-    {SYNCHRONIZE_SHARD,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new SynchronizeShard(f,a)); }},    
-
-    {UPDATE_COLLECTION,
-     [](MaintenanceFeature& f,ActionDescription const& a) {
-        return std::unique_ptr<ActionBase>(new UpdateCollection(f,a)); }},
-  
-  };
 
   auto factory = factories.find(description.name());
 
