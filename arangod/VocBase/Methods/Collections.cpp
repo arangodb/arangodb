@@ -481,10 +481,10 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   }
 
   std::string const oldName(coll->name());
-  int res = coll->vocbase().renameCollection(coll, newName, doOverride);
+  auto res = coll->vocbase().renameCollection(coll->id(), newName, doOverride);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, "cannot rename collection");
+  if (!res.ok()) {
+    return res;
   }
 
   // rename collection inside _graphs as well

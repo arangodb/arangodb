@@ -38,23 +38,33 @@ already collected write-ahead logfiles so replication slaves still can fetch dat
 them if required. How many collected logfiles will be kept before they get deleted is
 configurable via the option *--wal.historic-logfiles*.
 
-For all write-ahead log configuration options, please refer to the page [Write-ahead log options](../Administration/Configuration/Wal.md).
+For all write-ahead log configuration options, please refer to the page
+[Write-ahead log options](../Programs/Arangod/Wal.md).
 
 
 RocksDB WAL Details
 -------------------
 
-The options mentioned above only apply for MMFiles. The WAL in the RocksDB storage engine
-works slightly differently. 
-_Note:_ In rocksdb the WAL options are all prefixed with
-`--rocksdb.*`. The `--wal.*` options do have no effect.
+The options mentioned above only apply for MMFiles. The WAL in the RocksDB
+storage engine works slightly differently.
 
-The individual RocksDB WAL files are per default about 64 MiB big. The size will always be proportionally
-sized to the value specified via `--rocksdb.write-buffer-size`. The value specifies the amount of 
-data to build up in memory (backed by the unsorted WAL on disk) before converting it to a sorted on-disk file.
-Larger values can increase performance, especially during bulk loads. Up to `--rocksdb.max-write-buffer-number` 
-write buffers may be held in memory at the same time, so you may wish to adjust this parameter to control memory usage. A larger write buffer will result in a longer recovery time  the next time the database is opened.
+_Note:_ In rocksdb the WAL options are all prefixed with `--rocksdb.*`.
+The `--wal.*` options do have no effect.
 
-The RocksDB WAL only contains committed transactions. This means you will never see partial transactions
-in the replication log, but it also means transactions are tracked completely in-memory. In practice 
-this causes RocksDB transaction sizes to be limited, for more information see the [RocksDB Configuration](../Administration/Configuration/RocksDB.md)
+The individual RocksDB WAL files are per default about 64 MiB big.
+The size will always be proportionally sized to the value specified via
+`--rocksdb.write-buffer-size`. The value specifies the amount of data to build
+up in memory (backed by the unsorted WAL on disk) before converting it to a
+sorted on-disk file.
+
+Larger values can increase performance, especially during bulk loads.
+Up to `--rocksdb.max-write-buffer-number` write buffers may be held in memory
+at the same time, so you may wish to adjust this parameter to control memory
+usage. A larger write buffer will result in a longer recovery time  the next
+time the database is opened.
+
+The RocksDB WAL only contains committed transactions. This means you will never
+see partial transactions in the replication log, but it also means transactions
+are tracked completely in-memory. In practice this causes RocksDB transaction
+sizes to be limited, for more information see the
+[RocksDB Configuration](../Programs/Arangod/Rocksdb.md)
