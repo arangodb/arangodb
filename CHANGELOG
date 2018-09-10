@@ -8,9 +8,13 @@ v3.4.0-rc.1
 
 * upgraded bundled Snappy compression library to 1.1.7
 
-* fixed issue #5941 if using breath first search in traversals uniqueness checks
+* fixed issue #5941 if using breadth first search in traversals uniqueness checks
   on path (vertices and edges) have not been applied. In SmartGraphs the checks
   have been executed properly.
+
+* added more detailed progress output to arangorestore, showing the percentage of
+  how much data is restored for bigger collections plus a set of overview statistics
+  after each processed collection
 
 * added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
   informational LOG files into RocksDB's database directory.
