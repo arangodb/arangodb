@@ -32,6 +32,20 @@
 
 namespace arangodb { namespace futures { namespace detail {
 
+/// The FSM to manage the primary producer-to-consumer info-flow has these
+///   allowed (atomic) transitions:
+///
+///   +-------------------------------------------------------------+
+///   |                    ---> OnlyResult -----                    |
+///   |                  /                       \                  |
+///   |               (setResult())             (setCallback())     |
+///   |                /                           \                |
+///   |   Start ----->                               ------> Done   |
+///   |                \                           /                |
+///   |               (setCallback())           (setResult())       |
+///   |                  \                       /                  |
+///   |                    ---> OnlyCallback ---                    |
+///   +-------------------------------------------------------------+
 template<typename T>
 class SharedState {
   enum class State : uint8_t {

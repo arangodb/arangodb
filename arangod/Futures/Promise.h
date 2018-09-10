@@ -31,7 +31,7 @@ namespace futures {
   
 template <typename T>
 class Future;
-  
+
 /// producer side of future-promise pair
 /// accesses on Promise have to be synchronized externally to
 /// be thread-safe

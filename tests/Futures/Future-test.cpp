@@ -135,7 +135,7 @@ SECTION("Basic") {
 }
   
 SECTION("Default ctor") {
-  Future<int> abc{};
+  Future<void> abc{};
 }
   
 SECTION("requires only move ctor") {
@@ -281,8 +281,8 @@ REQUIRE_THROWS(STMT); \
     DOIT(f.hasException());
     DOIT(f.get());
     //DOIT(std::move(f).then());
-    DOIT(std::move(f).then([](int&&) -> void {}));
-    DOIT(std::move(f).then([](auto&&) -> void {}));
+    DOIT(std::move(f).thenValue([](int&&) -> void {}));
+    DOIT(std::move(f).thenValue([](auto&&) -> void {}));
   
 #undef DOIT
   }
@@ -657,7 +657,7 @@ SECTION("then") {
   
   auto f =
   makeFuture<std::string>("0")
-  .then([](std::string) { return makeFuture<std::string>("1"); })
+  .thenValue([](std::string) { return makeFuture<std::string>("1"); })
   .then([](Try<std::string>&& t) { return makeFuture(t.get() + ";2"); })
   .then([](const Try<std::string>&& t) {
     return makeFuture(t.get() + ";3");
@@ -669,11 +669,11 @@ SECTION("then") {
   .then([](const Try<std::string> t) {
     return makeFuture(t.get() + ";6");
   })
-  .then([](std::string&& s) { return makeFuture(s + ";7"); })
-  .then([](const std::string&& s) { return makeFuture(s + ";8"); })
-  .then([](const std::string& s) { return makeFuture(s + ";9"); })
-  .then([](std::string s) { return makeFuture(s + ";10"); })
-  .then([](const std::string s) { return makeFuture(s + ";11"); });
+  .thenValue([](std::string&& s) { return makeFuture(s + ";7"); })
+  .thenValue([](const std::string&& s) { return makeFuture(s + ";8"); })
+  .thenValue([](const std::string& s) { return makeFuture(s + ";9"); })
+  .thenValue([](std::string s) { return makeFuture(s + ";10"); })
+  .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
   std::string value = f.get();
   REQUIRE(value == "1;2;3;4;5;6;7;8;9;10;11");
 }
@@ -794,104 +794,104 @@ SECTION("detachRace") {
   t1.join();
 }
 
-//  // Test of handling of a circular dependency. It's never recommended
-//  // to have one because of possible memory leaks. Here we test that
-//  // we can handle freeing of the Future while it is running.
-//  TEST(Future, CircularDependencySharedPtrSelfReset) {
-//    Promise<int64_t> promise;
-//    auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
-//
-//    std::move(*ptr).thenTry([ptr](folly::Try<int64_t>&& /* uid */) mutable {
-//      EXPECT_EQ(1, ptr.use_count());
-//
-//      // Leaving no references to ourselves.
-//      ptr.reset();
-//      EXPECT_EQ(0, ptr.use_count());
-//    });
-//
-//    EXPECT_EQ(2, ptr.use_count());
-//
-//    ptr.reset();
-//
-//    promise.setValue(1);
-//  }
-//
-//
-//  TEST(Future, Constructor) {
-//    auto f1 = []() -> Future<int> { return Future<int>(3); }();
-//    EXPECT_EQ(f1.value(), 3);
-//    auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
-//    EXPECT_NO_THROW(f2.value());
-//  }
-//
-//  TEST(Future, ImplicitConstructor) {
-//    auto f1 = []() -> Future<int> { return 3; }();
-//    EXPECT_EQ(f1.value(), 3);
-//    // Unfortunately, the C++ standard does not allow the
-//    // following implicit conversion to work:
-//    //auto f2 = []() -> Future<Unit> { }();
-//  }
-//
-//  TEST(Future, InPlaceConstructor) {
-//    auto f = Future<std::pair<int, double>>(in_place, 5, 3.2);
-//    EXPECT_EQ(5, f.value().first);
-//  }
-//
-//
-//  TEST(Future, makeFutureNoThrow) {
-//    makeFuture().value();
-//  }
-//
-//  TEST(Future, invokeCallbackReturningValueAsRvalue) {
-//    struct Foo {
-//      int operator()(int x) & {
-//        return x + 1;
-//      }
-//      int operator()(int x) const& {
-//        return x + 2;
-//      }
-//      int operator()(int x) && {
-//        return x + 3;
-//      }
-//    };
-//
-//    Foo foo;
-//    Foo const cfoo;
-//
-//    // The continuation will be forward-constructed - copied if given as & and
-//    // moved if given as && - everywhere construction is required.
-//    // The continuation will be invoked with the same cvref as it is passed.
-//    EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
-//    EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
-//    EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
-//  }
-//
-//  TEST(Future, invokeCallbackReturningFutureAsRvalue) {
-//    struct Foo {
-//      Future<int> operator()(int x) & {
-//        return x + 1;
-//      }
-//      Future<int> operator()(int x) const& {
-//        return x + 2;
-//      }
-//      Future<int> operator()(int x) && {
-//        return x + 3;
-//      }
-//    };
-//
-//    Foo foo;
-//    Foo const cfoo;
-//
-//    // The continuation will be forward-constructed - copied if given as & and
-//    // moved if given as && - everywhere construction is required.
-//    // The continuation will be invoked with the same cvref as it is passed.
-//    EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
-//    EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
-//    EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
-//
-//    EXPECT_EQ(101, makeFuture<int>(100).thenValue(foo).value());
-//    EXPECT_EQ(202, makeFuture<int>(200).thenValue(cfoo).value());
-//    EXPECT_EQ(303, makeFuture<int>(300).thenValue(Foo()).value());
-//  }
+  // Test of handling of a circular dependency. It's never recommended
+  // to have one because of possible memory leaks. Here we test that
+  // we can handle freeing of the Future while it is running.
+SECTION("CircularDependencySharedPtrSelfReset") {
+  SchedulerTestSetup setup;
+
+  Promise<int64_t> promise;
+  auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
+
+  std::move(*ptr).then([ptr](Try<int64_t>&& /* uid */) mutable {
+    REQUIRE(1 == ptr.use_count());
+
+    // Leaving no references to ourselves.
+    ptr.reset();
+    REQUIRE(0 == ptr.use_count());
+  });
+
+  REQUIRE(2 == ptr.use_count());
+
+  ptr.reset();
+
+  promise.setValue(1);
+}
+
+SECTION("Constructor") {
+  auto f1 = []() -> Future<int> { return Future<int>(3); }();
+  REQUIRE(f1.get() == 3);
+  auto f2 = []() -> Future<void> { return Future<void>(); }();
+  REQUIRE_NOTHROW(f2.getTry());
+}
+
+SECTION("ImplicitConstructor") {
+  auto f1 = []() -> Future<int> { return 3; }();
+  REQUIRE(f1.get() == 3);
+  // Unfortunately, the C++ standard does not allow the
+  // following implicit conversion to work:
+  //auto f2 = []() -> Future<Unit> { }();
+}
+
+SECTION("InPlaceConstructor") {
+  auto f = Future<std::pair<int, double>>(in_place, 5, 3.2);
+  REQUIRE(5 == f.get().first);
+}
+
+SECTION("makeFutureNoThrow") {
+  makeFuture().get();
+}
+
+SECTION("invokeCallbackReturningValueAsRvalue") {
+  SchedulerTestSetup setup;
+
+  struct Foo {
+    int operator()(int x) & {
+      return x + 1;
+    }
+    int operator()(int x) const& {
+      return x + 2;
+    }
+    int operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The continuation will be forward-constructed - copied if given as & and
+  // moved if given as && - everywhere construction is required.
+  // The continuation will be invoked with the same cvref as it is passed.
+  REQUIRE(101 == makeFuture<int>(100).thenValue(foo).get());
+  REQUIRE(202 == makeFuture<int>(200).thenValue(cfoo).get());
+  REQUIRE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+}
+
+SECTION("invokeCallbackReturningFutureAsRvalue") {
+  SchedulerTestSetup setup;
+
+  struct Foo {
+    Future<int> operator()(int x) & {
+      return x + 1;
+    }
+    Future<int> operator()(int x) const& {
+      return x + 2;
+    }
+    Future<int> operator()(int x) && {
+      return x + 3;
+    }
+  };
+
+  Foo foo;
+  Foo const cfoo;
+
+  // The continuation will be forward-constructed - copied if given as & and
+  // moved if given as && - everywhere construction is required.
+  // The continuation will be invoked with the same cvref as it is passed.
+  REQUIRE(101 == makeFuture<int>(100).thenValue(foo).get());
+  REQUIRE(202 == makeFuture<int>(200).thenValue(cfoo).get());
+  REQUIRE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+}
 
 }

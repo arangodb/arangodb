@@ -317,11 +317,11 @@ private:
 template<>
 class Try<void> {
  public:
-  template <typename E>
-  Try(E const& e) : _exception(std::make_exception_ptr(e)) { }
+  Try() noexcept : _exception() {
+    TRI_ASSERT(!hasException());
+  }
   Try(std::exception_ptr e) : _exception(std::move(e)) { }
-  Try(Try&& o) : _exception(std::move(o._exception)) { }
-  Try() : _exception() {}
+  Try(Try<void>&& o) : _exception(std::move(o._exception)) { }
   
   /// copy assignment
   Try& operator=(const Try& e) {

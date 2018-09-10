@@ -31,6 +31,7 @@ namespace futures {
 /// std::in_place
 /// std::is_invocable
 /// std::is_invocable_r
+/// std::invoke
 
 #if __cplusplus == 201402L
 struct in_place_tag {};
@@ -54,11 +55,26 @@ std::function<R(Args ...)>,
 std::reference_wrapper<typename std::remove_reference<F>::type>
 >
 {};
+  
+//  mimic: std::invoke, C++17
+template <typename F, typename... Args>
+constexpr auto invoke(F&& f, Args&&... args) noexcept(
+                                                      noexcept(static_cast<F&&>(f)(static_cast<Args&&>(args)...)))
+-> decltype(static_cast<F&&>(f)(static_cast<Args&&>(args)...)) {
+  return static_cast<F&&>(f)(static_cast<Args&&>(args)...);
+}
+template <typename M, typename C, typename... Args>
+constexpr auto invoke(M(C::*d), Args&&... args)
+-> decltype(std::mem_fn(d)(static_cast<Args&&>(args)...)) {
+  return std::mem_fn(d)(static_cast<Args&&>(args)...);
+}
+  
 #else
 using in_place_t = std::in_place_t;
 using in_place = std::in_place;
 using is_invocable = std::is_invocable;
 using is_invocable_r = std::is_invocable_r;
+using std::invoke;
 #endif
 
 }}

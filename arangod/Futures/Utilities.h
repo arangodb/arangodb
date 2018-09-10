@@ -34,7 +34,7 @@ Future<T> makeFuture(Try<T>&& t) {
 }
 
 Future<void> makeFuture() {
-  return Future<void>(detail::SharedState<void>::make());
+  return Future<void>();
 }
 
 template <class T>
