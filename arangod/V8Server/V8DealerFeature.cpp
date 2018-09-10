@@ -116,7 +116,7 @@ V8DealerFeature::V8DealerFeature(
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  
+
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption(
@@ -128,7 +128,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval));
-  
+
   options->addOption("--javascript.app-path", "directory for Foxx applications",
                      new StringParameter(&_appPath));
 
@@ -146,17 +146,17 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.v8-contexts",
       "maximum number of V8 contexts that are created for executing JavaScript actions",
       new UInt64Parameter(&_nrMaxContexts));
-  
+
   options->addOption(
       "--javascript.v8-contexts-minimum",
       "minimum number of V8 contexts that keep available for executing JavaScript actions",
       new UInt64Parameter(&_nrMinContexts));
-  
+
   options->addHiddenOption(
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
       new UInt64Parameter(&_maxContextInvocations));
-  
+
   options->addHiddenOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
@@ -166,7 +166,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute));
-  
+
   options->addHiddenOption(
       "--javascript.enabled",
       "enable the V8 JavaScript engine",
@@ -183,14 +183,14 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // if not specified
     _enableJS = false;
   }
-  
+
   if (!_enableJS) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
       "Script", "FoxxQueues", "Frontend"});
     return;
   }
-  
+
   // check the startup path
   if (_startupDirectory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8)
@@ -211,7 +211,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // try to append the current version name to the startup directory,
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
-  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), ""); 
+  std::string const versionAppendix = std::regex_replace(rest::Version::getServerVersion(), std::regex("-.*$"), "");
   std::string versionedPath = basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
 
   LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific startup-directory '" << versionedPath << "'";
@@ -219,8 +219,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
- 
-  for (auto& it : _moduleDirectory) { 
+
+  for (auto& it : _moduleDirectory) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
 
     LOG_TOPIC(DEBUG, Logger::V8) << "checking for existence of version-specific module-directory '" << versionedPath << "'";
@@ -229,7 +229,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       it = versionedPath;
     }
   }
-  
+
   LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory << "', effective module-directory is " << _moduleDirectory;
 
   _startupLoader.setDirectory(_startupDirectory);
@@ -273,7 +273,7 @@ void V8DealerFeature::start() {
       paths.push_back(std::string("application '" + _appPath + "'"));
 
 
-      // create app directory if it does not exist 
+      // create app directory if it does not exist
       if (!basics::FileUtils::isDirectory(_appPath)) {
         std::string systemErrorStr;
         long errorNo;
@@ -295,11 +295,11 @@ void V8DealerFeature::start() {
 
   // set singleton
   DEALER = this;
-  
+
   if (_nrMinContexts < 1) {
     _nrMinContexts = 1;
   }
-  
+
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts) {
     SchedulerFeature* scheduler =
@@ -329,7 +329,7 @@ void V8DealerFeature::start() {
     _busyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _idleContexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _dirtyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
-  
+
     for (size_t i = 0; i < _nrMinContexts; ++i) {
       V8Context* context = buildContext(nextId());
       try {
@@ -339,9 +339,9 @@ void V8DealerFeature::start() {
         throw;
       }
     }
-  
-    TRI_ASSERT(_contexts.size() > 0); 
-    TRI_ASSERT(_contexts.size() <= _nrMaxContexts);  
+
+    TRI_ASSERT(_contexts.size() > 0);
+    TRI_ASSERT(_contexts.size() <= _nrMaxContexts);
     for (auto& context : _contexts) {
       // apply context update is only run on contexts that no other
       // threads can see (yet)
@@ -386,7 +386,7 @@ V8Context* V8DealerFeature::addContext() {
       database.get(), "server/initialize.js", context, nullptr
     );
 
-    return context; 
+    return context;
   } catch (...) {
     delete context;
     throw;
@@ -450,7 +450,7 @@ void V8DealerFeature::collectGarbage() {
         bool gotSignal = false;
         preferFree = !preferFree;
         CONDITION_LOCKER(guard, _contextCondition);
-  
+
         if (_dirtyContexts.empty()) {
           uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
 
@@ -495,10 +495,10 @@ void V8DealerFeature::collectGarbage() {
       gc->updateGcStamp(lastGc);
 
       if (context != nullptr) {
-        
+
         LOG_TOPIC(TRACE, arangodb::Logger::V8) << "collecting V8 garbage in context #" << context->id()
-                  << ", invocations total: " << context->invocations()  
-                  << ", invocations since last gc: " << context->invocationsSinceLastGc()  
+                  << ", invocations total: " << context->invocations()
+                  << ", invocations since last gc: " << context->invocationsSinceLastGc()
                   << ", hasActive: " << context->_hasActiveExternals
                   << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
@@ -533,7 +533,7 @@ void V8DealerFeature::collectGarbage() {
         {
           CONDITION_LOCKER(guard, _contextCondition);
 
-          if (_contexts.size() > _nrMinContexts && 
+          if (_contexts.size() > _nrMinContexts &&
               !context->isDefault() &&
               context->shouldBeRemoved(_maxContextAge, _maxContextInvocations) &&
               _dynamicContextCreationBlockers == 0) {
@@ -561,31 +561,31 @@ void V8DealerFeature::collectGarbage() {
       }
     } catch (...) {
       // simply ignore errors here
-      useReducedWait = false; 
+      useReducedWait = false;
     }
-  } 
-  
+  }
+
   _gcFinished = true;
 }
-  
+
 void V8DealerFeature::unblockDynamicContextCreation() {
   CONDITION_LOCKER(guard, _contextCondition);
-    
+
   TRI_ASSERT(_dynamicContextCreationBlockers > 0);
   --_dynamicContextCreationBlockers;
 }
 
 void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
     std::string const& file, VPackBuilder* builder) {
-   
+
   if (builder != nullptr) {
     builder->openArray();
   }
- 
-  std::vector<V8Context*> contexts; 
+
+  std::vector<V8Context*> contexts;
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    
+
     while (_nrInflightContexts > 0) {
       // wait until all pending context creation requests have been satisified
       guard.wait(10000);
@@ -601,7 +601,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
   LOG_TOPIC(TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all (" << contexts.size() << ") V8 context";
 
-  // now safely scan the local copy of the contexts  
+  // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
     CONDITION_LOCKER(guard, _contextCondition);
 
@@ -615,7 +615,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
       // context is in _dirtyContexts
       // remove it from there
       _dirtyContexts.erase(it);
-      
+
       guard.unlock();
       try {
         loadJavaScriptFileInContext(vocbase, file, context, builder);
@@ -703,11 +703,11 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase,
 /// @brief forceContext == -1 means that any free context may be
 /// picked, or a new one will be created if we have not exceeded
 /// the maximum number of contexts
-/// forceContext == -2 means that any free context may be picked, 
+/// forceContext == -2 means that any free context may be picked,
 /// or a new one will be created if we have not exceeded or exactly
 /// reached the maximum number of contexts. this can be used to
 /// force the creation of another context for high priority tasks
-/// forceContext >= 0 means picking the context with that exact id 
+/// forceContext >= 0 means picking the context with that exact id
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
@@ -716,7 +716,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   if (_stopping) {
     return nullptr;
   }
-  
+
   if (!vocbase->use()) {
     return nullptr;
   }
@@ -810,11 +810,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       bool const contextLimitNotExceeded = (_contexts.size() + _nrInflightContexts < _nrMaxContexts);
-      
+
       if (contextLimitNotExceeded &&
-          _dynamicContextCreationBlockers == 0 && 
+          _dynamicContextCreationBlockers == 0 &&
           !MaxMapCountFeature::isNearMaxMappings()) {
-  
+
         ++_nrInflightContexts;
 
         TRI_ASSERT(guard.isLocked());
@@ -868,7 +868,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         return nullptr;
       }
     }
-      
+
     TRI_ASSERT(guard.isLocked());
 
     // in case we are in the shutdown phase, do not enter a context!
@@ -889,7 +889,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
-  
+
   TRI_ASSERT(context != nullptr);
   context->lockAndEnter();
   context->assertLocked();
@@ -989,7 +989,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
   cleanupLockedContext(context);
 
   V8GcThread* gc = static_cast<V8GcThread*>(_gcThread.get());
-  
+
   if (gc != nullptr) {
     // default is no garbage collection
     bool performGarbageCollection = false;
@@ -1002,10 +1002,10 @@ void V8DealerFeature::exitContext(V8Context* context) {
       if (context->_lastGcStamp + 30 * _gcFrequency < lastGc) {
         // force the GC, so that it happens eventually
         forceGarbageCollection = true;
-        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id() 
+        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id()
                   << " has reached GC timeout threshold and will be forced into GC";
       } else {
-        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id() 
+        LOG_TOPIC(TRACE, arangodb::Logger::V8) << "V8 context #" << context->id()
                   << " has reached GC timeout threshold and will be scheduled for GC";
       }
     } else if (context->invocationsSinceLastGc() >= _gcInterval) {
@@ -1164,13 +1164,16 @@ void V8DealerFeature::shutdownContexts() {
 
   // shutdown all instances
   {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    for (auto& context : _contexts) {
-      shutdownContext(context);
+    std::vector<V8Context*> contexts;
+    {
+      CONDITION_LOCKER(guard, _contextCondition);
+      contexts = _contexts;
+      _contexts.clear();
     }
 
-    _contexts.clear();
+    for (auto& context : contexts) {
+      shutdownContext(context);
+    }
   }
 
   LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "V8 contexts are shut down";
@@ -1368,14 +1371,14 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
 bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
     std::string const& file, V8Context* context,
     VPackBuilder* builder) {
-  
+
   TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(context != nullptr);
 
   if (_stopping) {
     return false;
   }
-  
+
   if (!vocbase->use()) {
     return false;
   }
@@ -1390,7 +1393,7 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
     LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->id();
     throw;
   }
-  
+
   return true;
 }
 
@@ -1419,9 +1422,9 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
         break;
     }
   }
-  
+
   localContext->Exit();
-  
+
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file << "' for V8 context #" << context->id();
 }
 
