@@ -170,7 +170,7 @@ function optimizerRuleTestSuite() {
       assertTrue(nodes[0].elements[0].ascending);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
@@ -196,7 +196,7 @@ function optimizerRuleTestSuite() {
       assertTrue(nodes[0].elements[0].ascending);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
@@ -227,7 +227,7 @@ function optimizerRuleTestSuite() {
       assertTrue(nodes[0].elements[0].ascending);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
@@ -291,7 +291,7 @@ function optimizerRuleTestSuite() {
       assertTrue(nodes[0].elements[0].ascending);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
     
       let results = AQL_EXECUTE(query).json;
       assertEqual(2000, results.length);
