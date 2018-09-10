@@ -1743,7 +1743,9 @@ class Graph {
     possibleOrphans.forEach(
       function (po) {
         if (usedVertexCollections.indexOf(po) === -1) {
-          self.__orphanCollections.push(po);
+          if (self.__orphanCollections.indexOf(po) === -1) {
+            self.__orphanCollections.push(po);
+          }
         }
       }
     );
