@@ -235,6 +235,7 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
         _done = true;
         size_t skipped = _inflight;
         _inflight = 0;
+        traceSkipSomeEnd(skipped, ExecutionState::DONE);
         return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block

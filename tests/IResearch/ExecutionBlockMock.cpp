@@ -176,6 +176,7 @@ ExecutionBlockMock::getSome(size_t atMost) {
 std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, arangodb::aql::ExecutionState::DONE);
     return {arangodb::aql::ExecutionState::DONE, 0};
   }
 
