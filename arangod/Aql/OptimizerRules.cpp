@@ -2005,7 +2005,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
 
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+        std::unique_ptr<IndexNode> newNode(new IndexNode(
             _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
             enumerateCollectionNode->collection(), outVariable, usedIndexes,
             condition.get(), sortCondition.isDescending()));
@@ -2021,6 +2021,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
+          n->needsGatherNodeSort(true);
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
