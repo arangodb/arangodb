@@ -27,6 +27,7 @@
 
 #include "Cache/PlainCache.h"
 #include "Basics/Common.h"
+#include "Basics/xoroshiro128plus.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Random/RandomGenerator.h"
@@ -226,10 +227,14 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
       // initialize valid range for keys that *might* be in cache
       uint64_t validLower = lower;
       uint64_t validUpper = lower + initialInserts - 1;
-
+      
+      basics::xoroshiro128plus prng;
+      prng.seed(RandomGenerator::interval(UINT64_MAX),
+                RandomGenerator::interval(UINT64_MAX));
+      
       // commence mixed workload
       for (uint64_t i = 0; i < operationCount; i++) {
-        uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99UL));
+        uint64_t r = prng.next() % 99;
 
         if (r >= 99) {  // remove something
           if (validLower == validUpper) {
@@ -253,9 +258,7 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
             delete value;
           }
         } else {  // lookup something
-          uint64_t item =
-              RandomGenerator::interval(static_cast<int64_t>(validLower),
-                                        static_cast<int64_t>(validUpper));
+          uint64_t item = (prng.next() % (validUpper + 1 - validLower)) + validLower;
 
           Finding f = cache->find(&item, sizeof(uint64_t));
           if (f.found()) {
