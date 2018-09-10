@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, globalstrict: true */
-/*global assertEqual */
+/*global assertEqual, describe, it */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for routing
