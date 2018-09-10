@@ -20,6 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "ConsoleFeature.h"
 
 #include "Basics/messages.h"
@@ -27,7 +29,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ConsoleThread.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 
 #include <iostream>
@@ -55,10 +57,14 @@ void ConsoleFeature::start() {
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
 
-  auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  auto database = sysDbFeature->use();
 
   _consoleThread.reset(
-      new ConsoleThread(ApplicationFeature::server(), database->systemDatabase()));
+    new ConsoleThread(ApplicationFeature::server(), database.get())
+  );
   _consoleThread->start();
 }
 

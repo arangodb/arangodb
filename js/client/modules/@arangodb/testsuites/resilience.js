@@ -36,9 +36,9 @@ const optionsDocumentation = [
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'resilience': [tu.pathForTesting('server/tests/resilience')],
-  'client_resilience': [tu.pathForTesting('client/tests/resilience')],
-  'active_failover': [tu.pathForTesting('client/tests/active-failover')]
+  'resilience': [tu.pathForTesting('server/resilience')],
+  'client_resilience': [tu.pathForTesting('client/resilience')],
+  'active_failover': [tu.pathForTesting('client/active-failover')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
