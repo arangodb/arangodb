@@ -225,6 +225,36 @@ function GeneralGraphCreationSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rename with module function renameCollection
+////////////////////////////////////////////////////////////////////////////////
+    
+    test_collectionRenameCollectionsWithModule: function() {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+        return;
+      }
+
+      graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      graph._renameCollection("UnitTestRelationName1", "UnitTestsGraphRenamed1");
+      graph._renameCollection("UnitTestVertices1", "UnitTestsGraphRenamed2");
+      graph._renameCollection("UnitTestVertices4", "UnitTestsGraphRenamed3");
+      
+      var doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
+      assertEqual(2, doc.edgeDefinitions[0].from.length);
+      assertEqual([ "UnitTestsGraphRenamed2", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(2, doc.edgeDefinitions[0].to.length);
+      assertEqual([ vn3, "UnitTestsGraphRenamed3" ].sort(), doc.edgeDefinitions[0].to.sort());
+      assertEqual([ ], doc.orphanCollections);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: Graph Creation
 ////////////////////////////////////////////////////////////////////////////////
 
