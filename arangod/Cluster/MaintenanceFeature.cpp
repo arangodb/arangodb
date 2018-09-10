@@ -747,3 +747,33 @@ arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {
 }
 
 
+uint64_t MaintenanceFeature::shardVersion (std::string const& shname) const {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "getting shard version for '"  << shname << "' from " << _shardVersion;
+  return (it != _shardVersion.end()) ? it->second : 0;
+}
+
+
+void MaintenanceFeature::incShardVersion (std::string const& shname) {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  if (it != _shardVersion.end()) {
+    it->second++;
+  } else {
+    _shardVersion[shname] = 1;
+  }
+  LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+    << "incremented shard version for " << shname << " to " << _shardVersion; 
+}
+
+void MaintenanceFeature::delShardVersion (std::string const& shname) {
+  MUTEX_LOCKER(guard, _versionLock);
+  auto const it = _shardVersion.find(shname);
+  if (it != _shardVersion.end()) {
+    _shardVersion.erase(it);
+  }
+}
+
+

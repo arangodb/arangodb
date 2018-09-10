@@ -94,6 +94,12 @@ void MaintenanceWorker::nextState(bool actionMore) {
                      || FAILED == _curAction->getState()))
   {
     actionMore = false;
+
+    auto const& description = _curAction->describe();
+    if (description.has("shardVersion")) {
+      TRI_ASSERT(description.has("shard"));
+      _feature.incShardVersion(description.get("shard"));
+    }
   } // if
 
   // actionMore means iterate again
@@ -130,6 +136,12 @@ void MaintenanceWorker::nextState(bool actionMore) {
       // if action's state not set, assume it succeeded when result ok
       if (_curAction->result().ok()
           && FAILED != _curAction->getState()) {
+
+        auto const& description = _curAction->describe();
+        if (description.has("shardVersion")) {
+          TRI_ASSERT(description.has("shard"));
+          _feature.incShardVersion(description.get("shard"));
+        }
         _curAction->endStats();
         _curAction->setState(COMPLETE);
 

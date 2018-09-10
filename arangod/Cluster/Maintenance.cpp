@@ -487,9 +487,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 
 /// @brief handle plan for local databases
 arangodb::Result arangodb::maintenance::executePlan (
-  VPackSlice const& plan, VPackSlice const& local,
-  std::string const& serverId, MaintenanceFeature& feature,
-  VPackBuilder& report) {
+  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
+  MaintenanceFeature& feature, VPackBuilder& report) {
 
   arangodb::Result result;
 
@@ -534,11 +533,18 @@ arangodb::Result arangodb::maintenance::executePlan (
   report.add(VPackValue("actions"));
   { VPackArrayBuilder a(&report);
     // enact all
-    for (auto const& action : actions) {
+    for (auto& action : actions) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "adding action " << action << " to feature ";
+        << "phase one adding action " << action << " to feature ";
       { VPackObjectBuilder b(&report);
         action.toVelocyPack(report);
+      }
+
+      auto const& name = action.get(NAME);
+      if (name == "CreateCollection") {
+        TRI_ASSERT(action.has(SHARD));
+        action.set("shardVersion",
+                   std::to_string(feature.shardVersion(action.get(SHARD))));
       }
       feature.addAction(std::make_shared<ActionDescription>(action), false);
     }
@@ -986,7 +992,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
 arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId, std::vector<ActionDescription>& actions) {
+  std::string const& serverId, MaintenanceFeature& feature,
+  std::vector<ActionDescription>& actions) {
 
   auto pdbs = plan.get(COLLECTIONS);
   auto cdbs = current.get(COLLECTIONS);
@@ -1044,6 +1051,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             }
 
             auto const leader = pservers[0].copyString();
+
             actions.emplace_back(
               ActionDescription(
                 {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
@@ -1088,13 +1096,25 @@ arangodb::Result arangodb::maintenance::phaseTwo (
 
     // maintenace actions
     report.add(VPackValue("actions"));
-    { VPackObjectBuilder agency(&report);
+    { VPackArrayBuilder agency(&report);
       try {
         std::vector<ActionDescription> actions;
         result = syncReplicatedShardsWithLeaders(
-          plan, cur, local, serverId, actions);
+          plan, cur, local, serverId, feature, actions);
 
-        for (auto const& action : actions) {
+        for (auto& action : actions) {
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "phase two adding action " << action << " to feature ";
+          { VPackObjectBuilder b(&report);
+            action.toVelocyPack(report);
+          }
+
+          auto const& name = action.get(NAME);
+          if (name == "SynchronizeShard") {
+            TRI_ASSERT(action.has(SHARD));
+            action.set("shardVersion",
+                       std::to_string(feature.shardVersion(action.get(SHARD))));
+          }
           feature.addAction(std::make_shared<ActionDescription>(action), false);
         }
       } catch (std::exception const& e) {

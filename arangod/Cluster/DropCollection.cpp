@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.cpp"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -108,6 +109,8 @@ bool DropCollection::first() {
   }
 
   notify();
+
+  _feature.delShardVersion(collection);
 
   return false;
 
