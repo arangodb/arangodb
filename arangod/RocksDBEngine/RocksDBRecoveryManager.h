@@ -61,7 +61,7 @@ class RocksDBRecoveryManager final
   //////////////////////////////////////////////////////////////////////////////
   rocksdb::TransactionDB* _db;
 
-  bool _inRecovery;
+  std::atomic<bool> _inRecovery;
 };
 
 }  // namespace arangodb
