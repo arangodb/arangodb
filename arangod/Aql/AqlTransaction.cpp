@@ -63,25 +63,13 @@ transaction::Methods* AqlTransaction::clone(
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
   if (ServerState::instance()->isCoordinator()) {
-    return processCollectionCoordinator(collection);
+    auto cid = resolver()->getCollectionId(collection->name());
+
+    return addCollection(cid, collection->name(), collection->accessType());
   }
-  return processCollectionNormal(collection);
-}
 
-/// @brief add a coordinator collection to the transaction
-
-Result AqlTransaction::processCollectionCoordinator(
-    aql::Collection* collection) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->name());
-
-  return addCollection(cid, collection->name(), collection->accessType());
-}
-
-/// @brief add a regular collection to the transaction
-
-Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   TRI_voc_cid_t cid = 0;
-  auto col = resolver()->getCollectionStruct(collection->name());
+  auto col = resolver()->getCollection(collection->name());
 
   if (col != nullptr) {
     cid = col->id();

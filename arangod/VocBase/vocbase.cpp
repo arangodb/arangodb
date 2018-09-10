@@ -1303,7 +1303,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
     bool allowDropSystem,
     double timeout
 ) {
-  auto* collection = lookupCollection(cid).get();
+  auto collection = lookupCollection(cid);
 
   if (!collection) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -1328,7 +1328,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
     int res;
     {
       READ_LOCKER(readLocker, _inventoryLock);
-      res = dropCollectionWorker(collection, state, timeout);
+      res = dropCollectionWorker(collection.get(), state, timeout);
     }
 
     if (state == DROP_PERFORM) {
@@ -1356,10 +1356,16 @@ arangodb::Result TRI_vocbase_t::dropCollection(
 }
 
 /// @brief renames a view
-int TRI_vocbase_t::renameView(
-    std::shared_ptr<arangodb::LogicalView> const& view,
+arangodb::Result TRI_vocbase_t::renameView(
+    TRI_voc_cid_t cid,
     std::string const& newName
 ) {
+  auto const view = lookupView(cid);
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
   // lock collection because we are going to copy its current name
   std::string oldName = view->name();
 
@@ -1396,29 +1402,43 @@ int TRI_vocbase_t::renameView(
 
   TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second));
 
-  _dataSourceByName.emplace(newName, view);
-  _dataSourceByName.erase(oldName);
-
   // stores the parameters on disk
   auto* databaseFeature =
     application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   TRI_ASSERT(databaseFeature);
   auto doSync = databaseFeature->forceSyncProperties();
-  auto res = view->rename(std::string(newName), doSync);
+  auto res = itr1->second->rename(std::string(newName), doSync);
+
+  if (!res.ok()) {
+    return res.errorNumber(); // rename failed
+  }
+
+  auto itr2 = _dataSourceByName.emplace(newName, itr1->second);
+
+  TRI_ASSERT(itr2.second);
+  _dataSourceByName.erase(itr1);
+
+  checkCollectionInvariants();
 
   // invalidate all entries in the plan and query cache now
   arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  return res.errorNumber();
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief renames a collection
-int TRI_vocbase_t::renameCollection(
-    arangodb::LogicalCollection* collection,
+arangodb::Result TRI_vocbase_t::renameCollection(
+    TRI_voc_cid_t cid,
     std::string const& newName,
     bool doOverride
 ) {
+  auto collection = lookupCollection(cid);
+
+  if (!collection) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
   if (collection->system()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1506,7 +1526,16 @@ int TRI_vocbase_t::renameCollection(
     application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   TRI_ASSERT(databaseFeature);
   auto doSync = databaseFeature->forceSyncProperties();
-  auto res = collection->rename(std::string(newName), doSync);
+  auto res = itr1->second->rename(std::string(newName), doSync);
+
+  if (!res.ok()) {
+    return res.errorNumber(); // rename failed
+  }
+
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  TRI_ASSERT(engine);
+  res = engine->renameCollection(*this, *collection, oldName); // tell the engine
 
   if (!res.ok()) {
     return res.errorNumber(); // rename failed
@@ -1515,13 +1544,7 @@ int TRI_vocbase_t::renameCollection(
   // The collection is renamed. Now swap cache entries.
   auto it2 = _dataSourceByName.emplace(newName, itr1->second);
   TRI_ASSERT(it2.second);
-
-  try {
-    _dataSourceByName.erase(oldName);
-  } catch (...) {
-    _dataSourceByName.erase(newName);
-    throw;
-  }
+  _dataSourceByName.erase(itr1);
 
   checkCollectionInvariants();
   locker.unlock();
@@ -1537,14 +1560,7 @@ int TRI_vocbase_t::renameCollection(
   arangodb::aql::QueryCache::instance()->invalidate(
       this, std::vector<std::string>{oldName, newName});
 
-  // Tell the engine.
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  TRI_ASSERT(engine != nullptr);
-
-  auto res2 = engine->renameCollection(*this, *collection, oldName);
-
-  return res2.errorNumber();
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief locks a collection for usage, loading or manifesting it
