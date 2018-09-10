@@ -139,7 +139,7 @@ class Graph {
 
  public:
   /// @brief get the cids of all vertexCollections
-  std::unordered_set<std::string> const& vertexCollections() const;
+  std::set<std::string> const& vertexCollections() const;
 
   /// @brief get the cids of all orphanCollections
   std::set<std::string> const& orphanCollections() const;
@@ -214,7 +214,7 @@ class Graph {
   /// @brief adds one edge definition. Returns an error if the edgeDefinition
   ///        is already added to this graph.
   ResultT<EdgeDefinition const*> addEdgeDefinition(
-          EdgeDefinition const& edgeDefinition);
+      EdgeDefinition const& edgeDefinition);
 
   /// @brief removes one edge definition. Returns an error if the edgeDefinition
   ///        is not included in this graph.
@@ -267,7 +267,7 @@ class Graph {
 
   /// @brief the names of all vertexCollections
   ///        This includes orphans.
-  std::unordered_set<std::string> _vertexColls;
+  std::set<std::string> _vertexColls;
 
   /// @brief the names of all orphanCollections
   std::set<std::string> _orphanColls;

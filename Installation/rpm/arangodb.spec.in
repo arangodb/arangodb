@@ -186,9 +186,9 @@ mkdir -p %{buildroot}%{_piddir}
 %{_mandir}/*/arangobench*
 %{_mandir}/*/arangodump*
 %{_mandir}/*/arangoimport*
-%{_datadir}/arangodb3/js/common
-%{_datadir}/arangodb3/js/client
-%{_datadir}/arangodb3/js/node
+%{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/common
+%{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/client
+%{_datadir}/arangodb3/@ARANGODB_JS_VERSION@/node
 
 %files debuginfo
 @CPACK_DEBUG_DIRECTORY_PATTERN@

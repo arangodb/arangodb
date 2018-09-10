@@ -34,6 +34,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 namespace {
@@ -618,14 +619,15 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
 
   try {
     for (auto& shardId : shards) {
-      auto const cid = resolver->getCollectionIdLocal(shardId);
+      auto shard = resolver->getCollection(shardId);
 
-      if (0 == cid) {
+      if (!shard) {
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failed to find shard by id '" << shardId << "', skipping it";
         continue;
       }
 
+      auto cid = shard->id();
       auto const shardView = _collections.find(cid);
 
       if (shardView == _collections.end()) {

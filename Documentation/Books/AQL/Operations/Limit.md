@@ -40,9 +40,10 @@ FOR u IN users
 In above example, the documents of *users* are sorted, the first two results
 get skipped and it returns the next five user documents.
 
-Note that variables and expressions can not be used for *offset* and *count*.
-Their values must be known at query compile time, which means that you can
-use number literals and bind parameters only.
+Note that variables, expressions and subqueries can not be used for *offset* and 
+*count*. The values for *offset* and *count* must be known at query compile time, 
+which means that you can only use number literals, bind parameters or expressions
+that can be resolved at query compile time.
 
 Where a *LIMIT* is used in relation to other operations in a query has meaning.
 *LIMIT* operations before *FILTER*s in particular can change the result

@@ -670,7 +670,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // no place to store snapshot
     static IResearchView::Snapshot const SNAPSHOT[] {
       IResearchView::Snapshot::FindOrCreate,
-      IResearchView::Snapshot::SyncAndCreate
+      IResearchView::Snapshot::SyncAndReplace
     };
 
     reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(
@@ -679,7 +679,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   } else {
     static IResearchView::Snapshot const SNAPSHOT[] {
       IResearchView::Snapshot::Find,
-      IResearchView::Snapshot::SyncAndCreate
+      IResearchView::Snapshot::SyncAndReplace
     };
 
     reader = LogicalView::cast<IResearchView>(view).snapshot(

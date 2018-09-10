@@ -173,7 +173,6 @@ function readOnly (options) {
     users.save('test', '', true);
     users.save('test2', '', true);
     users.grantDatabase('test', '_system', 'ro');
-    users.grantCollection('test', '_system', 'testcol', 'ro');
 
     db._createDatabase('testdb2');
     db._useDatabase('testdb2');

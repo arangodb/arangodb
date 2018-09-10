@@ -220,7 +220,8 @@ size_t MMFilesPrimaryIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder,
+                                       std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
   // hard-coded
