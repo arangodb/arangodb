@@ -742,7 +742,9 @@ function optimizerAggregateTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertNull(results.json[0]);
-      assertNull(AQL_EXECUTE("RETURN SUM([ ])").json[0]);
+      // notable difference: regular SUM([ ]) returns 0, but as an aggregate
+      // function it returns null
+      assertEqual(0, AQL_EXECUTE("RETURN SUM([ ])").json[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -754,7 +756,7 @@ function optimizerAggregateTestSuite () {
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertNull(results.json[0]);
+      assertEqual(0, results.json[0]);
       assertEqual(results.json[0], AQL_EXECUTE("RETURN SUM([ null, null, null, null ])").json[0]);
     },
 

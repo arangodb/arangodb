@@ -165,6 +165,7 @@ void AggregatorSum::reset() {
 }
 
 void AggregatorSum::reduce(AqlValue const& cmpValue) {
+  invoked = true;
   if (!invalid) {
     if (cmpValue.isNull(true)) {
       // ignore `null` values here
@@ -174,7 +175,6 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
       double const number = cmpValue.toDouble(trx);
       if (!std::isnan(number) && number != HUGE_VAL &&
           number != -HUGE_VAL) {
-        invoked = true;
         sum += number;
         return;
       }

@@ -1685,7 +1685,6 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
   double sum = 0.0;
-  bool invoked = false;
   for (auto const& it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
@@ -1697,13 +1696,9 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
 
     if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
       sum += number;
-      invoked = true;
     }
   }
 
-  if (!invoked) {
-    return AqlValue(AqlValueHintNull());
-  }
   return NumberValue(trx, sum, false);
 }
 
