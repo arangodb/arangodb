@@ -53,6 +53,9 @@ namespace {
     return std::forward<T>(value);
   }
   
+  typedef std::domain_error eggs_t;
+  static eggs_t eggs("eggs");
+  
   /*Future<int> onErrorHelperEggs(const eggs_t&) {
     return makeFuture(10);
   }
@@ -132,7 +135,7 @@ SECTION("Basic") {
 }
   
 SECTION("Default ctor") {
-  Future<void> abc{};
+  Future<int> abc{};
 }
   
 SECTION("requires only move ctor") {
@@ -675,4 +678,220 @@ SECTION("then") {
   REQUIRE(value == "1;2;3;4;5;6;7;8;9;10;11");
 }
   
+  
+SECTION("get") {
+  auto f = makeFuture(std::make_unique<int>(42));
+  auto up = std::move(f).get();
+  REQUIRE(42 == *up);
+  
+  REQUIRE_THROWS_AS(makeFuture<int>(eggs).get(), eggs_t);
+}
+  
+SECTION("isReady") {
+  Promise<int> p;
+  auto f = p.getFuture();
+  REQUIRE_FALSE(f.isReady());
+  p.setValue(42);
+  REQUIRE(f.isReady());
+}
+  
+SECTION("futureNotReady") {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  REQUIRE_THROWS_AS(f.result().get(), FutureException);
+}
+  
+SECTION("makeFuture") {
+  REQUIRE(makeFuture<int>(eggs).getTry().hasException());
+  REQUIRE_FALSE(makeFuture(42).getTry().hasException());
+}
+  
+SECTION("hasValue") {
+  REQUIRE(makeFuture(42).getTry().hasValue());
+  REQUIRE_FALSE(makeFuture<int>(eggs).getTry().hasValue());
+}
+  
+SECTION("makeFuture") {
+  //EXPECT_TYPE(makeFuture(42), Future<int>);
+  REQUIRE(42 == makeFuture(42).get());
+  
+  //EXPECT_TYPE(makeFuture<float>(42), Future<float>);
+  REQUIRE(42 == makeFuture<float>(42).get());
+  
+  auto fun = [] { return 42; };
+  //EXPECT_TYPE(makeFutureWith(fun), Future<int>);
+  REQUIRE(42 == makeFutureWith(fun).get());
+  
+  auto funf = [] { return makeFuture<int>(43); };
+  //EXPECT_TYPE(makeFutureWith(funf), Future<int>);
+  REQUIRE(43 == makeFutureWith(funf).get());
+  
+  auto failfun = []() -> int { throw eggs; };
+  //EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
+  REQUIRE_NOTHROW(makeFutureWith(failfun));
+  REQUIRE_THROWS_AS(makeFutureWith(failfun).get(), eggs_t);
+  
+  auto failfunf = []() -> Future<int> { throw eggs; };
+  //EXPECT_TYPE(makeFutureWith(failfunf), Future<int>);
+  REQUIRE_NOTHROW(makeFutureWith(failfunf));
+  REQUIRE_THROWS_AS(makeFutureWith(failfunf).get(), eggs_t);
+  
+  //EXPECT_TYPE(makeFuture(), Future<Unit>);
+}
+  
+SECTION("finish") {
+  SchedulerTestSetup setup;
+  
+  auto x = std::make_shared<int>(0);
+  
+  Promise<int> p;
+  auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.get(); });
+  
+  // The callback hasn't executed
+  REQUIRE(0 == *x);
+  
+  // The callback has a reference to x
+  REQUIRE(2 == x.use_count());
+  
+  p.setValue(42);
+  f.wait();
+  
+  // the callback has executed
+  REQUIRE(42 == *x);
+  
+  std::this_thread::yield();
+  
+  // the callback has been destructed
+  // and has released its reference to x
+  REQUIRE(1 == x.use_count());
+}
+  
+  
+SECTION("detachRace") {
+  // Task #5438209
+  // This test is designed to detect a race that was in Core::detachOne()
+  // where detached_ was incremented and then tested, and that
+  // allowed a race where both Promise and Future would think they were the
+  // second and both try to delete. This showed up at scale but was very
+  // difficult to reliably repro in a test. As it is, this only fails about
+  // once in every 1,000 executions. Doing this 1,000 times is going to make a
+  // slow test so I won't do that but if it ever fails, take it seriously, and
+  // run the test binary with "--gtest_repeat=10000 --gtest_filter=*detachRace"
+  // (Don't forget to enable ASAN)
+  auto p = std::make_unique<Promise<bool>>();
+  auto f = std::make_unique<Future<bool>>(p->getFuture());
+  //folly::Baton<> baton;
+  std::mutex m;
+  std::condition_variable condition;
+  std::thread t1([&]{
+    //baton.post();
+    condition.notify_one();
+    p.reset();
+  });
+  std::unique_lock<std::mutex> guard(m);
+  condition.wait(guard);
+  f.reset();
+  t1.join();
+}
+
+//  // Test of handling of a circular dependency. It's never recommended
+//  // to have one because of possible memory leaks. Here we test that
+//  // we can handle freeing of the Future while it is running.
+//  TEST(Future, CircularDependencySharedPtrSelfReset) {
+//    Promise<int64_t> promise;
+//    auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
+//
+//    std::move(*ptr).thenTry([ptr](folly::Try<int64_t>&& /* uid */) mutable {
+//      EXPECT_EQ(1, ptr.use_count());
+//
+//      // Leaving no references to ourselves.
+//      ptr.reset();
+//      EXPECT_EQ(0, ptr.use_count());
+//    });
+//
+//    EXPECT_EQ(2, ptr.use_count());
+//
+//    ptr.reset();
+//
+//    promise.setValue(1);
+//  }
+//
+//
+//  TEST(Future, Constructor) {
+//    auto f1 = []() -> Future<int> { return Future<int>(3); }();
+//    EXPECT_EQ(f1.value(), 3);
+//    auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
+//    EXPECT_NO_THROW(f2.value());
+//  }
+//
+//  TEST(Future, ImplicitConstructor) {
+//    auto f1 = []() -> Future<int> { return 3; }();
+//    EXPECT_EQ(f1.value(), 3);
+//    // Unfortunately, the C++ standard does not allow the
+//    // following implicit conversion to work:
+//    //auto f2 = []() -> Future<Unit> { }();
+//  }
+//
+//  TEST(Future, InPlaceConstructor) {
+//    auto f = Future<std::pair<int, double>>(in_place, 5, 3.2);
+//    EXPECT_EQ(5, f.value().first);
+//  }
+//
+//
+//  TEST(Future, makeFutureNoThrow) {
+//    makeFuture().value();
+//  }
+//
+//  TEST(Future, invokeCallbackReturningValueAsRvalue) {
+//    struct Foo {
+//      int operator()(int x) & {
+//        return x + 1;
+//      }
+//      int operator()(int x) const& {
+//        return x + 2;
+//      }
+//      int operator()(int x) && {
+//        return x + 3;
+//      }
+//    };
+//
+//    Foo foo;
+//    Foo const cfoo;
+//
+//    // The continuation will be forward-constructed - copied if given as & and
+//    // moved if given as && - everywhere construction is required.
+//    // The continuation will be invoked with the same cvref as it is passed.
+//    EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
+//    EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
+//    EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+//  }
+//
+//  TEST(Future, invokeCallbackReturningFutureAsRvalue) {
+//    struct Foo {
+//      Future<int> operator()(int x) & {
+//        return x + 1;
+//      }
+//      Future<int> operator()(int x) const& {
+//        return x + 2;
+//      }
+//      Future<int> operator()(int x) && {
+//        return x + 3;
+//      }
+//    };
+//
+//    Foo foo;
+//    Foo const cfoo;
+//
+//    // The continuation will be forward-constructed - copied if given as & and
+//    // moved if given as && - everywhere construction is required.
+//    // The continuation will be invoked with the same cvref as it is passed.
+//    EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
+//    EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
+//    EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+//
+//    EXPECT_EQ(101, makeFuture<int>(100).thenValue(foo).value());
+//    EXPECT_EQ(202, makeFuture<int>(200).thenValue(cfoo).value());
+//    EXPECT_EQ(303, makeFuture<int>(300).thenValue(Foo()).value());
+//  }
+
 }

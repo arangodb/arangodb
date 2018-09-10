@@ -55,10 +55,25 @@ typename std::enable_if<std::is_base_of<std::exception, E>::value, Future<T>>::t
 makeFuture(E const& e) {
   return makeFuture(Try<T>(std::make_exception_ptr<E>(e)));
 }
-
-template <class F>
-Future<std::result_of<F>> makeFutureWith(F&& f) {
-  return makeFuture(std::move(makeTry(std::forward(f))));
+  
+// makeFutureWith(Future<T>()) -> Future<T>
+template <typename F, typename R = std::result_of_t<F()>>
+typename std::enable_if<isFuture<R>::value, R>::type
+makeFutureWith(F&& func) {
+  using InnerType = typename isFuture<R>::inner;
+  try {
+    return std::forward<F>(func)();
+  } catch (...) {
+    return makeFuture<InnerType>(std::current_exception());
+  }
+}
+  
+// makeFutureWith(T()) -> Future<T>
+// makeFutureWith(void()) -> Future<Unit>
+template <typename F, typename R = std::result_of_t<F()>>
+typename std::enable_if<!isFuture<R>::value, Future<R>>::type
+makeFutureWith(F&& func) {
+  return makeFuture<R>(makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
 }
     
 }}

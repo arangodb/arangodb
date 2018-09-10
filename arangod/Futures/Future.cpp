@@ -20,21 +20,25 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_FUTURES_PROMISE_INL_H
-#define ARANGOD_FUTURES_PROMISE_INL_H 1
+#include <cstdint>
+#include "Basics/Result.h"
+#include "Utils/OperationResult.h"
+
+#include "Futures/Future.h"
 
 namespace arangodb {
 namespace futures {
+  // Instantiate the most common Future types to save compile time
+  template class Future<void>;
+  template class Future<bool>;
+  template class Future<int32_t>;
+  template class Future<uint32_t>;
+  template class Future<int64_t>;
+  template class Future<uint64_t>;
+  template class Future<std::string>;
+  template class Future<double>;
   
-template <class T>
-Future<T> Promise<T>::getFuture() {
-  if (_retrieved) {
-    throw FutureException(ErrorCode::FutureAlreadyRetrieved);
-  }
-  _retrieved = true;
-  return arangodb::futures::Future<T>(_state);
-}
-  
+  // arangodb types
+  template class Future<arangodb::Result>;
+  template class Future<arangodb::OperationResult>;
 }}
-
-#endif // ARANGOD_FUTURES_PROMISE_INL_H

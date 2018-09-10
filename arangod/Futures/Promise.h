@@ -23,8 +23,7 @@
 #ifndef ARANGOD_FUTURES_PROMISE_H
 #define ARANGOD_FUTURES_PROMISE_H 1
 
-#include <future>
-
+#include "Futures/Exceptions.h"
 #include "Futures/SharedState.h"
 
 namespace arangodb {
@@ -80,29 +79,29 @@ public:
   }
   
   /// Fulfill the Promise with an exception_ptr.
-  void set_exception(std::exception_ptr ep) {
+  void setException(std::exception_ptr ep) {
     setTry(Try<T>(ep));
   }
   
   /// Fulfill the Promise with exception `e` *as if* by
-  ///   `set_exception(std::make_exception_ptr<E>(e))`.
+  ///   `setException(std::make_exception_ptr<E>(e))`.
   template <class E>
   typename std::enable_if<std::is_base_of<std::exception, E>::value>::type
-  set_exception(E const& e) {
-    set_exception(std::make_exception_ptr<E>(e));
+  setException(E const& e) {
+    setException(std::make_exception_ptr<E>(e));
   }
   
   /// Fulfill the Promise with the specified value using perfect forwarding.
   /// Functionally equivalent to `setTry(Try<T>(std::forward<M>(value)))`
   template <class M>
-  void set_value(M&& value) {
-    static_assert(!std::is_same<T, void>::value, "Use set_value() instead");
+  void setValue(M&& value) {
+    static_assert(!std::is_same<T, void>::value, "Use setValue() instead");
     setTry(Try<T>(std::forward<M>(value)));
   }
   
   /// set void value
   template <class B = T>
-  typename std::enable_if<std::is_same<void, B>::value>::type set_value() {
+  typename std::enable_if<std::is_same<void, B>::value>::type setValue() {
     setTry(Try<void>());
   }
   
@@ -120,7 +119,7 @@ public:
     getState().setResult(makeTryWith(std::forward<F>(func)));
   }
   
-  arangodb::futures::Future<T> get_future();
+  arangodb::futures::Future<T> getFuture();
   
 private:
   Promise(detail::SharedState<T>* state) : _state(state), _retrieved(false) {}
@@ -128,14 +127,14 @@ private:
   // convenience method that checks if _state is set
   inline detail::SharedState<T>& getState() {
     if (!_state) {
-      throw std::future_error(std::future_errc::no_state);
+      throw FutureException(ErrorCode::NoState);
     }
     return *_state;
   }
   
   inline void throwIfFulfilled() const {
     if (isFulfilled()) {
-      throw std::future_error(std::future_errc::promise_already_satisfied);
+      throw FutureException(ErrorCode::PromiseAlreadySatisfied);
     }
   }
   
@@ -145,7 +144,7 @@ private:
         _state->detachFuture();
       }
       if (!_state->hasResult()) {
-        auto ptr = std::make_exception_ptr(std::future_error(std::future_errc::broken_promise));
+        auto ptr = std::make_exception_ptr(FutureException(ErrorCode::BrokenPromise));
         _state->setResult(Try<T>(std::move(ptr)));
       }
       _state->detachPromise();

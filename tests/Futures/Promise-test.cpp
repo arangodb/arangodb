@@ -76,13 +76,13 @@ SECTION("special") {
   
 SECTION("getFuture") {
   Promise<int> p;
-  Future<int> f = p.get_future();
+  Future<int> f = p.getFuture();
   REQUIRE_FALSE(f.isReady());
 }
   
 SECTION("setValueUnit") {
   Promise<void> p;
-  p.set_value();
+  p.setValue();
 }
  
   
@@ -174,11 +174,11 @@ REQUIRE_THROWS(STMT); \
     auto const except = std::logic_error("foo");
     auto const ewrap = std::make_exception_ptr(except);
     
-    DOIT(p.get_future());
-    DOIT(p.set_exception(except));
-    DOIT(p.set_exception(ewrap));
+    DOIT(p.getFuture());
+    DOIT(p.setException(except));
+    DOIT(p.setException(ewrap));
     //DOIT(p.setInterruptHandler([](auto&) {}));
-    DOIT(p.set_value(42));
+    DOIT(p.setValue(42));
     DOIT(p.setTry(Try<int>(42)));
     DOIT(p.setTry(Try<int>(ewrap)));
     DOIT(p.setWith([] { return 42; }));
@@ -251,8 +251,8 @@ REQUIRE_FALSE(p.valid()); \
   
 SECTION("setValue") {
     Promise<int> fund;
-    auto ffund = fund.get_future();
-    fund.set_value(42);
+    auto ffund = fund.getFuture();
+    fund.setValue(42);
     REQUIRE(42 == ffund.get());
     
     struct Foo {
@@ -261,43 +261,48 @@ SECTION("setValue") {
     };
     
     Promise<Foo> pod;
-    auto fpod = pod.get_future();
+    auto fpod = pod.getFuture();
     Foo f = {"the answer", 42};
-    pod.set_value(f);
+    pod.setValue(f);
     Foo f2 = fpod.get();
     REQUIRE(f.name == f2.name);
     REQUIRE(f.value == f2.value);
     
     pod = Promise<Foo>();
-    fpod = pod.get_future();
-    pod.set_value(std::move(f2));
+    fpod = pod.getFuture();
+    pod.setValue(std::move(f2));
     Foo f3 = fpod.get();
     REQUIRE(f.name == f3.name);
     REQUIRE(f.value == f3.value);
     
     Promise<std::unique_ptr<int>> mov;
-    auto fmov = mov.get_future();
-    mov.set_value(std::make_unique<int>(42));
+    auto fmov = mov.getFuture();
+    mov.setValue(std::make_unique<int>(42));
     std::unique_ptr<int> ptr = std::move(fmov).get();
     REQUIRE(42 == *ptr);
     
     Promise<void> v;
-    auto fv = v.get_future();
-    v.set_value();
+    auto fv = v.getFuture();
+    v.setValue();
     REQUIRE(fv.isReady());
+  
+    Promise<void> y;
+    auto fy = y.getFuture();
+    y.setValue();
+    REQUIRE(fy.isReady());
   }
   
 SECTION("setException") {
     {
-      Promise<void> p;
-      auto f = p.get_future();
-      p.set_exception(eggs);
+      Promise<int> p;
+      auto f = p.getFuture();
+      p.setException(eggs);
       REQUIRE_THROWS_AS(f.get(), eggs_t);
     }
     {
-      Promise<void> p;
-      auto f = p.get_future();
-      p.set_exception(std::make_exception_ptr(eggs));
+      Promise<int> p;
+      auto f = p.getFuture();
+      p.setException(std::make_exception_ptr(eggs));
       REQUIRE_THROWS_AS(f.get(), eggs_t);
     }
   }
@@ -305,13 +310,13 @@ SECTION("setException") {
 SECTION("setWith") {
     {
       Promise<int> p;
-      auto f = p.get_future();
+      auto f = p.getFuture();
       p.setWith([] { return 42; });
       REQUIRE(42 == f.get());
     }
     {
       Promise<int> p;
-      auto f = p.get_future();
+      auto f = p.getFuture();
       p.setWith([]() -> int { throw eggs; });
       REQUIRE_THROWS_AS(f.get(), eggs_t);
     }
@@ -321,22 +326,22 @@ SECTION("isFulfilled") {
     Promise<int> p;
     
     REQUIRE_FALSE(p.isFulfilled());
-    p.set_value(42);
+    p.setValue(42);
     REQUIRE(p.isFulfilled());
   }
   
 SECTION("isFulfilledWithFuture") {
     Promise<int> p;
-    auto f = p.get_future(); // so core_ will become null
+    auto f = p.getFuture(); // so core_ will become null
     
     REQUIRE_FALSE(p.isFulfilled());
-    p.set_value(42); // after here
+    p.setValue(42); // after here
     REQUIRE(p.isFulfilled());
   }
   
 SECTION("brokenOnDelete") {
     auto p = std::make_unique<Promise<int>>();
-    auto f = p->get_future();
+    auto f = p->getFuture();
     
     REQUIRE_FALSE(f.isReady());
     
@@ -347,16 +352,16 @@ SECTION("brokenOnDelete") {
     auto t = f.getTry();
   
     REQUIRE(t.hasException());
-    REQUIRE_THROWS_AS(t.throwIfFailed(), std::future_error);
+    REQUIRE_THROWS_AS(t.throwIfFailed(), FutureException);
     //REQUIRE(t.hasException<BrokenPromise>());
   }
   
 /*SECTION("brokenPromiseHasTypeInfo") {
     auto pInt = std::make_unique<Promise<int>>();
-    auto fInt = pInt->get_future();
+    auto fInt = pInt->getFuture();
     
     auto pFloat = std::make_unique<Promise<float>>();
-    auto fFloat = pFloat->get_future();
+    auto fFloat = pFloat->getFuture();
     
     pInt.reset();
     pFloat.reset();

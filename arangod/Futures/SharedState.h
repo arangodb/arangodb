@@ -52,6 +52,7 @@ class SharedState {
     
     ~SharedStateScope() {
       if (_state) {
+        _state->_callback = nullptr;
         _state->detachOne();
       }
     }
@@ -243,6 +244,7 @@ class SharedState {
     auto a = _attached.fetch_sub(1, std::memory_order_acq_rel);
     TRI_ASSERT(a >= 1);
     if (a == 1) {
+      _callback = nullptr;
       delete this;
     }
   }

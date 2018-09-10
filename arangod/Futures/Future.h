@@ -27,6 +27,7 @@
 #include <future>
 #include <thread>
 
+#include "Futures/Exceptions.h"
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"
 #include "Futures/backports.h"
@@ -141,10 +142,19 @@ public:
     return result().hasException();
   }
   
+  template <bool x = std::is_copy_constructible<T>::value,
+            std::enable_if_t<x,int> = 0>
   T get() & {
     wait();
     return result().get();
   }
+  
+  /*template <bool x = !std::is_same<T, void>::value>>
+  template std::enable_if<x,T&>::type
+   get() & {
+    wait();
+    return result().get();
+  }*/
   
   /// waits and moves the result out
   T get() && {
@@ -263,17 +273,17 @@ public:
     static_assert(is_invocable_r<B, F, T>::value, "Function must be invocable with T");
     
     Promise<B> promise;
-    auto future = promise.get_future();
+    auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       try {
         if (t.hasException()) {
-          pr.set_exception(std::move(t).exception());
+          pr.setException(std::move(t).exception());
         } else {
           pr.setTry(makeTryWith([&]{ return detail::invoke(fn, std::move(t).get()); }));
         }
       } catch(...) {
-        pr.set_exception(std::current_exception());
+        pr.setException(std::current_exception());
       }
     });
     return std::move(future);
@@ -291,12 +301,12 @@ public:
     static_assert(is_invocable_r<Future<B>, F, T>::value, "Function must be invocable with T");
     
     Promise<B> promise;
-    auto future = promise.get_future();
+    auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       try {
         if (t.hasException()) {
-          pr.set_exception(std::move(t).exception());
+          pr.setException(std::move(t).exception());
         } else {
           detail::invoke(fn, std::move(t).get())
           .then([pr = std::move(pr)] (Try<B>&& t) mutable {
@@ -304,7 +314,7 @@ public:
           });
         }
       } catch(...) {
-        pr.set_exception(std::current_exception());
+        pr.setException(std::current_exception());
       }
     });
     return std::move(future);
@@ -321,13 +331,13 @@ public:
     static_assert(!isFuture<B>::value, "");
     
     Promise<B> promise;
-    auto future = promise.get_future();
+    auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       try {
         pr.setTry(makeTryWith([&]{ return detail::invoke(fn, std::move(t)); }));
       } catch(...) {
-        pr.set_exception(std::current_exception());
+        pr.setException(std::current_exception());
       }
     });
     return std::move(future);
@@ -344,7 +354,7 @@ public:
     static_assert(!isFuture<B>::value, "");
     
     Promise<B> promise;
-    auto future = promise.get_future();
+    auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       try {
@@ -353,7 +363,7 @@ public:
           pr.setTry(std::move(t));
         });
       } catch(...) {
-        pr.set_exception(std::current_exception());
+        pr.setException(std::current_exception());
       }
     });
     return std::move(future);
@@ -375,14 +385,15 @@ public:
   Future<T>>::type
   thenError(F&& func) && {
     Promise<T> promise;
-    auto future = promise.get_future();
+    auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
         } catch(ExceptionType const& e) {
-          pr.set_value(std::move(fn(e)));
+          pr.setValue(std::move(fn(e)));
+          //pr.setTry(makeTryWith([&]{ return detail::invoke(fn, std::move(e)); }));
         }
       } else {
         pr.setTry(std::move(t));
@@ -398,7 +409,7 @@ public:
   Future<T>>::type
   thenError(F&& func) && {
     Promise<T> promise;
-    auto future = promise.get_future();
+    auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -423,13 +434,13 @@ private:
   // convenience method that checks if _state is set
   inline detail::SharedState<T>& getState() {
     if (!_state) {
-      throw std::future_error(std::future_errc::no_state);
+      throw FutureException(ErrorCode::NoState);
     }
     return *_state;
   }
   inline detail::SharedState<T> const& getState() const {
     if (!_state) {
-      throw std::future_error(std::future_errc::no_state);
+      throw FutureException(ErrorCode::NoState);
     }
     return *_state;
   }
@@ -445,7 +456,7 @@ private:
   static decltype(auto) getStateTryChecked(Self& self) {
     auto& state = self.getState();
     if (!state.hasResult()) {
-      throw std::logic_error("future not ready");
+      throw FutureException(ErrorCode::FutureNotReady);
     }
     return state.getTry();
   }
