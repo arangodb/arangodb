@@ -550,6 +550,32 @@ bool Graph::hasOrphanCollection(std::string const& collectionName) const {
   return orphanCollections().find(collectionName) != orphanCollections().end();
 }
 
+void Graph::renameCollections(std::string const& oldName, std::string const& newName) const {
+  renameVertexCollections(oldName, newName);
+  renameEdgeCollections(oldName, newName);
+}
+
+void Graph::renameVertexCollections(std::string const& oldName, std::string const& newName) const {
+  for (auto const& it : edgeDefinitions()) {
+    std::set<std::string>::iterator counter;
+    counter = it.second.getFrom().find(oldName);
+    if (counter != it.second.getFrom().end()) {
+      // found vertex collection
+      it.second.getFrom().erase(oldName);
+    }
+    counter = it.second.getTo().find(oldName);
+    if (counter != it.second.getTo().end()) {
+      // found vertex collection
+    }
+  }
+  if (orphanCollections().find(oldName) != orphanCollections().end()) {
+    // found orphan
+  }
+}
+
+void Graph::renameEdgeCollections(std::string const& oldName, std::string const& newName) const {
+}
+
 void Graph::graphForClient(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("graph"));

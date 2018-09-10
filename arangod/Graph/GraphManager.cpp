@@ -126,6 +126,11 @@ bool GraphManager::renameGraphCollection(std::string const& oldName, std::string
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    graph->renameCollections(oldName, newName);
+    return Result{};
+  };
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -160,6 +165,8 @@ bool GraphManager::renameGraphCollection(std::string const& oldName, std::string
     if (graph->isSmart()) {
       continue;
     }
+
+    // TODO modify object, then call toPersistence
 
     builder.openObject();
     builder.add(StaticStrings::KeyString, VPackValue(graphSlice.get(StaticStrings::KeyString).copyString()));

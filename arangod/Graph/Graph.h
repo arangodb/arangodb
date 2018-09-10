@@ -154,6 +154,10 @@ class Graph {
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
 
+  void renameCollections(std::string const& oldName, std::string const& newName) const;
+  void renameVertexCollections(std::string const& oldName, std::string const& newName) const;
+  void renameEdgeCollections(std::string const& oldName, std::string const& newName) const;
+
   boost::optional<EdgeDefinition const&> getEdgeDefinition(
       std::string const& collectionName) const;
 
