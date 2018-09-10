@@ -34,13 +34,15 @@ describe('Grants', function() {
     db._create('grants');
   });
   afterEach(function() {
-    users.remove('hans');
     let resp = request.put({
       url: '/_admin/server/mode',
       body: {'mode': 'default'},
       json: true,
     });
     expect(resp.statusCode).to.equal(200);
+    try {
+      users.remove('hans');
+    } catch (err) { }
   });
   after(function() {
     db._drop('grants');
