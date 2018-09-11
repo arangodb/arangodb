@@ -32,6 +32,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemRow;
+class AqlItemMatrix;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -62,6 +63,38 @@ class SingleRowFetcher {
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
   virtual std::pair<ExecutionState, AqlItemRow const*> fetchRow() = 0;
+};
+
+/**
+ * @brief Interface for all AqlExecutors that do need all
+ *        rows at a time in order to make progress.
+ *        The guarantee is the following:
+ *        If fetchAllRows returns a matrix the pointer to
+ *        this matrix stays valid until the next call
+ *        of fetchAllRows.
+ */
+class AllRowsFetcher {
+ public:
+  AllRowsFetcher() = default;
+  virtual ~AllRowsFetcher() = default;
+
+  /**
+   * @brief Fetch one new AqlItemRow from upstream.
+   *        **Guarantee**: the pointer returned is valid only
+   *        until the next call to fetchRow.
+   *
+   * @return A pair with the following properties:
+   *         ExecutionState:
+   *           WAITING => IO going on, immediatly return to caller.
+   *           DONE => No more to expect from Upstream, if you are done with this row return DONE to caller.
+   *           HASMORE => There is potentially more from above, call again if you need more input.
+   *         AqlItemRow:
+   *           If WAITING => Do not use this Row, it is a nullptr.
+   *           If HASMORE => The Row is guaranteed to not be a nullptr.
+   *           If DONE => Row can be a nullptr (nothing received) or valid.
+   */
+  virtual std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows() = 0;
+
 };
 
 } // aql
