@@ -76,7 +76,7 @@ function createErrorRoute (service, error, body, title) {
       action: {
         callback (req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
-          if (!accepts(req).type('html')) {
+          if (accepts(req).type('json', 'html') !== 'html') {
             const body = {
               error: true,
               errorNum: service.isDevelopment && error.errorNum || errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code,
