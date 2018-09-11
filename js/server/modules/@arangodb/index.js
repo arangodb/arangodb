@@ -82,18 +82,7 @@ exports.db = internal.db;
 exports.plainServerVersion = function () {
   let version = internal.version;
 
-  if (semver.valid(version) === null) {
-    let devel = version.match(/(.*)\.devel/);
-    if (devel !== null) {
-      version = devel[1] + '.0';
-    } else {
-      devel = version.match(/(.*)((milestone|alpha|beta|devel|rc)[0-9]*)$/);
-
-      if (devel !== null) {
-        version = devel[1] + '0';
-      }
-    }
-  } else {
+  if (semver.valid(version)) {
     version = semver.major(version) + '.' + semver.minor(version) + '.' + semver.patch(version);
   }
 
