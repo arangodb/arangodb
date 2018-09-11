@@ -15,22 +15,22 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104814"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104814"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFA2--_"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104846"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104846"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zni--_"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">-0.002</span>, 
+        <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
       ] 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104820"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104820"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XUJzFA2--D"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104840"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104840"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zne--D"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">0.002</span>, 
+        <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
       ] 
     } 

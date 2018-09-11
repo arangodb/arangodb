@@ -169,15 +169,18 @@ EnumerateListBlock::getSome(size_t atMost) {
 }
 
 std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
     size_t skipped = _inflight;
     _inflight = 0;
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
     return {ExecutionState::DONE, skipped};
   }
   while (_inflight < atMost) {
     size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
       return {ExecutionState::WAITING, 0};
     }
     if (bufferState == BufferState::NO_MORE_BLOCKS) {
@@ -231,7 +234,9 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
 
   size_t skipped = _inflight;
   _inflight = 0;
-  return {getHasMoreState(), skipped};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 /// @brief create an AqlValue from the inVariable using the current _index

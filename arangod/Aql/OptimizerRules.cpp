@@ -5113,6 +5113,11 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
       node->clearOutVariableNew();
       modified = true;
     }
+
+    if (!n->hasParent()) {
+      node->producesResults(false);
+      modified = true;
+    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);
