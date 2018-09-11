@@ -305,8 +305,10 @@ void Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
-
-  _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  {
+    MUTEX_LOCKER(lock, _timerMutex);
+    _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  }
 
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
@@ -317,6 +319,7 @@ void Task::start() {
 }
 
 void Task::queue(std::chrono::microseconds offset) {
+  MUTEX_LOCKER(lock, _timerMutex);
   _timer->expires_from_now(offset);
   _timer->async_wait(callbackFunction());
 }
@@ -326,7 +329,10 @@ void Task::cancel() {
   _periodic.store(false);
 
   asio::error_code ec;
-  _timer->cancel(ec);
+  {
+    MUTEX_LOCKER(lock, _timerMutex);
+    _timer->cancel(ec);
+  }
 }
 
 std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {

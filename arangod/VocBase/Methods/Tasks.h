@@ -95,6 +95,7 @@ class Task : public std::enable_shared_from_this<Task> {
   std::string _user;
 
   std::unique_ptr<asio::steady_timer> _timer;
+  Mutex _timerMutex;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;
