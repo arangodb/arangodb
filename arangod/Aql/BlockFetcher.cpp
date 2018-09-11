@@ -20,32 +20,4 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AllRowsFetcher.h"
-
-#include "Aql/AqlItemBlock.h"
-#include "Aql/BlockFetcher.h"
-#include "Aql/SortExecutor.h"
-
-using namespace arangodb;
-using namespace arangodb::aql;
-
-std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-AllRowsFetcher::AllRowsFetcher(BlockFetcher& executionBlock)
-    : _blockFetcher(&executionBlock) {}
-
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-AllRowsFetcher::fetchBlock() {
-  auto res = _blockFetcher->fetchBlock();
-
-  _upstreamState = res.first;
-
-  return res;
-}
-
-RegisterId AllRowsFetcher::getNrInputRegisters() const {
-  return _blockFetcher->getNrInputRegisters();
-}
+#include "BlockFetcher.h"

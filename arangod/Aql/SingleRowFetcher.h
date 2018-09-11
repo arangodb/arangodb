@@ -34,8 +34,8 @@
 namespace arangodb {
 namespace aql {
 
-class ExecutionBlock;
 class AqlItemBlock;
+class BlockFetcher;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -47,11 +47,11 @@ class AqlItemBlock;
  */
 class SingleRowFetcher {
  public:
-  explicit SingleRowFetcher(ExecutionBlock& executionBlock);
+  explicit SingleRowFetcher(BlockFetcher& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _executionBlock!
+  // only for testing! Does not initialize _blockFetcher!
   SingleRowFetcher() = default;
 
  public:
@@ -76,7 +76,7 @@ class SingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, const AqlItemRow*> fetchRow();
 
  private:
-  ExecutionBlock* _executionBlock;
+  BlockFetcher* _blockFetcher;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.

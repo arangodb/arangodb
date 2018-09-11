@@ -41,8 +41,9 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node)
     : ExecutionBlock(engine, node),
       _infos(0, 0),
-      _fetcher(*this),
-      _executor(_fetcher, _infos) {}
+      _blockFetcher(*this),
+      _rowFetcher(_blockFetcher),
+      _executor(_rowFetcher, _infos) {}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
