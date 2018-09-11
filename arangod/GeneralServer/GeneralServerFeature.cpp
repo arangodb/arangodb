@@ -287,7 +287,7 @@ void GeneralServerFeature::defineHandlers() {
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto traverserEngineRegistry =
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
   if (_combinedRegistries == nullptr) {
     _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
   } else {
