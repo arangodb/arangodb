@@ -29,7 +29,6 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/ResourceUsage.h"
