@@ -11,23 +11,9 @@ Installer
   there are multiple instances of the same ArangoDB version running on the same host,
   and only some of them shall be upgraded, or they should be upgraded one after the
   other.
-* The windows installer doesn't offer a way to continue the installation if it failed
-  because of a locked database.
-
-Windows
--------
-
-* the ArangoDB starter is currently not part of the package
-
-Ubuntu
-------
 
 * Ubuntu 14.04 is not yet supported
 
-Cluster
--------
-
-* sometimes the shutdown order in the cluster will cause the shutdown to hang infinitely.
 
 Modify documents in cluster using AQL and an incorrect custom shard key
 -----------------------------------------------------------------------
@@ -55,5 +41,3 @@ ArangoSearch
 * "NONE" read permission is not checked for a single link in a view with multiple links where others are "RW" for a user in cluster (internal #452)
 * ArangoSearch doesn't support joins with satellite collections (internal #440)
 * RocksDB recovery fails sometimes after renaming a view (internal #469)
-
-
