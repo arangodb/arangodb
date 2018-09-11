@@ -44,9 +44,31 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine, Execut
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
+
+struct RegInfo {
+  std::size_t numInRegs;
+  std::size_t numOutRegs;
+  std::unordered_set<RegisterId> _regsToClear;
+};
+
+RegInfo getRegisterInfo( ExecutionBlock* thisBlock
+                       , ExecutionNode* thisPlanNode
+                       , ExecutionNode* previousPlanNode
+                       ){
+  // find out exact in-regs
+  return { thisBlock->getNrInputRegisters()
+         , thisBlock->getNrOutputRegisters()
+         , thisPlanNode->getRegsToClear()
+         };
+}
+
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, this->getNrOutputRegisters());
+
+  auto regInfo = getRegisterInfo(this, this->getPlanNode(), this->getPlanNode()->getFirstDependency());
+
+  //auto resultBlockManges = this->requestBlock(atMost, this->getNrOutputRegisters());
+  auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOutRegs);
   std::size_t rowsAdded = 0;
 
   ExecutionState state;
