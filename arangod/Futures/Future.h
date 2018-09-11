@@ -447,10 +447,11 @@ public:
   /// be called with a known exception type and returns a `T`
   template <typename ExceptionType, typename F,
             typename R = std::result_of_t<F(ExceptionType)>>
-  typename std::enable_if<is_invocable<F, ExceptionType>::value && !isFuture<R>::value,
-  Future<typename lift_unit<R>::type>>::type
+  typename std::enable_if<!isFuture<R>::value,
+                          Future<typename lift_unit<R>::type>>::type
   thenError(F&& func) && {
     typedef typename lift_unit<R>::type B;
+    typedef std::decay_t<ExceptionType> ET;
     
     Promise<B> promise;
     auto future = promise.getFuture();
@@ -459,7 +460,7 @@ public:
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
-        } catch(ExceptionType& e) {
+        } catch(ET& e) {
           pr.setTry(detail::makeTryWith([&fn, &e]() mutable {
             return futures::invoke(std::forward<F>(fn), e);
           }));
@@ -477,10 +478,11 @@ public:
   /// be called with a known exception type and returns a `Future<T>`
   template <typename ExceptionType, typename F,
             typename R = std::result_of_t<F(ExceptionType)>>
-  typename std::enable_if<is_invocable<F, ExceptionType>::value && isFuture<R>::value,
+  typename std::enable_if<isFuture<R>::value,
   Future<typename isFuture<R>::inner>>::type
   thenError(F&& func) && {
     typedef typename isFuture<R>::inner B;
+    typedef std::decay_t<ExceptionType> ET;
     
     Promise<B> promise;
     auto future = promise.getFuture();
@@ -489,10 +491,14 @@ public:
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
-        } catch(ExceptionType const& e) {
-          std::forward<F>(fn)(e).then([pr = std::move(pr)](Try<B>&& t) mutable {
-            pr.setTry(std::move(t));
-          });
+        } catch(ET& e) {
+          try {
+            futures::invoke(fn, e).then([pr = std::move(pr)](Try<B>&& t) mutable {
+              pr.setTry(std::move(t));
+            });
+          } catch (...) {
+            pr.setException(std::current_exception());
+          }
         } catch(...) {
           pr.setException(std::current_exception());
         }

@@ -56,15 +56,12 @@ namespace {
   typedef std::domain_error eggs_t;
   static eggs_t eggs("eggs");
   
-  /*Future<int> onErrorHelperEggs(const eggs_t&) {
+  Future<int> onErrorHelperEggs(const eggs_t&) {
     return makeFuture(10);
   }
   Future<int> onErrorHelperGeneric(const std::exception&) {
     return makeFuture(20);
   }
-  Future<int> onErrorHelperWrapper(folly::exception_wrapper&&) {
-    return makeFuture(30);
-  }*/
   
   struct SchedulerTestSetup {
     arangodb::application_features::ApplicationServer server;
@@ -494,98 +491,98 @@ theFlag = false;       \
       EXPECT_FLAG();
       REQUIRE_NOTHROW(f.get());
     }
-//
-//    // Function pointer
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw eggs; })
-//      .onError(onErrorHelperEggs)
-//      .onError(onErrorHelperGeneric);
-//      REQUIRE(10 == f.value());
-//    }
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw std::runtime_error("test"); })
-//      .onError(onErrorHelperEggs)
-//      .onError(onErrorHelperGeneric);
-//      REQUIRE(20 == f.value());
-//    }
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw std::runtime_error("test"); })
-//      .onError(onErrorHelperEggs);
-//      REQUIRE_THROWS_AS(f.value(), std::runtime_error);
-//    }
-//
-//    // No throw
-//    {
-//      auto f = makeFuture().thenValue([] { return 42; }).thenError([&](eggs_t& /* e */) {
-//        flag();
-//        return -1;
-//      });
-//      EXPECT_NO_FLAG();
-//      REQUIRE(42 == f.value());
-//    }
-//
-//    {
-//      auto f = makeFuture().thenValue([] { return 42; }).thenError([&](eggs_t& /* e */) {
-//        flag();
-//        return makeFuture<int>(-1);
-//      });
-//      EXPECT_NO_FLAG();
-//      REQUIRE(42 == f.value());
-//    }
-//
-//    // Catch different exception
-//    {
-//      auto f = makeFuture()
-//      .thenValue([] { throw eggs; })
-//      .thenError([&](std::logic_error& /* e */) { flag(); });
-//      EXPECT_NO_FLAG();
-//      REQUIRE_THROWS_AS(f.value(), eggs_t);
-//    }
-//
-//    {
-//      auto f = makeFuture()
-//      .thenValue([] { throw eggs; })
-//      .thenError([&](std::logic_error& /* e */) {
-//        flag();
-//        return makeFuture();
-//      });
-//      EXPECT_NO_FLAG();
-//      REQUIRE_THROWS_AS(f.value(), eggs_t);
-//    }
-//
-//    // Returned value propagates
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw eggs; })
-//      .thenError([&](eggs_t& /* e */) { return 42; });
-//      REQUIRE(42 == f.value());
-//    }
-//
-//    // Returned future propagates
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw eggs; })
-//      .thenError([&](eggs_t& /* e */) { return makeFuture<int>(42); });
-//      REQUIRE(42 == f.value());
-//    }
-//
-//    // Throw in callback
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw eggs; })
-//      .thenError([&](eggs_t& e) -> int { throw e; });
-//      REQUIRE_THROWS_AS(f.value(), eggs_t);
-//    }
-//
-//    {
-//      auto f = makeFuture()
-//      .thenValue([]() -> int { throw eggs; })
-//      .thenError([&](eggs_t& e) -> Future<int> { throw e; });
-//      REQUIRE_THROWS_AS(f.value(), eggs_t);
-//    }
+
+    // Function pointer
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw eggs; })
+      .thenError<const eggs_t&>(onErrorHelperEggs)
+      .thenError<std::exception>(onErrorHelperGeneric);
+      REQUIRE(10 == f.get());
+    }
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
+      .thenError<const eggs_t&>(onErrorHelperEggs)
+      .thenError<std::exception>(onErrorHelperGeneric);
+      REQUIRE(20 == f.get());
+    }
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
+      .thenError<const eggs_t&>(onErrorHelperEggs);
+      REQUIRE_THROWS_AS(f.get(), std::runtime_error);
+    }
+
+    // No throw
+    {
+      auto f = makeFuture().thenValue([](Unit) { return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
+        flag();
+        return -1;
+      });
+      EXPECT_NO_FLAG();
+      REQUIRE(42 == f.get());
+    }
+
+    {
+      auto f = makeFuture().thenValue([](Unit){ return 42; }).thenError<eggs_t&>([&](eggs_t& /* e */) {
+        flag();
+        return makeFuture<int>(-1);
+      });
+      EXPECT_NO_FLAG();
+      REQUIRE(42 == f.get());
+    }
+
+    // Catch different exception
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) { throw eggs; })
+      .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) { flag(); });
+      EXPECT_NO_FLAG();
+      REQUIRE_THROWS_AS(f.get(), eggs_t);
+    }
+
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) { throw eggs; })
+      .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) {
+        flag();
+        return makeFuture();
+      });
+      EXPECT_NO_FLAG();
+      REQUIRE_THROWS_AS(f.get(), eggs_t);
+    }
+
+    // Returned value propagates
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& /* e */) { return 42; });
+      REQUIRE(42 == f.get());
+    }
+
+    // Returned future propagates
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& /* e */) { return makeFuture<int>(42); });
+      REQUIRE(42 == f.get());
+    }
+
+    // Throw in callback
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& e) -> int { throw e; });
+      REQUIRE_THROWS_AS(f.get(), eggs_t);
+    }
+
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& e) -> Future<int> { throw e; });
+      REQUIRE_THROWS_AS(f.get(), eggs_t);
+    }
   
 //    // exception_wrapper, return Future<T>
 //    {
