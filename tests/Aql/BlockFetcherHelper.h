@@ -28,6 +28,7 @@
 
 #include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ResourceUsage.h"
 
 #include <Basics/Common.h>
 #include <velocypack/Buffer.h>
@@ -37,6 +38,7 @@
 namespace arangodb {
 
 namespace aql {
+class AqlItemBlock;
 class AqlItemRow;
 }
 
@@ -58,6 +60,8 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
   uint64_t _nrItems;
   uint64_t _nrCalled;
   bool _didWait;
+  arangodb::aql::ResourceMonitor _resourceMonitor;
+  std::unique_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
 };
 
 class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
@@ -74,7 +78,8 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
   bool _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrCalled;
-  bool _didWait;
+  arangodb::aql::ResourceMonitor _resourceMonitor;
+  std::unique_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
 };
 
 
