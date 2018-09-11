@@ -249,7 +249,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "initial synchronization with master took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6)
-        << " s. status: " << r.errorMessage();
+        << " s. status: " << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {

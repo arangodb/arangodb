@@ -46,7 +46,7 @@ struct ExecutionStats {
   struct Node {
     size_t calls = 0;
     size_t items = 0;
-    double runtime = 0;
+    double runtime = 0.0;
     ExecutionStats::Node& operator+=(ExecutionStats::Node const& other) {
       calls += other.calls;
       items += other.items;
