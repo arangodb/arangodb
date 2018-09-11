@@ -434,46 +434,49 @@ void config_t::update(query_t const& message) {
   }
 }
 
+
+void config_t::toBuilder(VPackBuilder& builder) const {
+  
+  VPackObjectBuilder a(&builder);
+  READ_LOCKER(readLocker, _lock);
+  {
+    
+    builder.add(VPackValue(poolStr));
+    { VPackObjectBuilder bb(&builder);
+      for (auto const& i : _pool) {
+        builder.add(i.first, VPackValue(i.second));
+      }}
+
+    builder.add(VPackValue(activeStr));
+    { VPackArrayBuilder bb(&builder);
+      for (auto const& i : _active) {
+        builder.add(VPackValue(i));
+      }}
+
+    builder.add(idStr, VPackValue(_id));
+    builder.add(agencySizeStr, VPackValue(_agencySize));
+    builder.add(poolSizeStr, VPackValue(_poolSize));
+    builder.add(endpointStr, VPackValue(_endpoint));
+    builder.add(minPingStr, VPackValue(_minPing));
+    builder.add(maxPingStr, VPackValue(_maxPing));
+    builder.add(timeoutMultStr, VPackValue(_timeoutMult));
+    builder.add(supervisionStr, VPackValue(_supervision));
+    builder.add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
+    builder.add(compactionStepSizeStr, VPackValue(_compactionStepSize));
+    builder.add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
+    builder.add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
+    builder.add(versionStr, VPackValue(_version));
+    builder.add(startupStr, VPackValue(_startup));
+
+  }
+  
+}
+
+
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
-
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  {
-    VPackObjectBuilder b(ret.get());
-    READ_LOCKER(readLocker, _lock);
-
-    ret->add(VPackValue(poolStr));
-    {
-      VPackObjectBuilder bb(ret.get());
-      for (auto const& i : _pool) {
-        ret->add(i.first, VPackValue(i.second));
-      }
-    }
-
-    ret->add(VPackValue(activeStr));
-    {
-      VPackArrayBuilder bb(ret.get());
-      for (auto const& i : _active) {
-        ret->add(VPackValue(i));
-      }
-    }
-
-    ret->add(idStr, VPackValue(_id));
-    ret->add(agencySizeStr, VPackValue(_agencySize));
-    ret->add(poolSizeStr, VPackValue(_poolSize));
-    ret->add(endpointStr, VPackValue(_endpoint));
-    ret->add(minPingStr, VPackValue(_minPing));
-    ret->add(maxPingStr, VPackValue(_maxPing));
-    ret->add(timeoutMultStr, VPackValue(_timeoutMult));
-    ret->add(supervisionStr, VPackValue(_supervision));
-    ret->add(supervisionFrequencyStr, VPackValue(_supervisionFrequency));
-    ret->add(compactionStepSizeStr, VPackValue(_compactionStepSize));
-    ret->add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
-    ret->add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
-    ret->add(versionStr, VPackValue(_version));
-    ret->add(startupStr, VPackValue(_startup));
-  }
-
+  toBuilder(*ret);
   return ret;
 }
 
@@ -667,4 +670,52 @@ bool config_t::merge(VPackSlice const& conf) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << ss.str();
   ++_version;
   return true;
+}
+
+
+
+void config_t::updateConfiguration(VPackSlice const& other) {
+
+  WRITE_LOCKER(writeLocker, _lock);
+  
+  auto pool = other.get(poolStr);
+  TRI_ASSERT(pool.isObject());
+  _pool.clear();
+  for (auto const p : VPackObjectIterator(pool)) {
+    _pool[p.key.copyString()] = p.value.copyString();
+  }
+  _poolSize = _pool.size();
+
+  auto active = other.get(activeStr);
+  TRI_ASSERT(active.isArray());
+  _active.clear();
+  for (auto const id : VPackArrayIterator(active)) {
+    _active.push_back(id.copyString());
+  }
+  _agencySize = _pool.size();
+  
+  if (other.hasKey(minPingStr)) {
+    _minPing = other.get(minPingStr).getNumber<double>();
+  }
+  if (other.hasKey(maxPingStr)) {
+    _maxPing = other.get(maxPingStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionStr)) {
+    _supervision = other.get(supervisionStr).getBoolean();
+  }
+  if (other.hasKey(supervisionFrequencyStr)) {
+    _supervisionFrequency = other.get(supervisionFrequencyStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionGracePeriodStr)) {
+    _supervisionGracePeriod = other.get(supervisionGracePeriodStr).getNumber<double>();
+  }
+  if (other.hasKey(compactionStepSizeStr)) {
+    _compactionStepSize = other.get(compactionStepSizeStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(compactionKeepSizeStr)) {
+    _compactionKeepSize = other.get(compactionKeepSizeStr).getNumber<uint64_t>();
+  }
+  
+  ++_version;
+  
 }

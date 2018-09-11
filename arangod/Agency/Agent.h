@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgencyStrings.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
@@ -301,6 +302,9 @@ class Agent final : public arangodb::Thread,
 
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
+
+  /// @brief add agent to configuration (from State after successful local persistence)
+  void updateConfiguration(VPackSlice const&);
 
  private:
 

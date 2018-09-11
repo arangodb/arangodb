@@ -29,6 +29,7 @@ using namespace arangodb::consensus;
 
 std::string const arangodb::consensus::DATABASES = "Databases";
 std::string const arangodb::consensus::COLLECTIONS = "Collections";
+std::string const arangodb::consensus::RECONFIGURE = ".agency";
 std::string const arangodb::consensus::VERSION = "Version";
 
 std::string const arangodb::consensus::CURRENT = "Current"; 

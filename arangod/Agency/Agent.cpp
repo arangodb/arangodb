@@ -1323,6 +1323,8 @@ void Agent::run() {
 
 void Agent::persistConfiguration(term_t t) {
 
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
+
   // Agency configuration
   auto agency = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(agency.get());
@@ -1337,6 +1339,8 @@ void Agent::persistConfiguration(term_t t) {
           agency->add("size", VPackValue(size()));
           agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
         }}}}
+
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
 
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
@@ -1740,12 +1744,60 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
 
-    /// disagreement over pool membership: fatal!
-    if (!_config.upsertPool(pslice, id)) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
-      FATAL_ERROR_EXIT();
+    
+    /// Only leaders can update pool through RAFT
+    if (_config.poolComplete()) {
+
+      if (!challengeLeadership()) {
+        auto tmp = _config;
+
+        auto query = std::make_shared<VPackBuilder>();
+        { VPackArrayBuilder trs(query.get());
+          { VPackArrayBuilder tr(query.get());
+            query->add(VPackValue(RECONFIGURE));
+            { VPackObjectBuilder c(query.get());
+              _config.toBuilder(*query); }}}
+
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "persisting new agency configuration via RAFT: " << query->toJson();
+            
+        // Do write
+        write_ret_t ret;
+        try {
+          ret = write(query, true);
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "failed to write new agency to RAFT" << e.what();
+        }
+      
+        // Single write in transaction:
+        arangodb::consensus::index_t max_index = 0;
+        try {
+          max_index =
+            *std::max_element(ret.indices.begin(), ret.indices.end());
+        } catch (std::exception const& e) {
+          LOG_TOPIC(WARN, Logger::AGENCY)
+            << "failed to write new agency to RAFT" << e.what();
+        }
+        
+        if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
+          auto result = waitFor(max_index);
+          if (result != Agent::raft_commit_t::OK) {
+#warning Report error
+          }
+        }
+      } else {
+#warning Report error
+      }
+      
+    } else {
+      if (!_config.upsertPool(pslice, id)) {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+        FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
+      }
     }
 
+      
     if (!isCallback) { // no gain in callback to a callback.
       auto pool = _config.pool();
       auto active = _config.active();
@@ -1875,6 +1927,10 @@ bool Agent::isTrxOngoing(std::string& id) {
 
 Inception const* Agent::inception() const {
   return _inception.get();
+}
+
+void Agent::updateConfiguration(Slice const& slice) {
+  _config.updateConfiguration(slice);
 }
 
 }}  // namespace

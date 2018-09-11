@@ -174,6 +174,9 @@ struct config_t {
   /// @brief vpack representation
   query_t toBuilder() const;
 
+  /// @brief vpack representation
+  void toBuilder(VPackBuilder&) const;
+
   /// @brief set id
   bool setId(std::string const& i);
 
@@ -227,6 +230,9 @@ struct config_t {
 
   /// @brief Update an indivdual uuid's endpoint
   bool updateEndpoint(std::string const&, std::string const&);
+
+  /// @brief Update configuration with an other
+  void updateConfiguration(VPackSlice const& other);
 
 };
 }

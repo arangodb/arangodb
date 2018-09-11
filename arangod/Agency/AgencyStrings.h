@@ -29,6 +29,7 @@ namespace consensus {
 extern std::string const COLLECTIONS;
 extern std::string const DATABASES;
 extern std::string const VERSION;
+extern std::string const RECONFIGURE;
 
 extern std::string const CURRENT;
 extern std::string const CURRENT_VERSION;
