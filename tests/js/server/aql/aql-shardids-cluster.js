@@ -687,7 +687,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* TODO reenable once index-modify-filter bug is fixed
     testInnerOuterSameIndex5 : function () {
       dropIndexes(collectionByKey);
       collectionByKey.ensureHashIndex(shardKey);
@@ -713,7 +712,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc1.test, 1);
         }
       }
-    },*/
+    },
 
     testInnerOuterSame6 : function () {
       dropIndexes(collectionByKey);
@@ -982,7 +981,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* TODO reenable once index-modify-filter bug is fixed
     testInnerOuterSameIndex11 : function () {
       dropIndexes(collectionByKey);
       collectionByKey.ensureHashIndex(shardKey);
@@ -1008,7 +1006,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc1.test, 1);
         }
       }
-    },*/
+    },
 
     testInnerOuterSame12 : function () {
       dropIndexes(collectionByKey);
@@ -1304,7 +1302,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* TODO reenable once sharding-register-crash is fixed
     testInnerOuterSame18 : function () {
       dropIndexes(collectionByKey);
 
@@ -1552,7 +1549,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc1.test, 1);
         }
       }
-    },*/
+    },
 
     testInnerOuterSame23 : function () {
       dropIndexes(collectionByKey);
@@ -1841,7 +1838,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* TODO reenable once index-modify-filter bug is fixed
     testInnerOuterDifferentIndex5 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
@@ -1870,7 +1866,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc1.test, 1);
         }
       }
-    },*/
+    },
 
     testInnerOuterDifferent6 : function () {
       dropIndexes(collectionByKey1);
@@ -2112,7 +2108,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* TODO reenable once index-modify-filter bug is fixed
     testInnerOuterDifferentIndex10 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
@@ -2141,7 +2136,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc1.test, 1);
         }
       }
-    },*/
+    },
 
     testInnerOuterDifferent11 : function () {
       dropIndexes(collectionByKey1);
@@ -2467,7 +2462,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
-    /* TODO reenable once sharding-register-crash is fixed
     testInnerOuterDifferent17 : function () {
       dropIndexes(collectionByKey1);
       dropIndexes(collectionByKey2);
@@ -2730,7 +2724,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
           assertEqual(doc1.test, 1);
         }
       }
-    },*/
+    },
 
     testSeparateLoops : function () {
       dropIndexes(collectionByKey1);
