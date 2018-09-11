@@ -22,7 +22,7 @@ Modify documents in cluster using AQL and an incorrect custom shard key
 
   If you are running a cluster and use a custom shard key on a collection (default is `_key`)
   **and** you provide a wrong shard key in a modifying query (`UPDATE`, `REPLACE`, `DELETE`)
-  **and** the wrong shard key is on a different shard than the correct one, you’ll get a
+  **and** the wrong shard key is on a different shard than the correct one, you'll get a
   `DOCUMENT NOT FOUND` error, instead of a modification.
 
   The modification always happens if the rule is switched off.
@@ -41,7 +41,7 @@ More details can be found in [issue 6399](https://github.com/arangodb/arangodb/i
 ArangoSearch
 ------------
 
-* ArangoSearch ingores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
+* ArangoSearch ignores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
 * Creation of ArangoSearch on a large collection may cause OOM (internal #407)
 * Long-running transaction with a huge number of DML operations may cause OOM (internal #407)
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported (internal #316)
