@@ -14,7 +14,7 @@ The primary difference from `std::future` is that you can attach callbacks to Fu
 _Scheduler_ queue to manage where work runs. This enables sequential and parallel composition of Futures for cleaner asynchronous code.
 
 
-# Brief Synopsis
+# Usage Synopsis
 
 ```C++
 #include "Futures/Future.h"
@@ -53,20 +53,7 @@ foo(42)
 Promise fulfilled f2 contains 43
 ```
 
-### Pro / Conta Arguments
-
-**Pro**
-- Easy to integrate future patttern with existing callback based code (i.e. ClusterComm)
-- Fairly simple to use with synchronous code, just call `future.get()` to wait for the async operation
-- Support for exceptions is natively build in
-
-**Contra**
-- Uses an extra heap allocation per Promise / Future pair
-- Timeouts are not natively handled
-- Our implementation does not adher to the C++ standard, might become a legacy code
-- ??
-
-# Brief guide
+# Guide
 This brief guide covers the basics. For a more in-depth coverage skip to the appropriate section.
 
 Let's begin with an example using our well known `transaction::Methods` interface:
@@ -168,6 +155,22 @@ auto f2 = std::move(f)
 p.setValue(1);
 ```
 
-### Error handling
+### Aggregate Futures
+
+TODO
+
+## Pro / Conta Arguments
+
+**Pro**
+- Easy to integrate future patttern with existing callback based code (i.e. ClusterComm)
+- Fairly simple to use with synchronous code, just call `future.get()` to wait for the async operation
+- Support for exceptions is natively build in
+
+**Contra**
+- Uses an extra heap allocation per Promise / Future pair
+- Timeouts are not natively handled
+- Our implementation does not adher to the C++ standard, might become a legacy code
+- ??
+
 
 
