@@ -23,8 +23,8 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_AQL_ITEM_ROW_H 1
 
-#include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -40,56 +40,43 @@ struct AqlValue;
  * AqlItemBlock is not going out of scope.
  */
 class AqlItemRow {
-
-  public:
-
+ public:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    AqlItemRow(AqlItemBlock const* block, size_t baseIndex, size_t nrRegisters);
+  AqlItemRow(AqlItemBlock const* block, size_t baseIndex, size_t nrRegisters);
 #else
-    AqlItemRow(AqlItemBlock const* block, size_t baseIndex);
+  AqlItemRow(AqlItemBlock const* block, size_t baseIndex);
 #endif
-    
-    /**
-     * @brief Read the value of the given Variable Nr
-     *
-     * @param variableNr The register ID of the variable to read.
-     *
-     * @return The AqlValue stored in that variable.
-     */
-    inline AqlValue getValue(RegisterId variableNr) const;
 
-    /**
-     * @brief Get a reference to the value of the given Variable Nr
-     *
-     * @param variableNr The register ID of the variable to read.
-     *
-     * @return Reference to the AqlValue stored in that variable.
-     */
- 
-    inline AqlValue const& getValueReference(RegisterId variableNr) const;
+  /**
+   * @brief Get a reference to the value of the given Variable Nr
+   *
+   * @param variableNr The register ID of the variable to read.
+   *
+   * @return Reference to the AqlValue stored in that variable.
+   */
+  const AqlValue& getValue(RegisterId variableNr) const;
 
-  private:
-    /**
-     * @brief Underlying AqlItemBlock storing the data.
-     */
-    AqlItemBlock const* _block;
+ private:
+  /**
+   * @brief Underlying AqlItemBlock storing the data.
+   */
+  AqlItemBlock const* _block;
 
-    /**
-     * @brief The offset into the AqlItemBlock
-     */
-    size_t const _baseIndex;
+  /**
+   * @brief The offset into the AqlItemBlock
+   */
+  size_t const _baseIndex;
 
-    /**
-     * @brief The number of Registers available in this Row.
-     * Only relevant for sanity checks.
-     * So only available in MAINTAINER_MODE.
-     */
+  /**
+   * @brief The number of Registers available in this Row.
+   * Only relevant for sanity checks.
+   * So only available in MAINTAINER_MODE.
+   */
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    size_t const _nrRegisters;
+  size_t const _nrRegisters;
 #endif
-
 };
 
-} // arangodb::aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif
