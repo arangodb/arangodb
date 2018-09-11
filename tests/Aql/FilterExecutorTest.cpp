@@ -56,7 +56,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper<FilterExecutor> fetcher(input.steal(), false);
+      SingleRowFetcherHelper fetcher(input.steal(), false);
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
@@ -68,7 +68,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper<FilterExecutor> fetcher(input.steal(), true);
+      SingleRowFetcherHelper fetcher(input.steal(), true);
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {

@@ -26,15 +26,13 @@
 #include "Aql/SingleRowFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/FilterExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <class Executor>
-std::pair<ExecutionState, const AqlItemRow*>
-SingleRowFetcher<Executor>::fetchRow() {
+std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || _rowIndex > _currentBlock->size()) {
     ExecutionState state;
@@ -58,14 +56,11 @@ SingleRowFetcher<Executor>::fetchRow() {
   return {ExecutionState::DONE, _currentRow.get()};
 }
 
-template <class Executor>
-SingleRowFetcher<Executor>::SingleRowFetcher(
-    ExecutionBlockImpl<Executor>& executionBlock)
+SingleRowFetcher::SingleRowFetcher(ExecutionBlock& executionBlock)
     : _executionBlock(&executionBlock) {}
 
-template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-SingleRowFetcher<Executor>::fetchBlock() {
+SingleRowFetcher::fetchBlock() {
   auto res = _executionBlock->fetchBlock();
 
   _upstreamState = res.first;
@@ -73,9 +68,6 @@ SingleRowFetcher<Executor>::fetchBlock() {
   return res;
 }
 
-template <class Executor>
-RegisterId SingleRowFetcher<Executor>::getNrInputRegisters() const {
+RegisterId SingleRowFetcher::getNrInputRegisters() const {
   return _executionBlock->getNrInputRegisters();
 }
-
-template class ::arangodb::aql::SingleRowFetcher<FilterExecutor>;

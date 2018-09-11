@@ -34,14 +34,14 @@ namespace aql {
 
 class AqlItemRow;
 class ExecutorInfos;
-template<class Executor> class SingleRowFetcher;
+class SingleRowFetcher;
 
 /**
  * @brief Implementation of Filter Node
  */
 class FilterExecutor {
  public:
-  using Fetcher = SingleRowFetcher<FilterExecutor>;
+  using Fetcher = SingleRowFetcher;
 
   FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();

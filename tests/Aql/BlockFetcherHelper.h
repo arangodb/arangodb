@@ -26,7 +26,9 @@
 #ifndef ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
 #define ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/SingleRowFetcher.h"
 
 #include <Basics/Common.h>
 #include <velocypack/Buffer.h>
@@ -38,8 +40,6 @@ namespace arangodb {
 namespace aql {
 class AqlItemRow;
 class AqlItemMatrix;
-template<class Executor> class SingleRowFetcher;
-template<class Executor> class AllRowsFetcher;
 }
 
 namespace tests {
@@ -48,8 +48,7 @@ namespace aql {
 /**
 * @brief Mock for SingleRowFetcher
 */
-template<class Executor>
-class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<Executor> {
+class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
  public:
   SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
                          bool returnsWaiting);
@@ -69,8 +68,7 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<Executor
 /**
 * @brief Mock for AllRowsFetcher
 */
-template<class Executor>
-class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher<Executor> {
+class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
  public:
   AllRowsFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
                          bool returnsWaiting);

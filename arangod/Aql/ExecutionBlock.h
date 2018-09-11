@@ -39,8 +39,10 @@ class Methods;
 }
 
 namespace aql {
+class AllRowsFetcher;
 class AqlItemBlock;
 class ExecutionEngine;
+class SingleRowFetcher;
 
 class ExecutionBlock {
  public:
@@ -268,6 +270,21 @@ class ExecutionBlock {
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
 
+
+ protected:
+  // friended for this->fetchBlock() (follows below)
+  friend SingleRowFetcher;
+  friend AllRowsFetcher;
+
+  /**
+   * @brief Internal helper function that fetches the next block
+   *        of AqlItemRows from upstream.
+   *        Will be called by the Fetcher used by the current Executor.
+   *
+   * @return The upstream state, can be DONE, WAITING or HASMORE.
+   */
+  TEST_VIRTUAL
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 
 };
 

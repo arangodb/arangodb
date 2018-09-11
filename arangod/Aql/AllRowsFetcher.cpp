@@ -29,22 +29,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-
-template <class Executor>
-std::pair<ExecutionState, AqlItemMatrix const*>
-AllRowsFetcher<Executor>::fetchAllRows() {
+std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   // TODO IMPLEMENT ME
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template <class Executor>
-AllRowsFetcher<Executor>::AllRowsFetcher(
-  ExecutionBlockImpl<Executor>& executionBlock)
-  : _executionBlock(&executionBlock) {}
+AllRowsFetcher::AllRowsFetcher(ExecutionBlock& executionBlock)
+    : _executionBlock(&executionBlock) {}
 
-template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-AllRowsFetcher<Executor>::fetchBlock() {
+AllRowsFetcher::fetchBlock() {
   auto res = _executionBlock->fetchBlock();
 
   _upstreamState = res.first;
@@ -52,9 +46,6 @@ AllRowsFetcher<Executor>::fetchBlock() {
   return res;
 }
 
-template <class Executor>
-RegisterId AllRowsFetcher<Executor>::getNrInputRegisters() const {
+RegisterId AllRowsFetcher::getNrInputRegisters() const {
   return _executionBlock->getNrInputRegisters();
 }
-
-template class ::arangodb::aql::AllRowsFetcher<SortExecutor>;

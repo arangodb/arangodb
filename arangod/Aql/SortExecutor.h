@@ -36,14 +36,14 @@ namespace aql {
 
 class AqlItemRow;
 class ExecutorInfos;
-template<class Executor> class AllRowsFetcher;
+class AllRowsFetcher;
 
 /**
  * @brief Implementation of Sort Node
  */
 class SortExecutor {
  public:
-  using Fetcher = AllRowsFetcher<SortExecutor>;
+  using Fetcher = AllRowsFetcher;
 
   SortExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~SortExecutor();

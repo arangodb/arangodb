@@ -31,10 +31,8 @@
 namespace arangodb {
 namespace aql {
 
-template <class Executor>
-class ExecutionBlockImpl;
-
 class AqlItemBlock;
+class ExecutionBlock;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -44,12 +42,9 @@ class AqlItemBlock;
  *        this matrix stays valid until the next call
  *        of fetchAllRows.
  */
-template <class Executor>
 class AllRowsFetcher {
-  using ExecutionBlockT = ExecutionBlockImpl<Executor>;
-
  public:
-  explicit AllRowsFetcher(ExecutionBlockT& executionBlock);
+  explicit AllRowsFetcher(ExecutionBlock& executionBlock);
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
@@ -78,7 +73,7 @@ class AllRowsFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
 
  private:
-  ExecutionBlockT* _executionBlock;
+  ExecutionBlock* _executionBlock;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.
@@ -91,12 +86,12 @@ class AllRowsFetcher {
 
  private:
   /**
-   * @brief Delegates to ExecutionBlockT::fetchBlock()
+   * @brief Delegates to ExecutionBlock::fetchBlock()
    */
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 
   /**
-   * @brief Delegates to ExecutionBlockT::getNrInputRegisters()
+   * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const;
 };

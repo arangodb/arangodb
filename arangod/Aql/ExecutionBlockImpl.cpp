@@ -122,12 +122,4 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
   return {res.first, res.second->size()};
 }
 
-template <class Executor>
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlockImpl<Executor>::fetchBlock() {
-  auto res = _dependencies[0]->getSome(DefaultBatchSize());
-
-  return res;
-}
-
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;

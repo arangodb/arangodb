@@ -60,9 +60,6 @@ class ExecutionEngine;
  */
 template <class Executor>
 class ExecutionBlockImpl : public ExecutionBlock {
-  // friended for this->fetchBlock()
-  friend SingleRowFetcher<Executor>;
-  friend AllRowsFetcher<Executor>;
 
   using Fetcher = typename Executor::Fetcher;
 
@@ -127,21 +124,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *                   this is between 0 and atMost.
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
-
- protected:
-  /**
-   * @brief Internal helper function that fetches the next block
-   *        of AqlItemRows from upstream.
-   *        Will be called by the public fetchXXX() functions.
-   *        **Guarantee:** Fetches a batch of 1000 rows from
-   *        upstream, if successful this batch (AqlItemBlock)
-   *        is retained by this class only until the next call
-   *        to fetchBlock.
-   *
-   * @return The upstream state, can be DONE, WAITING or HASMORE.
-   */
-  TEST_VIRTUAL
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 
  private:
   ExecutorInfos _infos;

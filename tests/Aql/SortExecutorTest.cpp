@@ -51,7 +51,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      AllRowsFetcherHelper<SortExecutor> fetcher(input.steal(), false);
+      AllRowsFetcherHelper fetcher(input.steal(), false);
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
@@ -62,7 +62,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      AllRowsFetcherHelper<SortExecutor> fetcher(input.steal(), true);
+      AllRowsFetcherHelper fetcher(input.steal(), true);
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {

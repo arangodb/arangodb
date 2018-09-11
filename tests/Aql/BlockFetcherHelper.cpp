@@ -48,10 +48,9 @@ using namespace arangodb::aql;
 // - SECTION SINGLEROWFETCHER              -
 // -----------------------------------------
 
-template<class Executor>
-SingleRowFetcherHelper<Executor>::SingleRowFetcherHelper(
+SingleRowFetcherHelper::SingleRowFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
-    : SingleRowFetcher<Executor>(),
+    : SingleRowFetcher(),
       _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
@@ -67,12 +66,10 @@ SingleRowFetcherHelper<Executor>::SingleRowFetcherHelper(
   }
 };
 
-template<class Executor>
-SingleRowFetcherHelper<Executor>::~SingleRowFetcherHelper() = default;
+SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
-template<class Executor>
 std::pair<ExecutionState, AqlItemRow const*>
-SingleRowFetcherHelper<Executor>::fetchRow() {
+SingleRowFetcherHelper::fetchRow() {
   // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
@@ -95,10 +92,10 @@ SingleRowFetcherHelper<Executor>::fetchRow() {
 // - SECTION ALLROWSFETCHER                -
 // -----------------------------------------
 
-template<class Executor>
-AllRowsFetcherHelper<Executor>::AllRowsFetcherHelper(
+AllRowsFetcherHelper::AllRowsFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
-    : _vPackBuffer(std::move(vPackBuffer)),
+    : AllRowsFetcher(),
+      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
@@ -113,12 +110,10 @@ AllRowsFetcherHelper<Executor>::AllRowsFetcherHelper(
   }
 };
 
-template<class Executor>
-AllRowsFetcherHelper<Executor>::~AllRowsFetcherHelper() = default;
+AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
 
-template<class Executor>
 std::pair<ExecutionState, AqlItemMatrix const*>
-AllRowsFetcherHelper<Executor>::fetchAllRows() {
+AllRowsFetcherHelper::fetchAllRows() {
   // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
@@ -136,8 +131,3 @@ AllRowsFetcherHelper<Executor>::fetchAllRows() {
   REQUIRE(false);
   return {ExecutionState::DONE, nullptr};
 };
-
-template class arangodb::tests::aql::SingleRowFetcherHelper<
-    arangodb::aql::FilterExecutor>;
-template class arangodb::tests::aql::AllRowsFetcherHelper<
-    arangodb::aql::SortExecutor>;

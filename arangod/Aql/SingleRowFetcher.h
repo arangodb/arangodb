@@ -34,8 +34,7 @@
 namespace arangodb {
 namespace aql {
 
-template <class Executor>
-class ExecutionBlockImpl;
+class ExecutionBlock;
 class AqlItemBlock;
 
 /**
@@ -46,12 +45,9 @@ class AqlItemBlock;
  *        this row stays valid until the next call
  *        of fetchRow.
  */
-template <class Executor>
 class SingleRowFetcher {
-  using ExecutionBlockT = ExecutionBlockImpl<Executor>;
-
  public:
-  explicit SingleRowFetcher(ExecutionBlockT& executionBlock);
+  explicit SingleRowFetcher(ExecutionBlock& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
@@ -80,7 +76,7 @@ class SingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, const AqlItemRow*> fetchRow();
 
  private:
-  ExecutionBlockT* _executionBlock;
+  ExecutionBlock* _executionBlock;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.
@@ -115,12 +111,12 @@ class SingleRowFetcher {
 
  private:
   /**
-   * @brief Delegates to ExecutionBlockT::fetchBlock()
+   * @brief Delegates to ExecutionBlock::fetchBlock()
    */
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 
   /**
-   * @brief Delegates to ExecutionBlockT::getNrInputRegisters()
+   * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const;
 };
