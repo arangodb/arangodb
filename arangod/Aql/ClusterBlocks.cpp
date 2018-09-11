@@ -1205,7 +1205,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::g
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
+  traceSkipSomeBegin(atMost);
   if (_done) {
     traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
