@@ -28,21 +28,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-AqlItemRow::AqlItemRow(AqlItemBlock const* block, size_t baseIndex, size_t nrRegisters) :
-  _block(block), _baseIndex(baseIndex), _nrRegisters(nrRegisters) {
-}
+AqlItemRow::AqlItemRow(AqlItemBlock const* block, size_t baseIndex,
+                       size_t nrRegisters)
+    : _block(block), _baseIndex(baseIndex), _nrRegisters(nrRegisters) {}
 #else
-AqlItemRow::AqlItemRow(AqlItemBlock const* block, size_t baseIndex) :
-  _block(block), _baseIndex(baseIndex) {
-}
+AqlItemRow::AqlItemRow(AqlItemBlock const* block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex) {}
 #endif
 
-inline AqlValue AqlItemRow::getValue(RegisterId variableNr) const {
-  TRI_ASSERT(variableNr < _nrRegisters);
-  return _block->getValue(_baseIndex, variableNr);
-}
-
-inline AqlValue const& AqlItemRow::getValueReference(RegisterId variableNr) const {
+const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
   TRI_ASSERT(variableNr < _nrRegisters);
   return _block->getValueReference(_baseIndex, variableNr);
 }
