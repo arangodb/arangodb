@@ -1,4 +1,34 @@
 <script id="viewsView.ejs" type="text/template">
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="viewsSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="viewsSearchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+          <a id="viewsToggle" class="headerButton">
+            <span class="icon_arangodb_settings2" title="Settings"></span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="viewsDropdown2" class="headerDropdown">
+    <div id="viewsDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="viewsSortDesc">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+  </div>
   
   <div class="contentDiv" id="">
     <div id="viewsThumbnailsIn" class="tileList pure-u">

@@ -30,7 +30,9 @@
 namespace arangodb {
 
 // to be derived by storage engines
-struct TransactionData {};
+struct TransactionData {
+  virtual ~TransactionData() = default;
+};
 
 class TransactionManager {
  public:

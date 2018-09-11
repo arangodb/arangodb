@@ -119,7 +119,8 @@ size_t MMFilesFulltextIndex::memory() const {
 }
 
 /// @brief return a VelocyPack representation of the index
-void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesFulltextIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   Index::toVelocyPack(builder, flags);
   builder.add(

@@ -184,7 +184,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   void toVelocyPack(
       VPackBuilder& builder,
-      unsigned flags
+      std::underlying_type<arangodb::Index::Serialize>::type flags
   ) const override {
     builder.openObject();
     Index::toVelocyPack(builder, flags);

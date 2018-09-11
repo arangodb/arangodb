@@ -293,8 +293,9 @@ This feature is only available in the
 [**Enterprise Edition**](https://www.arangodb.com/why-arangodb/arangodb-enterprise/)
 {% endhint %}
 
-ArangoDB supports LDAP as an external authentication system. For detailed information please have look into
-the [LDAP configuration guide](../Configuration/Ldap.md).
+ArangoDB supports LDAP as an external authentication system. For detailed
+information please have look into the
+[LDAP configuration guide](../../Programs/Arangod/Ldap.md).
 
 There are a few differences to *normal* ArangoDB users:
 - ArangoDB does not "*know*" LDAP users before they first authenticate, calls to various API's using endpoints in `_api/users/*` will **fail** until the user first logs-in

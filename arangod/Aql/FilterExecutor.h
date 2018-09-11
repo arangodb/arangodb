@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
+#include <memory>
 
 namespace arangodb {
 namespace aql {
