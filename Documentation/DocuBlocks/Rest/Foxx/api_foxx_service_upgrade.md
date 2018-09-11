@@ -53,6 +53,9 @@ Set to `false` to not run the new service's setup script.
 @RESTQUERYPARAM{legacy,boolean,optional}
 Set to `true` to install the new service in 2.8 legacy compatibility mode.
 
+@RESTQUERYPARAM{force,boolean,optional}
+Set to `true` to force service install even if no service is installed under given mount.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
