@@ -616,7 +616,7 @@ bool Graph::renameCollections(std::string const& oldName, std::string const& new
   // orphans
   if (hasOrphanCollection(oldName)) {
     _orphanColls.erase(oldName);
-    _orphanColls.insert(oldName);
+    _orphanColls.insert(newName);
     renamed = true;
   }
 
