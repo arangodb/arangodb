@@ -28,8 +28,9 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SingleRowFetcher.h"
+#include "FilterExecutor.h"
 
 namespace arangodb {
 namespace aql {
@@ -57,19 +58,22 @@ class ExecutionEngine;
  *         as many rows from above as it likes. It can only follow the
  *         xxxFetcher interface to get AqlItemRows from Upstream.
  */
-template<class Executor>
-class ExecutionBlockImpl : public ExecutionBlock, public SingleRowFetcher {
- public:
+template <class Executor>
+class ExecutionBlockImpl : public ExecutionBlock {
+  friend SingleRowFetcher<Executor>;
 
-   /**
-    * @brief Construct a new ExecutionBlock
-    *        This API is subject to change, we want to make it as independent of
-    *        AQL / Query interna as possible.
-    *
-    * @param engine The AqlExecutionEngine holding the query and everything required
-    *               for the execution.
-    * @param node The Node used to create this ExecutionBlock
-    */
+  using Fetcher = typename Executor::Fetcher;
+
+ public:
+  /**
+   * @brief Construct a new ExecutionBlock
+   *        This API is subject to change, we want to make it as independent of
+   *        AQL / Query interna as possible.
+   *
+   * @param engine The AqlExecutionEngine holding the query and everything
+   *               required for the execution.
+   * @param node The Node used to create this ExecutionBlock
+   */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node);
   ~ExecutionBlockImpl();
 
@@ -90,8 +94,10 @@ class ExecutionBlockImpl : public ExecutionBlock, public SingleRowFetcher {
    * @return A pair with the following properties:
    *         ExecutionState:
    *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if you need more input.
+   *           DONE => No more to expect from Upstream, if you are done with
+   *                   this row return DONE to caller.
+   *           HASMORE => There is potentially more from above, call again if
+   *                      you need more input.
    *         AqlItemBlock:
    *           A matrix of result rows.
    *           Guaranteed to be non nullptr in HASMORE cas, maybe a nullptr in DONE.
@@ -111,34 +117,16 @@ class ExecutionBlockImpl : public ExecutionBlock, public SingleRowFetcher {
    * @return A pair with the following properties:
    *         ExecutionState:
    *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if you need more input.
-   *         size_t:
-   *           Number of rows effectively skipped.
-   *           On WAITING this is always 0.
-   *           On any other state this is between 0 and atMost.
+   *           DONE => No more to expect from Upstream, if you are done with
+   *                   this row return DONE to caller.
+   *           HASMORE => There is potentially more from above, call again if
+   *                   you need more input. size_t: Number of rows effectively
+   *                   skipped. On WAITING this is always 0. On any other state
+   *                   this is between 0 and atMost.
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  /**
-   * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the pointer returned is valid only
-   *        until the next call to fetchRow.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if you need more input.
-   *         AqlItemRow:
-   *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => The Row is guaranteed to not be a nullptr.
-   *           If DONE => Row can be a nullptr (nothing received) or valid.
-   */
-  std::pair<ExecutionState, AqlItemRow const*> fetchRow() override;
-
- private:
-
+ protected:
   /**
    * @brief Internal helper function that fetches the next block
    *        of AqlItemRows from upstream.
@@ -150,20 +138,27 @@ class ExecutionBlockImpl : public ExecutionBlock, public SingleRowFetcher {
    *
    * @return The upstream state, can be DONE, WAITING or HASMORE.
    */
-  ExecutionState fetchBlock();
+  TEST_VIRTUAL
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 
  private:
-
   ExecutorInfos _infos;
+
+  /**
+  * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
+  *        memory management of AqlItemBlocks as needed by Executor.
+  */
+  Fetcher _fetcher;
+
   /**
    * @brief This is the working party of this implementation
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
   Executor _executor;
+
 };
 
-
-} // aql
-} // arangodb
+}  // namespace aql
+}  // namespace arangodb
 #endif

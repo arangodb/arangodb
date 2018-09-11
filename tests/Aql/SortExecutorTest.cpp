@@ -29,7 +29,6 @@
 #include "Aql/AqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SortExecutor.h"
-#include "Aql/BlockFetcherInterfaces.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

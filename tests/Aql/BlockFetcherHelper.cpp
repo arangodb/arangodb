@@ -27,12 +27,14 @@
 
 #include "catch.hpp"
 
-#include "Aql/AqlItemRow.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/AqlItemRow.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <arangod/Aql/FilterExecutor.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -43,10 +45,11 @@ using namespace arangodb::aql;
 // - SECTION SINGLEROWFETCHER              -
 // -----------------------------------------
 
-SingleRowFetcherHelper::SingleRowFetcherHelper(
+template<class Executor>
+SingleRowFetcherHelper<Executor>::SingleRowFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
-    : SingleRowFetcher(),
-      _vPackBuffer(vPackBuffer),
+    : SingleRowFetcher<Executor>(),
+      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
@@ -61,11 +64,13 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
   }
 };
 
-SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
+template<class Executor>
+SingleRowFetcherHelper<Executor>::~SingleRowFetcherHelper() = default;
 
+template<class Executor>
 std::pair<ExecutionState, AqlItemRow const*>
-SingleRowFetcherHelper::fetchRow() {
-  // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
+SingleRowFetcherHelper<Executor>::fetchRow() {
+  // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
     if(!_didWait) {
@@ -126,3 +131,6 @@ AllRowsFetcherHelper::fetchAllRows() {
   REQUIRE(false);
   return {ExecutionState::DONE, nullptr};
 };
+
+template class arangodb::tests::aql::SingleRowFetcherHelper<
+    arangodb::aql::FilterExecutor>;

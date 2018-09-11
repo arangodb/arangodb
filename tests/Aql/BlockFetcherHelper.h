@@ -26,7 +26,7 @@
 #ifndef ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
 #define ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
 
-#include "Aql/BlockFetcherInterfaces.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/ExecutionState.h"
 
 #include <Basics/Common.h>
@@ -43,11 +43,15 @@ class AqlItemRow;
 namespace tests {
 namespace aql {
 
-class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
+/**
+* @brief Mock for SingleRowFetcher
+*/
+template<class Executor>
+class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher<Executor> {
  public:
   SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
                          bool returnsWaiting);
-  ~SingleRowFetcherHelper();
+  virtual ~SingleRowFetcherHelper();
 
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::AqlItemRow const*> fetchRow() override;
 

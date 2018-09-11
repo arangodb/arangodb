@@ -28,10 +28,10 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SingleRowFetcher.h"
 
 
 #include <velocypack/Builder.h>
@@ -56,7 +56,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input.steal(), false);
+      SingleRowFetcherHelper<FilterExecutor> fetcher(input.steal(), false);
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
@@ -68,7 +68,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      SingleRowFetcherHelper fetcher(input.steal(), true);
+      SingleRowFetcherHelper<FilterExecutor> fetcher(input.steal(), true);
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {

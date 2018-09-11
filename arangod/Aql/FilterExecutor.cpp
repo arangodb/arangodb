@@ -30,13 +30,13 @@
 
 #include "Aql/AqlItemRow.h"
 #include "Aql/AqlValue.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SingleRowFetcher.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutor::FilterExecutor(SingleRowFetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
+FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
 FilterExecutor::~FilterExecutor() = default;
 
 ExecutionState FilterExecutor::produceRow(AqlItemRow& output) {

@@ -34,15 +34,18 @@ namespace aql {
 
 class AqlItemRow;
 class ExecutorInfos;
-class SingleRowFetcher;
+template<class Executor> class SingleRowFetcher;
 
 /**
  * @brief Implementation of Filter Node
  */
 class FilterExecutor {
  public:
-  FilterExecutor(SingleRowFetcher& fetcher, ExecutorInfos&);
+  using Fetcher = SingleRowFetcher<FilterExecutor>;
+
+  FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();
+
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -52,7 +55,7 @@ class FilterExecutor {
   ExecutionState produceRow(AqlItemRow& output);
 
  private:
-  SingleRowFetcher& _fetcher;
+  Fetcher& _fetcher;
 
   ExecutorInfos& _infos;
 

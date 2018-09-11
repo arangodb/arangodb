@@ -27,7 +27,6 @@
 
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 
 using namespace arangodb;
