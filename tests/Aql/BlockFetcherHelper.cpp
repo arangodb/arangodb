@@ -28,6 +28,7 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemRow.h"
+#include "Aql/AqlItemMatrix.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
@@ -37,6 +38,10 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
+
+// -----------------------------------------
+// - SECTION SINGLEROWFETCHER              -
+// -----------------------------------------
 
 SingleRowFetcherHelper::SingleRowFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
@@ -60,6 +65,50 @@ SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
 std::pair<ExecutionState, AqlItemRow const*>
 SingleRowFetcherHelper::fetchRow() {
+  // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
+  REQUIRE(_nrCalled <= _nrItems);
+  if (_returnsWaiting) {
+    if(!_didWait) {
+      _didWait = true;
+      return {ExecutionState::WAITING, nullptr};
+    }
+    _didWait = false;
+  }
+  _nrCalled++;
+  if (_nrCalled > _nrItems) {
+    return {ExecutionState::DONE, nullptr};
+  }
+  // NOT YET IMPLEMENTED!
+  REQUIRE(false);
+  return {ExecutionState::DONE, nullptr};
+};
+
+// -----------------------------------------
+// - SECTION ALLROWSFETCHER                -
+// -----------------------------------------
+
+AllRowsFetcherHelper::AllRowsFetcherHelper(
+    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+    : AllRowsFetcher(),
+      _vPackBuffer(vPackBuffer),
+      _returnsWaiting(returnsWaiting),
+      _nrItems(0),
+      _nrCalled(0),
+      _didWait(false) {
+  if (_vPackBuffer != nullptr) {
+    _data = VPackSlice(_vPackBuffer->data());
+  } else {
+    _data = VPackSlice::nullSlice();
+  }
+  if (_data.isArray()) {
+    _nrItems = _data.length();
+  }
+};
+
+AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
+
+std::pair<ExecutionState, AqlItemMatrix const*>
+AllRowsFetcherHelper::fetchAllRows() {
   // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
