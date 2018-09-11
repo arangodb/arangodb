@@ -46,10 +46,10 @@ const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SY
 
 function getReadableName (name) {
   const readable = name
-  .replace(/([-_]|\s)+/g, ' ')
-  .replace(/([a-z])([A-Z])/g, (m) => `${m[0]} ${m[1]}`)
-  .replace(/([A-Z])([A-Z][a-z])/g, (m) => `${m[0]} ${m[1]}`)
-  .replace(/\s([a-z])/g, (m) => ` ${m[1].toUpperCase()}`);
+    .replace(/([-_]|\s)+/g, " ")
+    .replace(/[a-z][A-Z]/g, str => `${str.charAt(0)} ${str.slice(1)}`)
+    .replace(/[A-Z][A-Z][a-z]/g, str => `${str.charAt(0)} ${str.slice(1)}`)
+    .replace(/\s[a-z]/g, str => `${str.toUpperCase()}`);
   return readable.charAt(0).toUpperCase() + readable.substr(1);
 }
 
