@@ -27,9 +27,10 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/AqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
