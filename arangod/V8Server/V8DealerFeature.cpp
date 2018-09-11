@@ -331,7 +331,10 @@ void V8DealerFeature::start() {
     _dirtyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
 
     for (size_t i = 0; i < _nrMinContexts; ++i) {
+      guard.unlock(); // avoid lock order inversion in buildContext
       V8Context* context = buildContext(nextId());
+      guard.lock();
+      TRI_ASSERT(context != nullptr);
       try {
         _contexts.push_back(context);
       } catch (...) {
