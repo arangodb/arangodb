@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/BlockFetcherInterfaces.h"
+#include "Aql/ExecutorInfos.h"
 
 namespace arangodb {
 namespace aql {
@@ -153,12 +154,13 @@ class ExecutionBlockImpl : public ExecutionBlock, public SingleRowFetcher {
 
  private:
 
+  ExecutorInfos _infos;
   /**
    * @brief This is the working party of this implementation
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
-  Executor& _executor;
+  Executor _executor;
 };
 
 

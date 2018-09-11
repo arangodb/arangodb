@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/AqlItemRow.h"
 
@@ -35,7 +36,8 @@ using namespace arangodb::aql;
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node) :
-  ExecutionBlock(engine, node), SingleRowFetcher(), _executor(this) {
+  ExecutionBlock(engine, node), SingleRowFetcher(), _infos(0, 0), _executor(*this, _infos)
+{
 }
 
 template<class Executor>
