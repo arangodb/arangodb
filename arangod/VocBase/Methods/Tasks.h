@@ -105,7 +105,7 @@ class Task : public std::enable_shared_from_this<Task> {
 
   std::chrono::microseconds _offset;
   std::chrono::microseconds _interval;
-  bool _periodic = false;
+  std::atomic<bool> _periodic{false};
 };
 
 }  // namespace arangodb
