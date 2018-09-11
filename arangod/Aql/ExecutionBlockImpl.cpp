@@ -78,7 +78,7 @@ RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 
-  auto regInfo = getRegisterInfo(this, this->getPlanNode(), this->getPlanNode()->getFirstDependency());
+  auto regInfo = getRegisterInfo(this);
 
   //auto resultBlockManges = this->requestBlock(atMost, this->getNrOutputRegisters());
   auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOutRegs);
@@ -89,9 +89,12 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
   while (rowsAdded < atMost) {
-    // row = std::make_unique<AqlItemRow>(resultBlock.get(),rowsAdded);
-    row = nullptr;
-    std::tie(state, std::ignore) = _executor.produceRow(/* *row.get() */); // adds row to output
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded, regInfo.numOutRegs);
+#else
+    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded);
+#endif
+    state = _executor.produceRow(*row.get()); // adds row to output
     if (row && row->hasValue()) {
       // copy from input
       ++rowsAdded;

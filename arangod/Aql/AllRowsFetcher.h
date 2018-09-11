@@ -18,16 +18,13 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Tobias Gödderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SINGLE_ROW_FETCHER_H
-#define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
+#ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
+#define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/AqlItemRow.h"
 
 #include <memory>
 
@@ -36,30 +33,31 @@ namespace aql {
 
 template <class Executor>
 class ExecutionBlockImpl;
+
 class AqlItemBlock;
 
 /**
- * @brief Interface for all AqlExecutors that do only need one
- *        row at a time in order to make progress.
+ * @brief Interface for all AqlExecutors that do need all
+ *        rows at a time in order to make progress.
  *        The guarantee is the following:
- *        If fetchRow returns a row the pointer to
- *        this row stays valid until the next call
- *        of fetchRow.
+ *        If fetchAllRows returns a matrix the pointer to
+ *        this matrix stays valid until the next call
+ *        of fetchAllRows.
  */
 template <class Executor>
-class SingleRowFetcher {
+class AllRowsFetcher {
   using ExecutionBlockT = ExecutionBlockImpl<Executor>;
 
  public:
-  explicit SingleRowFetcher(ExecutionBlockT& executionBlock);
-  TEST_VIRTUAL ~SingleRowFetcher() = default;
+  explicit AllRowsFetcher(ExecutionBlockT& executionBlock);
+
+  TEST_VIRTUAL ~AllRowsFetcher() = default;
 
  protected:
   // only for testing! Does not initialize _executionBlock!
-  SingleRowFetcher() = default;
+  AllRowsFetcher() = default;
 
  public:
-
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -77,7 +75,7 @@ class SingleRowFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, const AqlItemRow*> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
 
  private:
   ExecutionBlockT* _executionBlock;
@@ -90,28 +88,6 @@ class SingleRowFetcher {
    *        are moved into separate classes.
    */
   ExecutionState _upstreamState;
-
-  /**
-   * @brief Input block currently in use. Used for memory management by the
-   *        SingleRowFetcher. May be moved if the Fetcher implementations
-   *        are moved into separate classes.
-   */
-  std::unique_ptr<AqlItemBlock> _currentBlock;
-
-  /**
-   * @brief Index of the row to be returned next by fetchRow(). This is valid
-   *        iff _currentBlock != nullptr and it's smaller or equal than
-   *        _currentBlock->size(). May be moved if the Fetcher implementations
-   *        are moved into separate classes.
-   */
-  size_t _rowIndex;
-
-  /**
-  * @brief The current row, as returned last by fetchRow(). Must stay valid
-  *        until the next fetchRow() call.
-  *        TODO Avoid allocating a new AqlItemRow on each fetchRow() call
-  */
-  std::unique_ptr<AqlItemRow> _currentRow;
 
  private:
   /**
@@ -128,4 +104,4 @@ class SingleRowFetcher {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H
+#endif  // ARANGOD_AQL_ALL_ROWS_FETCHER_H

@@ -26,11 +26,11 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
-#include "FilterExecutor.h"
 
 namespace arangodb {
 namespace aql {
@@ -60,7 +60,9 @@ class ExecutionEngine;
  */
 template <class Executor>
 class ExecutionBlockImpl : public ExecutionBlock {
+  // friended for this->fetchBlock()
   friend SingleRowFetcher<Executor>;
+  friend AllRowsFetcher<Executor>;
 
   using Fetcher = typename Executor::Fetcher;
 

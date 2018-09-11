@@ -17,37 +17,44 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#include "SortExecutor.h"
-
-#include "Basics/Common.h"
-
 #include "Aql/AllRowsFetcher.h"
-#include "Aql/AqlItemMatrix.h"
-#include "Aql/AqlItemRow.h"
-#include "Aql/ExecutorInfos.h"
+
+#include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/SortExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortExecutor::SortExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
-SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> SortExecutor::produceRow() {
-  ExecutionState state;
-  AqlItemMatrix const* input = nullptr;
-  while (true) {
-    // TODO implement me!
-    std::tie(state, input) = _fetcher.fetchAllRows();
-    if (state == ExecutionState::WAITING) {
-      return {state, nullptr};
-    }
-    if (input == nullptr) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, nullptr};
-    }
-  }
+template <class Executor>
+std::pair<ExecutionState, AqlItemMatrix const*>
+AllRowsFetcher<Executor>::fetchAllRows() {
+  // TODO IMPLEMENT ME
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
+
+template <class Executor>
+AllRowsFetcher<Executor>::AllRowsFetcher(
+  ExecutionBlockImpl<Executor>& executionBlock)
+  : _executionBlock(&executionBlock) {}
+
+template <class Executor>
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+AllRowsFetcher<Executor>::fetchBlock() {
+  auto res = _executionBlock->fetchBlock();
+
+  _upstreamState = res.first;
+
+  return res;
+}
+
+template <class Executor>
+RegisterId AllRowsFetcher<Executor>::getNrInputRegisters() const {
+  return _executionBlock->getNrInputRegisters();
+}
+
+template class ::arangodb::aql::AllRowsFetcher<SortExecutor>;

@@ -29,6 +29,8 @@
 #include "Aql/AqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/AllRowsFetcher.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -49,7 +51,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
-      AllRowsFetcherHelper fetcher(input.steal(), false);
+      AllRowsFetcherHelper<SortExecutor> fetcher(input.steal(), false);
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
@@ -60,7 +62,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     }
 
     WHEN("the producer waits") {
-      AllRowsFetcherHelper fetcher(input.steal(), true);
+      AllRowsFetcherHelper<SortExecutor> fetcher(input.steal(), true);
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {

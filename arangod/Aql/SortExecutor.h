@@ -28,6 +28,7 @@
 #define ARANGOD_AQL_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
+
 #include <memory>
 
 namespace arangodb {
@@ -35,14 +36,16 @@ namespace aql {
 
 class AqlItemRow;
 class ExecutorInfos;
-class AllRowsFetcher;
+template<class Executor> class AllRowsFetcher;
 
 /**
  * @brief Implementation of Sort Node
  */
 class SortExecutor {
  public:
-  SortExecutor(AllRowsFetcher& fetcher, ExecutorInfos&);
+  using Fetcher = AllRowsFetcher<SortExecutor>;
+
+  SortExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~SortExecutor();
 
   /**
@@ -53,7 +56,7 @@ class SortExecutor {
   std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> produceRow();
 
  private:
-  AllRowsFetcher& _fetcher;
+  Fetcher& _fetcher;
 
   ExecutorInfos& _infos;
 };

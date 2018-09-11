@@ -27,14 +27,17 @@
 
 #include "catch.hpp"
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/AqlItemRow.h"
+#include "Aql/FilterExecutor.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortExecutor.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <arangod/Aql/FilterExecutor.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -92,10 +95,10 @@ SingleRowFetcherHelper<Executor>::fetchRow() {
 // - SECTION ALLROWSFETCHER                -
 // -----------------------------------------
 
-AllRowsFetcherHelper::AllRowsFetcherHelper(
+template<class Executor>
+AllRowsFetcherHelper<Executor>::AllRowsFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
-    : AllRowsFetcher(),
-      _vPackBuffer(vPackBuffer),
+    : _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
@@ -110,10 +113,12 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
   }
 };
 
-AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
+template<class Executor>
+AllRowsFetcherHelper<Executor>::~AllRowsFetcherHelper() = default;
 
+template<class Executor>
 std::pair<ExecutionState, AqlItemMatrix const*>
-AllRowsFetcherHelper::fetchAllRows() {
+AllRowsFetcherHelper<Executor>::fetchAllRows() {
   // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
@@ -134,3 +139,5 @@ AllRowsFetcherHelper::fetchAllRows() {
 
 template class arangodb::tests::aql::SingleRowFetcherHelper<
     arangodb::aql::FilterExecutor>;
+template class arangodb::tests::aql::AllRowsFetcherHelper<
+    arangodb::aql::SortExecutor>;
