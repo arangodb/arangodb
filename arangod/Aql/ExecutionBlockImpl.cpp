@@ -46,19 +46,30 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 
 struct RegInfo {
-  std::size_t numInRegs;
   std::size_t numOutRegs;
+  std::unordered_set<RegisterId> _regsToKeep;
   std::unordered_set<RegisterId> _regsToClear;
 };
 
 RegInfo getRegisterInfo( ExecutionBlock* thisBlock
                        , ExecutionNode* thisPlanNode
-                       , ExecutionNode* previousPlanNode
                        ){
-  // find out exact in-regs
-  return { thisBlock->getNrInputRegisters()
-         , thisBlock->getNrOutputRegisters()
-         , thisPlanNode->getRegsToClear()
+
+  auto nrOut = thisBlock->getNrOutputRegisters();
+
+  std::unordered_set<RegisterId> toKeep;
+  for (RegisterId i = 0; i < nrOut; i++) {
+    toKeep.emplace(i);
+  }
+
+  auto toClear = thisBlock->getPlanNode()->getRegsToClear();
+  for(auto item : toClear){
+    toKeep.erase(item);
+  }
+
+  return { nrOut
+         , std::move(toKeep)
+         , std::move(toClear)
          };
 }
 
@@ -76,7 +87,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   while (rowsAdded < atMost) {
     row = std::make_unique<AqlItemRow>(resultBlock.get(),rowsAdded);
-    state = _executor.produceRow(row.get()); // adds row to output
+    state = _executor.produceRow(*row.get()); // adds row to output
     if( row && row->hasValue() ) {
       // copy from input
       ++rowsAdded;
