@@ -102,7 +102,7 @@ function ahuacatlModifySuite () {
       { // no - RestrictToSingleShard
         let key = c.insert({ id: "test", value: 1 })._key;
 
-        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let expected = { writesExecuted: 1, writesIgnored: 4 };
         let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
         let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOpRestrictToSingleShard);
 
@@ -822,7 +822,9 @@ function ahuacatlModifySuite () {
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d.id == 42 REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
+      
       if (isCluster) {
+        expected = { writesExecuted: 1, writesIgnored: 4 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));

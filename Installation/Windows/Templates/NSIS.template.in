@@ -214,11 +214,12 @@ FunctionEnd
 
 Function check_previous_install
   StrCpy $UpgradeInstall "0"
-
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
+  DetailPrint "This is a fresh install."
   return
 OldFound:
+  DetailPrint "found old installation."
   StrCpy $UpgradeInstall "1"
 FunctionEnd
 
@@ -722,10 +723,20 @@ FunctionEnd
 Function UpgradeExisting
   ; Check whether we acutally should upgrade:
   !insertmacro StripBackslash DATADIR
-  !insertmacro StripSlash DATADIR      
+  !insertmacro StripSlash DATADIR
   DetailPrint "Checking whether an existing database needs upgrade: "
+  push ${ARANGO_EXIT_ALREADY_RUNNING}
+  pop $0
+retryDetectUpgradeNeeded:
   ExecWait "$INSTDIR\${SBIN_DIR}\arangod.exe --server.rest-server false --log.foreground-tty false --database.check-version" $0
   DetailPrint "done Checking whether an existing database needs upgrade: $0"
+  ${If} $0 == ${ARANGO_EXIT_ALREADY_RUNNING}
+  ${OrIf} $0 == ${ARANGO_EXIT_COULD_NOT_LOCK}
+    MessageBox MB_RETRYCANCEL "Another ArangoDB is currently locking your database, please stop it, and then click retry." IDCANCEL abortUpgrade IDRETRY retryDetectUpgradeNeeded
+  abortUpgrade:
+    Abort
+  ${EndIf}
+
   ${If} $0 != 0
   ${AndIf} $0 != ${ARANGO_EXIT_UPGRADE_REQUIRED}
     !insertmacro printExitCode $0 "failed to detect whether we need to Upgrade" ""
@@ -903,8 +914,6 @@ Section "-Core installation"
   CreateShortCut  "$LaunchLink" "$INSTDIR\${SBIN_DIR}\arangod.exe"   '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMINIMIZED
   CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
-  ;Read a value from an InstallOptions INI file
-
   StrCmp "0" "$ADD_DESKTOP_ICON" noDesktopIcon
   CreateShortCut  "$DESKTOP\Arango Shell.lnk"  "$INSTDIR\${BIN_DIR}\arangosh.exe"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
   CreateShortCut  "$DESKTOP\Arango Management Interface.lnk"  "http://127.0.0.1:8529"  '' '$INSTDIR\resources\arangodb.ico' '0' SW_SHOWMAXIMIZED
@@ -926,6 +935,8 @@ Section "-Core installation"
   !insertmacro AddToRegistry "DATADIR"        "$DATADIR"
   !insertmacro AddToRegistry "APPDIR"         "$APPDIR"
 
+  !insertmacro StripBackslash APPDIR
+  !insertmacro StripSlash APPDIR
   ; Create a file containing the settings we want to be overwritten:
   ${If} $DATADIR != ""
     StrCpy $ini_DATADIR "[database]$\r$\ndirectory = $DATADIR$\r$\n"
