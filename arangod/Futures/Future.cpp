@@ -29,7 +29,7 @@
 namespace arangodb {
 namespace futures {
   // Instantiate the most common Future types to save compile time
-  template class Future<void>;
+  template class Future<Unit>;
   template class Future<bool>;
   template class Future<int32_t>;
   template class Future<uint32_t>;

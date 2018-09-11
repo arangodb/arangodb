@@ -20,10 +20,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Future.h"
-
 #ifndef ARANGOD_FUTURES_UTILITIES_H
 #define ARANGOD_FUTURES_UTILITIES_H 1
+
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 
 namespace arangodb {
 namespace futures {
@@ -33,8 +34,8 @@ Future<T> makeFuture(Try<T>&& t) {
   return Future<T>(detail::SharedState<T>::make(std::move(t)));
 }
 
-Future<void> makeFuture() {
-  return Future<void>();
+Future<Unit> makeFuture() {
+  return Future<Unit>(unit);
 }
 
 template <class T>

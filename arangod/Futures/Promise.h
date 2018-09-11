@@ -25,6 +25,7 @@
 
 #include "Futures/Exceptions.h"
 #include "Futures/SharedState.h"
+#include "Futures/Unit.h"
 
 namespace arangodb {
 namespace futures {
@@ -37,6 +38,7 @@ class Future;
 /// be thread-safe
 template<typename T>
 class Promise {
+  static_assert(!std::is_same<void, T>::value, "Promise<Unit> instead of void");
 public:
   
   /// make invalid promise
@@ -101,8 +103,8 @@ public:
   
   /// set void value
   template <class B = T>
-  typename std::enable_if<std::is_same<void, B>::value>::type setValue() {
-    setTry(Try<void>());
+  typename std::enable_if<std::is_same<Unit, B>::value>::type setValue() {
+    setTry(Try<Unit>());
   }
   
   /// Fulfill the Promise with the specified Try (value or exception).

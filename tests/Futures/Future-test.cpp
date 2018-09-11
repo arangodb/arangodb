@@ -135,7 +135,7 @@ SECTION("Basic") {
 }
   
 SECTION("Default ctor") {
-  Future<void> abc{};
+  Future<Unit> abc{};
 }
   
 SECTION("requires only move ctor") {
@@ -197,7 +197,7 @@ REQUIRE(f2.valid());        \
   // I did not include Follys Unit type
   //DOIT(Future<Unit>());
   //DOIT(Future<Unit>{});
-  //DOIT(makeFuture());
+  DOIT(makeFuture());
   //DOIT(makeFuture(Unit{}));
   //DOIT(makeFuture<Unit>(Unit{}));
   DOIT(makeFuture(42));
@@ -285,7 +285,7 @@ REQUIRE_THROWS(STMT); \
     DOIT(std::move(f).thenValue([](auto&&) -> void {}));
   
 #undef DOIT
-  }
+}
   
 SECTION("hasPostconditionValid") {
     // Ops that preserve validity -- postcondition: valid()
@@ -367,257 +367,262 @@ REQUIRE_FALSE(f.valid()); \
     
 #undef DOIT
 }
-  
  
-//SECTION("thenError") {
-//    bool theFlag = false;
-//    auto flag = [&] { theFlag = true; };
-//#define EXPECT_FLAG()     \
-//do {                    \
-//REQUIRE(theFlag); \
-//theFlag = false;      \
-//} while (0);
-//    
-//#define EXPECT_NO_FLAG()   \
-//do {                     \
-//REQUIRE_FALSE(theFlag); \
-//theFlag = false;       \
-//} while (0);
-//
-//   SchedulerTestSetup setup;
-//    
-//    // By reference
-//    {
-//      auto f = makeFuture()
-//      .then([] { throw std::logic_error("abc"); })
-//      .thenError<std::logic_error>([&](const std::logic_error /* e */) { flag(); });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    // By auto reference
-//    {
-//      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .thenError<eggs_t>([&](auto const& /* e */) { flag(); });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    {
-//      auto f =
-//      makeFuture().then([] { throw eggs; }).onError([&](eggs_t& /* e */) {
-//        flag();
-//        return makeFuture();
-//      });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    // By value
-//    {
-//      auto f = makeFuture().then([] { throw eggs; }).onError([&](eggs_t /* e */) {
-//        flag();
-//      });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    {
-//      auto f = makeFuture().then([] { throw eggs; }).onError([&](eggs_t /* e */) {
-//        flag();
-//        return makeFuture();
-//      });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
+SECTION("thenError") {
+    bool theFlag = false;
+    auto flag = [&] { theFlag = true; };
+#define EXPECT_FLAG()     \
+do {              \
+f.wait();         \
+REQUIRE(theFlag); \
+theFlag = false;      \
+} while (0);
+  
+#define EXPECT_NO_FLAG()   \
+do {                     \
+REQUIRE_FALSE(theFlag); \
+theFlag = false;       \
+} while (0);
+
+   SchedulerTestSetup setup;
+  
+    // By reference
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit){ throw std::logic_error("abc"); })
+      .thenError<std::logic_error>([&](const std::logic_error& /* e */) { flag(); });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+  
+    // By auto reference
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit){ throw eggs; })
+      .thenError<eggs_t>([&](auto const& /* e */) { flag(); });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
+    {
+      auto f =
+      makeFuture()
+      .thenValue([](Unit){ throw eggs; })
+      .thenError<eggs_t>([&](auto const& /* e */) {
+        flag();
+        return makeFuture();
+      });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
+    // By value
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit){ throw eggs; })
+      .thenError<eggs_t>([&](eggs_t /* e */) {
+        flag();
+      });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit) { throw eggs; }).thenError<eggs_t>([&](eggs_t /* e */) {
+        flag();
+        return makeFuture();
+      });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
 //    // Polymorphic
 //    {
 //      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .onError([&](std::exception& /* e */) { flag(); });
+//      .thenValue([] { throw eggs; })
+//      .thenError([&](std::exception& /* e */) { flag(); });
 //      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
+//      REQUIRE_NOTHROW(f.value());
 //    }
-//    
+//
 //    {
 //      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .onError([&](std::exception& /* e */) {
+//      .thenValue([] { throw eggs; })
+//      .thenError([&](std::exception& /* e */) {
 //        flag();
 //        return makeFuture();
 //      });
 //      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
+//      REQUIRE_NOTHROW(f.value());
 //    }
-//    
-//    // Non-exceptions
-//    {
-//      auto f = makeFuture().then([] { throw - 1; }).onError([&](int /* e */) {
-//        flag();
-//      });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    {
-//      auto f = makeFuture().then([] { throw - 1; }).onError([&](int /* e */) {
-//        flag();
-//        return makeFuture();
-//      });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    // Mutable lambda
-//    {
-//      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .onError([&](eggs_t& /* e */) mutable { flag(); });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
-//    {
-//      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .onError([&](eggs_t& /* e */) mutable {
-//        flag();
-//        return makeFuture();
-//      });
-//      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
-//    }
-//    
+//
+    // Non-exceptions
+    {
+      auto f = makeFuture().thenValue([](Unit){ throw - 1; }).thenError<int>([&](int /* e */) {
+        flag();
+      });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
+    {
+      auto f = makeFuture().thenValue([](Unit){ throw - 1; }).thenError<int>([&](int /* e */) {
+        flag();
+        return makeFuture();
+      });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
+    // Mutable lambda
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit){ throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& /* e */) mutable { flag(); });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+
+    {
+      auto f = makeFuture()
+      .thenValue([](Unit){ throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& /* e */) mutable {
+        flag();
+        return makeFuture();
+      });
+      EXPECT_FLAG();
+      REQUIRE_NOTHROW(f.get());
+    }
+//
 //    // Function pointer
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
+//      .thenValue([]() -> int { throw eggs; })
 //      .onError(onErrorHelperEggs)
 //      .onError(onErrorHelperGeneric);
-//      EXPECT_EQ(10, f.value());
+//      REQUIRE(10 == f.value());
 //    }
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw std::runtime_error("test"); })
+//      .thenValue([]() -> int { throw std::runtime_error("test"); })
 //      .onError(onErrorHelperEggs)
 //      .onError(onErrorHelperGeneric);
-//      EXPECT_EQ(20, f.value());
+//      REQUIRE(20 == f.value());
 //    }
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw std::runtime_error("test"); })
+//      .thenValue([]() -> int { throw std::runtime_error("test"); })
 //      .onError(onErrorHelperEggs);
-//      EXPECT_THROW(f.value(), std::runtime_error);
+//      REQUIRE_THROWS_AS(f.value(), std::runtime_error);
 //    }
-//    
+//
 //    // No throw
 //    {
-//      auto f = makeFuture().then([] { return 42; }).onError([&](eggs_t& /* e */) {
+//      auto f = makeFuture().thenValue([] { return 42; }).thenError([&](eggs_t& /* e */) {
 //        flag();
 //        return -1;
 //      });
 //      EXPECT_NO_FLAG();
-//      EXPECT_EQ(42, f.value());
+//      REQUIRE(42 == f.value());
 //    }
-//    
+//
 //    {
-//      auto f = makeFuture().then([] { return 42; }).onError([&](eggs_t& /* e */) {
+//      auto f = makeFuture().thenValue([] { return 42; }).thenError([&](eggs_t& /* e */) {
 //        flag();
 //        return makeFuture<int>(-1);
 //      });
 //      EXPECT_NO_FLAG();
-//      EXPECT_EQ(42, f.value());
+//      REQUIRE(42 == f.value());
 //    }
-//    
+//
 //    // Catch different exception
 //    {
 //      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .onError([&](std::runtime_error& /* e */) { flag(); });
+//      .thenValue([] { throw eggs; })
+//      .thenError([&](std::logic_error& /* e */) { flag(); });
 //      EXPECT_NO_FLAG();
-//      EXPECT_THROW(f.value(), eggs_t);
+//      REQUIRE_THROWS_AS(f.value(), eggs_t);
 //    }
-//    
+//
 //    {
 //      auto f = makeFuture()
-//      .then([] { throw eggs; })
-//      .onError([&](std::runtime_error& /* e */) {
+//      .thenValue([] { throw eggs; })
+//      .thenError([&](std::logic_error& /* e */) {
 //        flag();
 //        return makeFuture();
 //      });
 //      EXPECT_NO_FLAG();
-//      EXPECT_THROW(f.value(), eggs_t);
+//      REQUIRE_THROWS_AS(f.value(), eggs_t);
 //    }
-//    
+//
 //    // Returned value propagates
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
-//      .onError([&](eggs_t& /* e */) { return 42; });
-//      EXPECT_EQ(42, f.value());
+//      .thenValue([]() -> int { throw eggs; })
+//      .thenError([&](eggs_t& /* e */) { return 42; });
+//      REQUIRE(42 == f.value());
 //    }
-//    
+//
 //    // Returned future propagates
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
-//      .onError([&](eggs_t& /* e */) { return makeFuture<int>(42); });
-//      EXPECT_EQ(42, f.value());
+//      .thenValue([]() -> int { throw eggs; })
+//      .thenError([&](eggs_t& /* e */) { return makeFuture<int>(42); });
+//      REQUIRE(42 == f.value());
 //    }
-//    
+//
 //    // Throw in callback
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
-//      .onError([&](eggs_t& e) -> int { throw e; });
-//      EXPECT_THROW(f.value(), eggs_t);
+//      .thenValue([]() -> int { throw eggs; })
+//      .thenError([&](eggs_t& e) -> int { throw e; });
+//      REQUIRE_THROWS_AS(f.value(), eggs_t);
 //    }
-//    
+//
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
-//      .onError([&](eggs_t& e) -> Future<int> { throw e; });
-//      EXPECT_THROW(f.value(), eggs_t);
+//      .thenValue([]() -> int { throw eggs; })
+//      .thenError([&](eggs_t& e) -> Future<int> { throw e; });
+//      REQUIRE_THROWS_AS(f.value(), eggs_t);
 //    }
-//    
+  
 //    // exception_wrapper, return Future<T>
 //    {
 //      auto f = makeFuture()
-//      .then([] { throw eggs; })
+//      .thenValue([] { throw eggs; })
 //      .onError([&](exception_wrapper /* e */) {
 //        flag();
 //        return makeFuture();
 //      });
 //      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
+//      REQUIRE_NOTHROW(f.value());
 //    }
-//    
+//
 //    // exception_wrapper, return Future<T> but throw
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
+//      .thenValue([]() -> int { throw eggs; })
 //      .onError([&](exception_wrapper /* e */) -> Future<int> {
 //        flag();
 //        throw eggs;
 //      });
 //      EXPECT_FLAG();
-//      EXPECT_THROW(f.value(), eggs_t);
+//      REQUIRE_THROWS_AS(f.value(), eggs_t);
 //    }
-//    
+//
 //    // exception_wrapper, return T
 //    {
 //      auto f = makeFuture()
-//      .then([]() -> int { throw eggs; })
+//      .thenValue([]() -> int { throw eggs; })
 //      .onError([&](exception_wrapper /* e */) {
 //        flag();
 //        return -1;
 //      });
 //      EXPECT_FLAG();
-//      EXPECT_EQ(-1, f.value());
+//      REQUIRE(-1 == f.value());
 //    }
-//    
+//
 //    // exception_wrapper, return T but throw
 //    {
 //      auto f = makeFuture()
@@ -627,9 +632,9 @@ REQUIRE_FALSE(f.valid()); \
 //        throw eggs;
 //      });
 //      EXPECT_FLAG();
-//      EXPECT_THROW(f.value(), eggs_t);
+//      REQUIRE_THROWS_AS(f.value(), eggs_t);
 //    }
-//    
+//
 //    // const exception_wrapper&
 //    {
 //      auto f = makeFuture()
@@ -639,11 +644,11 @@ REQUIRE_FALSE(f.valid()); \
 //        return makeFuture();
 //      });
 //      EXPECT_FLAG();
-//      EXPECT_NO_THROW(f.value());
+//      REQUIRE_NOTHROW(f.value());
 //    }
-//#undef EXPECT_FLAG
-//#undef EXPECT_NO_FLAG
-//  }
+#undef EXPECT_FLAG
+#undef EXPECT_NO_FLAG
+  }
   
 SECTION("special") {
   REQUIRE_FALSE(std::is_copy_constructible<Future<int>>::value);
@@ -652,7 +657,7 @@ SECTION("special") {
   REQUIRE(std::is_move_assignable<Future<int>>::value);
 }
 
-SECTION("then") {
+/*SECTION("then") {
   SchedulerTestSetup setup;
   
   auto f =
@@ -676,8 +681,7 @@ SECTION("then") {
   .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
   std::string value = f.get();
   REQUIRE(value == "1;2;3;4;5;6;7;8;9;10;11");
-}
-  
+}*/
   
 SECTION("get") {
   auto f = makeFuture(std::make_unique<int>(42));
@@ -766,7 +770,6 @@ SECTION("finish") {
   REQUIRE(1 == x.use_count());
 }
   
-  
 SECTION("detachRace") {
   // Task #5438209
   // This test is designed to detect a race that was in Core::detachOne()
@@ -821,7 +824,7 @@ SECTION("CircularDependencySharedPtrSelfReset") {
 SECTION("Constructor") {
   auto f1 = []() -> Future<int> { return Future<int>(3); }();
   REQUIRE(f1.get() == 3);
-  auto f2 = []() -> Future<void> { return Future<void>(); }();
+  auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
   REQUIRE_NOTHROW(f2.getTry());
 }
 

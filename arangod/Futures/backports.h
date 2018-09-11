@@ -58,8 +58,7 @@ std::reference_wrapper<typename std::remove_reference<F>::type>
   
 //  mimic: std::invoke, C++17
 template <typename F, typename... Args>
-constexpr auto invoke(F&& f, Args&&... args) noexcept(
-                                                      noexcept(static_cast<F&&>(f)(static_cast<Args&&>(args)...)))
+constexpr auto invoke(F&& f, Args&&... args) noexcept(noexcept(static_cast<F&&>(f)(static_cast<Args&&>(args)...)))
 -> decltype(static_cast<F&&>(f)(static_cast<Args&&>(args)...)) {
   return static_cast<F&&>(f)(static_cast<Args&&>(args)...);
 }

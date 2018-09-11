@@ -81,10 +81,9 @@ SECTION("getFuture") {
 }
   
 SECTION("setValueUnit") {
-  Promise<void> p;
+  Promise<Unit> p;
   p.setValue();
 }
- 
   
 SECTION("ctorPostconditionValid") {
   // Ctors/factories that promise valid -- postcondition: valid()
@@ -101,8 +100,8 @@ REQUIRE(p2.valid());   \
   DOIT(makeValid());
   DOIT(Promise<int>());
   DOIT(Promise<int>{});
-  DOIT(Promise<void>());
-  DOIT(Promise<void>{});
+  DOIT(Promise<Unit>());
+  DOIT(Promise<Unit>{});
   
 #undef DOIT
 }
@@ -281,15 +280,10 @@ SECTION("setValue") {
     std::unique_ptr<int> ptr = std::move(fmov).get();
     REQUIRE(42 == *ptr);
     
-    Promise<void> v;
+    Promise<Unit> v;
     auto fv = v.getFuture();
     v.setValue();
     REQUIRE(fv.isReady());
-  
-    Promise<void> y;
-    auto fy = y.getFuture();
-    y.setValue();
-    REQUIRE(fy.isReady());
   }
   
 SECTION("setException") {

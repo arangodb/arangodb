@@ -407,10 +407,6 @@ void HeartbeatThread::runDBServer() {
       if (--currentCount == 0) {
         currentCount = currentCountStart;
 
-        // send an initial GET request to Sync/Commands/my-id
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
-
         AgencyReadTransaction trx(
           std::vector<std::string>({
               AgencyCommManager::path("Shutdown"),
