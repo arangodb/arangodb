@@ -47,8 +47,7 @@ namespace {
   }
   
   typedef std::domain_error eggs_t;
-  static eggs_t eggs("eggs");
-  
+  static eggs_t eggs("eggs");  
 } // namespace
 
 

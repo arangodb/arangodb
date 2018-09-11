@@ -480,20 +480,21 @@ public:
             typename R = std::result_of_t<F(ExceptionType)>>
   typename std::enable_if<isFuture<R>::value,
   Future<typename isFuture<R>::inner>>::type
-  thenError(F&& func) && {
+  thenError(F&& fn) && {
     typedef typename isFuture<R>::inner B;
     typedef std::decay_t<ExceptionType> ET;
     
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(func),
+    getState().setCallback([fn = std::forward<F>(fn),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
         } catch(ET& e) {
           try {
-            futures::invoke(fn, e).then([pr = std::move(pr)](Try<B>&& t) mutable {
+            futures::invoke(std::forward<F>(fn), e)
+            .then([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
           } catch (...) {

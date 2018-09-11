@@ -53,6 +53,18 @@ namespace {
     return std::forward<T>(value);
   }
   
+  int onThenHelperAddOne(int i) {
+    return i + 1;
+  }
+  
+  int onThenHelperAddFive(int i) {
+    return i + 5;
+  }
+  
+  Future<int> onThenHelperAddFutureFive(int i) {
+    return makeFuture(i + 5);
+  }
+  
   typedef std::domain_error eggs_t;
   static eggs_t eggs("eggs");
   
@@ -496,21 +508,21 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw eggs; })
-      .thenError<const eggs_t&>(onErrorHelperEggs)
-      .thenError<std::exception>(onErrorHelperGeneric);
+      .thenError<const eggs_t&>(&onErrorHelperEggs)
+      .thenError<std::exception const&>(&onErrorHelperGeneric);
       REQUIRE(10 == f.get());
     }
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-      .thenError<const eggs_t&>(onErrorHelperEggs)
-      .thenError<std::exception>(onErrorHelperGeneric);
+      .thenError<const eggs_t&>(&onErrorHelperEggs)
+      .thenError<std::exception>(&onErrorHelperGeneric);
       REQUIRE(20 == f.get());
     }
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-      .thenError<const eggs_t&>(onErrorHelperEggs);
+      .thenError<const eggs_t&>(&onErrorHelperEggs);
       REQUIRE_THROWS_AS(f.get(), std::runtime_error);
     }
 
@@ -654,7 +666,7 @@ SECTION("special") {
   REQUIRE(std::is_move_assignable<Future<int>>::value);
 }
 
-/*SECTION("then") {
+SECTION("then") {
   SchedulerTestSetup setup;
   
   auto f =
@@ -678,7 +690,17 @@ SECTION("special") {
   .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
   std::string value = f.get();
   REQUIRE(value == "1;2;3;4;5;6;7;8;9;10;11");
-}*/
+}
+  
+SECTION("then static functions") {
+  SchedulerTestSetup setup;
+
+  auto f = makeFuture<int>(10).thenValue(&onThenHelperAddFive);
+  REQUIRE(f.get() == 15);
+  
+  auto f2 = makeFuture<int>(15).thenValue(&onThenHelperAddFutureFive);
+  REQUIRE(f2.get() == 20);
+}
   
 SECTION("get") {
   auto f = makeFuture(std::make_unique<int>(42));
@@ -892,6 +914,16 @@ SECTION("invokeCallbackReturningFutureAsRvalue") {
   REQUIRE(101 == makeFuture<int>(100).thenValue(foo).get());
   REQUIRE(202 == makeFuture<int>(200).thenValue(cfoo).get());
   REQUIRE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+}
+  
+SECTION("Basic Example") {
+  SchedulerTestSetup setup;
+
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
+  p.setValue(42);
+  REQUIRE(f2.get() == 43);
 }
 
 }
