@@ -24,6 +24,7 @@
 #define ARANGODB_FUTURES_EXCEPTIONS_H 1
 
 #include <exception>
+#include <cstdint>
 
 namespace arangodb {
 namespace futures {
