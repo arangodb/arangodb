@@ -783,7 +783,7 @@
           '-Wnon-virtual-dtor',
           '-fno-exceptions',
           '-fno-rtti',
-          '-std=gnu++14',
+          '-std=gnu++17',
         ],
         'ldflags': [ '-pthread', ],
         'conditions': [
@@ -832,7 +832,7 @@
           '-Wnon-virtual-dtor',
           '-fno-exceptions',
           '-fno-rtti',
-          '-std=gnu++14',
+          '-std=gnu++17',
         ],
         'conditions': [
           [ 'visibility=="hidden"', {
@@ -1096,7 +1096,7 @@
           ['clang==1', {
             'xcode_settings': {
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
-              'CLANG_CXX_LANGUAGE_STANDARD': 'c++14',  # -std=c++14
+              'CLANG_CXX_LANGUAGE_STANDARD': 'c++17',  # -std=c++14
             },
             'conditions': [
               ['clang_xcode==0', {
@@ -1134,7 +1134,7 @@
         },  # configurations
         'cflags': [ '-Wno-abi', '-Wall', '-W', '-Wno-unused-parameter'],
         'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-fno-exceptions',
-                       '-std=gnu++14' ],
+                       '-std=gnu++17' ],
         'target_conditions': [
           ['_toolset=="target"', {
             'cflags!': [
@@ -1330,7 +1330,7 @@
     ['clang==0 and host_clang==1 and target_arch!="ia32" and target_arch!="x64"', {
       'target_conditions': [
         ['_toolset=="host"', {
-          'cflags_cc': [ '-std=gnu++14', ],
+          'cflags_cc': [ '-std=gnu++17', ],
         }],
       ],
       'target_defaults': {
