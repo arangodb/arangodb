@@ -56,8 +56,8 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
         _options(options),
         _outVariableOld(outVariableOld),
         _outVariableNew(outVariableNew),
-        _countStats(true) {
-  }
+        _countStats(true),
+        _producesResults(true) {}
 
   ModificationNode(ExecutionPlan*, arangodb::velocypack::Slice const& slice);
 
@@ -114,6 +114,14 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
     _outVariableNew = newVar;
   }
 
+  /// @brief whether or not the node produces results
+  /// this is normally turned on unless an optimizer rule
+  /// explicitly turns this off as a performance optimization
+  bool producesResults() const { return _producesResults; }
+  
+  /// @brief whether or not the node produces results
+  void producesResults(bool value) { _producesResults = value; }
+
   /// @brief whether or not the node is a data modification node
   bool isModificationNode() const override { return true; }
 
@@ -122,6 +130,9 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 
   /// @brief Disable that this node is contributing to statistics. Only disabled in SmartGraph case
   void disableStatistics() { _countStats = false; }
+  
+ protected:
+  void cloneCommon(ModificationNode*) const;
 
  protected:
   /// @brief modification operation options
@@ -135,6 +146,9 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
 
   /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
   bool _countStats;
+
+  /// @brief whether this node will pass through results from block above
+  bool _producesResults;
 };
 
 /// @brief class RemoveNode
@@ -251,8 +265,70 @@ class InsertNode : public ModificationNode {
   Variable const* _inVariable;
 };
 
+class UpdateReplaceNode : public ModificationNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+  friend class UpdateBlock;
+  friend class ReplaceBlock;
+  friend class UpdateReplaceBlock;
+  friend class ModificationBlock;
+  friend class RedundantCalculationsReplacer;
+ 
+ public:
+  UpdateReplaceNode(ExecutionPlan* plan, size_t id,
+                    Collection const* collection, ModificationOptions const& options,
+                    Variable const* inDocVariable, Variable const* inKeyVariable,
+                    Variable const* outVariableOld, Variable const* outVariableNew)
+      : ModificationNode(plan, id, collection, options, outVariableOld, outVariableNew),
+        _inDocVariable(inDocVariable),
+        _inKeyVariable(inKeyVariable) {
+    TRI_ASSERT(_inDocVariable != nullptr);
+    // _inKeyVariable might be a nullptr
+  }
+  
+  UpdateReplaceNode(ExecutionPlan*, arangodb::velocypack::Slice const&);
+  
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          unsigned flags) const override;
+  
+  /// @brief getVariablesUsedHere, returning a vector
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    // Please do not change the order here without adjusting the
+    // optimizer rule distributeInCluster and SingleRemoteOperationNode as well!
+    std::vector<Variable const*> v{_inDocVariable};
+
+    if (_inKeyVariable != nullptr) {
+      v.emplace_back(_inKeyVariable);
+    }
+    return v;
+  }
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    vars.emplace(_inDocVariable);
+
+    if (_inKeyVariable != nullptr) {
+      vars.emplace(_inKeyVariable);
+    }
+  }
+
+  /// @brief set the input document variable
+  void setInDocVariable(Variable const* var) {
+    _inDocVariable = var;
+  }
+
+ protected:
+  /// @brief input variable for documents
+  Variable const* _inDocVariable;
+
+  /// @brief input variable for keys
+  Variable const* _inKeyVariable;
+};
+
 /// @brief class UpdateNode
-class UpdateNode : public ModificationNode {
+class UpdateNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class UpdateBlock;
@@ -265,13 +341,7 @@ class UpdateNode : public ModificationNode {
              Collection const* collection, ModificationOptions const& options,
              Variable const* inDocVariable, Variable const* inKeyVariable,
              Variable const* outVariableOld, Variable const* outVariableNew)
-      : ModificationNode(plan, id, collection, options, outVariableOld,
-                         outVariableNew),
-        _inDocVariable(inDocVariable),
-        _inKeyVariable(inKeyVariable) {
-    TRI_ASSERT(_inDocVariable != nullptr);
-    // _inKeyVariable might be a nullptr
-  }
+      : UpdateReplaceNode(plan, id, collection, options, inDocVariable, inKeyVariable, outVariableOld, outVariableNew) {}
 
   UpdateNode(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
@@ -291,44 +361,10 @@ class UpdateNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    // Please do not change the order here without adjusting the
-    // optimizer rule distributeInCluster and SingleRemoteOperationNode as well!
-    std::vector<Variable const*> v{_inDocVariable};
-
-    if (_inKeyVariable != nullptr) {
-      v.emplace_back(_inKeyVariable);
-    }
-    return v;
-  }
-
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
-    vars.emplace(_inDocVariable);
-
-    if (_inKeyVariable != nullptr) {
-      vars.emplace(_inKeyVariable);
-    }
-  }
-
-  /// @brief set the input document variable
-  void setInDocVariable(Variable const* var) {
-    _inDocVariable = var;
-  }
-
- private:
-  /// @brief input variable for documents
-  Variable const* _inDocVariable;
-
-  /// @brief input variable for keys
-  Variable const* _inKeyVariable;
 };
 
 /// @brief class ReplaceNode
-class ReplaceNode : public ModificationNode {
+class ReplaceNode : public UpdateReplaceNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class ReplaceBlock;
@@ -341,13 +377,7 @@ class ReplaceNode : public ModificationNode {
               Collection const* collection, ModificationOptions const& options,
               Variable const* inDocVariable, Variable const* inKeyVariable,
               Variable const* outVariableOld, Variable const* outVariableNew)
-      : ModificationNode(plan, id, collection, options, outVariableOld,
-                         outVariableNew),
-        _inDocVariable(inDocVariable),
-        _inKeyVariable(inKeyVariable) {
-    TRI_ASSERT(_inDocVariable != nullptr);
-    // _inKeyVariable might be a nullptr
-  }
+      : UpdateReplaceNode(plan, id, collection, options, inDocVariable, inKeyVariable, outVariableOld, outVariableNew) {}
 
   ReplaceNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -367,40 +397,6 @@ class ReplaceNode : public ModificationNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
-
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    // Please do not change the order here without adjusting the
-    // optimizer rule distributeInCluster and SingleRemoteOperationNode as well!
-    std::vector<Variable const*> v{_inDocVariable};
-
-    if (_inKeyVariable != nullptr) {
-      v.emplace_back(_inKeyVariable);
-    }
-    return v;
-  }
-
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(
-      std::unordered_set<Variable const*>& vars) const override final {
-    vars.emplace(_inDocVariable);
-
-    if (_inKeyVariable != nullptr) {
-      vars.emplace(_inKeyVariable);
-    }
-  }
-
-  /// @brief set the input document variable
-  void setInDocVariable(Variable const* var) {
-    _inDocVariable = var;
-  }
-
- private:
-  /// @brief input variable for documents
-  Variable const* _inDocVariable;
-
-  /// @brief input variable for keys
-  Variable const* _inKeyVariable;
 };
 
 /// @brief class UpsertNode

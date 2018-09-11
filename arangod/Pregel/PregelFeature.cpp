@@ -85,6 +85,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
   // check the access rights to collections
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
+    TRI_ASSERT(params.isObject());
     VPackSlice storeSlice = params.get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& vc : vertexCollections) {
