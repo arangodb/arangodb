@@ -248,6 +248,48 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
   }
 }
 
+void ExecutionBlock::traceSkipSomeBegin(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto node = getPlanNode();
+      LOG_TOPIC(INFO, Logger::QUERIES)
+      << "skipSome type=" << node->getTypeString()
+      << " atMost = " << atMost
+      << " this=" << (uintptr_t) this << " id=" << node->id();
+    }
+  }
+}
+
+void ExecutionBlock::traceSkipSomeEnd(size_t skipped, ExecutionState state) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+    
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), stats);
+    }
+    
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      LOG_TOPIC(INFO, Logger::QUERIES) << "skipSome done type="
+      << node->getTypeString() << " this=" << (uintptr_t) this
+      << " id=" << node->id() << " state=" << ::stateToString(state);
+    }
+  }
+}
+
 /// @brief getSome, gets some more items, semantic is as follows: not
 /// more than atMost items may be delivered. The method tries to
 /// return a block of at most atMost items, however, it may return
@@ -298,6 +340,7 @@ void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
+  TRI_ASSERT(src != nullptr);
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
@@ -388,6 +431,7 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   auto res = getOrSkipSome(atMost, true, result, skipped);
@@ -395,6 +439,7 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
 
   if (res.first == ExecutionState::WAITING) {
     TRI_ASSERT(skipped == 0);
+    traceSkipSomeEnd(skipped, ExecutionState::WAITING);
     return {ExecutionState::WAITING, skipped};
   }
 
@@ -402,6 +447,7 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
     THROW_ARANGO_EXCEPTION(res.second);
   }
 
+  traceSkipSomeEnd(skipped, res.first);
   return {res.first, skipped};
 }
 

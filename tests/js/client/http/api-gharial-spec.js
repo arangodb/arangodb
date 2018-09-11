@@ -846,4 +846,37 @@ describe('_api/gharial testing cross-graph deletes', () => {
 
     expect(deleted).to.equal(true);
   });
+
+  it('should not create multiple orphan collection entries', () => {
+    var graph = require("@arangodb/general-graph");
+     // create an empty graph
+    var gName = "firstGraph";
+    var collection = "firstEdge";
+    var from = "firstTo";
+    var to = "firstTo";
+    var g1 = graph._create("firstGraph");
+     // create a simple edge definition
+    const edgeDef = {
+      collection: collection,
+      from: [from],
+      to: [to]
+    };
+     var createAndDropEdgeDefinition = function () {
+      let req = request.post(url + '/' + gName + '/edge', {
+        body: JSON.stringify(edgeDef)
+      });
+      expect(req.statusCode).to.equal(202);
+       // now delete the created edge definition
+      let req2 = request.delete(url + '/' + gName + '/edge/' + collection + '?dropCollections=true');
+      expect(req2.statusCode).to.equal(202);
+    };
+     createAndDropEdgeDefinition();
+    createAndDropEdgeDefinition();
+    createAndDropEdgeDefinition();
+     g1 = graph._graph(gName);
+    expect(g1.__orphanCollections).to.deep.equal([from]);
+    expect(g1.__orphanCollections.length).to.equal(1);
+     graph._drop(gName, true);
+  });
+
 });
