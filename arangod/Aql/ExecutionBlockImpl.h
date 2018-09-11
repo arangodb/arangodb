@@ -50,7 +50,7 @@ class ExecutionEngine;
  * @tparam Executor A class that needs to have the following signature:
  *         Executor {
  *           Executor(xxxFetcher&)
- *           std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> produceRow(); 
+ *           std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> produceRow();
  *         }
  *         The Executor is the implementation of one AQLNode.
  *         It is only allowed to produce one outputRow at a time, but can fetch
