@@ -65,26 +65,6 @@ class ActionBase {
   /// @return true to continue processing, false done (result() set)
   virtual bool next() { return false; }
 
-  //
-  // common property or decription names
-  //
-
-  static const char KEY[];
-  static const char FIELDS[];
-  static const char TYPE[];
-  static const char INDEXES[];
-  static const char INDEX[];
-  static const char SHARDS[];
-  static const char DATABASE[];
-  static const char COLLECTION[];
-  static const char EDGE[];
-  static const char NAME[];
-  static const char ID[];
-  static const char LEADER[];
-  static const char LOCAL_LEADER[];
-  static const char GLOB_UID[];
-  static const char OBJECT_ID[];
-
   /// @brief execution finished successfully or failed ... and race timer expired
   virtual bool done() const;
 
