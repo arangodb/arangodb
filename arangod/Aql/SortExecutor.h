@@ -48,9 +48,10 @@ class SortExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutionState,
+   *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> produceRow();
+  ExecutionState produceRow(AqlItemRow& output);
 
  private:
   AllRowsFetcher& _fetcher;
