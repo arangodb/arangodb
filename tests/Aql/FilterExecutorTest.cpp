@@ -24,13 +24,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "BlockFetcherHelper.h"
 
 #include "Aql/AqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/BlockFetcherInterfaces.h"
 
-#include "BlockFetcherHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
