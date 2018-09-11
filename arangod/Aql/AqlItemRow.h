@@ -42,9 +42,9 @@ struct AqlValue;
 class AqlItemRow {
  public:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  AqlItemRow(AqlItemBlock const* block, size_t baseIndex, size_t nrRegisters);
+  AqlItemRow(AqlItemBlock* block, size_t baseIndex, size_t nrRegisters);
 #else
-  AqlItemRow(AqlItemBlock const* block, size_t baseIndex);
+  AqlItemRow(AqlItemBlock* block, size_t baseIndex);
 #endif
 
   /**
@@ -55,12 +55,16 @@ class AqlItemRow {
    * @return Reference to the AqlValue stored in that variable.
    */
   const AqlValue& getValue(RegisterId variableNr) const;
+  void setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue const&);
+  void setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue &&);
+  bool hasValue() { return _written; };
+  std::size_t sourceRow() { return _sourceRow; };
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  AqlItemBlock const* _block;
+  AqlItemBlock* _block;
 
   /**
    * @brief The offset into the AqlItemBlock
@@ -73,7 +77,9 @@ class AqlItemRow {
    * So only available in MAINTAINER_MODE.
    */
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t _sourceRow;
   size_t const _nrRegisters;
+  bool _written;
 #endif
 };
 

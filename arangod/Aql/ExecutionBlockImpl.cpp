@@ -46,12 +46,29 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
+  std::unique_ptr<AqlItemBlock> resultBlock;
+  std::size_t rowsAdded = 0;
+
   ExecutionState state;
-  std::unique_ptr<AqlItemRow> row;
-  std::tie(state, row) = _executor.produceRow();
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return {ExecutionState::DONE, nullptr};
+  std::unique_ptr<AqlItemRow> row; //holds temporary rows
+
+  while (rowsAdded < atMost) {
+    row = std::make_unique<AqlItemRow>(resultBlock.get(),rowsAdded);
+    state = _executor.produceRow(row.get());
+    if( row && row->hasValue() ) {
+      ++rowsAdded;
+    }
+
+    if( state == ExecutionState::WAITING || state == ExecutionState::DONE ) {
+      break;
+    }
+  }
+
+  if (rowsAdded){
+    return {state, std::move(resultBlock)};
+  } else {
+    return {state, nullptr};
+  }
 }
 
 template<class Executor>

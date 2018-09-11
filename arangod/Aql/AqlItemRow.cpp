@@ -28,15 +28,37 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-AqlItemRow::AqlItemRow(AqlItemBlock const* block, size_t baseIndex,
+AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex,
                        size_t nrRegisters)
-    : _block(block), _baseIndex(baseIndex), _nrRegisters(nrRegisters) {}
+    : _block(block)
+    , _baseIndex(baseIndex)
+    , _sourceRow(0)
+    , _nrRegisters(nrRegisters)
+    , _written(false)
+    {}
 #else
 AqlItemRow::AqlItemRow(AqlItemBlock const* block, size_t baseIndex)
-    : _block(block), _baseIndex(baseIndex) {}
+    : _block(block)
+    , _baseIndex(baseIndex) {}
+    , _sourceRow(0)
+    , _written(false)
 #endif
 
 const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
   TRI_ASSERT(variableNr < _nrRegisters);
   return _block->getValueReference(_baseIndex, variableNr);
+}
+
+void AqlItemRow::setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue&& value) {
+  TRI_ASSERT(variableNr < _nrRegisters);
+  _block->emplaceValue(_baseIndex, variableNr, std::move(value));
+  _sourceRow = sourceRow;
+  _written = true;
+}
+
+void AqlItemRow::setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue const& value) {
+  TRI_ASSERT(variableNr < _nrRegisters);
+  _block->emplaceValue(_baseIndex, variableNr, value);
+  _sourceRow = sourceRow;
+  _written = true;
 }
