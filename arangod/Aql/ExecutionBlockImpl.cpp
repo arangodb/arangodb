@@ -51,14 +51,13 @@ struct RegInfo {
   std::unordered_set<RegisterId> _regsToClear;
 };
 
-RegInfo getRegisterInfo( ExecutionBlock* thisBlock
-                       , ExecutionNode* thisPlanNode
-                       ){
+RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
 
   auto nrOut = thisBlock->getNrOutputRegisters();
 
+  auto nrIn = thisBlock->getNrOutputRegisters();
   std::unordered_set<RegisterId> toKeep;
-  for (RegisterId i = 0; i < nrOut; i++) {
+  for (RegisterId i = 0; i < nrIn; i++) {
     toKeep.emplace(i);
   }
 
