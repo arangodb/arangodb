@@ -348,7 +348,9 @@ void V8DealerFeature::start() {
     for (auto& context : _contexts) {
       // apply context update is only run on contexts that no other
       // threads can see (yet)
+      guard.unlock();
       applyContextUpdate(context);
+      guard.lock();
       _idleContexts.push_back(context);
     }
   }
