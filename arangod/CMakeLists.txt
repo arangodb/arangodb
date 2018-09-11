@@ -173,6 +173,8 @@ SET(ARANGOD_SOURCES
   Agency/Supervision.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
+  Aql/AllRowsFetcher.cpp
+  Aql/AllRowsFetcher.h
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
@@ -250,6 +252,8 @@ SET(ARANGOD_SOURCES
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SingleRowFetcher.cpp
+  Aql/SingleRowFetcher.h
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp

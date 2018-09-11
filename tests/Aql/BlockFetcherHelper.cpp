@@ -29,7 +29,12 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/AqlItemRow.h"
+#include "Aql/FilterExecutor.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortExecutor.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
@@ -68,7 +73,7 @@ static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& 
 SingleRowFetcherHelper::SingleRowFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
     : SingleRowFetcher(),
-      _vPackBuffer(vPackBuffer),
+      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
@@ -97,7 +102,7 @@ SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
 std::pair<ExecutionState, AqlItemRow const*>
 SingleRowFetcherHelper::fetchRow() {
-  // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
+  // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
     if(!_didWait) {
@@ -122,7 +127,7 @@ SingleRowFetcherHelper::fetchRow() {
 AllRowsFetcherHelper::AllRowsFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
     : AllRowsFetcher(),
-      _vPackBuffer(vPackBuffer),
+      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),

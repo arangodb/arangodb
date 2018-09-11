@@ -25,15 +25,15 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortExecutor::SortExecutor(AllRowsFetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
+SortExecutor::SortExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
 SortExecutor::~SortExecutor() = default;
 
 ExecutionState SortExecutor::produceRow(AqlItemRow& output) {

@@ -29,19 +29,22 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/FilterExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template<class Executor>
-ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node) :
-  ExecutionBlock(engine, node), SingleRowFetcher(), _infos(0, 0), _executor(*this, _infos)
-{
-}
+template <class Executor>
+ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                 ExecutionNode const* node)
+    : ExecutionBlock(engine, node),
+      _infos(0, 0),
+      _fetcher(*this),
+      _executor(_fetcher, _infos) {}
 
-template<class Executor>
+template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 
@@ -75,52 +78,48 @@ RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 
-  auto regInfo = getRegisterInfo(this, this->getPlanNode(), this->getPlanNode()->getFirstDependency());
+  auto regInfo = getRegisterInfo(this);
 
   //auto resultBlockManges = this->requestBlock(atMost, this->getNrOutputRegisters());
   auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOutRegs);
   std::size_t rowsAdded = 0;
 
   ExecutionState state;
-  std::unique_ptr<AqlItemRow> row; //holds temporary rows
+  std::unique_ptr<AqlItemRow> row;  // holds temporary rows
 
+  TRI_ASSERT(atMost > 0);
   while (rowsAdded < atMost) {
-    row = std::make_unique<AqlItemRow>(resultBlock.get(),rowsAdded);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded, regInfo.numOutRegs);
+#else
+    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded);
+#endif
     state = _executor.produceRow(*row.get()); // adds row to output
-    if( row && row->hasValue() ) {
+    if (row && row->hasValue()) {
       // copy from input
       ++rowsAdded;
     }
 
-    if( state == ExecutionState::WAITING || state == ExecutionState::DONE ) {
+    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
       break;
     }
   }
 
-  if (rowsAdded){
+  if (rowsAdded) {
     return {state, std::move(resultBlock)};
   } else {
     return {state, nullptr};
   }
 }
 
-template<class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return {ExecutionState::DONE, 0};
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
+    size_t atMost) {
+  // TODO IMPLEMENT ME, this is a stub!
+
+  auto res = getSome(atMost);
+
+  return {res.first, res.second->size()};
 }
 
-template<class Executor>
-std::pair<ExecutionState, AqlItemRow const*> ExecutionBlockImpl<Executor>::fetchRow() {
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return {ExecutionState::DONE, nullptr};
-}
-
-template<class Executor>
-ExecutionState ExecutionBlockImpl<Executor>::fetchBlock() {
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return ExecutionState::DONE;
-}
+template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;

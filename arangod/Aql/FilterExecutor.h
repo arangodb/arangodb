@@ -41,8 +41,11 @@ class SingleRowFetcher;
  */
 class FilterExecutor {
  public:
-  FilterExecutor(SingleRowFetcher& fetcher, ExecutorInfos&);
+  using Fetcher = SingleRowFetcher;
+
+  FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();
+
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -52,7 +55,7 @@ class FilterExecutor {
   ExecutionState produceRow(AqlItemRow& output);
 
  private:
-  SingleRowFetcher& _fetcher;
+  Fetcher& _fetcher;
 
   ExecutorInfos& _infos;
 

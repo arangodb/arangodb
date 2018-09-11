@@ -28,10 +28,10 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/SingleRowFetcher.h"
 
 
 #include <velocypack/Builder.h>

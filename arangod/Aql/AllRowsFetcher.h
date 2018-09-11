@@ -17,53 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_FETCHER_INTERFACES_H
-#define ARANGOD_AQL_BLOCK_FETCHER_INTERFACES_H
+#ifndef ARANGOD_AQL_ALL_ROWS_FETCHER_H
+#define ARANGOD_AQL_ALL_ROWS_FETCHER_H
 
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
+
+#include <memory>
 
 namespace arangodb {
 namespace aql {
 
-class AqlItemRow;
-class AqlItemMatrix;
-
-/**
- * @brief Interface for all AqlExecutors that do only need one
- *        row at a time in order to make progress.
- *        The guarantee is the following:
- *        If fetchRow returns a row the pointer to
- *        this row stays valid until the next call
- *        of fetchRow.
- */
-class SingleRowFetcher {
- public:
-  SingleRowFetcher() = default;
-  virtual ~SingleRowFetcher() = default;
-
-  /**
-   * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the pointer returned is valid only
-   *        until the next call to fetchRow.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if you need more input.
-   *         AqlItemRow:
-   *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => The Row is guaranteed to not be a nullptr.
-   *           If DONE => Row can be a nullptr (nothing received) or valid.
-   */
-  virtual std::pair<ExecutionState, AqlItemRow const*> fetchRow() = 0;
-};
+class AqlItemBlock;
+class ExecutionBlock;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -75,9 +44,15 @@ class SingleRowFetcher {
  */
 class AllRowsFetcher {
  public:
-  AllRowsFetcher() = default;
-  virtual ~AllRowsFetcher() = default;
+  explicit AllRowsFetcher(ExecutionBlock& executionBlock);
 
+  TEST_VIRTUAL ~AllRowsFetcher() = default;
+
+ protected:
+  // only for testing! Does not initialize _executionBlock!
+  AllRowsFetcher() = default;
+
+ public:
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
@@ -86,17 +61,42 @@ class AllRowsFetcher {
    * @return A pair with the following properties:
    *         ExecutionState:
    *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if you need more input.
+   *           DONE => No more to expect from Upstream, if you are done with
+   *                   this row return DONE to caller.
+   *           HASMORE => There is potentially more from above, call again if
+   *                      you need more input.
    *         AqlItemRow:
    *           If WAITING => Do not use this Row, it is a nullptr.
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  virtual std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows() = 0;
+  TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
 
+ private:
+  ExecutionBlock* _executionBlock;
+
+  /**
+   * @brief Holds state returned by the last fetchBlock() call.
+   *        This is similar to ExecutionBlock::_upstreamState, but can also be
+   *        WAITING.
+   *        Part of the Fetcher, and may be moved if the Fetcher implementations
+   *        are moved into separate classes.
+   */
+  ExecutionState _upstreamState;
+
+ private:
+  /**
+   * @brief Delegates to ExecutionBlock::fetchBlock()
+   */
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
+
+  /**
+   * @brief Delegates to ExecutionBlock::getNrInputRegisters()
+   */
+  RegisterId getNrInputRegisters() const;
 };
 
-} // aql
-} // arangodb
-#endif
+}  // namespace aql
+}  // namespace arangodb
+
+#endif  // ARANGOD_AQL_ALL_ROWS_FETCHER_H
