@@ -33,23 +33,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 
-// FIXMAINTENANCE: These strings appear again in ActionDescription.h,
-// we should remove this duplication.
-const char ActionBase::KEY[]="key";
-const char ActionBase::FIELDS[]="fields";
-const char ActionBase::TYPE[]="type";
-const char ActionBase::INDEXES[]="indexes";
-const char ActionBase::INDEX[]="index";
-const char ActionBase::SHARDS[]="shards";
-const char ActionBase::DATABASE[]="database";
-const char ActionBase::COLLECTION[]="collection";
-const char ActionBase::EDGE[]="edge";
-const char ActionBase::NAME[]="name";
-const char ActionBase::ID[]="id";
-const char ActionBase::LEADER[]="theLeader";
-const char ActionBase::LOCAL_LEADER[]="localLeader";
-const char ActionBase::GLOB_UID[]="globallyUniqueId";
-const char ActionBase::OBJECT_ID[]="objectId";
 
 std::string const ActionBase::FAST_TRACK = "fastTrack";
 

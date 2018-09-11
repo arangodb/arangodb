@@ -24,11 +24,11 @@
 
 <span style="color:rgb(85,85,255)">Indexes used:</span>
  <span style="color:rgb(187,0,187)">By</span>   <span style="color:rgb(187,0,187)">Type</span>   <span style="color:rgb(187,0,187)">Collection</span>   <span style="color:rgb(187,0,187)">Unique</span>   <span style="color:rgb(187,0,187)">Sparse</span>   <span style="color:rgb(187,0,187)">Selectivity</span>   <span style="color:rgb(187,0,187)">Fields</span>               <span style="color:rgb(187,0,187)">Ranges</span>
-  <span style="color:rgb(187,187,0)">2</span>   <span style="color:rgb(0,187,187)">edge</span>   <span style="color:rgb(187,0,0)">edges</span>        <span style="color:rgb(0,187,0)">false</span>    <span style="color:rgb(0,187,0)">false</span>        <span style="color:rgb(0,187,0)">85.00 %</span>   [ `<span style="color:rgb(187,187,0)">_from</span>`, `<span style="color:rgb(187,187,0)">_to</span>` ]   <span style="color:rgb(0,187,187)">base OUTBOUND</span>
+  <span style="color:rgb(187,187,0)">2</span>   <span style="color:rgb(0,187,187)">edge</span>   <span style="color:rgb(187,0,0)">edges</span>        <span style="color:rgb(0,187,0)">false</span>    <span style="color:rgb(0,187,0)">false</span>            <span style="color:rgb(0,187,0)">n/a</span>   [ `<span style="color:rgb(187,187,0)">_from</span>`, `<span style="color:rgb(187,187,0)">_to</span>` ]   <span style="color:rgb(0,187,187)">base OUTBOUND</span>
 
 <span style="color:rgb(85,85,255)">Functions used:</span>
- <span style="color:rgb(187,0,187)">Name</span>   <span style="color:rgb(187,0,187)">Deterministic</span>   <span style="color:rgb(187,0,187)">Uses V8</span>
- <span style="color:rgb(187,187,0)">RAND</span>   <span style="color:rgb(0,187,0)">false</span>           <span style="color:rgb(0,187,0)">false</span>  
+ <span style="color:rgb(187,0,187)">Name</span>   <span style="color:rgb(187,0,187)">Deterministic</span>   <span style="color:rgb(187,0,187)">Cacheable</span>   <span style="color:rgb(187,0,187)">Uses V8</span>
+ <span style="color:rgb(187,187,0)">RAND</span>   <span style="color:rgb(0,187,0)">false</span>           <span style="color:rgb(0,187,0)">false</span>       <span style="color:rgb(0,187,0)">false</span>  
 
 <span style="color:rgb(85,85,255)">Traversals on graphs:</span>
  <span style="color:rgb(187,0,187)">Id</span>   <span style="color:rgb(187,0,187)">Depth</span>   <span style="color:rgb(187,0,187)">Vertex collections</span>   <span style="color:rgb(187,0,187)">Edge collections</span>   <span style="color:rgb(187,0,187)">Options</span>                                   <span style="color:rgb(187,0,187)">Filter conditions</span>
