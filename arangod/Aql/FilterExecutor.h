@@ -49,7 +49,7 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> produceRow();
+  ExecutionState produceRow(AqlItemRow& output);
 
  private:
   SingleRowFetcher& _fetcher;

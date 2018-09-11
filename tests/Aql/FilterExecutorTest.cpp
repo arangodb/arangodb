@@ -26,10 +26,12 @@
 #include "catch.hpp"
 #include "BlockFetcherHelper.h"
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
+#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/BlockFetcherInterfaces.h"
+#include "Aql/ResourceUsage.h"
 
 
 #include <velocypack/Builder.h>
@@ -44,7 +46,10 @@ namespace aql {
 
 SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
-  std::unique_ptr<AqlItemRow> result;
+
+  ResourceMonitor monitor;
+  AqlItemBlock block(&monitor, 1000, 1);
+
   ExecutorInfos infos(0, 0);
 
   GIVEN("there are no rows upstream") {
@@ -55,9 +60,10 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        std::tie(state, result) = testee.produceRow();
+        AqlItemRow result(&block, 0, 1);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result == nullptr);
+        REQUIRE(!result.hasValue());
       }
     }
 
@@ -66,14 +72,15 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        std::tie(state, result) = testee.produceRow();
+        AqlItemRow result(&block, 0, 1);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(result == nullptr);
+        REQUIRE(!result.hasValue());
 
         AND_THEN("the executor should return DONE with nullptr") {
-          std::tie(state, result) = testee.produceRow();
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(result == nullptr);
+          REQUIRE(!result.hasValue());
         }
       }
 
