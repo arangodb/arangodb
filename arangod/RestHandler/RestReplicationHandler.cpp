@@ -357,7 +357,7 @@ RestStatus RestReplicationHandler::execute() {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
-      
+
       handleCommandRestoreView();
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
@@ -1295,7 +1295,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   TRI_ASSERT(queryRegistry != nullptr);
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
@@ -1371,7 +1371,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() && collectionName == "_users");
 
   // Now try to insert all keys for which the last marker was a document
@@ -1728,7 +1728,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-  
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
     << nameSlice.copyString();
   auto view = _vocbase.lookupView(nameSlice.copyString());
@@ -2170,7 +2170,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {

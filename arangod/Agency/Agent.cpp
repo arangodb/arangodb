@@ -492,11 +492,11 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // If the follower is behind our first log entry send last snapshot and
-      // following logs. Else try to have the follower catch up in regular order. 
+      // following logs. Else try to have the follower catch up in regular order.
       bool needSnapshot = lastConfirmed < _state.firstIndex();
       if (needSnapshot) {
         lastConfirmed = _state.lastCompactionAt() - 1;
-      } 
+      }
 
       LOG_TOPIC(TRACE, Logger::AGENCY)
         << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
@@ -504,7 +504,7 @@ void Agent::sendAppendEntriesRPC() {
       // corrected in _state::get and we only get from the beginning of the
       // log.
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
-         
+
       lockTime = steady_clock::now() - startTime;
       if (lockTime.count() > 0.2) {
         LOG_TOPIC(WARN, Logger::AGENCY)
@@ -804,7 +804,7 @@ void Agent::load() {
   >();
   arangodb::SystemDatabaseFeature::ptr vocbase =
     sysDbFeature ? sysDbFeature->use() : nullptr;
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
 
   if (vocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
@@ -902,14 +902,14 @@ void Agent::lastAckedAgo(Builder& ret) const {
   std::unordered_map<std::string, SteadyTimePoint> lastAcked;
   std::unordered_map<std::string, SteadyTimePoint> lastSent;
   index_t lastCompactionAt, nextCompactionAfter;
-  
+
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
     confirmed = _confirmed;
     lastSent = _lastSent;
     lastCompactionAt = _state.lastCompactionAt();
-    nextCompactionAfter = _state.nextCompactionAfter();    
+    nextCompactionAfter = _state.nextCompactionAfter();
   }
 
   std::function<double(std::pair<std::string,SteadyTimePoint> const&)> dur2str =

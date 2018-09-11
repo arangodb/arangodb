@@ -98,7 +98,7 @@ Result arangodb::unregisterUserFunction(
       nullptr,
       arangodb::aql::PART_MAIN
     );
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -170,7 +170,7 @@ Result arangodb::unregisterUserFunctionsGroup(
       nullptr,
       arangodb::aql::PART_MAIN
     );
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -376,7 +376,7 @@ Result arangodb::toArrayUserFunctions(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {

@@ -285,7 +285,7 @@ void GeneralServerFeature::defineHandlers() {
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   auto traverserEngineRegistry =
       TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
   if (_combinedRegistries == nullptr) {

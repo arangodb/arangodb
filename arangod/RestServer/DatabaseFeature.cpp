@@ -181,7 +181,7 @@ void DatabaseManagerThread::run() {
         std::this_thread::sleep_for(std::chrono::microseconds(waitTime()));
 
         // The following is only necessary after a wait:
-        auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+        auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
         if (queryRegistry != nullptr) {
           queryRegistry->expireQueries();
         }
@@ -958,7 +958,7 @@ void DatabaseFeature::updateContexts() {
   auto* vocbase = useDatabase(TRI_VOC_SYSTEM_DATABASE);
   TRI_ASSERT(vocbase);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   TRI_ASSERT(queryRegistry != nullptr);
 
   dealer->defineContextUpdate(

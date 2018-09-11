@@ -35,8 +35,8 @@ using namespace arangodb;
 
 void RocksDBRestHandlers::registerResources(
     rest::RestHandlerFactory* handlerFactory) {
-  
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   handlerFactory->addPrefixHandler(
       "/_api/export",
       RestHandlerCreator<RocksDBRestExportHandler>::createData<aql::QueryRegistry*>,

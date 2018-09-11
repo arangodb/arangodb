@@ -81,11 +81,15 @@ void AqlFeature::stop() {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
 
   // Wait until all AQL queries are done
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  auto traverserEngineRegistry =
+      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load();
+  TRI_ASSERT(queryRegistry != nullptr);
+  TRI_ASSERT(traverserEngineRegistry != nullptr);
   while (true) {
     try {
-      QueryRegistryFeature::QUERY_REGISTRY->destroyAll();
-      TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load()
-          ->destroyAll();
+      queryRegistry->destroyAll();
+      traverserEngineRegistry->destroyAll();
     } catch (...) {
       // ignore errors here. if it fails, we'll try again in next round
     }
@@ -93,9 +97,8 @@ void AqlFeature::stop() {
     uint64_t m = ::leases.load();
     TRI_ASSERT((m & ::readyBit) == 0);
 
-    size_t n = QueryRegistryFeature::QUERY_REGISTRY->numberRegisteredQueries();
-    size_t o = TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY.load()
-                   ->numberRegisteredEngines();
+    size_t n = queryRegistry->numberRegisteredQueries();
+    size_t o = traverserEngineRegistry->numberRegisteredEngines();
 
     if (n == 0 && m == 0 && o == 0) {
       break;

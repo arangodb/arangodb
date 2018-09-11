@@ -159,7 +159,8 @@ QueryStreamCursor::QueryStreamCursor(
       _guard(vocbase),
       _exportCount(-1),
       _queryResultPos(0) {
-  TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
+  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  TRI_ASSERT(registry != nullptr);
 
   _query = std::make_unique<Query>(
     false,
@@ -169,7 +170,7 @@ QueryStreamCursor::QueryStreamCursor(
     std::move(opts),
     arangodb::aql::PART_MAIN
   );
-  _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
+  _query->prepare(registry, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 
   // we replaced the rocksdb export cursor with a stream AQL query
@@ -319,7 +320,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
     while(rowsWritten < batchSize() && !_queryResults.empty()) {
       std::unique_ptr<AqlItemBlock>& block = _queryResults.front();
       TRI_ASSERT(_queryResultPos < block->size());
-      
+
       while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
         AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
         if (!value.isEmpty()) {
@@ -328,7 +329,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
         }
         ++_queryResultPos;
       }
-      
+
       if (_queryResultPos == block->size()) {
         // get next block
         TRI_ASSERT(_queryResultPos == block->size());
@@ -359,7 +360,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
 
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-      ss->setContinueCallback(); 
+      ss->setContinueCallback();
 
       QueryResult result;
       ExecutionState state = _query->finalize(result); // will commit transaction
