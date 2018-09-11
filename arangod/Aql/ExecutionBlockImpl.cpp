@@ -46,7 +46,7 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  std::unique_ptr<AqlItemBlock> resultBlock;
+  auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, this->getNrOutputRegisters());
   std::size_t rowsAdded = 0;
 
   ExecutionState state;
@@ -54,8 +54,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   while (rowsAdded < atMost) {
     row = std::make_unique<AqlItemRow>(resultBlock.get(),rowsAdded);
-    state = _executor.produceRow(row.get());
+    state = _executor.produceRow(row.get()); // adds row to output
     if( row && row->hasValue() ) {
+      // copy from input
       ++rowsAdded;
     }
 
