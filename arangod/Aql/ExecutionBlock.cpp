@@ -340,6 +340,7 @@ void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
+  TRI_ASSERT(src != nullptr);
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
