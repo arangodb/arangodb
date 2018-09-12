@@ -54,30 +54,28 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR]") {
-ExecutionState state;
-std::unique_ptr<AqlItemBlock> result;
-
-// Mock of the ExecutionEngine
-fakeit::Mock<ExecutionEngine> mockEngine;
-ExecutionEngine& engine = mockEngine.get();
-
-// Mock of the Query
-fakeit::Mock<Query> mockQuery;
-Query& query = mockQuery.get();
-
-// Mock of the Transaction
-fakeit::Mock<transaction::Methods> mockTrx;
-transaction::Methods& trx = mockTrx.get();
-
-// This is not used thus far in Base-Clase
-ExecutionNode const* node = nullptr;
-
-// This test is supposed to only test getSome return values,
-// it is not supposed to test the fetch logic!
-
-ExecutionBlockImpl<FilterExecutor> testee(&engine, node);
-}
+ // ExecutionState state;
+ // std::unique_ptr<AqlItemBlock> result;
+ //
+ // // Mock of the ExecutionEngine
+ // fakeit::Mock<ExecutionEngine> mockEngine;
+ // ExecutionEngine& engine = mockEngine.get();
+ //
+ // // Mock of the Query
+ // fakeit::Mock<Query> mockQuery;
+ // Query& query = mockQuery.get();
+ //
+ // // Mock of the Transaction
+ // fakeit::Mock<transaction::Methods> mockTrx;
+ // transaction::Methods& trx = mockTrx.get();
+ //
+ // // This is not used thus far in Base-Clase
+ // ExecutionNode const* node = nullptr;
+ //
+ // // This test is supposed to only test getSome return values,
+ // // it is not supposed to test the fetch logic!
+ //
+ // ExecutionBlockImpl<FilterExecutor> testee(&engine, node);
 
 
 } // aql
