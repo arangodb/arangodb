@@ -53,11 +53,16 @@ for book in ${ALLBOOKS}; do
             if test ! -d "${DSTDIR}"; then
                 mkdir -p "${DSTDIR}"
             fi
-            (
-                echo "<!-- don't edit here, its from ${REPO} / ${SUBDIR}/${SRC} -->"
-                cat "${CODIR}/${SUBDIR}/${SRC}/${oneMD}" |sed "s;https://docs.arangodb.com/latest;../${TOPREF};g"
-            ) > "${DSTDIR}/${NAME}"
-
+            sourcefile="${CODIR}/${SUBDIR}/${SRC}/${oneMD}"
+            targetfile="${DSTDIR}/${NAME}"
+            if [[ -n $(file "$sourcefile" | grep text) ]]; then
+                (
+                    echo "<!-- don't edit here, its from ${REPO} / ${SUBDIR}/${SRC} -->"
+                    cat "$sourcefile" |sed "s;https://docs.arangodb.com/latest;../${TOPREF};g"
+                ) > "$targetfile"
+            else
+                cp "$sourcefile" "$targetfile"
+            fi
         done
     done
 done
