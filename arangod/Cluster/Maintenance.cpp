@@ -363,8 +363,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
-        actions.emplace_back(
-          ActionDescription({{NAME, CREATE_DATABASE}, {DATABASE, dbname}}));
+        actions.emplace_back(ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string(DATABASE), std::string(dbname)}}));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating database " << dbname
@@ -377,8 +376,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {DATABASES, dbname})) {
-      actions.emplace_back(
-        ActionDescription({{NAME, DROP_DATABASE}, {DATABASE, dbname}}));
+      actions.emplace_back(ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)}, {std::string(DATABASE), std::string(dbname)}}));
     }
   }
 
