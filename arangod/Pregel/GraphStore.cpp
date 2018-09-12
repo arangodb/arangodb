@@ -142,7 +142,6 @@ std::map<CollectionID, std::vector<VertexShardInfo>>
         continue;
       }
       
-      std::vector<ShardID> edgeLookups;
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       for (auto const& pair2 : edgeCollMap) {
