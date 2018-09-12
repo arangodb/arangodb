@@ -42,9 +42,6 @@ function runSetup () {
   db._createView('UnitTestsRecoveryEmpty', 'arangosearch', {});
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  db._dropView('UnitTestsRecoveryFail');
-  db._createView('UnitTestsRecoveryFail', 'arangosearch', meta);
-
   db._dropView('UnitTestsRecoveryWithLink');
   db._createView('UnitTestsRecoveryWithLink', 'arangosearch', {});
   // store link
@@ -77,17 +74,11 @@ function recoverySuite () {
       assertEqual(v.type(), 'arangosearch');
       assertEqual(v.properties().links, {});
 
-      v = db._view('UnitTestsRecoveryFail');
-      assertEqual(v.name(), 'UnitTestsRecoveryFail');
-      assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
-      assertEqual(v.properties().links, {});
-
       var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
       v = db._view('UnitTestsRecoveryWithLink');
       assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
       assertEqual(v.type(), 'arangosearch');
-      p = v.properties().links;
+      var p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
     }
