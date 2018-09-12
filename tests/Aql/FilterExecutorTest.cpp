@@ -23,8 +23,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
 #include "BlockFetcherHelper.h"
+#include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
@@ -32,7 +32,6 @@
 #include "Aql/FilterExecutor.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
-
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -83,11 +82,138 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(!result.hasValue());
         }
       }
+    }
+  }
 
+  GIVEN("there are rows in the upstream") {
+    auto input =
+        VPackParser::fromJson("[ [true], [false], [true], [false], [true] ]");
+
+    WHEN("the producer does not wait") {
+      SingleRowFetcherHelper fetcher(input->steal(), true);
+      FilterExecutor testee(fetcher, infos);
+
+      THEN("the executor should return DONE with nullptr") {
+        AqlItemRow result1(block, 0);
+        AqlItemRow result2(block, 1);
+        AqlItemRow result3(block, 2);
+        /*
+        produce => WAIT                 RES1
+        produce => HASMORE, Row 1     RES1
+        => WAIT                         RES2
+        => WAIT                         RES2
+         => HASMORE, Row 3            RES2
+         => WAIT,                       RES3
+         => WAIT,                       RES3
+         => DONE, Row 5               RES3
+          */
+
+        state = testee.produceRow(result1);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result1.hasValue());
+
+        state = testee.produceRow(result1);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result1.hasValue());
+
+        state = testee.produceRow(result2);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result2.hasValue());
+
+        state = testee.produceRow(result2);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result2.hasValue());
+
+        state = testee.produceRow(result2);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result2.hasValue());
+
+        state = testee.produceRow(result3);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result3.hasValue());
+
+        state = testee.produceRow(result3);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result3.hasValue());
+
+        state = testee.produceRow(result3);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(result3.hasValue());
+      }
+    }
+  }
+
+  GIVEN("there are rows in the upstream") {
+    auto input = VPackParser::fromJson(
+        "[ [true], [false], [true], [false], [true], [false] ]");
+
+    WHEN("the producer does not wait") {
+      SingleRowFetcherHelper fetcher(input->steal(), true);
+      FilterExecutor testee(fetcher, infos);
+
+      THEN("the executor should return DONE with nullptr") {
+        AqlItemRow result1(block, 0);
+        AqlItemRow result2(block, 1);
+        AqlItemRow result3(block, 2);
+        AqlItemRow result4(block, 3);
+
+        /*
+        produce => WAIT                  RES1
+        produce => HASMORE, Row 1        RES1
+        => WAIT                          RES2
+        => WAIT                          RES2
+         => HASMORE, Row 3               RES2
+         => WAIT,                        RES3
+         => WAIT,                        RES3
+         => HASMORE, Row 5               RES3
+         => WAITING, Row 6               RES3
+         => DONE, no output!             RES3
+          */
+
+        state = testee.produceRow(result1);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result1.hasValue());
+
+        state = testee.produceRow(result1);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result1.hasValue());
+
+        state = testee.produceRow(result2);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result2.hasValue());
+
+        state = testee.produceRow(result2);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result2.hasValue());
+
+        state = testee.produceRow(result2);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result2.hasValue());
+
+        state = testee.produceRow(result3);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result3.hasValue());
+
+        state = testee.produceRow(result3);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result3.hasValue());
+
+        state = testee.produceRow(result3);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result3.hasValue());
+
+        state = testee.produceRow(result4);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result4.hasValue());
+
+        state = testee.produceRow(result4);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result4.hasValue());
+      }
     }
   }
 }
 
-} // aql
-} // tests
-} // arangodb
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb

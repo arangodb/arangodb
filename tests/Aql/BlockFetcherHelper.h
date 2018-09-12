@@ -67,6 +67,7 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   std::unique_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
+  std::unique_ptr<arangodb::aql::AqlItemRow> _lastReturnedRow;
 };
 
 /**
