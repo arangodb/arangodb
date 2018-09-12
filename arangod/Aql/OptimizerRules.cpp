@@ -365,7 +365,7 @@ class RestrictToSingleShardChecker final
       case EN::REMOVE: {
         auto node =
             ExecutionNode::castTo<arangodb::aql::ModificationNode const*>(en);
-        // make sure we don't restrict this collection via a filter
+        // make sure we don't restrict this collection via a lower filter
         _shardsUsed.clear();
         std::string shardId = ::getSingleShardId(_plan, en, node->collection());
         if (shardId.empty()) {

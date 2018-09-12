@@ -779,7 +779,7 @@ function ahuacatlModifySuite () {
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
-        assertTrue(-1 !== plan.rules.indexOf("restrict-to-single-shard"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       } else {
         expected = { writesExecuted: 100, writesIgnored: 0 };
       }
@@ -824,12 +824,13 @@ function ahuacatlModifySuite () {
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d.id == 42 REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
-      
+
       if (isCluster) {
-        expected = { writesExecuted: 1, writesIgnored: 4 };
+        expected = { writesExecuted: 1, writesIgnored: 0 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
       assertEqual(99, c.count());
