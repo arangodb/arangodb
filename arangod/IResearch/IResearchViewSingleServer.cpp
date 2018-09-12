@@ -98,7 +98,6 @@ namespace iresearch {
         TRI_set_errno(result.errorNumber());
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "Failure to construct links on new view in database '" << vocbase.id() << "', error: " << error;
-        return nullptr;
       }
   }
 
