@@ -102,6 +102,7 @@
       * [Indexes](SpringData/Reference/Mapping/Indexes.md)
       * [Converter](SpringData/Reference/Mapping/Converter.md)
       * [Events](SpringData/Reference/Mapping/Events.md)
+      * [Auditing](SpringData/Reference/Mapping/Auditing.md)
   * [Migration](SpringData/Migration/README.md)
     * [Migrating 1.x to 3.0](SpringData/Migration/Migrating-1.x-3.0.md)
     * [Migrating 2.x to 3.0](SpringData/Migration/Migrating-2.x-3.0.md)

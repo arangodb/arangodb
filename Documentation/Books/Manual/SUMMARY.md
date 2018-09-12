@@ -21,6 +21,7 @@
   * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
+    * [GKE](Tutorials/Kubernetes/GKE.md)
   * [DC2DC on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB Server](Programs/Arangod/README.md)
@@ -272,6 +273,8 @@
     # https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
     * [Kubernetes](Deployment/Kubernetes/README.md)
       * [Using the Operator](Deployment/Kubernetes/Usage.md)
+      * [Dashboards](Deployment/Kubernetes/Dashboards.md)
+      * [Helm](Deployment/Kubernetes/Helm.md)
       * [Deployment Resource Reference](Deployment/Kubernetes/DeploymentResource.md)
       * [Driver Configuration](Deployment/Kubernetes/DriverConfiguration.md)
       * [Authentication](Deployment/Kubernetes/Authentication.md)
