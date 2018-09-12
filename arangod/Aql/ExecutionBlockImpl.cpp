@@ -70,7 +70,12 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
     {}
 
 template<class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
+  if(_getSomeOutBlock){
+    AqlItemBlock* block = _getSomeOutBlock.release();
+    _engine->_itemBlockManager.returnBlock(block);
+  }
+}
 
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
@@ -104,7 +109,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     }
 
     if (state == ExecutionState::DONE) {
-      // shrink return
+      _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
+      //_getSomeOutBlock is gurantted to be nullptr after move.
+      //keep this invariant incase we switch to another type!!!!!
       return {state, std::move(_getSomeOutBlock)};
     }
   }
