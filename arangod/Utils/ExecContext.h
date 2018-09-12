@@ -53,9 +53,7 @@ class ExecContext : public RequestContext {
         _database(database),
         _canceled(false),
         _systemDbAuthLevel(systemLevel),
-        _databaseAuthLevel(dbLevel) {
-    TRI_ASSERT(!(_type == Type::Internal) || _user.empty());
-  }
+        _databaseAuthLevel(dbLevel) {}
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
  public:
