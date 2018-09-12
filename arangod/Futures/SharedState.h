@@ -170,7 +170,7 @@ class SharedState {
           [[gnu::fallthrough]];
           
         case State::OnlyResult:
-          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
@@ -206,7 +206,7 @@ class SharedState {
           [[gnu::fallthrough]];
           
         case State::OnlyCallback:
-          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_release)) {
+          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
