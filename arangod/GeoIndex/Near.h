@@ -91,11 +91,13 @@ class NearUtils {
 
  public:
   /// @brief get cell covering target coordinate (at max level)
-  S2Point origin() const { return _origin; }
+  inline S2Point origin() const { return _origin; }
 
-  geo::FilterType filterType() const { return _params.filterType; }
+  inline geo::FilterType filterType() const { return _params.filterType; }
 
-  geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
+  inline geo::ShapeContainer const& filterShape() const {
+    return _params.filterShape;
+  }
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
