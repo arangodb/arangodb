@@ -79,7 +79,7 @@ if (exists === false) {
 
 ## edgeCollection.save
 
-`async edgeCollection.save(data, [fromId, toId]): Object`
+`async edgeCollection.save(data, [fromId, toId], [opts]): Object`
 
 Creates a new edge between the documents _fromId_ and _toId_ with the given
 _data_ and returns an object containing the edge's metadata.

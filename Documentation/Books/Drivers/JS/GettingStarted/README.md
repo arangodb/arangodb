@@ -35,11 +35,11 @@ The version number of this driver does not indicate supported ArangoDB versions!
 
 This driver uses semantic versioning:
 
-* A change in the bugfix version (e.g. X.Y.0 -> X.Y.1) indicates internal
+- A change in the bugfix version (e.g. X.Y.0 -> X.Y.1) indicates internal
   changes and should always be safe to upgrade.
-* A change in the minor version (e.g. X.1.Z -> X.2.0) indicates additions and
+- A change in the minor version (e.g. X.1.Z -> X.2.0) indicates additions and
   backwards-compatible changes that should not affect your code.
-* A change in the major version (e.g. 1.Y.Z -> 2.0.0) indicates _breaking_
+- A change in the major version (e.g. 1.Y.Z -> 2.0.0) indicates _breaking_
   changes that require changes in your code to upgrade.
 
 If you are getting weird errors or functions seem to be missing, make sure you
@@ -58,27 +58,6 @@ npm install --save arangojs@4
 You can find the documentation for each version by clicking on the corresponding
 date on the left in
 [the list of version tags](https://github.com/arangodb/arangojs/tags).
-
-## Testing
-
-Run the tests using the `yarn test` or `npm test` commands:
-
-```sh
-yarn test
-# - or -
-npm test
-```
-
-By default the tests will be run against a server listening on
-`http://localhost:8529` (using username `root` with no password). To
-override this, you can set the environment variable `TEST_ARANGODB_URL` to
-something different:
-
-```sh
-TEST_ARANGODB_URL=http://myserver.local:8530 yarn test
-# - or -
-TEST_ARANGODB_URL=http://myserver.local:8530 npm test
-```
 
 ## Install
 
@@ -171,11 +150,10 @@ const db = new Database();
 var arangojs = require("arangojs");
 var db = new arangojs.Database();
 var now = Date.now();
-db
-  .query({
-    query: "RETURN @value",
-    bindVars: { value: now }
-  })
+db.query({
+  query: "RETURN @value",
+  bindVars: { value: now }
+})
   .then(function(cursor) {
     return cursor.next().then(function(result) {
       // ...
@@ -231,15 +209,14 @@ If the request failed at a network level or the connection was closed without re
 ```js
 // Using async/await
 try {
-  const info = await db.createDatabase('mydb');
+  const info = await db.createDatabase("mydb");
   // database created
 } catch (err) {
   console.error(err.stack);
 }
 
 // Using promises with arrow functions
-db.createDatabase('mydb')
-.then(
+db.createDatabase("mydb").then(
   info => {
     // database created
   },

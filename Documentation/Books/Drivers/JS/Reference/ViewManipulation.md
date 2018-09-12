@@ -14,7 +14,7 @@ Checks whether the view exists.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
+const view = db.arangoSearchView("some-view");
 const result = await view.exists();
 // result indicates whether the view exists
 ```
@@ -29,7 +29,7 @@ Retrieves general information about the view.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
+const view = db.arangoSearchView("some-view");
 const data = await view.get();
 // data contains general information about the view
 ```
@@ -44,7 +44,7 @@ Retrieves the view's properties.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
+const view = db.arangoSearchView("some-view");
 const data = await view.properties();
 // data contains the view's properties
 ```
@@ -67,8 +67,8 @@ then returns the server response.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('potatoes');
-await view.create()
+const view = db.arangoSearchView("potatoes");
+await view.create();
 // the arangosearch view "potatoes" now exists
 ```
 
@@ -89,9 +89,9 @@ Updates the properties of the view.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
-const result = await view.setProperties({ locale: "C" })
-assert.equal(result.locale, "C");
+const view = db.arangoSearchView("some-view");
+const result = await view.setProperties({ consolidationIntervalMsec: 123 });
+assert.equal(result.consolidationIntervalMsec, 123);
 ```
 
 ## view.replaceProperties
@@ -111,9 +111,9 @@ Replaces the properties of the view.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
-const result = await view.replaceProperties({ locale: "C" })
-assert.equal(result.locale, "C");
+const view = db.arangoSearchView("some-view");
+const result = await view.replaceProperties({ consolidationIntervalMsec: 234 });
+assert.equal(result.consolidationIntervalMsec, 234);
 ```
 
 ## view.rename
@@ -127,9 +127,9 @@ name when the rename succeeds.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
-const result = await view.rename('new-view-name')
-assert.equal(result.name, 'new-view-name');
+const view = db.arangoSearchView("some-view");
+const result = await view.rename("new-view-name");
+assert.equal(result.name, "new-view-name");
 assert.equal(view.name, result.name);
 // result contains additional information about the view
 ```
@@ -144,7 +144,7 @@ Deletes the view from the database.
 
 ```js
 const db = new Database();
-const view = db.arangoSearchView('some-view');
+const view = db.arangoSearchView("some-view");
 await view.drop();
 // the view "some-view" no longer exists
 ```

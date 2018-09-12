@@ -23,7 +23,7 @@ Checks whether the view exists
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoView view = db.view("potatoes");
+ArangoView view = db.view("potatos");
 
 boolean exists = view.exists();
 ```
@@ -41,7 +41,7 @@ Returns information about the view.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoView view = db.view("potatoes");
+ArangoView view = db.view("potatos");
 
 ViewEntity info = view.getInfo();
 ```
