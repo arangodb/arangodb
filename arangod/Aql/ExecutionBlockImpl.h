@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
 #include "Aql/AllRowsFetcher.h"
+#include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -129,10 +130,16 @@ class ExecutionBlockImpl : public ExecutionBlock {
   ExecutorInfos _infos;
 
   /**
+  * @brief Used to allow the row Fetcher to access selected methods of this
+  *        ExecutionBlock object.
+  */
+  BlockFetcher _blockFetcher;
+
+  /**
   * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
   *        memory management of AqlItemBlocks as needed by Executor.
   */
-  Fetcher _fetcher;
+  Fetcher _rowFetcher;
 
   /**
    * @brief This is the working party of this implementation
@@ -140,6 +147,10 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *        to produce a single row from the upstream information.
    */
   Executor _executor;
+
+  std::unique_ptr<AqlItemBlock> _getSomeOutBlock;
+  std::size_t _getSomeOutRowsAdded;
+  //ExecutionState _getSomeState;
 
 };
 

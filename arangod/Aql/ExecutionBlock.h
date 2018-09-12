@@ -39,10 +39,9 @@ class Methods;
 }
 
 namespace aql {
-class AllRowsFetcher;
 class AqlItemBlock;
+class BlockFetcher;
 class ExecutionEngine;
-class SingleRowFetcher;
 
 class ExecutionBlock {
  public:
@@ -273,8 +272,7 @@ class ExecutionBlock {
 
  protected:
   // friended for this->fetchBlock() (follows below)
-  friend SingleRowFetcher;
-  friend AllRowsFetcher;
+  friend BlockFetcher;
 
   /**
    * @brief Internal helper function that fetches the next block
@@ -285,7 +283,6 @@ class ExecutionBlock {
    */
   TEST_VIRTUAL
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
-
 };
 
 }  // namespace arangodb::aql

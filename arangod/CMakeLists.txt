@@ -174,7 +174,6 @@ SET(ARANGOD_SOURCES
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
-  Aql/AllRowsFetcher.h
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
@@ -191,6 +190,7 @@ SET(ARANGOD_SOURCES
   Aql/BasicBlocks.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
+  Aql/BlockFetcher.cpp
   Aql/CalculationBlock.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
@@ -254,7 +254,6 @@ SET(ARANGOD_SOURCES
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
-  Aql/SingleRowFetcher.h
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
@@ -475,7 +474,7 @@ SET(ARANGOD_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
-  RestServer/SystemDatabaseFeature.cpp RestServer/SystemDatabaseFeature.h
+  RestServer/SystemDatabaseFeature.cpp
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UpgradeFeature.cpp

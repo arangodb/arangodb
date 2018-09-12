@@ -26,7 +26,7 @@
 #include "Aql/SingleRowFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionBlock.h"
+#include "Aql/BlockFetcher.h"
 #include "Aql/FilterExecutor.h"
 
 using namespace arangodb;
@@ -46,22 +46,26 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
     _rowIndex = 0;
   }
 
+  if (_currentBlock == nullptr) {
+    _currentRow = nullptr;
+  } else {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex,
-                                             getNrInputRegisters());
+    _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex,
+                                               getNrInputRegisters());
 #else
-  _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex);
+    _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex);
 #endif
+  }
 
   return {ExecutionState::DONE, _currentRow.get()};
 }
 
-SingleRowFetcher::SingleRowFetcher(ExecutionBlock& executionBlock)
-    : _executionBlock(&executionBlock) {}
+SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
+    : _blockFetcher(&executionBlock) {}
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 SingleRowFetcher::fetchBlock() {
-  auto res = _executionBlock->fetchBlock();
+  auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
 
@@ -69,5 +73,5 @@ SingleRowFetcher::fetchBlock() {
 }
 
 RegisterId SingleRowFetcher::getNrInputRegisters() const {
-  return _executionBlock->getNrInputRegisters();
+  return _blockFetcher->getNrInputRegisters();
 }

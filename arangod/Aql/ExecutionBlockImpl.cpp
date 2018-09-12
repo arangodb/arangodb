@@ -36,35 +36,17 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <class Executor>
-ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                 ExecutionNode const* node)
-    : ExecutionBlock(engine, node),
-      _infos(0, 0),
-      _fetcher(*this),
-      _executor(_fetcher, _infos) {}
-
-template <class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
-
-
-struct RegInfo {
-  std::size_t numOutRegs;
-  std::unordered_set<RegisterId> _regsToKeep;
-  std::unordered_set<RegisterId> _regsToClear;
-};
-
-RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
+static RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
 
   auto nrOut = thisBlock->getNrOutputRegisters();
-
   auto nrIn = thisBlock->getNrOutputRegisters();
   std::unordered_set<RegisterId> toKeep;
+  auto toClear = thisBlock->getPlanNode()->getRegsToClear();
+
   for (RegisterId i = 0; i < nrIn; i++) {
     toKeep.emplace(i);
   }
 
-  auto toClear = thisBlock->getPlanNode()->getRegsToClear();
   for(auto item : toClear){
     toKeep.erase(item);
   }
@@ -75,41 +57,61 @@ RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
          };
 }
 
+template <class Executor>
+ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                 ExecutionNode const* node)
+    : ExecutionBlock(engine, node),
+      _infos(0, 0),
+      _blockFetcher(*this),
+      _rowFetcher(_blockFetcher),
+      _executor(_rowFetcher, _infos),
+      _getSomeOutBlock(nullptr),
+      _getSomeOutRowsAdded(0)
+    {}
+
+template<class Executor>
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
+
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 
   auto regInfo = getRegisterInfo(this);
 
   //auto resultBlockManges = this->requestBlock(atMost, this->getNrOutputRegisters());
-  auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOutRegs);
-  std::size_t rowsAdded = 0;
+  if(!_getSomeOutBlock) {
+    auto _getSomeOutBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOut);
+    _getSomeOutRowsAdded = 0;
+  }
 
   ExecutionState state;
   std::unique_ptr<AqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
-  while (rowsAdded < atMost) {
+  while (_getSomeOutRowsAdded < atMost) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded, regInfo.numOutRegs);
+    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, regInfo.numOut);
 #else
-    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded);
+    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded);
 #endif
     state = _executor.produceRow(*row.get()); // adds row to output
     if (row && row->hasValue()) {
       // copy from input
-      ++rowsAdded;
+      ++_getSomeOutRowsAdded;
     }
 
-    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      break;
+    if (state == ExecutionState::WAITING) {
+      return {state, nullptr};
+    }
+
+    if (state == ExecutionState::DONE) {
+      // shrink return
+      return {state, std::move(_getSomeOutBlock)};
     }
   }
 
-  if (rowsAdded) {
-    return {state, std::move(resultBlock)};
-  } else {
-    return {state, nullptr};
-  }
+  TRI_ASSERT(state == ExecutionState::HASMORE);
+  TRI_ASSERT(_getSomeOutRowsAdded == atMost);
+  return {state, std::move(_getSomeOutBlock)};
 }
 
 template <class Executor>

@@ -23,7 +23,7 @@
 #include "Aql/AllRowsFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/BlockFetcher.h"
 #include "Aql/SortExecutor.h"
 
 using namespace arangodb;
@@ -34,12 +34,12 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-AllRowsFetcher::AllRowsFetcher(ExecutionBlock& executionBlock)
-    : _executionBlock(&executionBlock) {}
+AllRowsFetcher::AllRowsFetcher(BlockFetcher& executionBlock)
+    : _blockFetcher(&executionBlock) {}
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 AllRowsFetcher::fetchBlock() {
-  auto res = _executionBlock->fetchBlock();
+  auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
 
@@ -47,5 +47,5 @@ AllRowsFetcher::fetchBlock() {
 }
 
 RegisterId AllRowsFetcher::getNrInputRegisters() const {
-  return _executionBlock->getNrInputRegisters();
+  return _blockFetcher->getNrInputRegisters();
 }

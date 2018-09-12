@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,35 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TYPES_H
-#define ARANGOD_AQL_TYPES_H 1
-
-#include "Basics/Common.h"
-
-namespace arangodb {
-namespace aql {
-
-/// @brief type for variable ids
-typedef uint32_t VariableId;
-
-/// @brief type for register numbers/ids
-typedef unsigned int RegisterId;
-
-/// @brief type of a query id
-typedef uint64_t QueryId;
-
-//Map RemoteID->ServerID->[SnippetId]
-typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
-
-struct RegInfo {
-  std::size_t numOut;
-  std::unordered_set<RegisterId> toKeep;
-  std::unordered_set<RegisterId> toClear;
-};
-}
-}
-
-#endif
+#include "BlockFetcher.h"
