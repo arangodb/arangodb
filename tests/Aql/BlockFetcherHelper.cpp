@@ -159,6 +159,7 @@ AllRowsFetcherHelper::fetchAllRows() {
   REQUIRE(_nrCalled <= _nrItems + 1);
   if (_returnsWaiting) {
     if (_nrCalled < _nrItems || _nrCalled == 0) {
+      _nrCalled++;
       // We will return waiting once for each item
       return {ExecutionState::WAITING, nullptr};
     }
