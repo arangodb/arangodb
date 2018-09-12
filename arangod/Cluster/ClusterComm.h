@@ -46,12 +46,6 @@ namespace arangodb {
 class ClusterCommThread;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief type of a client transaction ID
-////////////////////////////////////////////////////////////////////////////////
-
-typedef std::string ClientTransactionID;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -169,7 +163,6 @@ enum ClusterCommOpStatus {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommResult {
-  ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   OperationID operationID;
   ShardID shardID;       // the shard to which we want to send, can be empty
@@ -499,8 +492,7 @@ class ClusterComm {
   /// @brief submit an HTTP request to a shard asynchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual OperationID asyncRequest(
-      ClientTransactionID const& clientTransactionID,
+  TEST_VIRTUAL OperationID asyncRequest(
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
@@ -513,7 +505,6 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unique_ptr<ClusterCommResult> syncRequest(
-      ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::string const& body,
@@ -530,8 +521,7 @@ class ClusterComm {
   /// @brief wait for one answer matching the criteria
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
-                                       CoordTransactionID const coordTransactionID,
+  TEST_VIRTUAL ClusterCommResult const wait(CoordTransactionID const coordTransactionID,
                                        OperationID const operationID,
                                        ShardID const& shardID,
                                        ClusterCommTimeout timeout = 0.0);
@@ -540,16 +530,8 @@ class ClusterComm {
   /// @brief ignore and drop current and future answers matching
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void drop(ClientTransactionID const& clientTransactionID,
-                    CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief send an answer HTTP request to a coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
-  void asyncAnswer(std::string& coordinatorHeader,
-                   GeneralResponse* responseToSend);
+  TEST_VIRTUAL void drop(CoordTransactionID const coordTransactionID,
+                         OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief this method performs the given requests described by the vector
@@ -609,13 +591,6 @@ class ClusterComm {
 
   /// @brief Constructor for test cases.
   explicit ClusterComm(bool);
-
-  // code below this point used to be "private".  now "protected" to
-  //  enable unit test wrapper class
-
-  size_t performSingleRequest(std::vector<ClusterCommRequest>& requests,
-                              ClusterCommTimeout timeout, size_t& nrDone,
-                              arangodb::LogTopic const& logTopic);
 
   communicator::Destination createCommunicatorDestination(
       std::string const& destination, std::string const& path);
@@ -693,15 +668,8 @@ class ClusterComm {
   /// @brief internal function to match an operation:
   //////////////////////////////////////////////////////////////////////////////
 
-  bool match(ClientTransactionID const& clientTransactionID,
-             CoordTransactionID const coordTransactionID,
+  bool match(CoordTransactionID const coordTransactionID,
              ShardID const& shardID, ClusterCommResult* res);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief move an operation from the send to the receive queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool moveFromSendToReceived(OperationID operationID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup all queues

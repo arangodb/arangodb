@@ -446,9 +446,6 @@ struct TRI_v8_global_t {
   /// @brief "client" key name
   v8::Persistent<v8::String> ClientKey;
 
-  /// @brief "clientTransactionID" key name
-  v8::Persistent<v8::String> ClientTransactionIDKey;
-
   /// @brief "code" key name
   v8::Persistent<v8::String> CodeKey;
 

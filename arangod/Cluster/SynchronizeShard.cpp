@@ -137,7 +137,7 @@ arangodb::Result getReadLockId (
   }
 
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::GET,
+    TRI_NewTickServer(), endpoint, rest::RequestType::GET,
     DB + database + REPL_HOLD_READ_LOCK, std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -237,7 +237,7 @@ arangodb::Result addShardFollower (
       }}
 
     auto comres = cc->syncRequest(
-      clientId, 1, endpoint, rest::RequestType::PUT,
+      TRI_NewTickServer(), endpoint, rest::RequestType::PUT,
       DB + database + REPL_ADD_FOLLOWER, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
 
@@ -293,7 +293,7 @@ arangodb::Result removeShardFollower (
   // database might be gone already on the leader and we need to cancel
   // the read lock under all circumstances.
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::PUT,
+    TRI_NewTickServer(), endpoint, rest::RequestType::PUT,
     DB + database + REPL_REM_FOLLOWER, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -331,7 +331,7 @@ arangodb::Result cancelReadLockOnLeader (
   // database might be gone already on the leader and we need to cancel
   // the read lock under all circumstances.
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
+    TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ,
     DB + StaticStrings::SystemDatabase + REPL_HOLD_READ_LOCK, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -367,7 +367,7 @@ arangodb::Result cancelBarrier(
   }
 
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
+    TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ,
     DB + database + REPL_BARRIER_API + std::to_string(barrierId), std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -413,7 +413,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   auto url = DB + database + REPL_HOLD_READ_LOCK;
 
   cc->asyncRequest(
-    clientId, 2, endpoint, rest::RequestType::POST, url,
+    TRI_NewTickServer(), endpoint, rest::RequestType::POST, url,
     std::make_shared<std::string>(body.toJson()),
     std::unordered_map<std::string, std::string>(),
     std::make_shared<SynchronizeShardCallback>(this), timeout, true, timeout);
@@ -427,7 +427,7 @@ arangodb::Result SynchronizeShard::getReadLock(
 
     // Now check that we hold the read lock:
     auto putres = cc->syncRequest(
-      clientId, 1, endpoint, rest::RequestType::PUT, url, body.toJson(),
+      TRI_NewTickServer(), endpoint, rest::RequestType::PUT, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
 
     auto result = putres->result;
@@ -454,7 +454,7 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   try {
     auto r = cc->syncRequest(
-      clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
+      TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
     if (r->result == nullptr && r->result->getHttpReturnCode() != 200) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)

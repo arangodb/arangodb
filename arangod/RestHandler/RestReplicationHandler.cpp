@@ -608,7 +608,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     }
 
     // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -616,7 +616,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   } else {
     // do we need to handle multiple payloads here - TODO
     // here we switch from vst to http?!
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,

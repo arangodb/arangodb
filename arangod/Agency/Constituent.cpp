@@ -482,11 +482,11 @@ void Constituent::callElection() {
     if (i != _id) {
       if (!isStopping() && cc != nullptr) {
          cc->asyncRequest(
-          "", coordinatorTransactionID, _agent->config().poolAt(i),
+          coordinatorTransactionID, _agent->config().poolAt(i),
           rest::RequestType::GET, path.str(),
           std::make_shared<std::string>(body), headerFields,
           nullptr, 0.9 * _agent->config().minPing() *
-                         _agent->config().timeoutMult(), true);
+                         _agent->config().timeoutMult(), /*single*/true);
       }
     }
   }
@@ -511,8 +511,8 @@ void Constituent::callElection() {
     }
 
     if (!isStopping() && cc != nullptr) {
-      auto res = ClusterComm::instance()->wait(
-        "", coordinatorTransactionID, 0, "",
+      auto res = cc->wait(
+        coordinatorTransactionID, 0, "",
         duration<double>(timeout - steady_clock::now()).count());
       
       if (res.status == CL_COMM_SENT) {
@@ -558,9 +558,8 @@ void Constituent::callElection() {
   
   // Clean up
   if (!isStopping() && cc != nullptr) {
-    ClusterComm::instance()->drop("", coordinatorTransactionID, 0, "");
+    cc->drop(coordinatorTransactionID, 0, "");
   }
-  
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
