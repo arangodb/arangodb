@@ -41,11 +41,8 @@ struct AqlValue;
  */
 class AqlItemRow {
  public:
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex, size_t nrRegisters);
-#else
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex);
-#endif
+  //friend void copyRegistersToKeep(RegInfo, AqlItemRow const& sourceRow, AqlItemRow& targetRow );
+  AqlItemRow(AqlItemBlock* block, size_t baseIndex, RegInfo);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -59,7 +56,7 @@ class AqlItemRow {
   void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue &&);
   void copyRow(AqlItemRow const& sourceRow);
   bool hasValue() const { return _written; };
-  std::size_t sourceRow() { return _sourceRow; };
+  std::size_t sourceRow() const { return _sourceRow; };
 
  private:
   /**
@@ -79,7 +76,7 @@ class AqlItemRow {
    */
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t _sourceRow;
-  size_t const _nrRegisters;
+  RegInfo _registerInfo;
   bool _written;
 #endif
 };

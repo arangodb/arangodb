@@ -54,7 +54,7 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(AqlItemRow& output, RegInfo);
+  ExecutionState produceRow(AqlItemRow& output);
 
  private:
   Fetcher& _fetcher;

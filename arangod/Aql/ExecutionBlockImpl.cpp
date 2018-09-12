@@ -91,12 +91,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
   while (_getSomeOutRowsAdded < atMost) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, regInfo.numOut);
-#else
-    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded);
-#endif
-    state = _executor.produceRow(*row.get(), regInfo); // adds row to output
+    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, regInfo);
+    state = _executor.produceRow(*row.get()); // adds row to output
     if (row && row->hasValue()) {
       ++_getSomeOutRowsAdded;
     }

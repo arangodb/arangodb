@@ -49,12 +49,9 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
   if (_currentBlock == nullptr) {
     _currentRow = nullptr;
   } else {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex,
-                                               getNrInputRegisters());
-#else
-    _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex);
-#endif
+    RegInfo info;
+    info.numRegs = getNrInputRegisters();
+    _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex, info);
   }
 
   return {ExecutionState::DONE, _currentRow.get()};

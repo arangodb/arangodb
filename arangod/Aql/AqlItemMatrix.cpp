@@ -52,11 +52,10 @@ AqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
     auto& block = *it;
     if (index < block->size()) {
       // We are in this row
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _lastRow = std::make_unique<AqlItemRow const>(block.get(), index, block->getNrRegs()); 
-#else
-      _lastRow = std::make_unique<AqlItemRow const>(block.get(), index); 
-#endif
+      RegInfo info;
+      info.numRegs = block->getNrRegs();
+
+      _lastRow = std::make_unique<AqlItemRow const>(block.get(), index, info);
       return _lastRow.get();
     }
 

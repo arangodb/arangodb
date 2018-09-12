@@ -42,7 +42,7 @@ typedef uint64_t QueryId;
 typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
 
 struct RegInfo {
-  std::size_t numOut;
+  std::size_t numRegs;
   std::unordered_set<RegisterId> toKeep;
   std::unordered_set<RegisterId> toClear;
 };
