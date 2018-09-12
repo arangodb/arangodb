@@ -148,17 +148,6 @@ bool IResearchViewCoordinator::emplace(
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (arangodb::ExecContext::CURRENT) {
-      // check existing links
-      for (auto& entry: view->_collections) {
-        auto collection =
-          engine->getCollection(vocbase.name(), std::to_string(entry.first));
-
-        if (collection
-            && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
-          return nullptr;
-        }
-      }
-
       // check new links
       if (info.hasKey(StaticStrings::LinksField)) {
         for (arangodb::velocypack::ObjectIterator itr(info.get(StaticStrings::LinksField)); itr.valid(); ++itr) {
@@ -233,22 +222,10 @@ bool IResearchViewCoordinator::emplace(
 
     // create links - "on a best-effort basis"
     if (info.hasKey("links")) {
-      arangodb::velocypack::Builder viewNewProperties;
-      viewNewProperties.openObject();
-      bool modified = false;
-      std::unordered_set<TRI_voc_cid_t> newCids;
 
-      std::unordered_set<TRI_voc_cid_t> currentCids;
-
-      auto result = updateLinks(
-        info.get("links"),
-        emptyObjectSlice(),
-        *view.get(),
-        false,
-        currentCids,
-        modified,
-        viewNewProperties,
-        newCids
+      std::unordered_set<TRI_voc_cid_t> collections;
+      auto result = IResearchLinkHelper::updateLinks(
+        collections, vocbase, *view.get(), info.get("links")
       );
 
       if (result.fail()) {
