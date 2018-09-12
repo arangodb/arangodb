@@ -32,12 +32,12 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/ExecutionEngine.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 static RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
-
   auto nrOut = thisBlock->getNrOutputRegisters();
   auto nrIn = thisBlock->getNrOutputRegisters();
   std::unordered_set<RegisterId> toKeep;
@@ -77,9 +77,12 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   auto regInfo = getRegisterInfo(this);
 
-  //auto resultBlockManges = this->requestBlock(atMost, this->getNrOutputRegisters());
   if(!_getSomeOutBlock) {
-    auto _getSomeOutBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOut);
+   auto block = this->requestBlock(atMost, this->getNrOutputRegisters());
+    _getSomeOutBlock = std::unique_ptr<AqlItemBlock>(block);
+    //auto deleter = [=](AqlItemBlock* b){_engine->_itemBlockManager.returnBlock(b); };
+    //_getSomeOutBlock = std::unique_ptr<AqlItemBlock, decltype(deleter)>(block, deleter);
+    _getSomeOutBlock = std::unique_ptr<AqlItemBlock>(block);
     _getSomeOutRowsAdded = 0;
   }
 
@@ -93,9 +96,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 #else
     row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded);
 #endif
-    state = _executor.produceRow(*row.get()); // adds row to output
+    state = _executor.produceRow(*row.get(), regInfo); // adds row to output
     if (row && row->hasValue()) {
-      // copy from input
       ++_getSomeOutRowsAdded;
     }
 
