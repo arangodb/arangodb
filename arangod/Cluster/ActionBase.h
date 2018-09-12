@@ -48,6 +48,9 @@ class ActionBase {
   ActionBase (MaintenanceFeature&, ActionDescription&&);
 
   ActionBase() = delete;
+  
+  ActionBase(ActionBase const&) = delete;
+  ActionBase& operator=(ActionBase const&) = delete;
 
   virtual ~ActionBase();
 
@@ -134,7 +137,7 @@ class ActionBase {
 
   /// @brief Save pointer to successor action
   void setPostAction(std::shared_ptr<ActionDescription> &post) {
-    _postAction=post;
+    _postAction = post;
   }
 
   /// @brief hash value of ActionDescription
