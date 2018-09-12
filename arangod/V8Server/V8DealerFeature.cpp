@@ -362,6 +362,10 @@ void V8DealerFeature::start() {
 }
 
 V8Context* V8DealerFeature::addContext() {
+  if (application_features::ApplicationServer::isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
   V8Context* context = buildContext(nextId());
 
   try {
@@ -373,6 +377,8 @@ V8Context* V8DealerFeature::addContext() {
       arangodb::SystemDatabaseFeature
     >();
     auto database = sysDbFeature->use();
+
+    TRI_ASSERT(database != nullptr);
 
     // no other thread can use the context when we are here, as the
     // context has not been added to the global list of contexts yet

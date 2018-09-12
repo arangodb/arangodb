@@ -310,3 +310,16 @@ testing.
 FOR i IN 1..3 RETURN (1 + 1)          // const assignment
 FOR i IN 1..3 RETURN V8(1 + 1)        // simple expression
 ```
+
+### VERSION()
+
+`VERSION() → serverVersion`
+
+Returns the server version as a string. In a cluster, returns the version
+of the coordinator.
+
+- returns **serverVersion** (string): the server version string
+
+```js
+RETURN VERSION()        // e.g. "3.4.0" 
+```

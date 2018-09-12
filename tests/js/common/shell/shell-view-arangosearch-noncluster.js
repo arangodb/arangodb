@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertNull, assertTypeOf, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the view interface
@@ -180,16 +180,8 @@ function ViewSuite () {
       assertEqual(propD.consolidationIntervalMsec, 3);
       abc.drop();
       def.drop();
-      try {
-        abc = db._view("abc");
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-      try {
-        def = db._view("def");
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view("abc"));
+      assertNull(db._view("def"));
     },
 
     ////////////////////////////////////////////////////////////////////////////

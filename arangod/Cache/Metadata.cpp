@@ -61,7 +61,7 @@ Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table,
   TRI_ASSERT(allocatedSize <= maxSize);
 }
 
-Metadata::Metadata(Metadata const& other)
+Metadata::Metadata(Metadata&& other)
     : fixedSize(other.fixedSize),
       tableSize(other.tableSize),
       maxSize(other.maxSize),
@@ -70,13 +70,13 @@ Metadata::Metadata(Metadata const& other)
       usage(other.usage.load()),
       softUsageLimit(other.softUsageLimit),
       hardUsageLimit(other.hardUsageLimit),
-      _lock(other._lock),
+      _lock(std::move(other._lock)),
       _migrating(other._migrating),
       _resizing(other._resizing) {}
 
-Metadata& Metadata::operator=(Metadata const& other) {
+Metadata& Metadata::operator=(Metadata&& other) {
   if (this != &other) {
-    _lock = other._lock;
+    _lock = std::move(other._lock);
     _migrating = other._migrating;
     _resizing = other._resizing;
     fixedSize = other.fixedSize;
