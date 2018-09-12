@@ -184,8 +184,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   if (rb.isClosed()) {
-    // FIXMEMAINTENANCE: when would rb not be closed? and if "catch"
-    // just happened, would you want to be doing this anyway?
 
     auto report = rb.slice();
     if (report.isObject()) {
@@ -228,8 +226,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
       }
             
-      // FIXMEMAINTENANCE: If comm.sendTransactionWithFailover()
-      // fails, the result is ok() based upon phaseTwo()'s execution?
       result = DBServerAgencySyncResult(
         tmp.ok(),
         report.hasKey("Plan") ?
