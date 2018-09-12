@@ -27,9 +27,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemRow::AqlItemRow(AqlItemBlock& block, size_t baseIndex)
+AqlItemRow::AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info)
     : _block(block)
     , _baseIndex(baseIndex)
+    , _registerInfo(std::move(info))
     , _written(false)
     {}
 
@@ -49,7 +50,7 @@ void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
     return;
   }
 
-  //copy entries to keep
+  // copy entries to keep
   for (auto itemId : _registerInfo.toKeep) {
     _block.emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
   }

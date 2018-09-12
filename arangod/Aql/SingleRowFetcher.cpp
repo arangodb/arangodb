@@ -56,7 +56,8 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
     _currentRow = nullptr;
     rowState = ExecutionState::DONE;
   } else {
-    _currentRow = std::make_unique<AqlItemRow>(*_currentBlock, _rowIndex);
+    _currentRow =
+        std::make_unique<AqlItemRow>(*_currentBlock, _rowIndex, RegInfo{});
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {

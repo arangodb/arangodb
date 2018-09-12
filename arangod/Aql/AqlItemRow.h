@@ -41,7 +41,7 @@ struct AqlValue;
  */
 class AqlItemRow {
  public:
-  AqlItemRow(AqlItemBlock& block, size_t baseIndex);
+  AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
