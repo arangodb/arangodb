@@ -495,6 +495,7 @@ The following AQL functions have been added in ArangoDB 3.4:
 * `REGEX_SPLIT`: splits a string using a regular expression
 * `UUID`: generates a universally unique identifier value
 * `TOKENS`: splits a string into tokens using a language-specific text analyzer
+* `VERSION`: returns the server version as a string
  
 The following AQL functions have been added to make working with geographical 
 data easier:
