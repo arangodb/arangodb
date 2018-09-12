@@ -680,7 +680,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
-  auto views = _vocbase.views();//ci->getViews(dbName);
+  auto views = _vocbase.views(); // ci does not store links in the view objects
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();

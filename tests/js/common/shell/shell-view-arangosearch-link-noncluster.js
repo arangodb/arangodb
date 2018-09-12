@@ -70,7 +70,7 @@ function IResearchLinkSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief should ignore links specified at creation
+    /// @brief should honor links specified at creation
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithLinks : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };

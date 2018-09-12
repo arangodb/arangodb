@@ -663,7 +663,7 @@ arangodb::Result processInputDirectory(
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
 
-    // Step 3: run the actual import
+    // Step 2: run the actual import
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
 
@@ -687,7 +687,7 @@ arangodb::Result processInputDirectory(
 
     if (options.importStructure && !views.empty()) {
       LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
-      // Step 2: recreate all views
+      // Step 3: recreate all views
       for (VPackBuilder const& viewDefinition : views) {
         LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
         Result res = ::restoreView(httpClient, options, viewDefinition.slice());

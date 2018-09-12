@@ -1029,7 +1029,7 @@ void TRI_vocbase_t::inventory(
   if (ServerState::instance()->isCoordinator()) {
     auto views = ClusterInfo::instance()->getViews(name());
     for (auto const& view : views) {
-      result.openObject();            // Is this dead code? It does not return links
+      result.openObject();
       view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
       result.close();
     }
