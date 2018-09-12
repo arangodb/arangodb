@@ -31,26 +31,7 @@
 
 using namespace arangodb::aql;
 
-RegexCache::~RegexCache() {
-  clear();
-}
-
-void RegexCache::clear() noexcept {
-  clear(_regexCache);
-  clear(_likeCache);
-}
-
-icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
-  buildRegexPattern(_temp, ptr, length, caseInsensitive);
-
-  return fromCache(_temp, _regexCache);
-}
-
-icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
-  buildLikePattern(_temp, ptr, length, caseInsensitive);
-
-  return fromCache(_temp, _likeCache);
-}
+namespace {
 
 static void escapeRegexParams(std::string &out, const char* ptr, size_t length) {
   for (size_t i = 0; i < length; ++i) {
@@ -65,7 +46,30 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
   }
 }
 
-icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
+} // namespace
+
+RegexCache::~RegexCache() {
+  clear();
+}
+
+void RegexCache::clear() noexcept {
+  _regexCache.clear();
+  _likeCache.clear();
+}
+
+icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+  buildRegexPattern(_temp, ptr, length, caseInsensitive);
+
+  return fromCache(_temp, _regexCache);
+}
+
+icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) {
+  buildLikePattern(_temp, ptr, length, caseInsensitive);
+
+  return fromCache(_temp, _likeCache);
+}
+
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
   std::string rx;
 
   AqlValueMaterializer materializer(trx);
@@ -83,14 +87,14 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arang
       }
 
       arangodb::velocypack::ValueLength length;
-      const char *str = it.getString(length);
-      escapeRegexParams(rx, str, length);
+      char const* str = it.getString(length);
+      ::escapeRegexParams(rx, str, length);
     }
   } else if (splitExpression.isString()) {
     arangodb::velocypack::ValueLength length;
-    const char* str = slice.getString(length);
-    escapeRegexParams(rx, str, length);
-    if (rx.length() == 0) {
+    char const* str = slice.getString(length);
+    ::escapeRegexParams(rx, str, length);
+    if (rx.empty()) {
       isEmptyExpression = true;
     }
   } else {
@@ -99,35 +103,23 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arang
   return fromCache(rx, _likeCache);
 }
 
-void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept {
-  try {
-    for (auto& it : cache) {
-      delete it.second;
-    }
-    cache.clear();
-  } catch (...) {
-  }
-}
-
 /// @brief get matcher from cache, or insert a new matcher for the specified pattern
 icu::RegexMatcher* RegexCache::fromCache(std::string const& pattern,
-                                         std::unordered_map<std::string, icu::RegexMatcher*>& cache) {
+                                         std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
   auto it = cache.find(pattern);
 
   if (it != cache.end()) {
-    return (*it).second;
+    return (*it).second.get();
   }
 
-  icu::RegexMatcher* matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
+  auto matcher = std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
 
-  try {
-    // insert into cache, no matter if pattern is valid or not
-    cache.emplace(_temp, matcher);
-    return matcher;
-  } catch (...) {
-    delete matcher;
-    throw;
-  }
+  auto p = matcher.get();
+
+  // insert into cache, no matter if pattern is valid or not
+  cache.emplace(pattern, std::move(matcher));
+
+  return p;
 }
 
 /// @brief compile a REGEX pattern from a string
