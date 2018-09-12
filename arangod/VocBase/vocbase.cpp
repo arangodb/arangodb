@@ -1005,28 +1005,32 @@ void TRI_vocbase_t::inventory(
     if (collection->id() <= maxTick) {
       result.openObject();
 
+      // why are indexes added separately, when they are added by
+      //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
       collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
         // at least the MMFiles engine will try to create it
+        // AND exclude arangosearch indexes
         return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
-      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString" }, true, false);
+      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString", "indexes" }, true, false);
       result.close();
 
       result.close();
     }
   }
   result.close(); // </collection>
-  
+
   result.add("views", VPackValue(VPackValueType::Array, true));
   if (ServerState::instance()->isCoordinator()) {
     auto views = ClusterInfo::instance()->getViews(name());
     for (auto const& view : views) {
-      result.openObject();
-      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      result.openObject();            // Is this dead code? It does not return links
+      view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
       result.close();
     }
   } else {
@@ -1036,7 +1040,7 @@ void TRI_vocbase_t::inventory(
       }
       LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
       result.openObject();
-      view->toVelocyPack(result, /*details*/false, /*forPersistence*/true);
+      view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
       result.close();
     }
   }
