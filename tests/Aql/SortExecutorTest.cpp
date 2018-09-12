@@ -24,14 +24,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
+#include "fakeit.hpp"
+
 #include "BlockFetcherHelper.h"
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/SortRegister.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/Variable.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+
+#include "search/sort.hpp"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -43,13 +52,43 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+int compareAqlValues(
+    irs::sort::prepared const*,
+    arangodb::transaction::Methods* trx,
+    arangodb::aql::AqlValue const& lhs,
+    arangodb::aql::AqlValue const& rhs) {
+  return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
+}
+
 SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
   AqlItemBlock block(&monitor, 1000, 1);
 
-  ExecutorInfos infos(0, 0);
+  // Mock of the Transaction
+  // Enough for this test, will only be passed through and accessed
+  // on documents alone.
+  fakeit::Mock<transaction::Methods> mockTrx;
+  transaction::Methods& trx = mockTrx.get();
+
+  fakeit::Mock<transaction::Context> mockContext;
+  transaction::Context& ctxt = mockContext.get();
+
+  fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
+  fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
+
+  Variable sortVar("mySortVar", 0);
+  std::vector<SortRegister> sortRegisters;
+  SortElement sl{&sortVar, true};
+  SortRegister sortReg(0, sl, &compareAqlValues);
+  sortRegisters.emplace_back(std::move(sortReg));
+  SortExecutorInfos infos(0, 0, &trx, std::move(sortRegisters), false);
+
+  RegInfo regInfo{};
+  regInfo.numRegs = 1;
+  regInfo.toKeep = {0};
+  regInfo.toClear = {};
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -59,7 +98,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result(block, 0, RegInfo{});
+        AqlItemRow result(block, 0, regInfo);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -71,7 +110,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        AqlItemRow result(block, 0, RegInfo{});
+        AqlItemRow result(block, 0, regInfo);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -95,7 +134,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        AqlItemRow firstResult(block, 0, RegInfo{});
+        AqlItemRow firstResult(block, 0, regInfo);
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           state = testee.produceRow(firstResult);
@@ -108,24 +147,24 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(firstResult.produced());
 
-          AqlItemRow secondResult(block, 1, RegInfo{});
+          AqlItemRow secondResult(block, 1, regInfo);
           state = testee.produceRow(secondResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(secondResult.produced());
 
-          AqlItemRow thirdResult(block, 2, RegInfo{});
+          AqlItemRow thirdResult(block, 2, regInfo);
           state = testee.produceRow(thirdResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(thirdResult.produced());
 
-          AqlItemRow fourthResult(block, 3, RegInfo{});
+          AqlItemRow fourthResult(block, 3, regInfo);
           state = testee.produceRow(fourthResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(fourthResult.produced());
 
-          AqlItemRow fifthResult(block, 4, RegInfo{});
+          AqlItemRow fifthResult(block, 4, regInfo);
           state = testee.produceRow(fifthResult);
-          REQUIRE(state == ExecutionState::HASMORE);
+          REQUIRE(state == ExecutionState::DONE);
           REQUIRE(fifthResult.produced());
 
           AqlValue v = firstResult.getValue(0);
@@ -136,19 +175,22 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           v = secondResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
-          REQUIRE(number == 1);
+          REQUIRE(number == 2);
 
           v = thirdResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
+          REQUIRE(number == 3);
 
           v = fourthResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
+          REQUIRE(number == 4);
 
           v = fifthResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
+          REQUIRE(number == 5);
         }
       }
     }

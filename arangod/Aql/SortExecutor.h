@@ -29,14 +29,47 @@
 
 #include "Aql/ExecutionState.h"
 
+#include "Aql/ExecutorInfos.h"
+
 #include <memory>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
 class AqlItemRow;
-class ExecutorInfos;
+class AqlItemMatrix;
 class AllRowsFetcher;
+class ExecutorInfos;
+struct SortRegister;
+
+class SortExecutorInfos : public ExecutorInfos {
+
+ public:
+  SortExecutorInfos(
+    RegisterId inputRegister,
+    RegisterId outputRegister,
+    transaction::Methods* trx,
+    std::vector<SortRegister>&& sortRegisters,
+    bool stable
+  );
+
+  ~SortExecutorInfos();
+
+  arangodb::transaction::Methods* trx() const;
+
+  std::vector<SortRegister> const& sortRegisters() const;
+
+  bool stable() const;
+
+ private:
+  arangodb::transaction::Methods* _trx;
+  std::vector<SortRegister> _sortRegisters;
+  bool _stable;
+};
 
 /**
  * @brief Implementation of Sort Node
@@ -45,7 +78,7 @@ class SortExecutor {
  public:
   using Fetcher = AllRowsFetcher;
 
-  SortExecutor(Fetcher& fetcher, ExecutorInfos&);
+  SortExecutor(Fetcher& fetcher, SortExecutorInfos&);
   ~SortExecutor();
 
   /**
@@ -57,9 +90,18 @@ class SortExecutor {
   ExecutionState produceRow(AqlItemRow& output);
 
  private:
+  void doSorting();
+
+ private:
   Fetcher& _fetcher;
 
-  ExecutorInfos& _infos;
+  SortExecutorInfos& _infos;
+
+  AqlItemMatrix const* _input;
+  
+  std::vector<size_t> _sortedIndexes;
+
+  size_t _returnNext;
 };
 }  // namespace aql
 }  // namespace arangodb
