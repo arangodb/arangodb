@@ -184,14 +184,15 @@ operating systems do not provide this option and will ignore it.
 
 `--server.jwt-secret secret`
 
-ArangoDB will use JWTs to authenticate requests. Using this option lets
-you specify a JWT.
+ArangoDB will use JWTs to authenticate requests. Using this option let's
+you specify a JWT. When specified, the JWT secret must be at most 64 bytes
+long.
 
 In single server setups and when not specifying this secret ArangoDB will
 generate a secret.
 
 In cluster deployments which have authentication enabled a secret must
-be set consistently across all cluster tasks so they can talk to each other.
+be set consistently across all cluster nodes so they can talk to each other.
 
 ## Enable/disable authentication for UNIX domain sockets
 
