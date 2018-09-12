@@ -30,15 +30,56 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemRow;
+class AqlItemBlock;
 
 /**
  * @brief A Matrix of AqlItemRows
  */
 class AqlItemMatrix {
-  // TODO define me!
+
   public:
-    AqlItemMatrix() {}
-    ~AqlItemMatrix() {}
+    AqlItemMatrix();
+    ~AqlItemMatrix();
+
+    /**
+     * @brief Add this block of rows into the Matrix
+     *
+     * @param block Block of rows to append in the matrix
+     */
+    void addBlock(std::shared_ptr<AqlItemBlock> block);
+
+    /**
+     * @brief Get the number of rows stored in this Matrix
+     *
+     * @return Number of Rows
+     */
+    size_t size() const;
+
+    /**
+     * @brief Test if this matrix is empty
+     *
+     * @return True if empty
+     */
+    bool empty() const;
+
+    /**
+     * @brief Get the AqlItemRow at the given index
+     *
+     * @param index The index of the Row to read inside the matrix
+     *
+     * @return A single row in the Matrix
+     */
+    AqlItemRow const* getRow(size_t index) const;
+    
+  private:
+
+    std::vector<std::shared_ptr<AqlItemBlock>> _blocks;
+
+    size_t _size;
+
+    // Location to keep the memory of the last
+    // AQL item row. Will be mutated by getRow
+    mutable std::unique_ptr<AqlItemRow const> _lastRow;
 };
 
 }  // namespace aql
