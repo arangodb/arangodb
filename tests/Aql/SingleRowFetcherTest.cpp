@@ -23,6 +23,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "AqlItemBlockHelper.h"
 #include "BlockFetcherHelper.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
@@ -221,6 +222,19 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         }
       }
     }
+  }
+
+  GIVEN("there are multiple blocks upstream") {
+    fakeit::Mock<BlockFetcher> blockFetcherMock;
+
+    // a 1-column matrix with 3 rows
+    std::unique_ptr<AqlItemBlock> block1 = buildBlock<2>({{1}, {2}, {3}}),
+                                  block2 = buildBlock<2>({{4}, {5}, {6}}),
+                                  block3 = buildBlock<2>({{7}, {8}, {9}});
+
+    // TODO implement some tests for this case
+
+    WHEN("the producer does not wait") {}
   }
 }
 

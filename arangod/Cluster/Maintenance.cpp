@@ -53,7 +53,7 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::vector<std::string> const cmp {
-  JOURNAL_SIZE, StaticStrings::WaitForSyncString, DO_COMPACT, INDEX_BUCKETS};
+  JOURNAL_SIZE, "waitForSync", DO_COMPACT, INDEX_BUCKETS};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");

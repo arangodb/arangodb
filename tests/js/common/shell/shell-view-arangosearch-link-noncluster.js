@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertNull, assertTypeOf, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the view interface
@@ -70,13 +70,13 @@ function IResearchLinkSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////
-    /// @brief should ignore links specified at creation
+    /// @brief should honor links specified at creation
     ////////////////////////////////////////////////////////////////////////////
     testHandlingCreateWithLinks : function () {
       var meta = { links: { 'testCollection' : { includeAllFields: true } } };
       var view = db._createView("badView", "arangosearch", meta);
       var links = view.properties().links;
-      assertEqual(links['testCollection'], undefined);
+      assertNotEqual(links['testCollection'], undefined);
       view.drop();
     },
 
@@ -98,11 +98,7 @@ function IResearchLinkSuite () {
       assertEqual(links['testCollection'], undefined);
 
       view.drop();
-      try {
-        view = db._view('testView');
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_VIEW_NOT_FOUND.code, err.errorNum);
-      }
+      assertNull(db._view('testView'));
     }
 
   };

@@ -1380,6 +1380,9 @@ bool MMFilesCollection::applyForTickRange(
   // now we have a list of datafiles...
 
   size_t const n = datafiles.size();
+  
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+      << "getting datafiles in data range " << dataMin << " - " << dataMax << " produced " << n << " datafile(s)";
 
   for (size_t i = 0; i < n; ++i) {
     auto const& e = datafiles[i];

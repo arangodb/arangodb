@@ -93,10 +93,10 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result(block, 0);
+        AqlItemRow result(block, 0, RegInfo{});
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.hasValue());
+        REQUIRE(!result.produced());
       }
     }
 
@@ -105,15 +105,15 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        AqlItemRow result(block, 0);
+        AqlItemRow result(block, 0, RegInfo{});
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.hasValue());
+        REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE with nullptr") {
           state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.hasValue());
+          REQUIRE(!result.produced());
         }
       }
 
@@ -129,38 +129,38 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        AqlItemRow firstResult(block, 0);
+        AqlItemRow firstResult(block, 0, RegInfo{});
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           state = testee.produceRow(firstResult);
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!firstResult.hasValue());
+          REQUIRE(!firstResult.produced());
         }
 
         AND_THEN("we procude the rows in order") {
           state = testee.produceRow(firstResult);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(firstResult.hasValue());
+          REQUIRE(firstResult.produced());
 
-          AqlItemRow secondResult(block, 1);
+          AqlItemRow secondResult(block, 1, RegInfo{});
           state = testee.produceRow(secondResult);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(secondResult.hasValue());
+          REQUIRE(secondResult.produced());
 
-          AqlItemRow thirdResult(block, 2);
+          AqlItemRow thirdResult(block, 2, RegInfo{});
           state = testee.produceRow(thirdResult);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(thirdResult.hasValue());
+          REQUIRE(thirdResult.produced());
 
-          AqlItemRow fourthResult(block, 3);
+          AqlItemRow fourthResult(block, 3, RegInfo{});
           state = testee.produceRow(fourthResult);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(fourthResult.hasValue());
+          REQUIRE(fourthResult.produced());
 
-          AqlItemRow fifthResult(block, 4);
+          AqlItemRow fifthResult(block, 4, RegInfo{});
           state = testee.produceRow(fifthResult);
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(fifthResult.hasValue());
+          REQUIRE(fifthResult.produced());
 
           AqlValue v = firstResult.getValue(0);
           REQUIRE(v.isNumber());
