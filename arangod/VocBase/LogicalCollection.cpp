@@ -459,7 +459,7 @@ std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates
 
   double ctime = TRI_microtime(); // in seconds
   auto needEstimateUpdate = [this, ctime]() {
-    if(_clusterEstimates.empty()) {
+    if (_clusterEstimates.empty()) {
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not available";
       return true;
     } else if (ctime - _clusterEstimateTTL > 60.0) {
