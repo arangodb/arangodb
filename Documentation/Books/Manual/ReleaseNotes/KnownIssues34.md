@@ -12,14 +12,6 @@ Installer
   and only some of them shall be upgraded, or they should be upgraded one after the
   other.
 
-Windows
--------
-
-* the ArangoDB starter is currently not part of the package
-
-Ubuntu
-------
-
 * Ubuntu 14.04 is not yet supported
 
 Modify documents in cluster using AQL and an incorrect custom shard key
