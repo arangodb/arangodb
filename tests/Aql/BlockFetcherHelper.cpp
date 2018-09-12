@@ -132,7 +132,8 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
       _nrItems(0),
       _nrCalled(0),
       _resourceMonitor(),
-      _itemBlock(nullptr) {
+      _itemBlock(nullptr),
+      _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
   } else {
@@ -144,9 +145,11 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
       uint64_t nrRegs = oneRow.length();
+      _matrix = std::make_unique<AqlItemMatrix>();
       _itemBlock =
-          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
+          std::make_shared<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
       VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
+      _matrix->addBlock(_itemBlock);
     }
   }
 }
@@ -170,6 +173,5 @@ AllRowsFetcherHelper::fetchAllRows() {
   if (_data.isNone() || _data.isNull()) {
     return {ExecutionState::DONE, nullptr};
   }
-  REQUIRE(false);
-  return {ExecutionState::DONE, nullptr};
+  return {ExecutionState::DONE, _matrix.get()};
 };

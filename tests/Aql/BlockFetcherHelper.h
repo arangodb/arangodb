@@ -87,7 +87,8 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
   uint64_t _nrItems;
   uint64_t _nrCalled;
   arangodb::aql::ResourceMonitor _resourceMonitor;
-  std::unique_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
+  std::shared_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
+  std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };
 
 
