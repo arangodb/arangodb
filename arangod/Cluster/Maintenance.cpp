@@ -53,7 +53,7 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::vector<std::string> const cmp {
-  JOURNAL_SIZE, StaticStrings::WaitForSyncString, DO_COMPACT, INDEX_BUCKETS};
+  JOURNAL_SIZE, WAIT_FOR_SYNC, DO_COMPACT, INDEX_BUCKETS};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
@@ -243,7 +243,7 @@ void handlePlanShard(
                 {COLLECTION, colname}, {SHARD, shname},
                 {StaticStrings::IndexType,
                     index.get(StaticStrings::IndexType).copyString()},
-                {FIELDS, index.get(FIELDS).toJson()}, 
+                {FIELDS, index.get(FIELDS).toJson()},
                 {ID, index.get(ID).copyString()}},
               std::make_shared<VPackBuilder>(index)));
         }
@@ -371,9 +371,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     auto const& dbname = pdb.key.copyString();
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
-        actions.emplace_back(
-          ActionDescription(std::map<std::string,std::string> {
-              {NAME, CREATE_DATABASE}, {DATABASE, dbname}}));
+        actions.emplace_back(ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string(DATABASE), std::string(dbname)}}));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating database " << dbname
@@ -386,10 +384,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   for (auto const& ldb : VPackObjectIterator(local)) {
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {DATABASES, dbname})) {
-      actions.emplace_back(
-        ActionDescription(
-          std::map<std::string,std::string> {
-            {NAME, DROP_DATABASE}, {DATABASE, dbname}}));
+      actions.emplace_back(ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)}, {std::string(DATABASE), std::string(dbname)}}));
     }
   }
 
