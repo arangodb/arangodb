@@ -30,7 +30,7 @@ using namespace arangodb::aql;
 AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex, RegInfo info)
     : _block(block)
     , _baseIndex(baseIndex)
-    , _sourceRow(0)
+    //, _sourceRow(0)
     , _registerInfo(info)
     , _written(false)
     {}
@@ -46,7 +46,7 @@ void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, Aq
   if(! _written){
     copyRow(sourceRow);
   } else {
-    _sourceRow = sourceRow._baseIndex;
+    //_sourceRow = sourceRow._baseIndex;
     _written = true;
   }
 }
@@ -57,12 +57,12 @@ void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, Aq
   if(! _written){
     copyRow(sourceRow);
   } else {
-    _sourceRow = sourceRow._baseIndex;
+    //_sourceRow = sourceRow._baseIndex;
     _written = true;
   }
 }
 
 void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
-  _sourceRow = sourceRow._baseIndex;
+ // _sourceRow = sourceRow._baseIndex;
   _written = true;
 }

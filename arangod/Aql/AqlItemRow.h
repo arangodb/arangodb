@@ -56,7 +56,12 @@ class AqlItemRow {
   void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue &&);
   void copyRow(AqlItemRow const& sourceRow);
   bool hasValue() const { return _written; };
-  std::size_t sourceRow() const { return _sourceRow; };
+  //std::size_t sourceRow() const { return _sourceRow; };
+  void changeRow(std::size_t baseIndex) {
+    _baseIndex = baseIndex;
+    _written = false;
+  }
+
 
  private:
   /**
@@ -67,18 +72,17 @@ class AqlItemRow {
   /**
    * @brief The offset into the AqlItemBlock
    */
-  size_t const _baseIndex;
+  size_t _baseIndex;
 
   /**
    * @brief The number of Registers available in this Row.
    * Only relevant for sanity checks.
    * So only available in MAINTAINER_MODE.
    */
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  size_t _sourceRow;
+
   RegInfo _registerInfo;
+  //size_t _sourceRow;
   bool _written;
-#endif
 };
 
 }  // namespace aql
