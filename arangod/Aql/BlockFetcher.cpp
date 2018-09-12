@@ -17,51 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
-#ifndef ARANGOD_AQL_SORT_EXECUTOR_H
-#define ARANGOD_AQL_SORT_EXECUTOR_H
-
-#include "Aql/ExecutionState.h"
-
-#include <memory>
-
-namespace arangodb {
-namespace aql {
-
-class AqlItemRow;
-class ExecutorInfos;
-class AllRowsFetcher;
-
-/**
- * @brief Implementation of Sort Node
- */
-class SortExecutor {
- public:
-  using Fetcher = AllRowsFetcher;
-
-  SortExecutor(Fetcher& fetcher, ExecutorInfos&);
-  ~SortExecutor();
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  ExecutionState produceRow(AqlItemRow& output);
-
- private:
-  Fetcher& _fetcher;
-
-  ExecutorInfos& _infos;
-};
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+#include "BlockFetcher.h"

@@ -41,18 +41,21 @@ class SingleRowFetcher;
  */
 class FilterExecutor {
  public:
-  FilterExecutor(SingleRowFetcher& fetcher, ExecutorInfos&);
+  using Fetcher = SingleRowFetcher;
+
+  FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();
+
 
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> produceRow();
+  ExecutionState produceRow(AqlItemRow& output);
 
  private:
-  SingleRowFetcher& _fetcher;
+  Fetcher& _fetcher;
 
   ExecutorInfos& _infos;
 

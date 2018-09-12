@@ -40,6 +40,7 @@ class Methods;
 
 namespace aql {
 class AqlItemBlock;
+class BlockFetcher;
 class ExecutionEngine;
 
 class ExecutionBlock {
@@ -269,6 +270,19 @@ class ExecutionBlock {
   aql::BlockCollector _collector;
 
 
+ protected:
+  // friended for this->fetchBlock() (follows below)
+  friend BlockFetcher;
+
+  /**
+   * @brief Internal helper function that fetches the next block
+   *        of AqlItemRows from upstream.
+   *        Will be called by the Fetcher used by the current Executor.
+   *
+   * @return The upstream state, can be DONE, WAITING or HASMORE.
+   */
+  TEST_VIRTUAL
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 };
 
 }  // namespace arangodb::aql

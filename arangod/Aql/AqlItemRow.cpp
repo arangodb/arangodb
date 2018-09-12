@@ -49,16 +49,19 @@ const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
   return _block->getValueReference(_baseIndex, variableNr);
 }
 
-void AqlItemRow::setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue&& value) {
+void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue&& value) {
   TRI_ASSERT(variableNr < _nrRegisters);
   _block->emplaceValue(_baseIndex, variableNr, std::move(value));
-  _sourceRow = sourceRow;
-  _written = true;
+  copyRow(sourceRow);
 }
 
-void AqlItemRow::setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue const& value) {
+void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const& value) {
   TRI_ASSERT(variableNr < _nrRegisters);
   _block->emplaceValue(_baseIndex, variableNr, value);
-  _sourceRow = sourceRow;
+  copyRow(sourceRow);
+}
+
+void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
+  _sourceRow = sourceRow._baseIndex;
   _written = true;
 }

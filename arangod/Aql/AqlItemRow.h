@@ -55,9 +55,10 @@ class AqlItemRow {
    * @return Reference to the AqlValue stored in that variable.
    */
   const AqlValue& getValue(RegisterId variableNr) const;
-  void setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue const&);
-  void setValue(RegisterId variableNr, std::size_t sourceRow, AqlValue &&);
-  bool hasValue() { return _written; };
+  void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const&);
+  void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue &&);
+  void copyRow(AqlItemRow const& sourceRow);
+  bool hasValue() const { return _written; };
   std::size_t sourceRow() { return _sourceRow; };
 
  private:

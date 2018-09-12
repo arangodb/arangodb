@@ -23,32 +23,46 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <lib/Logger/LogMacros.h>
 #include "FilterExecutor.h"
 
 #include "Basics/Common.h"
 
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
+#include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SingleRowFetcher.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutor::FilterExecutor(SingleRowFetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
+FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
 FilterExecutor::~FilterExecutor() = default;
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> FilterExecutor::produceRow() {
+ExecutionState FilterExecutor::produceRow(AqlItemRow& output) {
   ExecutionState state;
   AqlItemRow const* input = nullptr;
+
   while (true) {
-    // TODO implement me!
     std::tie(state, input) = _fetcher.fetchRow();
+
     if (state == ExecutionState::WAITING) {
-      return {state, nullptr};
+      return state;
     }
+
     if (input == nullptr) {
       TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, nullptr};
+      return state;
     }
+
+    if (input->getValue(_infos.getInput()).toBoolean()) {
+      output.copyRow(*input);
+      return state;
+    }
+
+    if (state == ExecutionState::DONE) {
+      return state;
+    }
+    TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }

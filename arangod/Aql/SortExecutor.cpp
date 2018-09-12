@@ -25,29 +25,29 @@
 
 #include "Basics/Common.h"
 
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/BlockFetcherInterfaces.h"
 #include "Aql/ExecutorInfos.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortExecutor::SortExecutor(AllRowsFetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
+SortExecutor::SortExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
 SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemRow>> SortExecutor::produceRow() {
+ExecutionState SortExecutor::produceRow(AqlItemRow& output) {
   ExecutionState state;
   AqlItemMatrix const* input = nullptr;
   while (true) {
     // TODO implement me!
     std::tie(state, input) = _fetcher.fetchAllRows();
     if (state == ExecutionState::WAITING) {
-      return {state, nullptr};
+      return state;
     }
     if (input == nullptr) {
       TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, nullptr};
+      return state;
     }
   }
 }

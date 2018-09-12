@@ -27,17 +27,44 @@
 
 #include "catch.hpp"
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemRow.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/AqlItemRow.h"
+#include "Aql/FilterExecutor.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortExecutor.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
+
+namespace {
+static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
+  // coordinates in the matrix rowNr, entryNr
+  size_t rowIndex = 0;
+  RegisterId entry = 0;
+  for (auto const& row : VPackArrayIterator(data)) {
+    // Walk through the rows
+    REQUIRE(row.isArray());
+    REQUIRE(row.length() == nrRegs);
+    for (auto const& oneEntry : VPackArrayIterator(row)) {
+      // Walk through on row values
+      block.setValue(rowIndex, entry, AqlValue{oneEntry});
+      entry++;
+    }
+    rowIndex++;
+    entry = 0;
+  }
+}
+}
 
 // -----------------------------------------
 // - SECTION SINGLEROWFETCHER              -
@@ -46,11 +73,13 @@ using namespace arangodb::aql;
 SingleRowFetcherHelper::SingleRowFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
     : SingleRowFetcher(),
-      _vPackBuffer(vPackBuffer),
+      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
-      _didWait(false) {
+      _didWait(false),
+      _resourceMonitor(),
+      _itemBlock(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
   } else {
@@ -58,6 +87,14 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
   }
   if (_data.isArray()) {
     _nrItems = _data.length();
+    if (_nrItems > 0) {
+      VPackSlice oneRow = _data.at(0);
+      REQUIRE(oneRow.isArray());
+      uint64_t nrRegs = oneRow.length();
+      _itemBlock =
+          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
+      VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
+    }
   }
 };
 
@@ -65,7 +102,7 @@ SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
 std::pair<ExecutionState, AqlItemRow const*>
 SingleRowFetcherHelper::fetchRow() {
-  // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
+  // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
     if(!_didWait) {
@@ -90,11 +127,12 @@ SingleRowFetcherHelper::fetchRow() {
 AllRowsFetcherHelper::AllRowsFetcherHelper(
     std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
     : AllRowsFetcher(),
-      _vPackBuffer(vPackBuffer),
+      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
-      _didWait(false) {
+      _resourceMonitor(),
+      _itemBlock(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
   } else {
@@ -102,27 +140,35 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
   }
   if (_data.isArray()) {
     _nrItems = _data.length();
+    if (_nrItems > 0) {
+      VPackSlice oneRow = _data.at(0);
+      REQUIRE(oneRow.isArray());
+      uint64_t nrRegs = oneRow.length();
+      _itemBlock =
+          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
+      VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
+    }
   }
-};
+}
 
 AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
 
 std::pair<ExecutionState, AqlItemMatrix const*>
 AllRowsFetcherHelper::fetchAllRows() {
   // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
-  REQUIRE(_nrCalled <= _nrItems);
+  REQUIRE(_nrCalled <= _nrItems + 1);
   if (_returnsWaiting) {
-    if(!_didWait) {
-      _didWait = true;
+    if (_nrCalled < _nrItems || _nrCalled == 0) {
+      // We will return waiting once for each item
       return {ExecutionState::WAITING, nullptr};
     }
-    _didWait = false;
+  } else {
+    REQUIRE(_nrCalled == 0);
   }
   _nrCalled++;
-  if (_nrCalled > _nrItems) {
+  if (_data.isNone() || _data.isNull()) {
     return {ExecutionState::DONE, nullptr};
   }
-  // NOT YET IMPLEMENTED!
   REQUIRE(false);
   return {ExecutionState::DONE, nullptr};
 };

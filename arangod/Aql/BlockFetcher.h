@@ -17,51 +17,48 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
-/// @author Jan Christoph Uhde
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AQL_BLOCK_FETCHER_H
+#define ARANGOD_AQL_BLOCK_FETCHER_H
 
-#ifndef ARANGOD_AQL_SORT_EXECUTOR_H
-#define ARANGOD_AQL_SORT_EXECUTOR_H
-
+#include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
+#include "Basics/Exceptions.h"
 
 #include <memory>
+#include <utility>
 
 namespace arangodb {
 namespace aql {
 
-class AqlItemRow;
-class ExecutorInfos;
-class AllRowsFetcher;
-
 /**
- * @brief Implementation of Sort Node
+ * @brief Thin interface to access the methods of ExecutionBlock that are
+ * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
-class SortExecutor {
+class BlockFetcher {
  public:
-  using Fetcher = AllRowsFetcher;
+  explicit BlockFetcher(ExecutionBlock& executionBlock_)
+      : _executionBlock(&executionBlock_){};
 
-  SortExecutor(Fetcher& fetcher, ExecutorInfos&);
-  ~SortExecutor();
+  TEST_VIRTUAL ~BlockFetcher() = default;
 
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  ExecutionState produceRow(AqlItemRow& output);
+  TEST_VIRTUAL inline std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+  fetchBlock() {
+    return _executionBlock->fetchBlock();
+  };
+
+  TEST_VIRTUAL inline RegisterId getNrInputRegisters() {
+    return _executionBlock->getNrInputRegisters();
+  }
 
  private:
-  Fetcher& _fetcher;
-
-  ExecutorInfos& _infos;
+  ExecutionBlock* _executionBlock;
 };
+
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
+#endif  // ARANGOD_AQL_BLOCK_FETCHER_H
