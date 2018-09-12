@@ -66,7 +66,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _rowFetcher(_blockFetcher),
       _executor(_rowFetcher, _infos),
       _getSomeOutBlock(nullptr),
-      _getSomeOutRowsAdded(0),
+      _getSomeOutRowsAdded(0)
     {}
 
 template<class Executor>
