@@ -60,8 +60,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        RegInfo info{1,{},{}};
-        AqlItemRow result(&block, 0, std::move(info));
+        AqlItemRow result(block, 0);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.hasValue());
@@ -73,8 +72,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        RegInfo info{1,{},{}};
-        AqlItemRow result(&block, 0, std::move(info));
+        AqlItemRow result(block, 0);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.hasValue());

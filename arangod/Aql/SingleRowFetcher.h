@@ -119,6 +119,12 @@ class SingleRowFetcher {
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const;
+
+  bool indexIsValid();
+
+  bool isLastRowInBlock();
+
+  size_t getRowIndex();
 };
 
 }  // namespace aql
