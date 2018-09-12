@@ -663,7 +663,9 @@ arangodb::Result processInputDirectory(
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
 
-    // Step 2: run the actual import
+    std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(collections.size());
+
+    // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
 
@@ -679,10 +681,7 @@ arangodb::Result processInputDirectory(
       }
       stats.totalCollections++;
 
-      // now let the index and data restoration happen async+parallel
-      if (!jobQueue.queueJob(std::move(jobData))) {
-        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
-      }
+      jobs.push_back(std::move(jobData));
     }
 
     if (options.importStructure && !views.empty()) {
@@ -694,6 +693,13 @@ arangodb::Result processInputDirectory(
         if (res.fail()) {
           return res;
         }
+      }
+    }
+
+    // Step 4: fire up data transfer
+    for (auto &job : jobs) {
+      if (!jobQueue.queueJob(std::move(job))) {
+         return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
       }
     }
 

@@ -164,10 +164,10 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     "__ARANGOSEARCH_SCORE_DEBUG",  // name
     ".",    // value to convert
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     [](arangodb::aql::Query*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
@@ -183,10 +183,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "EXISTS",      // name
     ".|.,.",         // positional arguments (attribute, [ "analyzer"|"type"|"string"|"numeric"|"bool"|"null" ])
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -194,10 +194,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -205,10 +205,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "PHRASE",      // name
     ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -216,10 +216,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "MIN_MATCH",   // name
     ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -227,10 +227,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "BOOST",       // name
     ".,.",         // positional arguments (filter expression, boost)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 
@@ -238,10 +238,10 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     "ANALYZER",    // name
     ".,.",         // positional arguments (filter expression, analyzer)
     arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic, 
+      arangodb::aql::Function::Flags::Deterministic,
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
-    ), 
+    ),
     &filter        // function implementation (use function name as placeholder)
   });
 }
@@ -310,10 +310,10 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
       arangodb::aql::Function::makeFlags(
-        arangodb::aql::Function::Flags::Deterministic, 
+        arangodb::aql::Function::Flags::Deterministic,
         arangodb::aql::Function::Flags::Cacheable,
         arangodb::aql::Function::Flags::CanRunOnDBServer
-      ), 
+      ),
       &scorer // function implementation (use function name as placeholder)
     });
 
@@ -351,6 +351,11 @@ void registerViewFactory() {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
     res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewSingleServer::make);
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_FAILED,
+      std::string("Invalid role for arangosearch view creation.")
+    );
   }
 
   if (!res.ok()) {
@@ -787,8 +792,8 @@ void IResearchFeature::prepare() {
   registerRecoveryHelper();
 
   // start the async task thread pool
-  if (!ServerState::instance()->isCoordinator() && 
-      !ServerState::instance()->isAgent()) {  
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isAgent()) {
     auto poolSize = computeThreadPoolSize(_threads, _threadsLimit);
 
     if (_async->poolSize() != poolSize) {

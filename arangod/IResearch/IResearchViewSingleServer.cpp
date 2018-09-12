@@ -57,8 +57,6 @@ namespace iresearch {
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  LOG_TOPIC(ERR, Logger::VIEWS) << "IResearchViewCoordinator::make info: " << info.toJson() << ", new: " << isNew;
-
   bool hasLinks = properties.hasKey("links");
 
   if (hasLinks && isNew) {
