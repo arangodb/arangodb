@@ -56,7 +56,7 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
 class SchedulerManagerThread final : public Thread {
  public:
-  SchedulerManagerThread(Scheduler* scheduler, asio_ns::io_context* service)
+  SchedulerManagerThread(std::shared_ptr<Scheduler> scheduler, asio_ns::io_context* service)
       : Thread("SchedulerManager", true),
         _scheduler(scheduler),
         _service(service) {}
@@ -73,10 +73,11 @@ class SchedulerManagerThread final : public Thread {
             << "manager loop caught an error, restarting";
       }
     }
+    _scheduler.reset();
   }
 
  private:
-  Scheduler* _scheduler;
+  std::shared_ptr<Scheduler> _scheduler;
   asio_ns::io_context* _service;
 };
 }  // namespace
@@ -88,7 +89,7 @@ class SchedulerManagerThread final : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(Scheduler* scheduler, asio_ns::io_context* service)
+  SchedulerThread(std::shared_ptr<Scheduler> scheduler, asio_ns::io_context* service)
       : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
@@ -155,10 +156,12 @@ class SchedulerThread : public Thread {
       // only decrement here if this wasn't already done above
       _scheduler->threadHasStopped();
     }
+
+    _scheduler.reset();
   }
 
  private:
-  Scheduler* _scheduler;
+  std::shared_ptr<Scheduler> _scheduler;
   asio_ns::io_context* _service;
 };
 }  // namespace
@@ -590,7 +593,7 @@ void Scheduler::startIoService() {
 }
 
 void Scheduler::startManagerThread() {
-  auto thread = new SchedulerManagerThread(this, _managerContext.get());
+  auto thread = new SchedulerManagerThread(shared_from_this(), _managerContext.get());
   if (!thread->start()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                    "unable to start rebalancer thread");
@@ -729,7 +732,7 @@ bool Scheduler::threadShouldStop(double now) {
 }
 
 void Scheduler::startNewThread() {
-  auto thread = new SchedulerThread(this, _ioContext.get());
+  auto thread = new SchedulerThread(shared_from_this(), _ioContext.get());
   if (!thread->start()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                    "unable to start scheduler thread");
