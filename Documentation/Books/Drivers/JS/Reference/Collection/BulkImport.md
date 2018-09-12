@@ -136,16 +136,16 @@ const result = await collection.import(
   buf,
   { type: "array" } // optional
 );
-```
 
 // -- or --
 
 const result = await collection.import(
-[
-["username", "password"],
-["jcd", "bionicman"],
-["jreyes", "amigo"],
-["ghermann", "zeitgeist"]
-],
-{ type: null } // required
+  [
+    ["username", "password"],
+    ["jcd", "bionicman"],
+    ["jreyes", "amigo"],
+    ["ghermann", "zeitgeist"]
+  ],
+  { type: null } // required
 );
+```
