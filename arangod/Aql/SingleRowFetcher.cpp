@@ -28,13 +28,15 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/BlockFetcher.h"
 #include "Aql/FilterExecutor.h"
+#include "SingleRowFetcher.h"
+
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
-  if (_currentBlock == nullptr || _rowIndex > _currentBlock->size()) {
+  if (_currentBlock == nullptr || !indexIsValid()) {
     ExecutionState state;
     std::unique_ptr<AqlItemBlock> newBlock;
     std::tie(state, newBlock) = fetchBlock();
@@ -42,19 +44,32 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
       return {ExecutionState::WAITING, nullptr};
     }
 
+    // TODO return the old block to the item block manager
     _currentBlock.swap(newBlock);
     _rowIndex = 0;
   }
 
+  ExecutionState rowState;
+
   if (_currentBlock == nullptr) {
+    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
     _currentRow = nullptr;
+    rowState = ExecutionState::DONE;
   } else {
-    RegInfo info;
-    info.numRegs = getNrInputRegisters();
-    _currentRow = std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex, info);
+    _currentRow =
+        std::make_unique<AqlItemRow>(*_currentBlock, _rowIndex, RegInfo{});
+
+    TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
+    if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
+      rowState = ExecutionState::DONE;
+    } else {
+      rowState = ExecutionState::HASMORE;
+    }
+
+    _rowIndex++;
   }
 
-  return {ExecutionState::DONE, _currentRow.get()};
+  return {rowState, _currentRow.get()};
 }
 
 SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
@@ -71,4 +86,18 @@ SingleRowFetcher::fetchBlock() {
 
 RegisterId SingleRowFetcher::getNrInputRegisters() const {
   return _blockFetcher->getNrInputRegisters();
+}
+
+bool SingleRowFetcher::indexIsValid() {
+  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
+}
+
+bool SingleRowFetcher::isLastRowInBlock() {
+  TRI_ASSERT(indexIsValid());
+  return _rowIndex + 1 == _currentBlock->size();
+}
+
+size_t SingleRowFetcher::getRowIndex() {
+  TRI_ASSERT(indexIsValid());
+  return _rowIndex;
 }

@@ -83,11 +83,10 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
   auto regInfo = getRegisterInfo(this);
 
   if(!_getSomeOutBlock) {
-   auto block = this->requestBlock(atMost, this->getNrOutputRegisters());
+    auto block = this->requestBlock(atMost, this->getNrOutputRegisters());
     _getSomeOutBlock = std::unique_ptr<AqlItemBlock>(block);
     //auto deleter = [=](AqlItemBlock* b){_engine->_itemBlockManager.returnBlock(b); };
     //_getSomeOutBlock = std::unique_ptr<AqlItemBlock, decltype(deleter)>(block, deleter);
-    _getSomeOutBlock = std::unique_ptr<AqlItemBlock>(block);
     _getSomeOutRowsAdded = 0;
   }
 
@@ -96,11 +95,11 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, regInfo);
+  row = std::make_unique<AqlItemRow>(*_getSomeOutBlock, _getSomeOutRowsAdded, regInfo);
   while (_getSomeOutRowsAdded < atMost) {
     row->changeRow(_getSomeOutRowsAdded);
-    state = _executor.produceRow(*row.get()); // adds row to output
-    if (row && row->hasValue()) {
+    state = _executor.produceRow(*row);
+    if (row && row->produced()) {
       ++_getSomeOutRowsAdded;
     }
 
