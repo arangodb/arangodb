@@ -332,7 +332,7 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.openObject();
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
-  builder.add("waitForCollectorQueue", VPackValue(false));
+  builder.add("waitForCollectorQueue", VPackValue(true));
   builder.add("maxWaitTime", VPackValue(300.0));
   builder.close();
 

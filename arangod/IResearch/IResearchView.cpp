@@ -1660,6 +1660,7 @@ int IResearchView::insert(
     arangodb::DatabasePathFeature
   >("DatabasePath");
 
+
   if (!feature) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure to find feature 'DatabasePath' while constructing IResearch View in database '" << vocbase.id() << "'";
