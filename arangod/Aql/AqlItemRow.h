@@ -41,7 +41,7 @@ struct AqlValue;
  */
 class AqlItemRow {
  public:
-  AqlItemRow(AqlItemBlock& block, size_t baseIndex);
+  AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -56,11 +56,11 @@ class AqlItemRow {
   std::size_t getNrRegisters() const { return _block.getNrRegs(); }
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;
-    _written = false;
+    _produced = false;
   }
 
-  // TODO rename hasValue() and _written to something sane
-  bool hasValue() const { return _written; };
+  // returns true if row was produced
+  bool produced() const { return _produced; };
 
  private:
   /**
@@ -74,7 +74,7 @@ class AqlItemRow {
   size_t _baseIndex;
 
   RegInfo _registerInfo;
-  bool _written;
+  bool _produced;
 };
 
 }  // namespace aql

@@ -76,13 +76,16 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AqlItemBlockHelper.cpp
   Aql/BlockFetcherHelper.cpp
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/ExecutionBlockImplTest.cpp
   Aql/FilterExecutorTest.cpp
+  Aql/RestAqlHandlerTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
-  Aql/RestAqlHandlerTest.cpp
+  Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
