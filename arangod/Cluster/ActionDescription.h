@@ -69,7 +69,7 @@ public:
    */
   ActionDescription(
     std::map<std::string, std::string> const& desc,
-    std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
+    std::shared_ptr<VPackBuilder> const& suppl = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up

@@ -153,7 +153,7 @@ public:
    * @param desc Description of sought action
    */
   std::shared_ptr<maintenance::Action> findAction(
-    std::shared_ptr<maintenance::ActionDescription> const desc);
+    std::shared_ptr<maintenance::ActionDescription> const& desc);
 
   /**
    * @brief add index error to bucket
