@@ -30,7 +30,6 @@ using namespace arangodb::aql;
 AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex, RegInfo info)
     : _block(block)
     , _baseIndex(baseIndex)
-    //, _sourceRow(0)
     , _registerInfo(info)
     , _written(false)
     {}
@@ -43,10 +42,9 @@ const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
 void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue&& value) {
   TRI_ASSERT(variableNr < _registerInfo.numRegs);
   _block->emplaceValue(_baseIndex, variableNr, std::move(value));
-  if(! _written){
+  if(! _written){ // lets code defensive and kill the branch prediction by adding useless branches
     copyRow(sourceRow);
   } else {
-    //_sourceRow = sourceRow._baseIndex;
     _written = true;
   }
 }
@@ -57,12 +55,14 @@ void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, Aq
   if(! _written){
     copyRow(sourceRow);
   } else {
-    //_sourceRow = sourceRow._baseIndex;
     _written = true;
   }
 }
 
 void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
- // _sourceRow = sourceRow._baseIndex;
+  //copy entries to keep
+  for (auto itemId : _registerInfo.toKeep) {
+    _block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
+  }
   _written = true;
 }
