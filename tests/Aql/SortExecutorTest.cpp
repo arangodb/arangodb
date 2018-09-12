@@ -85,6 +85,11 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   sortRegisters.emplace_back(std::move(sortReg));
   SortExecutorInfos infos(0, 0, &trx, std::move(sortRegisters), false);
 
+  RegInfo regInfo{};
+  regInfo.numRegs = 1;
+  regInfo.toKeep = {0};
+  regInfo.toClear = {};
+
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
 
@@ -93,7 +98,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result(block, 0, RegInfo{});
+        AqlItemRow result(block, 0, regInfo);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -105,7 +110,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        AqlItemRow result(block, 0, RegInfo{});
+        AqlItemRow result(block, 0, regInfo);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -129,7 +134,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        AqlItemRow firstResult(block, 0, RegInfo{});
+        AqlItemRow firstResult(block, 0, regInfo);
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           state = testee.produceRow(firstResult);
@@ -142,22 +147,22 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(firstResult.produced());
 
-          AqlItemRow secondResult(block, 1, RegInfo{});
+          AqlItemRow secondResult(block, 1, regInfo);
           state = testee.produceRow(secondResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(secondResult.produced());
 
-          AqlItemRow thirdResult(block, 2, RegInfo{});
+          AqlItemRow thirdResult(block, 2, regInfo);
           state = testee.produceRow(thirdResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(thirdResult.produced());
 
-          AqlItemRow fourthResult(block, 3, RegInfo{});
+          AqlItemRow fourthResult(block, 3, regInfo);
           state = testee.produceRow(fourthResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(fourthResult.produced());
 
-          AqlItemRow fifthResult(block, 4, RegInfo{});
+          AqlItemRow fifthResult(block, 4, regInfo);
           state = testee.produceRow(fifthResult);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(fifthResult.produced());
@@ -170,19 +175,22 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           v = secondResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
-          REQUIRE(number == 1);
+          REQUIRE(number == 2);
 
           v = thirdResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
+          REQUIRE(number == 3);
 
           v = fourthResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
+          REQUIRE(number == 4);
 
           v = fifthResult.getValue(0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
+          REQUIRE(number == 5);
         }
       }
     }

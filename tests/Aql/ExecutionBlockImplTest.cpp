@@ -54,6 +54,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR]") {
 ExecutionState state;
 std::unique_ptr<AqlItemBlock> result;
 
@@ -76,6 +77,7 @@ ExecutionNode const* node = nullptr;
 // it is not supposed to test the fetch logic!
 
 ExecutionBlockImpl<FilterExecutor> testee(&engine, node);
+}
 
 
 } // aql
