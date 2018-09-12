@@ -148,6 +148,10 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   Executor _executor;
 
+  std::unique_ptr<AqlItemBlock> _getSomeOutBlock;
+  std::size_t _getSomeOutRowsAdded;
+  //ExecutionState _getSomeState;
+
 };
 
 }  // namespace aql

@@ -64,7 +64,10 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(0, 0),
       _blockFetcher(*this),
       _rowFetcher(_blockFetcher),
-      _executor(_rowFetcher, _infos) {}
+      _executor(_rowFetcher, _infos),
+      _getSomeOutBlock(nullptr),
+      _getSomeOutRowsAdded(0),
+    {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
@@ -75,35 +78,40 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
   auto regInfo = getRegisterInfo(this);
 
   //auto resultBlockManges = this->requestBlock(atMost, this->getNrOutputRegisters());
-  auto resultBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOutRegs);
-  std::size_t rowsAdded = 0;
+  if(!_getSomeOutBlock) {
+    auto _getSomeOutBlock = std::make_unique<AqlItemBlock>(nullptr, atMost, regInfo.numOut);
+    _getSomeOutRowsAdded = 0;
+  }
 
   ExecutionState state;
   std::unique_ptr<AqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
-  while (rowsAdded < atMost) {
+  while (_getSomeOutRowsAdded < atMost) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded, regInfo.numOutRegs);
+    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, regInfo.numOut);
 #else
-    row = std::make_unique<AqlItemRow>(resultBlock.get(), rowsAdded);
+    row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded);
 #endif
     state = _executor.produceRow(*row.get()); // adds row to output
     if (row && row->hasValue()) {
       // copy from input
-      ++rowsAdded;
+      ++_getSomeOutRowsAdded;
     }
 
-    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      break;
+    if (state == ExecutionState::WAITING) {
+      return {state, nullptr};
+    }
+
+    if (state == ExecutionState::DONE) {
+      // shrink return
+      return {state, std::move(_getSomeOutBlock)};
     }
   }
 
-  if (rowsAdded) {
-    return {state, std::move(resultBlock)};
-  } else {
-    return {state, nullptr};
-  }
+  TRI_ASSERT(state == ExecutionState::HASMORE);
+  TRI_ASSERT(_getSomeOutRowsAdded == atMost);
+  return {state, std::move(_getSomeOutBlock)};
 }
 
 template <class Executor>
