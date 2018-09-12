@@ -35,23 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template<class Executor>
-ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node) :
-  ExecutionBlock(engine, node), SingleRowFetcher(), _infos(0, 0), _executor(*this, _infos)
-{
-}
-
-template<class Executor>
-ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
-
-
-struct RegInfo {
-  std::size_t numOutRegs;
-  std::unordered_set<RegisterId> _regsToKeep;
-  std::unordered_set<RegisterId> _regsToClear;
-};
-
-RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
+static RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
 
   auto nrOut = thisBlock->getNrOutputRegisters();
 
@@ -71,6 +55,16 @@ RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
          , std::move(toClear)
          };
 }
+
+template<class Executor>
+ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node) :
+  ExecutionBlock(engine, node), SingleRowFetcher(), _infos(0, 0), _executor(*this, _infos)
+{
+}
+
+template<class Executor>
+ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
+
 
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {

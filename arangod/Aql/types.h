@@ -40,6 +40,12 @@ typedef uint64_t QueryId;
 
 //Map RemoteID->ServerID->[SnippetId]
 typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
+
+struct RegInfo {
+  std::size_t numOutRegs;
+  std::unordered_set<RegisterId> toKeep;
+  std::unordered_set<RegisterId> toClear;
+};
 }
 }
 
