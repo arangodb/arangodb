@@ -712,6 +712,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   for (auto const& view : views) {
     resultBuilder.openObject();
     view->toVelocyPack(resultBuilder, /*details*/true, /*forPersistence*/false);
+    resultBuilder.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
     resultBuilder.close();
   }
   resultBuilder.close();  // views

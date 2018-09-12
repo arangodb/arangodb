@@ -1041,6 +1041,7 @@ void TRI_vocbase_t::inventory(
       LogicalView const* view = static_cast<LogicalView*>(dataSource.second.get());
       result.openObject();
       view->toVelocyPack(result, /*details*/true, /*forPersistence*/false);
+      result.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
       result.close();
     }
   }
