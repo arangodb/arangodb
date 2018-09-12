@@ -75,7 +75,6 @@ if (USE_IRESEARCH)
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
     IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
-    IResearch/SystemDatabaseFeature.cpp IResearch/SystemDatabaseFeature.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
     IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
     IResearch/AqlHelper.cpp IResearch/AqlHelper.h
@@ -149,6 +148,7 @@ SET(ARANGOD_SOURCES
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
+  Agency/AgencyStrings.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
@@ -312,6 +312,7 @@ SET(ARANGOD_SOURCES
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
+  Cluster/MaintenanceStrings.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
   Cluster/ReplicationTimeoutFeature.cpp
@@ -459,6 +460,7 @@ SET(ARANGOD_SOURCES
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
+  RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LockfileFeature.cpp
@@ -466,6 +468,7 @@ SET(ARANGOD_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
+  RestServer/SystemDatabaseFeature.cpp RestServer/SystemDatabaseFeature.h
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UpgradeFeature.cpp

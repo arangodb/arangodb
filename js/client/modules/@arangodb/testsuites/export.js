@@ -46,7 +46,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const toArgv = require('internal').toArgv;
 
 const testPaths = {
-  'export': ['js/server/tests/export/'] // we have to be fuzzy...
+  'export': [tu.pathForTesting('server/export')] // we have to be fuzzy...
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ function exportTest (options) {
     return results;
   }
 
-  results.setup = tu.runInArangosh(options, instanceInfo, tu.makePathUnix('js/server/tests/export/export-setup' + cluster + '.js'));
+  results.setup = tu.runInArangosh(options, instanceInfo, tu.makePathUnix(tu.pathForTesting('server/export/export-setup' + cluster + '.js')));
   results.setup.failed = 0;
   if (!pu.arangod.check.instanceAlive(instanceInfo, options) || results.setup.status !== true) {
     results.setup.failed = 1;

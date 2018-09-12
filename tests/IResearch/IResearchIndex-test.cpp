@@ -37,11 +37,11 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -153,14 +153,14 @@ struct IResearchIndexSetup {
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // QueryRegistryFeature required to be present before calling TRI_vocbase_t(...)
+    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // required for AQLFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true); // required for arangodb::aql::Query::execute(...)
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true); // required for use of iresearch analyzers
     features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true); // required for creating views of type 'iresearch'
-    features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -228,9 +228,9 @@ SECTION("test_analyzer") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -478,9 +478,9 @@ SECTION("test_async_index") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
@@ -834,9 +834,9 @@ SECTION("test_fields") {
   auto createCollection1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto* collection0 = vocbase.createCollection(createCollection0->slice());
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
   REQUIRE((nullptr != collection0));
-  auto* collection1 = vocbase.createCollection(createCollection1->slice());
+  auto collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
   auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));

@@ -86,8 +86,8 @@ const TOP_DIR = (function findTopDir () {
   const topDir = fs.normalize(fs.makeAbsolute('.'));
 
   if (!fs.exists('3rdParty') && !fs.exists('arangod') &&
-    !fs.exists('arangosh') && !fs.exists('UnitTests')) {
-    throw new Error('Must be in ArangoDB topdir to execute unit tests.');
+    !fs.exists('arangosh') && !fs.exists('tests')) {
+    throw new Error('Must be in ArangoDB topdir to execute tests.');
   }
 
   return topDir;
@@ -1309,10 +1309,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      let rc = { endpoint: options.server,
-               rootDir: options.serverRoot,
-               url: options.server.replace('tcp', 'http'),
-               arangods: []
+      let rc = { 
+                 endpoint: options.server,
+                 rootDir: options.serverRoot,
+                 url: options.server.replace('tcp', 'http'),
+                 arangods: []
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
@@ -1410,13 +1411,9 @@ exports.run = {
 };
 
 exports.shutdownInstance = shutdownInstance;
-// exports.startInstanceCluster = startInstanceCluster;
 exports.startArango = startArango;
-// exports.startInstanceAgency = startInstanceAgency;
-// exports.startInstanceSingleServer = startInstanceSingleServer;
 exports.startInstance = startInstance;
 exports.setupBinaries = setupBinaries;
-
 exports.executableExt = executableExt;
 exports.serverCrashed = serverCrashed;
 

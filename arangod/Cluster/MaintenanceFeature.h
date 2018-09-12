@@ -114,11 +114,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
 protected:
   std::shared_ptr<maintenance::Action> createAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description);
+
+  void registerAction(
+    std::shared_ptr<maintenance::Action> action, bool executeNow);
+
+  std::shared_ptr<maintenance::Action> createAndRegisterAction(
     std::shared_ptr<maintenance::ActionDescription> const & description,
     bool executeNow);
-
-  void createAction(
-    std::shared_ptr<maintenance::Action> action, bool executeNow);
 
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
@@ -132,8 +135,10 @@ public:
   Result toJson(VPackBuilder & builder);
 
   /// @brief Return pointer to next ready action, or nullptr
-  std::shared_ptr<maintenance::Action> findReadyAction();
-
+  std::shared_ptr<maintenance::Action> findReadyAction(
+    std::unordered_set<std::string> const& options =
+    std::unordered_set<std::string>());
+  
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
   uint64_t nextActionId() {return _nextActionId++;};
@@ -212,6 +217,11 @@ public:
     std::string const& database, std::string const& collection,
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error);
 
+  arangodb::Result storeShardError (
+    std::string const& database, std::string const& collection,
+    std::string const& shard, std::string const& serverId,
+    arangodb::Result const& failure);
+
   /**
    * @brief get all pending shard errors
    *
@@ -251,6 +261,9 @@ public:
   arangodb::Result storeDBError (
     std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error);
 
+  arangodb::Result storeDBError (
+    std::string const& database, Result const& failure);
+
   /**
    * @brief get all pending shard errors
    *
@@ -279,6 +292,12 @@ public:
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
+  /// @brief Lowest limit for worker threads
+  static uint32_t const minThreadLimit;
+
+  /// @brief Highest limit for worker threads
+  static uint32_t const maxThreadLimit;
+  
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -299,7 +318,6 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
- protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
@@ -364,6 +382,9 @@ protected:
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
+
+  
+  
 };
 
 }

@@ -81,8 +81,9 @@ Result Indexes::getIndex(LogicalCollection const* collection,
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
+  
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, false, tmp);
+  Result res = Indexes::getAll(collection, Index::makeFlags(), false, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
       if (index.get("id").compareString(name) == 0) {
@@ -94,9 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
+/// @brief get all indexes, skips view links
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
-                                 bool withFigures, VPackBuilder& result) {
-
+                                 std::underlying_type<Index::Serialize>::type flags,
+                                 bool withLinks,
+                                 VPackBuilder& result) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(collection);
@@ -111,24 +114,29 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
       return Result(rv, "could not retrieve estimates");
     }
 
+    // we will merge in the index estimates later
+    flags &= ~ Index::makeFlags(Index::Serialize::Estimates);
+
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    unsigned flags = Index::SERIALIZE_ESTIMATES;
-    if (withFigures) {
-      flags |= Index::SERIALIZE_FIGURES;
-    }
+#ifdef USE_IRESEARCH
+    c->getIndexesVPack(tmpInner, flags, [withLinks](arangodb::Index const* idx) {
+      return withLinks || idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK;
+    });
+#else
     c->getIndexesVPack(tmpInner, flags);
+#endif
 
     tmp.openArray();
-    for(VPackSlice const& s : VPackArrayIterator(tmpInner.slice())){
+    for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
       auto id = StringRef(s.get("id"));
       auto found = std::find_if(estimates.begin(),
                                 estimates.end(),
-                                [&id](std::pair<std::string,double> const& v){
+                                [&id](std::pair<std::string,double> const& v) {
                                   return id == v.first;
                                 }
                                );
-      if(found == estimates.end()){
+      if (found == estimates.end()) {
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
@@ -160,9 +168,13 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     auto indexes = collection->getIndexes();
 
     tmp.openArray(true);
-
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
-      idx->toVelocyPack(tmp, Index::SERIALIZE_FIGURES | Index::SERIALIZE_ESTIMATES);
+#ifdef USE_IRESEARCH
+      if (withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        continue;
+      }
+#endif
+      idx->toVelocyPack(tmp, flags);
     }
     tmp.close();
     trx.finish(res);
@@ -234,7 +246,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
           merge.close();
 
           merge.add("selectivityEstimate", VPackValue(selectivity / 2));
-          if (withFigures) {
+          if (Index::hasFlag(flags, Index::Serialize::Figures)) {
             merge.add("figures", VPackValue(VPackValueType::Object));
             merge.add("memory", VPackValue(memory));
             if (useCache) {
@@ -300,7 +312,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   VPackBuilder tmp;
   try {
-    idx->toVelocyPack(tmp, Index::SERIALIZE_ESTIMATES);
+    idx->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Estimates));
   } catch (...) {
     return Result(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -442,6 +454,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
       return Result(create ? TRI_ERROR_OUT_OF_MEMORY
                            : TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
+  
+    // flush estimates
+    collection->clusterIndexEstimatesTTL(0.0);
+
     // the cluster won't set a proper id value
     std::string iid = tmp.slice().get("id").copyString();
     VPackBuilder b;
@@ -564,7 +580,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   return Result();
 }
 
-arangodb::Result Indexes::drop(LogicalCollection const* collection,
+arangodb::Result Indexes::drop(LogicalCollection* collection,
                                VPackSlice const& indexArg) {
   if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() != auth::Level::RW ||
@@ -581,6 +597,9 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
     if (!res.ok()) {
       return res;
     }
+    
+    // flush estimates
+    collection->clusterIndexEstimatesTTL(0.0);
 
 #ifdef USE_ENTERPRISE
     return Indexes::dropCoordinatorEE(collection, iid);

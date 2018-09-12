@@ -66,7 +66,6 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchViewNode.h"
-#include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
@@ -76,6 +75,7 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -138,6 +138,7 @@ struct IResearchViewCoordinatorSetup {
       std::string name = ftr->name();
       features.emplace(name, std::make_pair(ftr, start));
     };
+    arangodb::application_features::ApplicationFeature* tmpFeature;
 
     buildFeatureEntry(new arangodb::application_features::BasicFeaturePhase(server, false), false);
     buildFeatureEntry(new arangodb::application_features::ClusterFeaturePhase(server), false);
@@ -148,7 +149,10 @@ struct IResearchViewCoordinatorSetup {
     // setup required application features
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
+    buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
+    arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false); // required by AuthenticationFeature
     buildFeatureEntry(new arangodb::AuthenticationFeature(server), false);
     buildFeatureEntry(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(server), false);
@@ -157,12 +161,6 @@ struct IResearchViewCoordinatorSetup {
     buildFeatureEntry(new arangodb::AqlFeature(server), true);
     buildFeatureEntry(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::iresearch::IResearchFeature(server), true);
-
-    // We need this feature to be added now in order to create the system database
-    arangodb::application_features::ApplicationServer::server->addFeature(features.at("QueryRegistry").first);
-
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
-    buildFeatureEntry(new arangodb::iresearch::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::aql::OptimizerRulesFeature(server), true);
     buildFeatureEntry(new arangodb::FlushFeature(server), false); // do not start the thread
     buildFeatureEntry(new arangodb::ClusterFeature(server), false);
@@ -596,7 +594,7 @@ SECTION("test_drop_with_link") {
     CHECK(("no error" == error));
   }
 
-  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }");
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": {} } }");
   auto collectionId = std::to_string(1);
@@ -878,7 +876,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -894,7 +892,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -910,7 +908,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1078,7 +1076,7 @@ SECTION("test_update_links_partial_remove") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1124,7 +1122,7 @@ SECTION("test_update_links_partial_remove") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1169,7 +1167,7 @@ SECTION("test_update_links_partial_remove") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1303,7 +1301,7 @@ SECTION("test_update_links_partial_remove") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1349,7 +1347,7 @@ SECTION("test_update_links_partial_remove") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1442,7 +1440,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1458,7 +1456,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1474,7 +1472,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1622,7 +1620,7 @@ SECTION("test_update_links_partial_add") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1667,7 +1665,7 @@ SECTION("test_update_links_partial_add") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1816,7 +1814,7 @@ SECTION("test_update_links_partial_add") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1863,7 +1861,7 @@ SECTION("test_update_links_partial_add") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -1909,7 +1907,7 @@ SECTION("test_update_links_partial_add") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2048,7 +2046,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2064,7 +2062,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2080,7 +2078,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2228,7 +2226,7 @@ SECTION("test_update_links_replace") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2273,7 +2271,7 @@ SECTION("test_update_links_replace") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2404,7 +2402,7 @@ SECTION("test_update_links_replace") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2526,7 +2524,7 @@ SECTION("test_update_links_replace") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2615,7 +2613,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2631,7 +2629,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2647,7 +2645,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2815,7 +2813,7 @@ SECTION("test_update_links_clear") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._includeAllFields = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2862,7 +2860,7 @@ SECTION("test_update_links_clear") {
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     expectedMeta._trackListPositions = true;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -2907,7 +2905,7 @@ SECTION("test_update_links_clear") {
 
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
     arangodb::iresearch::IResearchLinkMeta actualMeta;
-    auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+    auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     error.clear();
     CHECK(actualMeta.init(builder->slice(), error));
@@ -3051,7 +3049,7 @@ SECTION("test_drop_link") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -3174,7 +3172,7 @@ SECTION("test_drop_link") {
       arangodb::iresearch::IResearchLinkMeta expectedMeta;
       expectedMeta._includeAllFields = true;
       arangodb::iresearch::IResearchLinkMeta actualMeta;
-      auto builder = index->toVelocyPack(arangodb::Index::SERIALIZE_FIGURES);
+      auto builder = index->toVelocyPack(arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
       error.clear();
       CHECK(actualMeta.init(builder->slice(), error));
@@ -3319,7 +3317,7 @@ SECTION("test_update_overwrite") {
 
   // modify meta params with links (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"cleanupIntervalStep\": 62, \"links\": { \"testCollection\": {} } }");
     auto collectionId = std::to_string(1);
@@ -3471,7 +3469,7 @@ SECTION("test_update_overwrite") {
 
   // drop link (collection not authorized)
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1, \"type\": 1 }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": null } }");
     auto collectionId = std::to_string(1);
@@ -3566,8 +3564,8 @@ SECTION("test_update_overwrite") {
 
   // add authorised link (existing collection not authorized)
   {
-    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1 }");
-    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }");
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {}, \"testCollection1\": {} } }");
     auto collectionId0 = std::to_string(1);
@@ -3677,8 +3675,8 @@ SECTION("test_update_overwrite") {
 
   // drop authorised link (existing collection not authorized)
   {
-    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1 }");
-    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }");
+    auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection0\", \"replicationFactor\": 1, \"type\": 1 }");
+    auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection1\", \"replicationFactor\": 1, \"type\": 1 }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection0\": {} } }");
     auto collectionId0 = std::to_string(1);

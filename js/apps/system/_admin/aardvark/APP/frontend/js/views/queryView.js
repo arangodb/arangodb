@@ -1960,11 +1960,21 @@
 
             var markers = [];
             _.each(data.result, function (geo) {
-              if (geo.type === 'Point' || geo.type === 'MultiPoint') {
+              var geometry = {};
+              if (geo.hasOwnProperty('geometry')) {
+                geometry = geo.geometry;
+              } else {
+                geometry = geo;
+              }
+
+              if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
                 // reverse neccessary if we are using GeoJSON order
                 // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
                 try {
-                  geojson = new L.GeoJSON(geo, {
+                  geojson = new L.GeoJSON(geometry, {
+                    onEachFeature: function (feature, layer, x) {
+                      layer.bindPopup('<pre style="width: 250px; max-height: 250px;">' + JSON.stringify(geo, null, 2) + '</pre>');
+                    },
                     pointToLayer: function (feature, latlng) {
                       var res = L.circleMarker(latlng, geojsonMarkerOptions);
                       markers.push(res);
@@ -1974,10 +1984,13 @@
                 } catch (ignore) {
                   invalidGeoJSON++;
                 }
-              } else if (geo.type === 'Polygon' || geo.type === 'LineString' || geo.type === 'MultiLineString' || geo.type === 'MultiPolygon') {
+              } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
-                  geojson = new L.GeoJSON(geo, {
-                    style: geoStyle
+                  geojson = new L.GeoJSON(geometry, {
+                    style: geoStyle,
+                    onEachFeature: function (feature, layer) {
+                      layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(feature, null, 2) + '</pre>');
+                    }
                   }).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
@@ -2027,8 +2040,14 @@
             } else {
               $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
             }
-          } else {
-            $('#json-switch').addClass('active').css('display', 'inline');
+            $('#json-switch').css('display', 'inline');
+
+            // fallback
+            if (result.fallback && (result.fallback === 'geo' || result.fallback === 'geotable')) {
+              $('#geo-switch').addClass('disabled').css('display', 'inline').css('opacity', '0.5');
+              $('#geo-switch').addClass('tippy').attr('title', 'No internet collection. Map is not available.');
+              arangoHelper.createTooltips();
+            }
           }
 
           var appendSpan = function (value, icon, css) {
@@ -2554,9 +2573,17 @@
             if (typeof obj === 'object') {
               if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
                 if (obj.type === 'Point' || obj.type === 'MultiPoint' ||
-                    obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
-                    obj.type === 'LineString' || obj.type === 'MultiLineString') {
+                  obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
+                  obj.type === 'LineString' || obj.type === 'MultiLineString') {
                   geojson++;
+                }
+              } else if (obj.hasOwnProperty('geometry')) {
+                if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
+                  if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
+                    obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
+                    obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
+                    geojson++;
+                  }
                 }
               }
             }
@@ -2598,7 +2625,7 @@
 
       if (!found) {
       // if all check fails, then just display as json
-        if (result.length === geojson) {
+        if (result.length !== 0 && result.length === geojson) {
           toReturn.defaultType = 'geo';
         } else {
           toReturn.defaultType = 'json';
@@ -2607,13 +2634,14 @@
 
       if (toReturn.defaultType === 'geo' || toReturn.defaultType === 'geotable') {
         if (!window.activeInternetConnection) {
+          // mark the type we wanted to render
+          toReturn.fallback = toReturn.defaultType;
+
           if (toReturn.defaultType === 'geo') {
             toReturn.defaultType = 'json';
           } else {
             toReturn.defaultType = 'table';
           }
-          // notify user
-          arangoHelper.arangoMessage('Map', 'No internet connection available. Not able to render the map. Falling back to: ' + toReturn.defaultType);
         }
       }
 
@@ -2631,6 +2659,14 @@
       var found = this.aqlEditor.find(text);
 
       if (!found && pos) {
+        try {
+          row = parseInt(row);
+          if (row > 0) {
+            row = row - 1;
+          }
+        } catch (ignore) {
+        }
+
         this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
         this.aqlEditor.selection.selectLine();
       }

@@ -35,7 +35,7 @@ const optionsDocumentation = [
 const tu = require('@arangodb/test-utils');
 
 const testPaths = {
-  'agency': ['js/client/tests/agency']
+  'agency': [tu.pathForTesting('client/agency')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////

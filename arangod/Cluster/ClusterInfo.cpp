@@ -646,9 +646,9 @@ void ClusterInfo::loadPlan() {
       //  "_system": {
       //    "3010001": {
       //      "deleted": false,
-      //      "doCompact": true,
+      //      DO_COMPACT: true,
       //      "id": "3010001",
-      //      "indexBuckets": 8,
+      //      INDEX_BUCKETS: 8,
       //      "indexes": [
       //        {
       //          "fields": [
@@ -663,7 +663,7 @@ void ClusterInfo::loadPlan() {
       //      "isSmart": false,
       //      "isSystem": true,
       //      "isVolatile": false,
-      //      "journalSize": 1048576,
+      //      JOURNAL_SIZE: 1048576,
       //      "keyOptions": {
       //        "allowUserKeys": true,
       //        "lastValue": 0,
@@ -685,7 +685,7 @@ void ClusterInfo::loadPlan() {
       //      "status": 3,
       //      "statusString": "loaded",
       //      "type": 2,
-      //      "waitForSync": false
+      //      StaticStrings::WaitForSyncString: false
       //    },...
       //  },...
       // }}
@@ -762,7 +762,7 @@ void ClusterInfo::loadPlan() {
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
                 newCollection->clusterIndexEstimates(std::move(selectivity));
                 newCollection->clusterIndexEstimatesTTL(selectivityTTL);
-                for(std::shared_ptr<Index>& idx : newCollection->getIndexes()){
+                for (std::shared_ptr<Index>& idx : newCollection->getIndexes()) {
                   auto it = selectivity.find(std::to_string(idx->id()));
                   if (it != selectivity.end()) {
                     idx->updateClusterSelectivityEstimate(it->second);
@@ -2014,7 +2014,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 
   VPackBuilder temp;
   temp.openObject();
-  temp.add("waitForSync", VPackValue(info->waitForSync()));
+  temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
@@ -2414,7 +2414,7 @@ int ClusterInfo::ensureIndexCoordinator(
     oldPlanIndexes.reset(new VPackBuilder());
 
     c = getCollection(databaseName, collectionID);
-    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::SERIALIZE_BASICS);
+    c->getIndexesVPack(*(oldPlanIndexes.get()), Index::makeFlags(Index::Serialize::Basics));
     VPackSlice const planIndexes = oldPlanIndexes->slice();
 
     if (planIndexes.isArray()) {
@@ -2505,7 +2505,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     std::shared_ptr<LogicalCollection> c =
         getCollection(databaseName, collectionID);
     std::shared_ptr<VPackBuilder> tmp = std::make_shared<VPackBuilder>();
-    c->getIndexesVPack(*(tmp.get()), Index::SERIALIZE_BASICS);
+    c->getIndexesVPack(*(tmp.get()), Index::makeFlags(Index::Serialize::Basics));
     {
       MUTEX_LOCKER(guard, *numberOfShardsMutex);
       *numberOfShards = static_cast<int>(c->numberOfShards());
@@ -2875,7 +2875,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     READ_LOCKER(readLocker, _planProt.lock);
 
-    c->getIndexesVPack(tmp, Index::SERIALIZE_BASICS);
+    c->getIndexesVPack(tmp, Index::makeFlags(Index::Serialize::Basics));
     indexes = tmp.slice();
 
     if (!indexes.isArray()) {
@@ -3589,10 +3589,6 @@ void ClusterInfo::invalidatePlan() {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
   }
-  {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -3689,12 +3685,12 @@ arangodb::Result ClusterInfo::getShardServers(
   if (it != _shardServers.end()) {
     servers = (*it).second;
     return arangodb::Result();
-  } 
+  }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
     << "Strange, did not find shard in _shardServers: " << shardId;
   return arangodb::Result(TRI_ERROR_FAILED);
-  
+
 }
 
 

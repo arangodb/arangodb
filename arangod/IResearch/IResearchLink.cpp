@@ -353,15 +353,15 @@ bool IResearchLink::isSorted() const {
   return false; // iResearch does not provide a fixed default sort order
 }
 
-bool IResearchLink::json(
-    arangodb::velocypack::Builder& builder,
-    bool forPersistence
-) const {
+bool IResearchLink::json(arangodb::velocypack::Builder& builder) const {
   if (!builder.isOpenObject() || !_meta.json(builder)) {
     return false;
   }
 
-  builder.add("id", VPackValue(std::to_string(_id)));
+  builder.add(
+    arangodb::StaticStrings::IndexId,
+    arangodb::velocypack::Value(std::to_string(_id))
+  );
   builder.add(
     arangodb::StaticStrings::IndexType,
     arangodb::velocypack::Value(IResearchLinkHelper::type())

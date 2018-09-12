@@ -288,7 +288,8 @@ std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex()
 
 /// @brief IndexHandle toVelocyPack method passthrough
 void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder, unsigned flags) const {
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<Index::Serialize>::type flags) const {
   _index->toVelocyPack(builder, flags);
 }
 
@@ -1420,8 +1421,6 @@ OperationResult transaction::Methods::document(
 OperationResult transaction::Methods::documentCoordinator(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
-  auto headers =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
@@ -1440,7 +1439,6 @@ OperationResult transaction::Methods::documentCoordinator(
     *this,
     value,
     options,
-    std::move(headers),
     responseCode,
     errorCounter,
     resultBody
@@ -3374,7 +3372,7 @@ transaction::Methods::indexesForCollectionCoordinator(
   auto selectivity = collection->clusterIndexEstimates();
 
   // push updated values into indexes
-  for(std::shared_ptr<Index>& idx : indexes){
+  for(std::shared_ptr<Index>& idx : indexes) {
     auto it = selectivity.find(std::to_string(idx->id()));
     if (it != selectivity.end()) {
       idx->updateClusterSelectivityEstimate(it->second);

@@ -41,8 +41,9 @@ ServerIdFeature::ServerIdFeature(
 )
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
-  startsAfter("Database");
   startsAfter("BasicsPhase");
+  startsAfter("Database");
+  startsAfter("SystemDatabase");
 }
 
 void ServerIdFeature::start() {

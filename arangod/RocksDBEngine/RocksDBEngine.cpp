@@ -420,18 +420,28 @@ void RocksDBEngine::start() {
 
   // intentionally set the RocksDB logger to warning because it will
   // log lots of things otherwise
-  if (!_debugLogging) {
-    _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
-  } else {
+  if (_debugLogging) {
     _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
-  } // else
+  } else {
+    if (!opts->_useFileLogging) {
+      // if we don't use file logging but log into ArangoDB's logfile,
+      // we only want real errors
+      _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+    }
+  } 
 
-  auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
-  _options.info_log = logger;
+  std::shared_ptr<RocksDBLogger> logger;
+ 
+  if (!opts->_useFileLogging) {
+    // if option "--rocksdb.use-file-logging" is set to false, we will use
+    // our own logger that logs to ArangoDB's logfile 
+    logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
+    _options.info_log = logger;
 
-  if (!_debugLogging) {
-    logger->disable();
-  } // if
+    if (!_debugLogging) {
+      logger->disable();
+    } // if
+  }
 
   if (opts->_enableStatistics) {
     _options.statistics = rocksdb::CreateDBStatistics();
@@ -629,7 +639,9 @@ void RocksDBEngine::start() {
   arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
 
   // only enable logger after RocksDB start
-  logger->enable();
+  if (logger != nullptr) {
+    logger->enable();
+  }
 
   if (_syncInterval > 0) {
     _syncThread.reset(
@@ -1721,7 +1733,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
         auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
-          it, StaticStrings::IndexUnique.c_str(), false
+          it, StaticStrings::IndexUnique, false
         );
         
         RocksDBKeyBounds bounds =
@@ -1853,7 +1865,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
 
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
       }
 
       StorageEngine::registerView(*vocbase, view);

@@ -49,7 +49,6 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RestStatus badRequest();
 
  private:
-  std::string _jwtSecret;
   std::string _username;
   bool _isValid = false;
   std::chrono::seconds _validFor;

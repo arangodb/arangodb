@@ -34,6 +34,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -133,7 +134,11 @@ void raceForClusterBootstrap() {
       continue;
     }
 
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::SystemDatabaseFeature
+    >();
+    arangodb::SystemDatabaseFeature::ptr vocbase =
+      sysDbFeature ? sysDbFeature->use() : nullptr;
     auto upgradeRes = vocbase
       ? methods::Upgrade::clusterBootstrap(*vocbase)
       : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
@@ -249,9 +254,13 @@ void runActiveFailoverStart(std::string const& myId) {
 }
 
 void BootstrapFeature::start() {
-  auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  auto* sysDbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
+  >();
+  arangodb::SystemDatabaseFeature::ptr vocbase =
+    sysDbFeature ? sysDbFeature->use() : nullptr;
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
-  TRI_ASSERT(vocbase != nullptr);
+  TRI_ASSERT(vocbase.get() != nullptr);
 
   auto ss = ServerState::instance();
   ServerState::RoleEnum role =  ServerState::instance()->getRole();
@@ -265,7 +274,7 @@ void BootstrapFeature::start() {
       raceForClusterBootstrap();
 
       if (v8Enabled) {
-        ::runCoordinatorJS(vocbase);
+        ::runCoordinatorJS(vocbase.get());
       }
     } else if (ServerState::isDBServer(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
@@ -292,7 +301,7 @@ void BootstrapFeature::start() {
     if (v8Enabled) { // runs the single server boostrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
+      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase.get(), "server/server.js", nullptr);
     }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {

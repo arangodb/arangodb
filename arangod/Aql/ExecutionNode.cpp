@@ -454,11 +454,11 @@ ExecutionNode* ExecutionNode::cloneHelper(
     TRI_ASSERT(!withProperties);
   }
 
-  if (withProperties) {
-    other->_regsToClear = _regsToClear;
-    other->_depth = _depth;
-    other->_varUsageValid = _varUsageValid;
+  other->_regsToClear = _regsToClear;
+  other->_depth = _depth;
+  other->_varUsageValid = _varUsageValid;
 
+  if (withProperties) {
     auto allVars = plan->getAst()->variables();
     // Create new structures on the new AST...
     other->_varsUsedLater.reserve(_varsUsedLater.size());
@@ -483,9 +483,6 @@ ExecutionNode* ExecutionNode::cloneHelper(
     }
   } else {
     // point to current AST -> don't do deep copies.
-    other->_depth = _depth;
-    other->_regsToClear = _regsToClear;
-    other->_varUsageValid = _varUsageValid;
     other->_varsUsedLater = _varsUsedLater;
     other->_varsValid = _varsValid;
     other->_registerPlan = _registerPlan;
@@ -972,6 +969,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
                         VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
+  
       break;
     }
 

@@ -232,7 +232,8 @@ MMFilesGeoIndex::MMFilesGeoIndex(
 size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder,
+       std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
@@ -277,14 +278,14 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;

@@ -26,6 +26,7 @@
 #include "src/objects/scope-info.h" // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 
 #include "catch.hpp"
+#include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -93,27 +94,6 @@ struct TestView: public arangodb::LogicalView {
   virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
 };
 
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
-void v8Init() {
-  struct init_t {
-    std::shared_ptr<v8::Platform> platform;
-    init_t() {
-      platform = std::shared_ptr<v8::Platform>(
-        v8::platform::CreateDefaultPlatform(),
-        [](v8::Platform* p)->void {
-          v8::V8::Dispose();
-          v8::V8::ShutdownPlatform();
-          delete p;
-        }
-      );
-      v8::V8::InitializePlatform(platform.get()); // avoid SIGSEGV duing 8::Isolate::New(...)
-      v8::V8::Initialize(); // avoid error: "Check failed: thread_data_table_"
-    }
-  };
-  static const init_t init;
-  (void)(init);
-}
-
 }
 
 // -----------------------------------------------------------------------------
@@ -128,7 +108,7 @@ struct V8ViewsSetup {
   V8ViewsSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    v8Init(); // on-time initialize V8
+    arangodb::tests::v8Init(); // on-time initialize V8
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
@@ -167,7 +147,6 @@ struct V8ViewsSetup {
   }
 
   ~V8ViewsSetup() {
-
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -207,9 +186,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
@@ -290,15 +268,13 @@ SECTION("test_auth") {
       auto result = v8::Function::Cast(*fn_createView)->CallAsFunction(context, fn_createView, args.size(), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
-      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
       CHECK((false == !v8View));
       CHECK((std::string("testView") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
       auto view = vocbase.lookupView("testView");
       CHECK((false == !view));
     }
-
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test drop (static)
@@ -313,9 +289,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
@@ -433,7 +408,6 @@ SECTION("test_auth") {
       CHECK((vocbase.views().empty()));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test drop (instance)
@@ -448,9 +422,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
@@ -468,8 +441,8 @@ SECTION("test_auth") {
     CHECK((fn_drop->IsFunction()));
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
-    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), &logicalView));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), &logicalView));
+    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
+    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
     };
 
@@ -571,7 +544,6 @@ SECTION("test_auth") {
       CHECK((vocbase.views().empty()));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test rename
@@ -586,9 +558,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
@@ -606,8 +577,8 @@ SECTION("test_auth") {
     CHECK((fn_rename->IsFunction()));
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
-    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), &logicalView));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), &logicalView));
+    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
+    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
       TRI_V8_ASCII_STRING(isolate.get(), "testView1"),
     };
@@ -748,7 +719,6 @@ SECTION("test_auth") {
       CHECK((false == !view1));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test modify
@@ -763,9 +733,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     char isolateData[64]; // 64 > sizeof(arangodb::V8PlatformFeature::IsolateData)
     std::memset(isolateData, 0, 64); // otherwise arangodb::V8PlatformFeature::isOutOfMemory(isolate) returns true
@@ -786,8 +755,8 @@ SECTION("test_auth") {
     CHECK((fn_properties->IsFunction()));
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
-    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), &logicalView));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), &logicalView));
+    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
+    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
       TRI_VPackToV8(isolate.get(), arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }")->slice()),
     };
@@ -962,7 +931,6 @@ SECTION("test_auth") {
       CHECK((slice.hasKey("key") && slice.get("key").isString() && std::string("value") == slice.get("key").copyString()));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test get view (basic)
@@ -977,9 +945,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
@@ -1063,7 +1030,7 @@ SECTION("test_auth") {
       auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
-      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
       CHECK((false == !v8View));
       CHECK((std::string("testView") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1103,7 +1070,7 @@ SECTION("test_auth") {
       auto result = v8::Function::Cast(*fn_view)->CallAsFunction(context, fn_view, args.size(), args.data());
       CHECK((!result.IsEmpty()));
       CHECK((result.ToLocalChecked()->IsObject()));
-      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(result.ToLocalChecked()->ToObject(), WRP_VOCBASE_VIEW_TYPE);
       CHECK((false == !v8View));
       CHECK((std::string("testView") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1111,7 +1078,6 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test get view (detailed)
@@ -1126,9 +1092,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     char isolateData[64]; // 64 > sizeof(arangodb::V8PlatformFeature::IsolateData)
     std::memset(isolateData, 0, 64); // otherwise arangodb::V8PlatformFeature::isOutOfMemory(isolate) returns true
@@ -1149,8 +1114,8 @@ SECTION("test_auth") {
     CHECK((fn_properties->IsFunction()));
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate.get(), WRP_VOCBASE_VIEW_TYPE));
-    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), &logicalView));
-    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), &logicalView));
+    arangoView->SetInternalField(SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
+    arangoView->SetInternalField(SLOT_EXTERNAL, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {
     };
 
@@ -1268,7 +1233,6 @@ SECTION("test_auth") {
       CHECK((false == !view));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 
   // test get all views
@@ -1286,9 +1250,8 @@ SECTION("test_auth") {
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
     auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p)->void {
-        p->Dispose();
-    });
+      [](v8::Isolate* p)->void { p->Dispose(); }
+    );
     REQUIRE((nullptr != isolate));
     v8::Isolate::Scope isolateScope(isolate.get()); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
     v8::internal::Isolate::Current()->InitializeLoggingAndCounters(); // otherwise v8::Isolate::Logger() will fail (called from v8::Exception::Error)
@@ -1355,7 +1318,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       CHECK((1U == resultArray->Length()));
-      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
       CHECK((false == !v8View));
       CHECK((std::string("testView1") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1377,7 +1340,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       CHECK((1U == resultArray->Length()));
-      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
       CHECK((false == !v8View));
       CHECK((std::string("testView1") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1419,7 +1382,7 @@ SECTION("test_auth") {
       CHECK((result.ToLocalChecked()->IsArray()));
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       CHECK((1U == resultArray->Length()));
-      auto v8View = *TRI_UnwrapClass<std::shared_ptr<arangodb::LogicalView>>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
+      auto* v8View = TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(), WRP_VOCBASE_VIEW_TYPE);
       CHECK((false == !v8View));
       CHECK((std::string("testView1") == v8View->name()));
       CHECK((std::string("testViewType") == v8View->type().name()));
@@ -1429,7 +1392,6 @@ SECTION("test_auth") {
       CHECK((false == !view2));
     }
 */
-    TRI_RunGarbageCollectionV8(isolate.get(), 1.0);
   }
 }
 

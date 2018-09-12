@@ -255,7 +255,8 @@ RocksDBGeoIndex::RocksDBGeoIndex(
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
+         std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
@@ -300,14 +301,14 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;

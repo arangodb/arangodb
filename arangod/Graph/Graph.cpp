@@ -167,7 +167,7 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
   }
 }
 
-std::unordered_set<std::string> const& Graph::vertexCollections() const {
+std::set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
 

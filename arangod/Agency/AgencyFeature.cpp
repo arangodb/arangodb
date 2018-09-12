@@ -239,6 +239,9 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action", "Script", "FoxxQueues", "Frontend"}
   );
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
+    // specifiying --console requires JavaScript, so we can only turn it off
+    // if not specified
+    
     // console mode inactive. so we can turn off V8
     disabledFeatures.emplace_back("V8Platform");
     disabledFeatures.emplace_back("V8Dealer");

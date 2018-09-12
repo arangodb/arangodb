@@ -163,10 +163,10 @@ Index::Index(
                             Index::allowExpansion(Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())))),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, arangodb::StaticStrings::IndexUnique.c_str(), false
+          slice, arangodb::StaticStrings::IndexUnique, false
       )),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, arangodb::StaticStrings::IndexSparse.c_str(), false
+          slice, arangodb::StaticStrings::IndexSparse, false
       )) {
 }
 
@@ -484,7 +484,7 @@ std::string Index::context() const {
 
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
-std::shared_ptr<VPackBuilder> Index::toVelocyPack(unsigned flags) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(std::underlying_type<Index::Serialize>::type flags) const {
   auto builder = std::make_shared<VPackBuilder>();
   toVelocyPack(*builder, flags);
   return builder;
@@ -493,7 +493,8 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(unsigned flags) const {
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
 /// note: needs an already-opened object as its input!
-void Index::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
+void Index::toVelocyPack(VPackBuilder& builder,
+                         std::underlying_type<Index::Serialize>::type flags) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(
     arangodb::StaticStrings::IndexId,
@@ -517,11 +518,12 @@ void Index::toVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   builder.close();
 
-  if (hasSelectivityEstimate() && (flags & SERIALIZE_ESTIMATES)) {
+  if (hasSelectivityEstimate() &&
+      Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
-  if (flags & SERIALIZE_FIGURES) {
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
@@ -579,14 +581,14 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), false
+                   info, arangodb::StaticStrings::IndexSparse, false
                  )
       ) {
     return false;
