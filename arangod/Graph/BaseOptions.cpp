@@ -151,9 +151,12 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!idxHandles.empty());
   std::shared_ptr<Index> idx = idxHandles[0].getIndex();
   if (idx->hasSelectivityEstimate()) {
-    double expected = 1 / idx->selectivityEstimate();
-    nrItems += static_cast<size_t>(expected);
-    return expected;
+    double s = idx->selectivityEstimate();
+    if (s > 0.0) {
+      double expected = 1 / s;
+      nrItems += static_cast<size_t>(expected);
+      return expected;
+    } 
   }
   // Some hard-coded value
   nrItems += 1000;
