@@ -61,7 +61,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         AqlItemRow result(&block, 0, 1);
-        state = testee.produceRow(result);
+        state = testee.produceRow(result, RegInfo{});
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.hasValue());
       }
@@ -73,12 +73,12 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should first return WAIT with nullptr") {
         AqlItemRow result(&block, 0, 1);
-        state = testee.produceRow(result);
+        state = testee.produceRow(result, RegInfo{});
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.hasValue());
 
         AND_THEN("the executor should return DONE with nullptr") {
-          state = testee.produceRow(result);
+          state = testee.produceRow(result, RegInfo{});
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.hasValue());
         }

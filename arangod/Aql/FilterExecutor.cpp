@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
 FilterExecutor::~FilterExecutor() = default;
 
-ExecutionState FilterExecutor::produceRow(AqlItemRow& output) {
+ExecutionState FilterExecutor::produceRow(AqlItemRow& output, RegInfo regInfo) {
   ExecutionState state;
   AqlItemRow const* input = nullptr;
 
