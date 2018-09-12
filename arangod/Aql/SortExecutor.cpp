@@ -20,7 +20,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "SortExecutor.h"
 
 #include "Basics/Common.h"
@@ -28,26 +27,139 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/AqlItemRow.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/SortRegister.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortExecutor::SortExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
+namespace {
+
+/// @brief OurLessThan
+class OurLessThan {
+ public:
+  OurLessThan(
+      arangodb::transaction::Methods* trx,
+      AqlItemMatrix const& input,
+      std::vector<SortRegister> const& sortRegisters) noexcept
+    : _trx(trx),
+      _input(input),
+      _sortRegisters(sortRegisters) {
+  }
+
+  bool operator()(size_t const& a,
+                  size_t const& b) const {
+    AqlItemRow const* left = _input.getRow(a);
+    AqlItemRow const* right = _input.getRow(b);
+    for (auto const& reg : _sortRegisters) {
+      auto const& lhs = left->getValue(reg.reg);
+      auto const& rhs = right->getValue(reg.reg);
+
+#ifdef USE_IRESEARCH
+      TRI_ASSERT(reg.comparator);
+      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
+#else
+      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+#endif
+
+      if (cmp < 0) {
+        return reg.asc;
+      } else if (cmp > 0) {
+        return !reg.asc;
+      }
+    }
+
+    return false;
+  }
+
+ private:
+  arangodb::transaction::Methods* _trx;
+  AqlItemMatrix const& _input;
+  std::vector<SortRegister> const& _sortRegisters;
+}; // OurLessThan
+
+}
+
+SortExecutorInfos::SortExecutorInfos(
+    RegisterId inputRegister,
+    RegisterId outputRegister,
+    transaction::Methods* trx,
+    std::vector<SortRegister>&& sortRegisters,
+    bool stable
+) : ExecutorInfos(inputRegister, outputRegister), _trx(trx), _sortRegisters(std::move(sortRegisters)), _stable(stable) {
+  TRI_ASSERT(trx != nullptr);
+  TRI_ASSERT(!_sortRegisters.empty());
+}
+
+SortExecutorInfos::~SortExecutorInfos() {
+}
+
+transaction::Methods* SortExecutorInfos::trx() const {
+  return _trx;
+}
+
+std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const {
+  return _sortRegisters;
+}
+
+bool SortExecutorInfos::stable() const {
+  return _stable;
+}
+
+SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
+    : _fetcher(fetcher), _infos(infos), _input(nullptr), _returnNext(0) {};
 SortExecutor::~SortExecutor() = default;
 
 ExecutionState SortExecutor::produceRow(AqlItemRow& output) {
   ExecutionState state;
-  AqlItemMatrix const* input = nullptr;
-  while (true) {
-    // TODO implement me!
-    std::tie(state, input) = _fetcher.fetchAllRows();
+  if (_input == nullptr) {
+    // We need to get data
+    std::tie(state, _input) = _fetcher.fetchAllRows();
     if (state == ExecutionState::WAITING) {
       return state;
     }
-    if (input == nullptr) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return state;
+    // If the execution state was not waiting it is guaranteed that we get a matrix.
+    // Maybe empty still
+    TRI_ASSERT(_input != nullptr);
+    if (_input == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
+    // After allRows the dependency has to be done
+    TRI_ASSERT(state == ExecutionState::DONE);
+
+    // Execute the sort
+    doSorting();
+  }
+  // If we get here we have an input matrix
+  // And we have a list of sorted indexes.
+  TRI_ASSERT(_input != nullptr);
+  TRI_ASSERT(_sortedIndexes.size() == _input->size());
+  if (_returnNext >= _sortedIndexes.size()) {
+    // Bail out if called too often,
+    // Bail out on no elements
+    return ExecutionState::DONE;
+  }
+  auto inRow = _input->getRow(_sortedIndexes[_returnNext]);
+  output.copyRow(*inRow);
+  _returnNext++;
+  if (_returnNext >= _sortedIndexes.size()) {
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
+}
+
+void SortExecutor::doSorting() {
+  TRI_IF_FAILURE("SortBlock::doSorting") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  _sortedIndexes.reserve(_input->size());
+  for (size_t i = 0; i < _input->size(); ++i) {
+    _sortedIndexes.emplace_back(i);
+  }
+  // comparison function
+  OurLessThan ourLessThan(_infos.trx(), *_input, _infos.sortRegisters());
+  if (_infos.stable()) {
+    std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
+  } else {
+    std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   }
 }
