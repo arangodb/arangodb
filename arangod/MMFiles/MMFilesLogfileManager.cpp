@@ -1202,7 +1202,7 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value << ", barriers: " << _barriers.size();
 
   return value;
 }
