@@ -148,6 +148,7 @@ SET(ARANGOD_SOURCES
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
+  Agency/AgencyStrings.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
@@ -311,6 +312,7 @@ SET(ARANGOD_SOURCES
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
+  Cluster/MaintenanceStrings.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
   Cluster/ReplicationTimeoutFeature.cpp

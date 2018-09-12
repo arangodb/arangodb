@@ -30,6 +30,7 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -189,13 +190,12 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     auto report = rb.slice();
     if (report.isObject()) {
 
-      std::vector<std::string> path = {"phaseTwo", "agency"};
+      std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
       if (report.hasKey(path) && report.get(path).isObject()) {
         
         auto agency = report.get(path);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "DBServerAgencySync reporting to Current: " << agency.toJson();
-        
 
         // Report to current
         if (!agency.isEmptyObject()) {
