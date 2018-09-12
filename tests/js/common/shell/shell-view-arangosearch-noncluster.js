@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertNull, assertTypeOf, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the view interface
