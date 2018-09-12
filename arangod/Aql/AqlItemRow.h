@@ -23,13 +23,13 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_AQL_ITEM_ROW_H 1
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 
-class AqlItemBlock;
 struct AqlValue;
 
 /**
@@ -41,8 +41,7 @@ struct AqlValue;
  */
 class AqlItemRow {
  public:
-  //friend void copyRegistersToKeep(RegInfo, AqlItemRow const& sourceRow, AqlItemRow& targetRow );
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex, RegInfo);
+  AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -53,35 +52,28 @@ class AqlItemRow {
    */
   const AqlValue& getValue(RegisterId variableNr) const;
   void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const&);
-  void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue &&);
   void copyRow(AqlItemRow const& sourceRow);
-  bool hasValue() const { return _written; };
-  //std::size_t sourceRow() const { return _sourceRow; };
+  std::size_t getNrRegisters() const { return _block.getNrRegs(); }
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;
     _written = false;
   }
 
+  // TODO rename hasValue() and _written to something sane
+  bool hasValue() const { return _written; };
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  AqlItemBlock* _block;
+  AqlItemBlock& _block;
 
   /**
-   * @brief The offset into the AqlItemBlock
+   * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
 
-  /**
-   * @brief The number of Registers available in this Row.
-   * Only relevant for sanity checks.
-   * So only available in MAINTAINER_MODE.
-   */
-
   RegInfo _registerInfo;
-  //size_t _sourceRow;
   bool _written;
 };
 

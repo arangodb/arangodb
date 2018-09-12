@@ -20,49 +20,40 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemRow.h"
+#include "Aql/AqlItemRow.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex, RegInfo info)
+AqlItemRow::AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info)
     : _block(block)
     , _baseIndex(baseIndex)
-    , _registerInfo(info)
+    , _registerInfo(std::move(info))
     , _written(false)
     {}
 
 const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
-  TRI_ASSERT(variableNr < _registerInfo.numRegs);
-  return _block->getValueReference(_baseIndex, variableNr);
-}
-
-void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue&& value) {
-  TRI_ASSERT(variableNr < _registerInfo.numRegs);
-  _block->emplaceValue(_baseIndex, variableNr, std::move(value));
-  if(! _written){ // lets code defensive and kill the branch prediction by adding useless branches
-    copyRow(sourceRow);
-  } else {
-    _written = true;
-  }
+  TRI_ASSERT(variableNr < getNrRegisters());
+  return _block.getValueReference(_baseIndex, variableNr);
 }
 
 void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const& value) {
-  TRI_ASSERT(variableNr < _registerInfo.numRegs);
-  _block->emplaceValue(_baseIndex, variableNr, value);
-  if(! _written){
-    copyRow(sourceRow);
-  } else {
-    _written = true;
-  }
+  TRI_ASSERT(variableNr < getNrRegisters());
+  _block.emplaceValue(_baseIndex, variableNr, value);
+  copyRow(sourceRow);
 }
 
 void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
-  //copy entries to keep
-  for (auto itemId : _registerInfo.toKeep) {
-    _block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
+  if (_written) {
+    return;
   }
+
+  // copy entries to keep
+  for (auto itemId : _registerInfo.toKeep) {
+    _block.emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
+  }
+
   _written = true;
 }
