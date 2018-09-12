@@ -90,8 +90,8 @@ function isClusterReadyForBusiness () {
 function parallelClusterRequests (requests) {
   let pending = 0;
   const order = [];
+  let options = {coordTransactionID: global.ArangoClusterComm.getId()};
   for (const [coordId, method, url, body, headers] of requests) {
-    let options = {coordTransactionID: global.ArangoClusterComm.getId()};
     order.push(options.coordTransactionID);
     let actualBody;
     if (body) {
