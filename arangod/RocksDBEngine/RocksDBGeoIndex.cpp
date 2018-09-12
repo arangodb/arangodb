@@ -69,8 +69,8 @@ class RDBNearIterator final : public IndexIterator {
   }
 
   /// internal retrieval loop
-  template<typename T>
-  inline bool nextToken(T cb, size_t limit) {
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -79,7 +79,7 @@ class RDBNearIterator final : public IndexIterator {
 
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest())) {
+        if (std::forward<F>(cb)(_near.nearest())) {
           limit--;
         }
         _near.popNearest();
@@ -113,10 +113,10 @@ class RDBNearIterator final : public IndexIterator {
                 return;
               }
             }
-            cb(gdoc.token, doc);  // return result
+            cb(gdoc.token, doc);  // return document
             result = true;
           })) {
-            return false;
+            return false; // ignore document
           }
           return result;
         },
