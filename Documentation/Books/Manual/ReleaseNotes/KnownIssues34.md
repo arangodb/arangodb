@@ -14,25 +14,32 @@ Installer
 
 * Ubuntu 14.04 is not yet supported
 
-
 Modify documents in cluster using AQL and an incorrect custom shard key
 -----------------------------------------------------------------------
 
 * In a very uncommon edge case there is an issue with an optimization rule in the cluster.
-  If you are running a cluster and use a custom shard key on a collection (default is `_key`) AND you provide a wrong shard key in a modifying query (`UPDATE`, `REPLACE`, `DELETE`) *AND* the wrong shard key is on a different shard than the correct one, you’ll get a `DOCUMENT NOT FOUND` error, instead of a modification.
+
+  If you are running a cluster and use a custom shard key on a collection (default is `_key`)
+  **and** you provide a wrong shard key in a modifying query (`UPDATE`, `REPLACE`, `DELETE`)
+  **and** the wrong shard key is on a different shard than the correct one, you'll get a
+  `DOCUMENT NOT FOUND` error, instead of a modification.
+
   The modification always happens if the rule is switched off.
 
   Example query:
 
-    UPDATE { _key: "123", shardKey: "wrongKey"} WITH { foo: "bar" } IN mycollection
+      UPDATE { _key: "123", shardKey: "wrongKey"} WITH { foo: "bar" } IN mycollection
 
-* If your setup could run into this issue you may want to deactivate the optimizing rule `restrict-to-single-shard` here, as [described in our documentation](../../AQL/ExecutionAndPerformance/Optimizer.html#turning-specific-optimizer-rules-off).
-More details about this issue could be found in the issue [6399](https://github.com/arangodb/arangodb/issues/6399) .
+  If your setup could run into this issue you may want to
+  [deactivate the optimizing rule](../../AQL/ExecutionAndPerformance/Optimizer.html#turning-specific-optimizer-rules-off)
+  `restrict-to-single-shard`.
+
+More details can be found in [issue 6399](https://github.com/arangodb/arangodb/issues/6399).
 
 ArangoSearch
 ------------
 
-* ArangoSearch ingores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
+* ArangoSearch ignores `_id` attribute even if `includeAllFields` is set to `true` (internal #445)
 * Creation of ArangoSearch on a large collection may cause OOM (internal #407)
 * Long-running transaction with a huge number of DML operations may cause OOM (internal #407)
 * Using score functions (BM25/TFIDF) in ArangoDB expression is not supported (internal #316)
