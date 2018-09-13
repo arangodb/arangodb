@@ -198,22 +198,6 @@ class LogicalCollection: public LogicalDataSource {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback);
 
-  //// SECTION: Indexes
-  class ClusterSelectivityEstimates {
-   public:
-    explicit ClusterSelectivityEstimates(LogicalCollection& collection);
-    void flush();
-    std::unordered_map<std::string, double> get(bool allowUpdate) const;
-    void set(std::unordered_map<std::string, double>&& estimates);
-   private:
-    LogicalCollection& _collection;
-    mutable basics::ReadWriteLock _lock;
-    mutable std::unordered_map<std::string, double> _estimates;
-    mutable double _expireStamp;
-    
-    static constexpr double defaultTtl = 60.0;
-  };
-    
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
   /// fetch current values!
@@ -430,9 +414,6 @@ class LogicalCollection: public LogicalDataSource {
   
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding; 
-
-  /// @brief index selectivity estimates (only relevant on a coordinator)
-  ClusterSelectivityEstimates _clusterSelectivityEstimates;
 };
 
 }  // namespace arangodb
