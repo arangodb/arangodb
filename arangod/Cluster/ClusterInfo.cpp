@@ -230,6 +230,8 @@ void ClusterInfo::cleanup() {
   if (theInstance == nullptr) {
     return;
   }
+  
+  MUTEX_LOCKER(mutexLocker, theInstance->_planProt.mutex);  
 
   TRI_ASSERT(theInstance->_newPlannedViews.empty()); // only non-empty during loadPlan()
   theInstance->_plannedViews.clear();
@@ -692,7 +694,7 @@ void ClusterInfo::loadPlan() {
 
       databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
-        bool isCoordinator = ServerState::instance()->isCoordinator();
+        bool const isCoordinator = ServerState::instance()->isCoordinator();
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
@@ -718,16 +720,6 @@ void ClusterInfo::loadPlan() {
 
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
-
-            decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivity;
-            double selectivityTTL = 0;
-            if (isCoordinator) {
-              auto collection = _plannedCollections[databaseName][collectionId];
-              if(collection){
-                selectivity = collection->clusterIndexEstimates(/*do not update*/ true);
-                selectivityTTL = collection->clusterIndexEstimatesTTL();
-              }
-            }
 
             try {
               std::shared_ptr<LogicalCollection> newCollection;
@@ -758,14 +750,26 @@ void ClusterInfo::loadPlan() {
 
               auto& collectionName = newCollection->name();
 
-              if (isCoordinator && !selectivity.empty()){
-                LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
-                newCollection->clusterIndexEstimates(std::move(selectivity));
-                newCollection->clusterIndexEstimatesTTL(selectivityTTL);
-                for (std::shared_ptr<Index>& idx : newCollection->getIndexes()) {
-                  auto it = selectivity.find(std::to_string(idx->id()));
-                  if (it != selectivity.end()) {
-                    idx->updateClusterSelectivityEstimate(it->second);
+              if (isCoordinator) {
+                // copying over index estimates from the old version of the collection
+                // into the new one
+                LOG_TOPIC(TRACE, Logger::CLUSTER) << "copying index estimates";
+                // it is effectively safe to access _plannedCollections in read-only mode
+                // here, as the only places that modify _plannedCollections are the shutdown
+                // and this function itself, which is protected by a mutex
+                auto it = _plannedCollections.find(databaseName);
+                if (it != _plannedCollections.end()) {
+                  auto it2 = (*it).second.find(collectionId);
+                  if (it2 != (*it).second.end()) {
+                    try {
+                      auto estimates = (*it2).second->clusterIndexEstimates(false);
+                      if (!estimates.empty()) {
+                        // already have an estimate... now copy it over
+                        newCollection->clusterIndexEstimates(std::move(estimates));
+                      }
+                    } catch (...) {
+                      // this may fail during unit tests, when mocks are used
+                    }
                   }
                 }
               }
@@ -800,7 +804,7 @@ void ClusterInfo::loadPlan() {
               // cluster should not fail.
               LOG_TOPIC(ERR, Logger::AGENCY)
                 << "Failed to load information for collection '" << collectionId
-                << "': " << ex.what() << ". invalid information in plan. The"
+                << "': " << ex.what() << ". invalid information in plan. The "
                 "collection will be ignored for now and the invalid information"
                 "will be repaired. VelocyPack: "
                 << collectionSlice.toJson();
