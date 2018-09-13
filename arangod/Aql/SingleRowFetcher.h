@@ -48,7 +48,7 @@ class BlockFetcher;
 class SingleRowFetcher {
  public:
   explicit SingleRowFetcher(BlockFetcher& executionBlock);
-  TEST_VIRTUAL ~SingleRowFetcher() = default;
+  TEST_VIRTUAL ~SingleRowFetcher();
 
  protected:
   // only for testing! Does not initialize _blockFetcher!
@@ -125,6 +125,12 @@ class SingleRowFetcher {
   bool isLastRowInBlock();
 
   size_t getRowIndex();
+
+  /**
+  * @brief return block to the BlockFetcher (and, by extension, to the
+  *        AqlItemBlockManager)
+  */
+  void returnCurrentBlock() noexcept;
 };
 
 }  // namespace aql
