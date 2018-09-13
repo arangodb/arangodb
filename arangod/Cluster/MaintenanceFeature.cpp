@@ -365,7 +365,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
 
 
 std::shared_ptr<Action> MaintenanceFeature::findAction(
-  std::shared_ptr<ActionDescription> const description) {
+  std::shared_ptr<ActionDescription> const& description) {
   return findActionHash(description->hash());
 }
 

@@ -525,8 +525,6 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
     result.reset(requestBlock(count, getNrOutputRegisters()));
   } 
   
-  std::string errorMessage;
-
   // loop over all blocks
   size_t dstRow = 0;
 
