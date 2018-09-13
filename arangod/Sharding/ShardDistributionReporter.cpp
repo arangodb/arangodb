@@ -324,7 +324,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               // First Ask the leader
               std::unordered_map<std::string, std::string> headers;
               leaderOpId = _cc->asyncRequest(
-                  "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
+                  coordId, "server:" + s.second.at(0), rest::RequestType::GET,
                   path, body, headers, nullptr, timeleft);
             }
 
@@ -345,7 +345,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // Ask them
             std::unordered_map<std::string, std::string> headers;
             for (auto const& server : serversToAsk) {
-              _cc->asyncRequest("", coordId, "server:" + server,
+              _cc->asyncRequest(coordId, "server:" + server,
                                 rest::RequestType::GET, path, body, headers,
                                 nullptr, timeleft);
               requestsInFlight++;
@@ -354,10 +354,10 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // Wait for responses
             // First wait for Leader
             {
-              auto result = _cc->wait("", coordId, leaderOpId, "");
+              auto result = _cc->wait(coordId, leaderOpId, "");
               if (result.status != CL_COMM_RECEIVED) {
                 // We did not even get count for leader, use defaults
-                _cc->drop("", coordId, 0, "");
+                _cc->drop(coordId, 0, "");
                 // Just in case, to get a new state
                 coordId = TRI_NewTickServer();
                 continue;
@@ -384,7 +384,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             // Now wait for others
             while (requestsInFlight > 0) {
-              auto result = _cc->wait("", coordId, 0, "");
+              auto result = _cc->wait(coordId, 0, "");
               requestsInFlight--;
               if (result.status != CL_COMM_RECEIVED) {
                 // We do not care for errors of any kind.

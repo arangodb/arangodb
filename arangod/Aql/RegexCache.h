@@ -49,7 +49,7 @@ class RegexCache {
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression);
+  icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression);
   
   /// @brief inspect a LIKE pattern from a string, and remove all
   /// of its escape characters. will stop at the first wildcards found.
@@ -62,21 +62,18 @@ class RegexCache {
   static std::pair<bool, bool> inspectLikePattern(std::string& out, char const* ptr, size_t length);
  
  private: 
-  /// @brief clear the specified cache
-  void clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept;
-
   /// @brief get matcher from cache, or insert a new matcher for the specified pattern
   icu::RegexMatcher* fromCache(std::string const& pattern, 
-                               std::unordered_map<std::string, icu::RegexMatcher*>& cache);
+                               std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache);
 
   static void buildRegexPattern(std::string& out, char const* ptr, size_t length, bool caseInsensitive);
   static void buildLikePattern(std::string& out, char const* ptr, size_t length, bool caseInsensitive);
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
-  std::unordered_map<std::string, icu::RegexMatcher*> _regexCache;
+  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _regexCache;
   /// @brief cache for compiled regexes (LIKE function)
-  std::unordered_map<std::string, icu::RegexMatcher*> _likeCache;
+  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _likeCache;
   /// @brief a reusable string object for pattern generation
   std::string _temp;
 };

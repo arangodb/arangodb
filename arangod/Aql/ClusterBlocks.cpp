@@ -837,7 +837,6 @@ Result RemoteBlock::sendAsyncRequest(
   }
 
   // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
@@ -853,7 +852,7 @@ Result RemoteBlock::sendAsyncRequest(
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+  cc->asyncRequest(coordTransactionId, _server, type,
                    std::move(url), body, headers, callback, defaultTimeOut,
                    true);
 
@@ -871,7 +870,6 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   }
 
   // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
@@ -884,7 +882,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
 
   ++_engine->_stats.requests;
 
-  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+  return cc->syncRequest(coordTransactionId, _server, type,
                          std::move(url), body, headers, defaultTimeOut);
 }
 
@@ -1099,7 +1097,9 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
-
+  
+  traceSkipSomeBegin(atMost);
+  
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
 
@@ -1123,8 +1123,10 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 
     // TODO Check if we can get better with HASMORE/DONE
     if (skipped == 0) {
+      traceSkipSomeEnd(skipped, ExecutionState::DONE);
       return {ExecutionState::DONE, skipped};
     }
+    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, skipped};
   }
 
@@ -1143,7 +1145,8 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+  traceSkipSomeEnd(0, ExecutionState::WAITING);
+  return {ExecutionState::WAITING, 0};
 }
 
 // -----------------------------------------------------------------------------
@@ -1200,13 +1203,16 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::g
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
   // the simple case . . .
   auto res = _dependencies[_atDep]->skipSome(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceSkipSomeEnd(res.second, ExecutionState::WAITING);
     return res;
   }
 
@@ -1214,13 +1220,16 @@ std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) 
     _atDep++;
     res = _dependencies[_atDep]->skipSome(atMost);
     if (res.first == ExecutionState::WAITING) {
+      traceSkipSomeEnd(res.second, ExecutionState::WAITING);
       return res;
     }
   }
 
   _done = (res.second == 0);
 
-  return {getHasMoreState(), res.second};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(res.second, state);
+  return {state, res.second};
 }
 
 // -----------------------------------------------------------------------------
@@ -1453,7 +1462,9 @@ SortingGatherBlock::getSome(size_t atMost) {
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -1465,12 +1476,14 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
     ExecutionState blockState;
     std::tie(blockState, available) = fillBuffers(atMost);
     if (blockState == ExecutionState::WAITING) {
+      traceSkipSomeEnd(0, ExecutionState::WAITING);
       return {blockState, 0};
     }
   }
 
   if (available == 0) {
     _done = true;
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -1486,7 +1499,9 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
   }
 
   // Maybe we can optimize here DONE/HASMORE
-  return {getHasMoreState(), skipped};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 /// @brief Step to the next row in line in the buffers of dependency i, i.e.,

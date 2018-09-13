@@ -63,10 +63,10 @@ UpdateCollection::UpdateCollection(
   }
   TRI_ASSERT(desc.has(DATABASE));
 
-  if (!desc.has(LEADER)) {
+  if (!desc.has(THE_LEADER)) {
     error << "leader must be specified. ";
   }
-  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(desc.has(THE_LEADER));
 
   if (!desc.has(LOCAL_LEADER)) {
     error << "local leader must be specified. ";
@@ -128,7 +128,7 @@ bool UpdateCollection::first() {
   auto const& database      = _description.get(DATABASE);
   auto const& collection    = _description.get(COLLECTION);
   auto const& shard         = _description.get(SHARD);
-  auto const& plannedLeader = _description.get(LEADER);
+  auto const& plannedLeader = _description.get(THE_LEADER);
   auto const& localLeader   = _description.get(LOCAL_LEADER);
   auto const& props = properties();
 

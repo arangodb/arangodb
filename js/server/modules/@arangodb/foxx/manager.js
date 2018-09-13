@@ -89,14 +89,10 @@ function isClusterReadyForBusiness () {
 
 function parallelClusterRequests (requests) {
   let pending = 0;
-  let options;
   const order = [];
+  let options = {coordTransactionID: global.ArangoClusterComm.getId()};
   for (const [coordId, method, url, body, headers] of requests) {
-    if (!options) {
-      options = {coordTransactionID: global.ArangoClusterComm.getId()};
-    }
-    options.clientTransactionID = global.ArangoClusterInfo.uniqid();
-    order.push(options.clientTransactionID);
+    order.push(options.coordTransactionID);
     let actualBody;
     if (body) {
       if (typeof body === 'string') {
@@ -123,10 +119,9 @@ function parallelClusterRequests (requests) {
   if (!pending) {
     return [];
   }
-  delete options.clientTransactionID;
   const results = ArangoClusterControl.wait(options, pending, true);
   return results.sort(
-    (a, b) => order.indexOf(a.clientTransactionID) - order.indexOf(b.clientTransactionID)
+    (a, b) => order.indexOf(a.coordTransactionID) - order.indexOf(b.coordTransactionID)
   );
 }
 

@@ -249,7 +249,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "initial synchronization with master took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6)
-        << " s. status: " << r.errorMessage();
+        << " s. status: " << (r.errorMessage().empty() ? "all good" : r.errorMessage());
 
     return r;
   } catch (arangodb::basics::Exception const& ex) {
@@ -332,7 +332,7 @@ Result DatabaseInitialSyncer::sendFlush() {
   builder.openObject();
   builder.add("waitForSync", VPackValue(true));
   builder.add("waitForCollector", VPackValue(true));
-  builder.add("waitForCollectorQueue", VPackValue(false));
+  builder.add("waitForCollectorQueue", VPackValue(true));
   builder.add("maxWaitTime", VPackValue(300.0));
   builder.close();
 
@@ -534,8 +534,8 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
 #endif
     
     _config.progress.set(std::string("fetching master collection dump for collection '") +
-                        coll->name() + "', type: " + typeString + ", id: " +
-                        leaderColl + ", batch " + itoa(batch));
+                         coll->name() + "', type: " + typeString + ", id: " +
+                         leaderColl + ", batch " + itoa(batch) + ", url: " + url);
 
     ++stats.numDumpRequests;
     double t = TRI_microtime();

@@ -419,14 +419,14 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), false
+                   info, arangodb::StaticStrings::IndexSparse, false
                  )
      ) {
     return false;

@@ -91,7 +91,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     ClusterCommResult result;
     CoordTransactionID id = TRI_NewTickServer();
 
-    result = testme.wait("", id, 42, "", 100);
+    result = testme.wait(id, 42, "", 100);
     REQUIRE(CL_COMM_DROPPED == result.status);
     REQUIRE(42 == result.operationID);
 
@@ -108,7 +108,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     transId = TRI_NewTickServer();
     id=testme.addSimpleRequest(transId, CL_COMM_RECEIVED);
 
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id == result.operationID);
 
@@ -116,7 +116,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     transId = TRI_NewTickServer();
     id=testme.addSimpleRequest(transId, CL_COMM_RECEIVED);
 
-    result = testme.wait("", 0, id, "", 0.1);
+    result = testme.wait(0, id, "", 0.1);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id == result.operationID);
 
@@ -140,7 +140,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     testme.getResponse(0).result->status = CL_COMM_SUBMITTED;
     id_other = testme.getResponse(1).result->operationID;
 
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_other == result.operationID);
     REQUIRE(id_first != result.operationID);
@@ -157,7 +157,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     transId = TRI_NewTickServer();
     testme.addSimpleRequest(transId, CL_COMM_SUBMITTED);
     startTime = TRI_microtime();
-    result = testme.wait("", transId, 0, "", 0.005);
+    result = testme.wait(transId, 0, "", 0.005);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.0049 < diff);      // must write range test in two parts for REQUIRE
@@ -166,7 +166,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
 
     // larger timeout
     startTime = TRI_microtime();
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.09 <= diff);      // must write range test in two parts for REQUIRE
@@ -201,7 +201,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.014 <= diff);      // must write range test in two parts for REQUIRE
@@ -219,7 +219,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.029 <= diff);      // must write range test in two parts for REQUIRE
@@ -250,7 +250,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.014 <= diff);      // must write range test in two parts for REQUIRE
@@ -268,7 +268,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    result = testme.wait("", transId, 0, "", 0.1);
+    result = testme.wait(transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.029 <= diff);      // must write range test in two parts for REQUIRE
@@ -287,7 +287,7 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
         } // lambda
         ));
 
-    result = testme.wait("", transId, 0, "", 0.0);
+    result = testme.wait(transId, 0, "", 0.0);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.499 <= diff);      // must write range test in two parts for REQUIRE
