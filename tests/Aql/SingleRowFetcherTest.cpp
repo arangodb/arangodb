@@ -224,13 +224,15 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
     }
   }
 
+  // TODO the following tests should be simplified, a simple output
+  // specification should be compared with the actual output.
   GIVEN("there are multiple blocks upstream") {
     fakeit::Mock<BlockFetcher> blockFetcherMock;
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
-    std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>({{1}, {2}, {3}}),
-                                  block2 = buildBlock<1>({{4}, {5}}),
-                                  block3 = buildBlock<1>({{6}});
+    std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>({{{1}}, {{2}}, {{3}}}),
+                                  block2 = buildBlock<1>({{{4}}, {{5}}}),
+                                  block3 = buildBlock<1>({{{6}}});
 
     WHEN("the producer does not wait") {
       // Using .Return doesn't work here, as unique_ptr is not
@@ -249,7 +251,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
       SingleRowFetcher testee(blockFetcherMock.get());
 
       THEN("the fetcher should return all rows and DONE with the last") {
-        size_t rowIdxAndValue;
+        int64_t rowIdxAndValue;
         for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::HASMORE);
@@ -263,6 +265,84 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         REQUIRE(row != nullptr);
         REQUIRE(row->getNrRegisters() == 1);
         REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+      }
+    }
+
+    WHEN("the producer waits") {
+      // Using .Return doesn't work here, as unique_ptr is not
+      // copy-constructible.
+      fakeit::When(Method(blockFetcherMock, fetchBlock))
+        .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
+        .Do([&block1] { return std::make_pair(ExecutionState::HASMORE, std::move(block1)); })
+        .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
+        .Do([&block2] { return std::make_pair(ExecutionState::HASMORE, std::move(block2)); })
+        .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
+        .Do([&block3] { return std::make_pair(ExecutionState::DONE, std::move(block3)); })
+      ;
+
+        SingleRowFetcher testee(blockFetcherMock.get());
+
+        THEN("the fetcher should return all rows and DONE with the last") {
+          size_t rowIdxAndValue;
+          for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
+            if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
+              // wait at the beginning of the 1st and 2nd block
+              std::tie(state, row) = testee.fetchRow();
+              REQUIRE(state == ExecutionState::WAITING);
+              REQUIRE(row == nullptr);
+            }
+            std::tie(state, row) = testee.fetchRow();
+            REQUIRE(state == ExecutionState::HASMORE);
+            REQUIRE(row != nullptr);
+            REQUIRE(row->getNrRegisters() == 1);
+            REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+          }
+          rowIdxAndValue = 6;
+          // wait at the beginning of the 3rd block
+          std::tie(state, row) = testee.fetchRow();
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(row == nullptr);
+          // last row and DONE
+          std::tie(state, row) = testee.fetchRow();
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(row != nullptr);
+          REQUIRE(row->getNrRegisters() == 1);
+          REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+      }
+    }
+
+    WHEN("the producer waits and does not return DONE asap") {
+      // Using .Return doesn't work here, as unique_ptr is not
+      // copy-constructible.
+      fakeit::When(Method(blockFetcherMock, fetchBlock))
+        .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
+        .Do([&block1] { return std::make_pair(ExecutionState::HASMORE, std::move(block1)); })
+        .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
+        .Do([&block2] { return std::make_pair(ExecutionState::HASMORE, std::move(block2)); })
+        .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
+        .Do([&block3] { return std::make_pair(ExecutionState::HASMORE, std::move(block3)); })
+        .Do([] { return std::make_pair(ExecutionState::DONE, nullptr); })
+        ;
+
+      SingleRowFetcher testee(blockFetcherMock.get());
+
+      THEN("the fetcher should return all rows and DONE with the last") {
+        for (size_t rowIdxAndValue = 1; rowIdxAndValue <= 6; rowIdxAndValue++) {
+          if (rowIdxAndValue == 1 || rowIdxAndValue == 4 || rowIdxAndValue == 6) {
+            // wait at the beginning of the 1st, 2nd and 3rd block
+            std::tie(state, row) = testee.fetchRow();
+            REQUIRE(state == ExecutionState::WAITING);
+            REQUIRE(row == nullptr);
+          }
+          std::tie(state, row) = testee.fetchRow();
+          REQUIRE(state == ExecutionState::HASMORE);
+          REQUIRE(row != nullptr);
+          REQUIRE(row->getNrRegisters() == 1);
+          REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+        }
+        std::tie(state, row) = testee.fetchRow();
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(row == nullptr);
       }
     }
   }
