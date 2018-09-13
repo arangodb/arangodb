@@ -59,7 +59,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result(block, 0, infos.registersToKeep());
+        AqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -71,7 +71,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        AqlItemRow result(block, 0, infos.registersToKeep());
+        AqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -95,7 +95,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         std::size_t current = 0;
-        AqlItemRow row(block, current, infos.registersToKeep());
+        AqlItemRow row(&block, current, infos.registersToKeep());
 
         /*
         1  produce => WAIT                 RES1
@@ -163,10 +163,10 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result1(block, 0, infos.registersToKeep());
-        AqlItemRow result2(block, 1, infos.registersToKeep());
-        AqlItemRow result3(block, 2, infos.registersToKeep());
-        AqlItemRow result4(block, 3, infos.registersToKeep());
+        AqlItemRow result1(&block, 0, infos.registersToKeep());
+        AqlItemRow result2(&block, 1, infos.registersToKeep());
+        AqlItemRow result3(&block, 2, infos.registersToKeep());
+        AqlItemRow result4(&block, 3, infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1

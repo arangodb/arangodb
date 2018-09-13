@@ -27,26 +27,29 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemRow::AqlItemRow(AqlItemBlock& block, size_t baseIndex)
+AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex)
     : _block(block), _baseIndex(baseIndex), _regsToKeep(), _produced(true) {
   // Using this constructor we are not allowed to write
+  TRI_ASSERT(block != nullptr);
 }
 
-AqlItemRow::AqlItemRow(AqlItemBlock &block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
+AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
     : _block(block)
     , _baseIndex(baseIndex)
     , _regsToKeep(regsToKeep)
     , _produced(false)
-    { }
+    {
+      TRI_ASSERT(block != nullptr);
+    }
 
 const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
   TRI_ASSERT(variableNr < getNrRegisters());
-  return _block.getValueReference(_baseIndex, variableNr);
+  return _block->getValueReference(_baseIndex, variableNr);
 }
 
 void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const& value) {
   TRI_ASSERT(variableNr < getNrRegisters());
-  _block.emplaceValue(_baseIndex, variableNr, value);
+  _block->emplaceValue(_baseIndex, variableNr, value);
   copyRow(sourceRow);
 }
 
@@ -57,7 +60,7 @@ void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
 
   for (auto itemId : _regsToKeep) {
     // copy entries to keep
-    _block.emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
+    _block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
     // auto const& value = sourceRow.getValue(itemId);
     // if (!value.isEmpty()) {

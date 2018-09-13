@@ -41,9 +41,9 @@ struct AqlValue;
  */
 class AqlItemRow {
  public:
-  AqlItemRow(AqlItemBlock &block, size_t baseIndex);
+  AqlItemRow(AqlItemBlock* block, size_t baseIndex);
 
-  AqlItemRow(AqlItemBlock &block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep);
+  AqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -55,8 +55,15 @@ class AqlItemRow {
   const AqlValue& getValue(RegisterId variableNr) const;
   void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const&);
   void copyRow(AqlItemRow const& sourceRow);
-  std::size_t getNrRegisters() const { return _block.getNrRegs(); }
+  std::size_t getNrRegisters() const { return _block->getNrRegs(); }
   void changeRow(std::size_t baseIndex) {
+    _baseIndex = baseIndex;
+    _produced = false;
+  }
+
+  void changeRow(AqlItemBlock* block, std::size_t baseIndex) {
+    TRI_ASSERT(block != nullptr);
+    _block = block;
     _baseIndex = baseIndex;
     _produced = false;
   }
@@ -68,7 +75,7 @@ class AqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  AqlItemBlock& _block;
+  AqlItemBlock* _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

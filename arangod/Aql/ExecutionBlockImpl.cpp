@@ -74,7 +74,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<AqlItemRow>(*_getSomeOutBlock, _getSomeOutRowsAdded, _infos.registersToKeep());
+  row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
   while (_getSomeOutRowsAdded < atMost) {
     row->changeRow(_getSomeOutRowsAdded);
     state = _executor.produceRow(*row);
