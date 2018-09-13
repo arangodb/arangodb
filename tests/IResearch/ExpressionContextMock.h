@@ -28,6 +28,8 @@
 
 #include <unordered_map>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 namespace aql {
 
@@ -62,6 +64,38 @@ struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
     bool doCopy,
     bool& mustDestroy
   ) const override;
+  
+  void registerWarning(int, char const*) override {
+    TRI_ASSERT(false);
+  }
+
+  void registerError(int, char const*) override {
+    TRI_ASSERT(false);
+  }
+  
+  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) override {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+
+  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) override {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+
+  icu::RegexMatcher* buildSplitMatcher(arangodb::aql::AqlValue splitExpression, arangodb::transaction::Methods*, bool& isEmptyExpression) override {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+
+  bool killed() const override { 
+    TRI_ASSERT(false);
+    return false;
+  }
+
+  TRI_vocbase_t& vocbase() const override;
+  
+  arangodb::aql::Query* query() const override;
 
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock

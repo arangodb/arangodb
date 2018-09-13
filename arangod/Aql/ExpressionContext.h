@@ -27,10 +27,18 @@
 #include "Basics/Common.h"
 #include "Aql/types.h"
 
-namespace arangodb {
-namespace aql {
+#include <unicode/regex.h>
 
+struct TRI_vocbase_t;
+
+namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
+namespace aql {
 struct AqlValue;
+class Query;
 struct Variable;
 
 class ExpressionContext {
@@ -46,6 +54,17 @@ class ExpressionContext {
   virtual Variable const* getVariable(size_t i) const = 0;
 
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const = 0;
+
+  virtual void registerWarning(int errorCode, char const* msg) = 0;
+  virtual void registerError(int errorCode, char const* msg) = 0;
+  
+  virtual icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) = 0;
+  virtual icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) = 0;
+  virtual icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*, bool& isEmptyExpression) = 0;
+
+  virtual bool killed() const = 0;
+  virtual TRI_vocbase_t& vocbase() const = 0;
+  virtual Query* query() const = 0;
 };
 }
 }

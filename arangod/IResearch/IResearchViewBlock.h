@@ -27,7 +27,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExpressionContext.h"
+#include "Aql/QueryExpressionContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -52,10 +52,11 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 /// @class ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
-class ViewExpressionContext final : public aql::ExpressionContext {
+class ViewExpressionContext final : public aql::QueryExpressionContext {
  public:
-  explicit ViewExpressionContext(IResearchViewNode const& node)
-    : _node(&node) {
+  explicit ViewExpressionContext(arangodb::aql::Query* query, IResearchViewNode const& node)
+    : QueryExpressionContext(query),
+      _node(&node) {
     TRI_ASSERT(_node);
   }
 

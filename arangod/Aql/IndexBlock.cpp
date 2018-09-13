@@ -186,6 +186,8 @@ void IndexBlock::executeExpressions() {
   AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
   _condition = newCondition;
   TRI_DEFER(FINALIZE_SUBTREE(newCondition));
+          
+  Query* query = _engine->getQuery();
 
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
@@ -193,7 +195,7 @@ void IndexBlock::executeExpressions() {
     auto exp = toReplace->expression.get();
 
     bool mustDestroy;
-    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions],
+    BaseExpressionContext ctx(query, _pos, cur, _inVars[posInExpressions],
                               _inRegs[posInExpressions]);
     AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
