@@ -380,27 +380,35 @@ void V8DealerFeature::copyInstallationFiles() {
       overwriteCopy = true;
     }
   }
-  
+      
   if (overwriteCopy) {
+    // sanity check before removing an existing directory:
+    // check if for some reason we will be trying to remove the entire database directory...
+    if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
+      LOG_TOPIC(FATAL, Logger::V8) << "JS installation path '" << copyJSPath
+        << "' seems to be invalid";
+      FATAL_ERROR_EXIT();
+    }
+  
     LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files to '" << copyJSPath << "'";
     int res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << copyJSPath
-        << "' (" << TRI_errno_string(res) << ")";
+        << "': " << TRI_errno_string(res);
         FATAL_ERROR_EXIT();
       }
     }
     if (!FileUtils::createDirectory(copyJSPath, &res)) {
       LOG_TOPIC(FATAL, Logger::V8) << "Error creating JS installation path '" << copyJSPath
-      << "' (" << TRI_errno_string(res) << "'";
+      << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
     std::string error;
     if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, error)) {
       LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << copyJSPath
-        << "' (" << error << ")";
+        << "': " << error;
       FATAL_ERROR_EXIT();
     }
   }
