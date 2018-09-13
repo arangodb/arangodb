@@ -56,11 +56,6 @@ std::string ActionDescription::get(std::string const& p) const {
   return _description.at(p);
 }
 
-/// @brief Set new parameter
-void ActionDescription::set(std::string const& k, std::string const& v) {
-  _description[k] = v;
-}
-
 /// @brief Get parameter
 Result ActionDescription::get(std::string const& p, std::string& r) const {
   Result result;

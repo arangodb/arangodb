@@ -1093,13 +1093,6 @@ arangodb::Result arangodb::maintenance::phaseTwo (
           { VPackObjectBuilder b(&report);
             action.toVelocyPack(report);
           }
-
-          auto const& name = action.get(NAME);
-          if (name == "SynchronizeShard") {
-            TRI_ASSERT(action.has(SHARD));
-            action.set("shardVersion",
-                       std::to_string(feature.shardVersion(action.get(SHARD))));
-          }
           LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
             << "phase two adding action " << action << " to feature ";
           feature.addAction(std::make_shared<ActionDescription>(action), false);

@@ -157,15 +157,10 @@ public:
    */
   std::shared_ptr<VPackBuilder> const properties() const;
 
-  /**
-   * @brief 
-   */
-  void set (std::string const& key, std::string const& value);
-  
 private:
 
   /** @brief discriminatory properties */
-  std::map<std::string, std::string> _description;
+  std::map<std::string, std::string> const _description;
 
   /** @brief non-discriminatory properties */
   std::shared_ptr<VPackBuilder> const _properties;
