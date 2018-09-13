@@ -32,7 +32,7 @@ AqlItemRow::AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info)
     , _baseIndex(baseIndex)
     , _registerInfo(std::move(info))
     , _produced(false)
-    {}
+    { }
 
 const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
   TRI_ASSERT(variableNr < getNrRegisters());
@@ -50,9 +50,22 @@ void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
     return;
   }
 
-  // copy entries to keep
   for (auto itemId : _registerInfo.toKeep) {
+    auto const& value = sourceRow.getValue(itemId);
+
     _block.emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
+
+    // if (!value.isEmpty()) {
+    //   AqlValue clonedValue = value.clone();
+    //   AqlValueGuard guard(clonedValue, true);
+
+    //   TRI_IF_FAILURE("AqlItemRow::copyRow") {
+    //     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    //   }
+
+    //   _block.setValue(_baseIndex, itemId, clonedValue);
+    //   guard.steal();
+    // }
   }
 
   _produced = true;

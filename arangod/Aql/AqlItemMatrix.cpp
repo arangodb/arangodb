@@ -49,15 +49,18 @@ AqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
 
   for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
-    auto& block = *it;
-    if (index < block->size()) {
+    AqlItemBlock* block_ptr = it->get();
+    TRI_ASSERT(block_ptr != nullptr);
+    auto& block = *block_ptr;
+
+    if (index < block.size()) {
       // We are in this row
-      _lastRow = std::make_unique<AqlItemRow const>(*block, index, RegInfo{});
+      _lastRow = std::make_unique<AqlItemRow const>(block, index, RegInfo{});
       return _lastRow.get();
     }
 
     // Jump over this block
-    index -= (*it)->size();
+    index -= block.size();
   }
   // We have asked for a row outside of this Vector
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An exector block is reading out of bounds.");

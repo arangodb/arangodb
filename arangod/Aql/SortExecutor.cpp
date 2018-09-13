@@ -151,6 +151,7 @@ void SortExecutor::doSorting() {
   TRI_IF_FAILURE("SortBlock::doSorting") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  TRI_ASSERT(_input != nullptr);
   _sortedIndexes.reserve(_input->size());
   for (size_t i = 0; i < _input->size(); ++i) {
     _sortedIndexes.emplace_back(i);
