@@ -27,7 +27,7 @@
 #define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 
 #include <memory>
 
@@ -73,7 +73,7 @@ class SingleRowFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, const AqlItemRow*> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, const InputAqlItemRow*> fetchRow();
 
  private:
   BlockFetcher* _blockFetcher;
@@ -107,7 +107,7 @@ class SingleRowFetcher {
   *        until the next fetchRow() call.
   *        TODO Avoid allocating a new AqlItemRow on each fetchRow() call
   */
-  std::unique_ptr<AqlItemRow const> _currentRow;
+  std::unique_ptr<InputAqlItemRow const> _currentRow;
 
  private:
   /**

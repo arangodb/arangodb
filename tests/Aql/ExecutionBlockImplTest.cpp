@@ -34,17 +34,11 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-//#include "Aql/AqlItemRow.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/FilterExecutor.h"
-//#include "Aql/ExecutorInfos.h"
-//#include "Aql/ResourceUsage.h"
-//#include "Aql/SortExecutor.h"
 
 #include "Transaction/Methods.h"
 
-//#include <velocypack/Builder.h>
-//#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
