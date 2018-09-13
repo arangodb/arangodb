@@ -25,7 +25,9 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
+#include "Transaction/Methods.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 void QueryExpressionContext::registerWarning(int errorCode, char const* msg) {
