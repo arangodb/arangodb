@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
 
 #include <memory>
+#include <array>
 
 #include <boost/variant.hpp>
 
