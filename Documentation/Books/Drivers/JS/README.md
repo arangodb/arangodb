@@ -11,6 +11,6 @@ instead; specifically the `db` object exported by the `@arangodb` module. The
 JavaScript driver is **only** meant to be used when accessing ArangoDB from
 **outside** the database.
 
-* [Getting Started](GettingStarted/README.md)
-* [Reference](Reference/README.md)
-* [Changelog](https://github.com/arangodb/arangojs/blob/master/CHANGELOG.md#readme)
+- [Getting Started](GettingStarted/README.md)
+- [Reference](Reference/README.md)
+- [Changelog](https://github.com/arangodb/arangojs/blob/master/CHANGELOG.md#readme)
