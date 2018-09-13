@@ -52,7 +52,7 @@ namespace aql {
 
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
   ExecutionState state;
-  InputAqlItemRow const* row;
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
@@ -67,7 +67,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         THEN("the fetcher should return DONE with nullptr") {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row == nullptr);
+          REQUIRE(!row);
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -87,12 +87,12 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(row == nullptr);
+          REQUIRE(!row);
 
           AND_THEN("the fetcher should return DONE with nullptr") {
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(row == nullptr);
+            REQUIRE(!row);
           }
         }
       } // testee is destroyed here
@@ -120,9 +120,9 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         THEN("the fetcher should return the row with DONE") {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row != nullptr);
-          REQUIRE(row->getNrRegisters() == 1);
-          REQUIRE(row->getValue(0).slice().getInt() == 42);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == 42);
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -142,14 +142,14 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         THEN("the fetcher should return the row with HASMORE") {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(row != nullptr);
-          REQUIRE(row->getNrRegisters() == 1);
-          REQUIRE(row->getValue(0).slice().getInt() == 42);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == 42);
 
           AND_THEN("the fetcher shall return DONE") {
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(row == nullptr);
+            REQUIRE(!row);
           }
         }
       } // testee is destroyed here
@@ -170,14 +170,14 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(row == nullptr);
+          REQUIRE(!row);
 
           AND_THEN("the fetcher should return the row with DONE") {
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(row != nullptr);
-            REQUIRE(row->getNrRegisters() == 1);
-            REQUIRE(row->getValue(0).slice().getInt() == 42);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == 42);
           }
         }
       } // testee is destroyed here
@@ -199,19 +199,19 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(row == nullptr);
+          REQUIRE(!row);
 
           AND_THEN("the fetcher should return the row with HASMORE") {
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row != nullptr);
-            REQUIRE(row->getNrRegisters() == 1);
-            REQUIRE(row->getValue(0).slice().getInt() == 42);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == 42);
 
             AND_THEN("the fetcher shall return DONE") {
               std::tie(state, row) = testee.fetchRow();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(row == nullptr);
+              REQUIRE(!row);
             }
           }
         }
@@ -249,16 +249,16 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
           for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row != nullptr);
-            REQUIRE(row->getNrRegisters() == 1);
-            REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
           }
           rowIdxAndValue = 6;
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row != nullptr);
-          REQUIRE(row->getNrRegisters() == 1);
-          REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -286,25 +286,25 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
               // wait at the beginning of the 1st and 2nd block
               std::tie(state, row) = testee.fetchRow();
               REQUIRE(state == ExecutionState::WAITING);
-              REQUIRE(row == nullptr);
+              REQUIRE(!row);
             }
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row != nullptr);
-            REQUIRE(row->getNrRegisters() == 1);
-            REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
           }
           rowIdxAndValue = 6;
           // wait at the beginning of the 3rd block
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(row == nullptr);
+          REQUIRE(!row);
           // last row and DONE
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row != nullptr);
-          REQUIRE(row->getNrRegisters() == 1);
-          REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+          REQUIRE(row);
+          REQUIRE(row.getNrRegisters() == 1);
+          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -333,17 +333,17 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
               // wait at the beginning of the 1st, 2nd and 3rd block
               std::tie(state, row) = testee.fetchRow();
               REQUIRE(state == ExecutionState::WAITING);
-              REQUIRE(row == nullptr);
+              REQUIRE(!row);
             }
             std::tie(state, row) = testee.fetchRow();
             REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row != nullptr);
-            REQUIRE(row->getNrRegisters() == 1);
-            REQUIRE(row->getValue(0).slice().getInt() == rowIdxAndValue);
+            REQUIRE(row);
+            REQUIRE(row.getNrRegisters() == 1);
+            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
           }
           std::tie(state, row) = testee.fetchRow();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row == nullptr);
+          REQUIRE(!row);
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock

@@ -62,7 +62,7 @@ EnumerateListExecutor::~EnumerateListExecutor() = default;
 
 ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow &output) {
   ExecutionState state;
-  InputAqlItemRow const* input = nullptr;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -71,12 +71,12 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow &output) {
       return state;
     }
 
-    if (input == nullptr) {
+    if (!input) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return state;
     }
 
-    AqlValue const& value = input->getValue(_infos.getInput());
+    AqlValue const& value = input.getValue(_infos.getInput());
 
     if (!value.isArray()) {
       throwArrayExpectedException(value);
@@ -97,8 +97,8 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow &output) {
         AqlValue innerValue = getAqlValue(innerValue, j, mustDestroy);
         AqlValueGuard guard(innerValue, mustDestroy);
 
-        output.copyRow(*input);
-        output.setValue(_infos.getInput(), *input, innerValue);
+        output.copyRow(input);
+        output.setValue(_infos.getInput(), input, innerValue);
       }
     }
 

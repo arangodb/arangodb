@@ -77,6 +77,8 @@ class AqlItemMatrix {
 
     size_t _size;
 
+    // TODO These are probably unnecessary now. They definitely don't need to
+    // be unique_ptr.
     // Location to keep the memory of the last
     // AQL item row. Will be mutated by getRow
     mutable std::unique_ptr<InputAqlItemRow> _lastRow;

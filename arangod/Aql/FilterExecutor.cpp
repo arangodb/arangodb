@@ -41,7 +41,7 @@ FilterExecutor::~FilterExecutor() = default;
 
 ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {
   ExecutionState state;
-  InputAqlItemRow const* input = nullptr;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -50,13 +50,13 @@ ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {
       return state;
     }
 
-    if (input == nullptr) {
+    if (!input) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return state;
     }
 
-    if (input->getValue(_infos.getInput()).toBoolean()) {
-      output.copyRow(*input);
+    if (input.getValue(_infos.getInput()).toBoolean()) {
+      output.copyRow(input);
       return state;
     }
 

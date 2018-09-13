@@ -32,18 +32,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex)
-  : _block(block), _baseIndex(baseIndex), _regsToKeep(), _produced(true) {
-  // Using this constructor we are not allowed to write
-  TRI_ASSERT(block != nullptr);
-}
-
-OutputAqlItemRow::OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
-  : _block(block)
-  , _baseIndex(baseIndex)
-  , _regsToKeep(regsToKeep)
-  , _produced(false)
-{
+OutputAqlItemRow::OutputAqlItemRow(
+    AqlItemBlock* block, size_t baseIndex,
+    std::unordered_set<RegisterId> const& regsToKeep)
+    : _block(block),
+      _baseIndex(baseIndex),
+      _regsToKeep(regsToKeep),
+      _produced(false),
+      _lastSourceRow{CreateInvalidInputRowHint{}} {
   TRI_ASSERT(block != nullptr);
 }
 
@@ -58,23 +54,34 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
     return;
   }
 
+  // Note that _lastSourceRow is invalid right after construction. However, when
+  // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+  bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
+
   for (auto itemId : _regsToKeep) {
     // copy entries to keep
-    _block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
+    //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
-    // auto const& value = sourceRow.getValue(itemId);
-    // if (!value.isEmpty()) {
-    //   AqlValue clonedValue = value.clone();
-    //   AqlValueGuard guard(clonedValue, true);
+    if (mustClone) {
+      auto const &value = sourceRow.getValue(itemId);
+      if (!value.isEmpty()) {
+        AqlValue clonedValue = value.clone();
+        AqlValueGuard guard(clonedValue, true);
 
-    //   TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
-    //     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    //   }
+        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
-    //   _block.setValue(_baseIndex, itemId, clonedValue);
-    //   guard.steal();
-    // }
+        _block->setValue(_baseIndex, itemId, clonedValue);
+        guard.steal();
+      }
+    } else {
+      TRI_ASSERT(_baseIndex > 0);
+      _block->copyValuesFromRow(_baseIndex, _regsToKeep, _baseIndex-1);
+    }
   }
 
   _produced = true;
+  _lastSourceRow = sourceRow;
 }

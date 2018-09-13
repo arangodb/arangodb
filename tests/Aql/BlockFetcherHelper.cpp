@@ -79,7 +79,8 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       _nrCalled(0),
       _didWait(false),
       _resourceMonitor(),
-      _itemBlock(nullptr) {
+      _itemBlock(nullptr),
+      _lastReturnedRow{CreateInvalidInputRowHint{}} {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
   } else {
@@ -102,32 +103,32 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
 
 SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
-std::pair<ExecutionState, InputAqlItemRow const*>
+std::pair<ExecutionState, InputAqlItemRow>
 SingleRowFetcherHelper::fetchRow() {
   // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
     if(!_didWait) {
       _didWait = true;
-      return {ExecutionState::WAITING, nullptr};
+      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     _didWait = false;
   }
   _nrCalled++;
   if (_nrCalled > _nrItems) {
-    return {ExecutionState::DONE, nullptr};
+    return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   TRI_ASSERT(_itemBlock);
   // Note that the blockId is hard coded to 42. If this class ever should get
   // multiple blocks, this has to be changed.
-  _lastReturnedRow = std::make_unique<InputAqlItemRow>(_itemBlock.get(), _nrCalled -1, 42);
+  _lastReturnedRow = InputAqlItemRow{_itemBlock.get(), _nrCalled -1, 42};
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;
   } else {
     state = ExecutionState::DONE;
   }
-  return {state, _lastReturnedRow.get()};
+  return {state, _lastReturnedRow};
 };
 
 // -----------------------------------------

@@ -52,7 +52,7 @@ class SingleRowFetcher {
 
  protected:
   // only for testing! Does not initialize _blockFetcher!
-  SingleRowFetcher() = default;
+  SingleRowFetcher();
 
  public:
 
@@ -73,7 +73,7 @@ class SingleRowFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, const InputAqlItemRow*> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
 
  private:
   BlockFetcher* _blockFetcher;
@@ -114,9 +114,8 @@ class SingleRowFetcher {
   /**
   * @brief The current row, as returned last by fetchRow(). Must stay valid
   *        until the next fetchRow() call.
-  *        TODO Avoid allocating a new AqlItemRow on each fetchRow() call
   */
-  std::unique_ptr<InputAqlItemRow const> _currentRow;
+  InputAqlItemRow _currentRow;
 
  private:
   /**

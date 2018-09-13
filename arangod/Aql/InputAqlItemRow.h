@@ -36,6 +36,8 @@ namespace aql {
 
 struct AqlValue;
 
+struct CreateInvalidInputRowHint{};
+
 /**
  * @brief One row within an AqlItemBlock, for reading.
  *
@@ -46,7 +48,10 @@ struct AqlValue;
 class InputAqlItemRow {
  public:
   using AqlItemBlockId = int64_t;
-  // InputAqlItemRow(AqlItemBlock* block, size_t baseIndex);
+
+  // The default constructor contains an invalid item row
+  InputAqlItemRow(CreateInvalidInputRowHint);
+
   InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
                   AqlItemBlockId blockId);
 
@@ -61,9 +66,14 @@ class InputAqlItemRow {
 
   std::size_t getNrRegisters() const { return _block->getNrRegs(); }
 
-  void changeRow(std::size_t baseIndex);
+  bool operator==(InputAqlItemRow const& other) const noexcept;
+  bool operator!=(InputAqlItemRow const& other) const noexcept;
 
-  void changeRow(AqlItemBlock* block, std::size_t baseIndex);
+  bool isInitialized() const noexcept {
+    return _block != nullptr && _blockId >= 0;
+  }
+
+  explicit operator bool() const noexcept { return isInitialized(); }
 
  private:
   /**
@@ -79,6 +89,7 @@ class InputAqlItemRow {
   /**
    * @brief Block ID. Is assumed to biuniquely identify an AqlItemBlock. The
    *        Fetcher is responsible for assigning these.
+   *        It may not be set to a negative value from the outside.
    */
   AqlItemBlockId _blockId;
 };

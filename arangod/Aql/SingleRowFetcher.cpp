@@ -34,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
+std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
     returnCurrentBlock();
@@ -44,7 +44,7 @@ std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
     std::unique_ptr<AqlItemBlock> newBlock;
     std::tie(state, newBlock) = fetchBlock();
     if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, nullptr};
+      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
 
     _currentBlock = std::move(newBlock);
@@ -55,12 +55,11 @@ std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
 
   if (_currentBlock == nullptr) {
     TRI_ASSERT(_upstreamState == ExecutionState::DONE);
-    _currentRow = nullptr;
+    _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     rowState = ExecutionState::DONE;
   } else {
     TRI_ASSERT(_currentBlock);
-    _currentRow =
-        std::make_unique<InputAqlItemRow const>(_currentBlock.get(), _rowIndex, _blockId);
+    _currentRow = InputAqlItemRow{_currentBlock.get(), _rowIndex, _blockId};
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
@@ -72,11 +71,13 @@ std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
     _rowIndex++;
   }
 
-  return {rowState, _currentRow.get()};
+  return {rowState, _currentRow};
 }
 
 SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
-    : _blockFetcher(&executionBlock), _blockId(-1) {}
+    : _blockFetcher(&executionBlock),
+      _blockId(-1),
+      _currentRow{CreateInvalidInputRowHint{}} {}
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 SingleRowFetcher::fetchBlock() {
@@ -122,3 +123,6 @@ void SingleRowFetcher::returnCurrentBlock() noexcept {
 SingleRowFetcher::~SingleRowFetcher() {
   returnCurrentBlock();
 }
+
+SingleRowFetcher::SingleRowFetcher()
+    : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}

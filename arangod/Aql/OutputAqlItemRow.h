@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
@@ -34,7 +35,6 @@ namespace arangodb {
 namespace aql {
 
 struct AqlValue;
-class InputAqlItemRow;
 
 /**
  * @brief One row within an AqlItemBlock, for writing.
@@ -45,8 +45,6 @@ class InputAqlItemRow;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex);
-
   OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
                    std::unordered_set<RegisterId> const& regsToKeep);
 
@@ -57,6 +55,7 @@ class OutputAqlItemRow {
 
   std::size_t getNrRegisters() const { return _block->getNrRegs(); }
 
+  /// @deprecated Is unneeded, advanceRow() suffices.
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;
     _produced = false;
@@ -84,6 +83,12 @@ class OutputAqlItemRow {
   std::unordered_set<RegisterId> const _regsToKeep;
 
   bool _produced;
+
+  /**
+  * @brief The last source row seen. Note that this is invalid before the first
+  *        source row is seen.
+  */
+  InputAqlItemRow _lastSourceRow;
 };
 
 }  // namespace aql

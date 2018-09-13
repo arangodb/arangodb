@@ -31,24 +31,29 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
+    : _block(nullptr), _baseIndex(0), _blockId(-1) {}
+
 InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
                                  AqlItemBlockId blockId_)
     : _block(block), _baseIndex(baseIndex), _blockId(blockId_) {
-  // Using this constructor we are not allowed to write
   TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(_blockId >= 0);
 }
 
 const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
+  TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId < getNrRegisters());
   return _block->getValueReference(_baseIndex, registerId);
 }
 
-void InputAqlItemRow::changeRow(std::size_t baseIndex) {
-  _baseIndex = baseIndex;
+bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
+  TRI_ASSERT(isInitialized());
+  return this->_blockId == other._blockId &&
+         this->_baseIndex == other._baseIndex;
 }
 
-void InputAqlItemRow::changeRow(AqlItemBlock* block, std::size_t baseIndex) {
-  TRI_ASSERT(block != nullptr);
-  _block = block;
-  _baseIndex = baseIndex;
+bool InputAqlItemRow::operator!=(InputAqlItemRow const &other) const noexcept {
+  TRI_ASSERT(isInitialized());
+  return !(*this == other);
 }

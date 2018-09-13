@@ -51,13 +51,12 @@ static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result) {
   INFO("Expecting: " << result.toJson() << " Got: " << *in);
   REQUIRE(result.isArray());
   REQUIRE(in->size() == result.length());
-  InputAqlItemRow validator(in, 0);
   for (size_t i = 0; i < in->size(); ++i) {
-    validator.changeRow(i);
+    InputAqlItemRow validator{in, i, 0};
     VPackSlice row = result.at(i);
     REQUIRE(row.isArray());
     REQUIRE(in->getNrRegs() == row.length());
-    for (size_t j = 0; j < in->getNrRegs(); ++j) {
+    for (RegisterId j = 0; j < in->getNrRegs(); ++j) {
       AqlValue v = validator.getValue(j);
       REQUIRE(basics::VelocyPackHelper::compare(row.at(j), v.slice(), true) == 0);
     }
@@ -83,17 +82,17 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
         });
 
-        InputAqlItemRow source(inputData.get(), 0);
+        InputAqlItemRow source{inputData.get(), 0, 0};
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source.changeRow(1);
+        source = {inputData.get(), 1, 0};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
-        source.changeRow(2);
+        source = {inputData.get(), 2, 0};
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
@@ -122,11 +121,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
         });
 
-        InputAqlItemRow source(inputData.get(), 0);
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
-          source.changeRow(i);
+          InputAqlItemRow source{inputData.get(), i, 0};
           for (size_t j = 0; j < 3; ++j) {
             testee.copyRow(source);
             REQUIRE(testee.produced());
