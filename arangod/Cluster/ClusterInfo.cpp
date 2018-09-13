@@ -516,10 +516,19 @@ void ClusterInfo::loadPlan() {
             decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivityEstimates;
             double selectivityTTL = 0;
             if (isCoordinator) {
-              auto collection = _plannedCollections[databaseName][collectionId];
-              if(collection){
-                selectivityEstimates = collection->clusterIndexEstimates(/*do not update*/ true);
-                selectivityTTL = collection->clusterIndexEstimatesTTL();
+              // accessing _plannedCollections in read-only mode is safe here,
+              // as there is only one place (which is this mutex-protected function)
+              // that modifies _plannedCollections
+              auto it = _plannedCollections.find(databaseName);
+              if (it != _plannedCollections.end()) {
+                auto it2 = (*it).second.find(collectionId);
+                if (it2 != (*it).second.end()) {
+                  auto collection = (*it2).second;
+                  if (collection) {
+                    selectivityEstimates = collection->clusterIndexEstimates(/*do not update*/ true);
+                    selectivityTTL = collection->clusterIndexEstimatesTTL();
+                  }
+                }
               }
             }
 
