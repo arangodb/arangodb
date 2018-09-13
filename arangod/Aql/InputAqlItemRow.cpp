@@ -41,3 +41,13 @@ const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(registerId < getNrRegisters());
   return _block->getValueReference(_baseIndex, registerId);
 }
+
+void InputAqlItemRow::changeRow(std::size_t baseIndex) {
+  _baseIndex = baseIndex;
+}
+
+void InputAqlItemRow::changeRow(AqlItemBlock* block, std::size_t baseIndex) {
+  TRI_ASSERT(block != nullptr);
+  _block = block;
+  _baseIndex = baseIndex;
+}

@@ -62,10 +62,8 @@ class OutputAqlItemRow {
     _produced = false;
   }
 
-  void changeRow(AqlItemBlock* block, std::size_t baseIndex) {
-    TRI_ASSERT(block != nullptr);
-    _block = block;
-    _baseIndex = baseIndex;
+  void advanceRow() {
+    ++_baseIndex;
     _produced = false;
   }
 

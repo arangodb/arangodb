@@ -24,7 +24,8 @@
 #include "catch.hpp"
 #include "AqlItemBlockHelper.h"
 
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 
 #include "Basics/VelocyPackHelper.h"
 
@@ -40,7 +41,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-static void AssertEntry(AqlItemRow& in, RegisterId reg, VPackSlice value) {
+static void AssertEntry(InputAqlItemRow& in, RegisterId reg, VPackSlice value) {
   AqlValue v = in.getValue(reg);
   INFO("Expecting: " << value.toJson() << " got: " << v.slice().toJson());
   REQUIRE(basics::VelocyPackHelper::compare(value, v.slice(), true) == 0);
@@ -50,7 +51,7 @@ static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result) {
   INFO("Expecting: " << result.toJson() << " Got: " << *in);
   REQUIRE(result.isArray());
   REQUIRE(in->size() == result.length());
-  AqlItemRow validator(in, 0);
+  InputAqlItemRow validator(in, 0);
   for (size_t i = 0; i < in->size(); ++i) {
     validator.changeRow(i);
     VPackSlice row = result.at(i);
@@ -71,7 +72,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
 
 
-    AqlItemRow testee(outputData.get(), 0, regsToKeep);
+    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -82,18 +83,18 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
         });
 
-        AqlItemRow source(inputData.get(), 0);
+        InputAqlItemRow source(inputData.get(), 0);
 
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
         source.changeRow(1);
-        testee.changeRow(1);
+        testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
         source.changeRow(2);
-        testee.changeRow(2);
+        testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
 
@@ -105,12 +106,12 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       AssertResultMatrix(outputData.get(), expected->slice());
     }
   }
+
   WHEN("only copying from source to target but multiplying rows") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
     std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
 
-
-    AqlItemRow testee(outputData.get(), 0, regsToKeep);
+    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -121,34 +122,33 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
         });
 
-        AqlItemRow source(inputData.get(), 0);
+        InputAqlItemRow source(inputData.get(), 0);
 
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        source.changeRow(1);
-        testee.changeRow(1);
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        testee.changeRow(2);
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        testee.changeRow(3);
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        source.changeRow(2);
-        testee.changeRow(2);
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        INFO("The input was " << (*(inputData.get())));
-        INFO("The output is " << (*(outputData.get())));
+        for (size_t i = 0; i < 3; ++i) {
+          // Iterate over source rows
+          source.changeRow(i);
+          for (size_t j = 0; j < 3; ++j) {
+            testee.copyRow(source);
+            REQUIRE(testee.produced());
+            if (i < 2 || j < 2) {
+              // Not at the last one, we are at the end
+              testee.advanceRow();
+            }
+          }
+        }
         // TODO hard nullify source block
       }
-      auto expected = VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
+      auto expected = VPackParser::fromJson("["
+        "[1,2,3],"
+        "[1,2,3],"
+        "[1,2,3],"
+        "[4,5,6],"
+        "[4,5,6],"
+        "[4,5,6],"
+        "[\"a\",\"b\",\"c\"],"
+        "[\"a\",\"b\",\"c\"],"
+        "[\"a\",\"b\",\"c\"]"
+      "]");
       AssertResultMatrix(outputData.get(), expected->slice());
     }
   }

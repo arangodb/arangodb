@@ -58,6 +58,10 @@ class InputAqlItemRow {
 
   std::size_t getNrRegisters() const { return _block->getNrRegs(); }
 
+  void changeRow(std::size_t baseIndex);
+
+  void changeRow(AqlItemBlock* block, std::size_t baseIndex);
+
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
