@@ -198,20 +198,32 @@ class LogicalCollection: public LogicalDataSource {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback);
 
-  // Estimates
-  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
-  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
-
-  double clusterIndexEstimatesTTL() const {
-    return _clusterEstimateTTL;
-  }
-
-  void clusterIndexEstimatesTTL(double ttl) {
-    _clusterEstimateTTL = ttl;
-  }
-  // End - Estimates
-  
   //// SECTION: Indexes
+  class ClusterSelectivityEstimates {
+   public:
+    explicit ClusterSelectivityEstimates(LogicalCollection& collection);
+    void flush();
+    std::unordered_map<std::string, double> get(bool allowUpdate) const;
+    void set(std::unordered_map<std::string, double>&& estimates);
+   private:
+    LogicalCollection& _collection;
+    mutable basics::ReadWriteLock _lock;
+    mutable std::unordered_map<std::string, double> _estimates;
+    mutable double _expireStamp;
+    
+    static constexpr double defaultTtl = 60.0;
+  };
+    
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate);
+  
+  /// @brief sets the current index selectivity estimates
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  void flushClusterIndexEstimates();
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
@@ -411,10 +423,6 @@ class LogicalCollection: public LogicalDataSource {
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
-  std::unordered_map<std::string, double> _clusterEstimates;
-  double _clusterEstimateTTL; //only valid if above vector is not empty
-  basics::ReadWriteLock _clusterEstimatesLock;
-  
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
@@ -422,6 +430,9 @@ class LogicalCollection: public LogicalDataSource {
   
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding; 
+
+  /// @brief index selectivity estimates (only relevant on a coordinator)
+  ClusterSelectivityEstimates _clusterSelectivityEstimates;
 };
 
 }  // namespace arangodb

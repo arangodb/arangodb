@@ -156,9 +156,9 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
       _physical(other.getPhysical()->clone(*this)),
-      _clusterEstimateTTL(0),
       _followers(), // intentionally empty here
-      _sharding() {
+      _sharding(),
+      _clusterSelectivityEstimates(*this) {
   TRI_ASSERT(_physical != nullptr);
 
   _sharding = std::make_unique<ShardingInfo>(*other._sharding.get(), this);
@@ -212,8 +212,8 @@ LogicalCollection::LogicalCollection(
       _physical(
         EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)
       ),
-      _clusterEstimateTTL(0),
-      _sharding() {
+      _sharding(),
+      _clusterSelectivityEstimates(*this) {
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -449,47 +449,20 @@ bool LogicalCollection::isSmart() const { return _isSmart; }
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
-
-// SECTION: Indexes
-std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate) {
-  READ_LOCKER(readlock, _clusterEstimatesLock);
-  if (doNotUpdate) {
-    return _clusterEstimates;
-  }
-
-  double ctime = TRI_microtime(); // in seconds
-  auto needEstimateUpdate = [this, ctime]() {
-    if (_clusterEstimates.empty()) {
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not available";
-      return true;
-    } else if (ctime - _clusterEstimateTTL > 60.0) {
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
-      return true;
-    }
-    return false;
-  };
-
-  if (needEstimateUpdate()) {
-    readlock.unlock();
-    WRITE_LOCKER(writelock, _clusterEstimatesLock);
-
-    if (needEstimateUpdate()) {
-      selectivityEstimatesOnCoordinator(vocbase().name(), name(), _clusterEstimates);
-      _clusterEstimateTTL = TRI_microtime();
-    }
-    return _clusterEstimates;
-  }
-
-  return _clusterEstimates;
+ 
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool allowUpdate) {
+  return _clusterSelectivityEstimates.get(allowUpdate);
 }
 
 void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
-  WRITE_LOCKER(lock, _clusterEstimatesLock);
-  _clusterEstimates = std::move(estimates);
+  _clusterSelectivityEstimates.set(std::move(estimates));
 }
 
-std::vector<std::shared_ptr<arangodb::Index>>
-LogicalCollection::getIndexes() const {
+void LogicalCollection::flushClusterIndexEstimates() {
+  _clusterSelectivityEstimates.flush();
+}
+
+std::vector<std::shared_ptr<arangodb::Index>> LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }
 
@@ -1122,4 +1095,99 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
   }
 
   return Result();
+}
+
+LogicalCollection::ClusterSelectivityEstimates::ClusterSelectivityEstimates(LogicalCollection& collection) 
+    : _collection(collection), 
+      _expireStamp(0.0) {}
+
+void LogicalCollection::ClusterSelectivityEstimates::flush() {
+  WRITE_LOCKER(lock, _lock);
+  _estimates.clear();
+  _expireStamp = 0.0;
+}
+
+std::unordered_map<std::string, double> LogicalCollection::ClusterSelectivityEstimates::get(bool allowUpdate) const {
+  double now;
+
+  {
+    READ_LOCKER(readLock, _lock);
+    if (!allowUpdate) {
+      // return whatever is there. may be empty as well
+      return _estimates;
+    }
+
+    now = TRI_microtime();
+    if (!_estimates.empty() && _expireStamp > now) {
+      // already have an estimate, and it is not yet expired
+      return _estimates;
+    }
+  }
+
+  // have no estimate yet, or it is already expired
+  // we have given up the read lock here
+  // because we now need to modify the estimates
+
+  int tries = 0;
+  while (true) {
+    decltype(_estimates) estimates;
+
+    WRITE_LOCKER(writeLock, _lock);
+    
+    if (!_estimates.empty() && _expireStamp > now) {
+      // some other thread has updated the estimates for us... just use them
+      return _estimates;
+    }
+
+    int res = selectivityEstimatesOnCoordinator(_collection.vocbase().name(), _collection.name(), estimates);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _estimates = estimates;
+      // let selectivity estimates expire less seldom for system collections
+      _expireStamp = now + defaultTtl * (_collection.name()[0] == '_' ? 10.0 : 1.0);
+
+      // give up the lock, and then update the selectivity values for each index
+      writeLock.unlock();
+  
+      // push new selectivity values into indexes' cache
+      auto indexes = _collection.getIndexes();
+
+      for (std::shared_ptr<Index>& idx : indexes) {
+        auto it = estimates.find(std::to_string(idx->id()));
+
+        if (it != estimates.end()) {
+          idx->updateClusterSelectivityEstimate(it->second);
+        }
+      }
+
+      return estimates;
+    }
+
+    if (++tries == 3) {
+      return _estimates;
+    }
+  }
+}
+
+void LogicalCollection::ClusterSelectivityEstimates::set(std::unordered_map<std::string, double>&& estimates) {
+  double const now = TRI_microtime();
+  
+  // push new selectivity values into indexes' cache
+  auto indexes = _collection.getIndexes();
+
+  for (std::shared_ptr<Index>& idx : indexes) {
+    auto it = estimates.find(std::to_string(idx->id()));
+
+    if (it != estimates.end()) {
+      idx->updateClusterSelectivityEstimate(it->second);
+    }
+  }
+
+  // finally update the cache  
+  {
+    WRITE_LOCKER(writelock, _lock);
+    _estimates = std::move(estimates);
+    // let selectivity estimates expire less seldom for system collections
+    _expireStamp = now + defaultTtl * (_collection.name()[0] == '_' ? 10.0 : 1.0);
+  }
 }
