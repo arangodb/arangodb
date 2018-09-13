@@ -43,7 +43,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutorInfos&& infos)
     : ExecutionBlock(engine, node),
       _infos(infos),
-      _blockFetcher(*this),
+      _blockFetcher(this),
       _rowFetcher(_blockFetcher),
       _executor(_rowFetcher, _infos),
       _getSomeOutBlock(nullptr),

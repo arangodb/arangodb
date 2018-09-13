@@ -40,8 +40,8 @@ namespace aql {
  */
 class BlockFetcher {
  public:
-  explicit BlockFetcher(ExecutionBlock& executionBlock_)
-      : _executionBlock(&executionBlock_){};
+  explicit BlockFetcher(ExecutionBlock* executionBlock_)
+      : _executionBlock(executionBlock_){};
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
