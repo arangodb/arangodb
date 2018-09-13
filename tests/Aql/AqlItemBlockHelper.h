@@ -73,7 +73,7 @@ using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
 template <::arangodb::aql::RegisterId columns>
 std::unique_ptr<::arangodb::aql::AqlItemBlock> buildBlock(
-    MatrixBuilder<columns>&& matrix);
+    ::arangodb::aql::ResourceMonitor* monitor, MatrixBuilder<columns>&& matrix);
 
 std::ostream& operator<<(std::ostream&, ::arangodb::aql::AqlItemBlock const&);
 
