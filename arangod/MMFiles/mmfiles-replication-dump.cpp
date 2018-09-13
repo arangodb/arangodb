@@ -372,11 +372,12 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
+  size_t numMarkers = 0;
   bool bufferFull = false;
 
   auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
                    &withTicks, &isEdgeCollection, &bufferFull, &useVst,
-                   &collection](
+                   &collection, &numMarkers](
       TRI_voc_tick_t foundTick, MMFilesMarker const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
@@ -389,6 +390,8 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       res = StringifyMarker(dump, databaseId, collectionId, marker, true,
                             withTicks, isEdgeCollection);
     }
+
+    ++numMarkers;
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
@@ -420,6 +423,12 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
+  
+    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+        << "dumped collection " << collection->id()
+        << ", tick range " << dataMin << " - " << dataMax 
+        << ", markers: " << numMarkers << ", last found tick: " << dump->_lastFoundTick 
+        << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
