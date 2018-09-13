@@ -23,7 +23,7 @@
 ///
 /// @author Kaveh Vahedipour
 /// @author Matthew Von-Maszewski
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "catch.hpp"
@@ -38,6 +38,8 @@
 #include <iostream>
 #include <random>
 #include <typeinfo>
+
+#include "MaintenanceFeatureMock.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -411,6 +413,12 @@ TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
 TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
 
+  std::shared_ptr<arangodb::options::ProgramOptions> po =
+    std::make_shared<arangodb::options::ProgramOptions>(
+      "test", std::string(), std::string(), "path");
+  arangodb::application_features::ApplicationServer as(po, nullptr);
+  TestMaintenanceFeature tf(as);
+  
   std::map<std::string, Node> localNodes {
     {dbsIds[shortNames[0]], createNode(dbs0Str)},
     {dbsIds[shortNames[1]], createNode(dbs1Str)},
@@ -425,7 +433,7 @@ TEST_CASE("ActionPhaseOne", "[cluster][maintenance]") {
     for (auto const& node : localNodes) {
       arangodb::maintenance::diffPlanLocal(
         plan.toBuilder().slice(), node.second.toBuilder().slice(),
-        node.first, errors, actions);
+        node.first, tf, actions);
 
       if (actions.size() != 0) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;

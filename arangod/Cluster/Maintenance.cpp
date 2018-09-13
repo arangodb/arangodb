@@ -190,10 +190,13 @@ void handlePlanShard(
   std::string const& dbname, std::string const& colname, std::string const& shname,
   std::string const& serverId, std::string const& leaderId,
   std::unordered_set<std::string>& commonShrds, std::unordered_set<std::string>& indis,
-  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions) {
+  MaintenanceFeature& feature, std::vector<ActionDescription>& actions) {
 
   bool shouldBeLeading = serverId == leaderId;
 
+  MaintenanceFeature::errors_t errors;
+  feature.copyAllErrors(errors);
+  
   commonShrds.emplace(shname);
   auto props = createProps(cprops); // Only once might need often!
 
@@ -252,7 +255,9 @@ void handlePlanShard(
       actions.emplace_back(
         ActionDescription(
           {{NAME, CREATE_COLLECTION}, {COLLECTION, colname}, {SHARD, shname},
-           {DATABASE, dbname}, {SERVER_ID, serverId}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
+           {DATABASE, dbname}, {SERVER_ID, serverId},
+           {SHARD_VERSION, std::to_string(feature.shardVersion(shname))},
+           {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     } else {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -350,12 +355,14 @@ struct NotEmpty {
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions) {
+  MaintenanceFeature& feature, std::vector<ActionDescription>& actions) {
 
   arangodb::Result result;
   std::unordered_set<std::string> commonShrds; // Intersection collections plan&local
   std::unordered_set<std::string> indis; // Intersection indexes plan&local
 
+  MaintenanceFeature::errors_t errors;
+  feature.copyAllErrors(errors);
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local databases are affected
   auto pdbs = plan.get(DATABASES);
@@ -405,7 +412,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 handlePlanShard(
                   cprops, ldb, dbname, pcol.key.copyString(),
                   shard.key.copyString(), serverId, shard.value[0].copyString(),
-                  commonShrds, indis, errors, actions);
+                  commonShrds, indis, feature, actions);
                 break ;
               }
             }
@@ -493,7 +500,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   std::vector<ActionDescription> actions;
   report.add(VPackValue(AGENCY));
   { VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, local, serverId, errors, actions); }
+    diffPlanLocal(plan, local, serverId, feature, actions); }
 
   for (auto const& i : errors.databases) {
     if (i.second == nullptr) {
@@ -525,15 +532,7 @@ arangodb::Result arangodb::maintenance::executePlan (
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "phase one adding action " << action << " to feature ";
       { VPackObjectBuilder b(&report);
-        action.toVelocyPack(report);
-      }
-
-      auto const& name = action.get(NAME);
-      if (name == "CreateCollection") {
-        TRI_ASSERT(action.has(SHARD));
-        action.set("shardVersion",
-                   std::to_string(feature.shardVersion(action.get(SHARD))));
-      }
+        action.toVelocyPack(report); }
       feature.addAction(std::make_shared<ActionDescription>(action), false);
     }
   }
@@ -1039,11 +1038,11 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             }
 
             auto const leader = pservers[0].copyString();
-
             actions.emplace_back(
               ActionDescription(
-                {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
-                 {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader}}));
+                {{NAME, SYNCHRONIZE_SHARD}, {DATABASE, dbname}, {SHARD, shname},
+                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname))},
+                 {COLLECTION, colname}, {THE_LEADER, leader}}));
 
           }
         }

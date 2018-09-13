@@ -49,14 +49,14 @@ arangodb::Result diffPlanLocalForDatabases(
  * @param plan     Snapshot of agency's planned state
  * @param local    Snapshot of local state
  * @param serverId This server's UUID
- * @param feature  Maintenance feature errors
+ * @param feature  Maintenance feature
  * @param actions  Resulting actions from difference are packed in here
  *
  * @return         Result
  */
 arangodb::Result diffPlanLocal(
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions);
+  MaintenanceFeature& feature, std::vector<ActionDescription>& actions);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run 

@@ -62,13 +62,13 @@ constexpr char const* SERVER_ID = "serverId";
 constexpr char const* SERVERS = "servers";
 constexpr char const* SHARD = "shard";
 constexpr char const* SHARDS = "shards";
+constexpr char const* SHARD_VERSION = "shards";
 constexpr char const* SYNCHRONIZE_SHARD = "SynchronizeShard";
 constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
-}
-}
+}}
 
 #endif
