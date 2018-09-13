@@ -433,9 +433,20 @@ bool IResearchViewCoordinator::emplace(
     // create links - "on a best-effort basis"
     if (info.hasKey("links")) {
 
-      std::unordered_set<TRI_voc_cid_t> collections;
-      auto result = IResearchLinkHelper::updateLinks(
-        collections, vocbase, *view.get(), info.get("links")
+      arangodb::velocypack::Builder viewNewProperties;
+      viewNewProperties.openObject();
+      bool modified = false;
+      std::unordered_set<TRI_voc_cid_t> newCids;
+      std::unordered_set<TRI_voc_cid_t> currentCids;
+      auto result = updateLinks(
+        info.get("links"),
+        emptyObjectSlice(),
+        *view.get(),
+        false,
+        currentCids,
+        modified,
+        viewNewProperties,
+        newCids
       );
 
       if (result.fail()) {
