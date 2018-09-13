@@ -76,11 +76,14 @@ template <::arangodb::aql::RegisterId columns>
 std::unique_ptr<::arangodb::aql::AqlItemBlock> buildBlock(
     ::arangodb::aql::ResourceMonitor* monitor, MatrixBuilder<columns>&& matrix);
 
-std::ostream& operator<<(std::ostream&, ::arangodb::aql::AqlItemBlock const&);
 
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
+
+namespace std {
+std::ostream& operator<<(std::ostream&, ::arangodb::aql::AqlItemBlock const&);
+}
 
 namespace arangodb {
 namespace tests {

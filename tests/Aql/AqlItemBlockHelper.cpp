@@ -22,7 +22,7 @@
 
 #include "AqlItemBlockHelper.h"
 
-std::ostream& ::arangodb::tests::aql::operator<<(
+std::ostream& std::operator<<(
     std::ostream& out, ::arangodb::aql::AqlItemBlock const& block) {
   for (size_t i = 0; i < block.size(); i++) {
     for (size_t j = 0; j < block.getNrRegs(); j++) {
