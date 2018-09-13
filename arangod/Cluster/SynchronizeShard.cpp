@@ -123,6 +123,8 @@ public:
   }
 };
 
+SynchronizeShard::~SynchronizeShard() {}
+
 
 arangodb::Result getReadLockId (
   std::string const& endpoint, std::string const& database,
