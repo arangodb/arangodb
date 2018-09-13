@@ -34,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
+std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
     returnCurrentBlock();
@@ -60,7 +60,7 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
   } else {
     TRI_ASSERT(_currentBlock);
     _currentRow =
-        std::make_unique<AqlItemRow const>(_currentBlock.get(), _rowIndex);
+        std::make_unique<InputAqlItemRow const>(_currentBlock.get(), _rowIndex);
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {

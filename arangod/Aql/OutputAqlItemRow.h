@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,11 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Tobias Gödderz
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AQL_ITEM_ROW_H
-#define ARANGOD_AQL_AQL_ITEM_ROW_H 1
+#ifndef ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
+#define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/types.h"
@@ -31,31 +34,29 @@ namespace arangodb {
 namespace aql {
 
 struct AqlValue;
+class InputAqlItemRow;
 
 /**
- * @brief One row within an AqlItemBlock
+ * @brief One row within an AqlItemBlock, for writing.
  *
  * Does not keep a reference to the data.
  * Caller needs to make sure that the underlying
  * AqlItemBlock is not going out of scope.
  */
-class AqlItemRow {
+class OutputAqlItemRow {
  public:
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex);
+  OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex);
 
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep);
+  OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
+                   std::unordered_set<RegisterId> const& regsToKeep);
 
-  /**
-   * @brief Get a reference to the value of the given Variable Nr
-   *
-   * @param variableNr The register ID of the variable to read.
-   *
-   * @return Reference to the AqlValue stored in that variable.
-   */
-  const AqlValue& getValue(RegisterId variableNr) const;
-  void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const&);
-  void copyRow(AqlItemRow const& sourceRow);
+  void setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow,
+                AqlValue const&);
+
+  void copyRow(InputAqlItemRow const& sourceRow);
+
   std::size_t getNrRegisters() const { return _block->getNrRegs(); }
+
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;
     _produced = false;
@@ -89,4 +90,5 @@ class AqlItemRow {
 
 }  // namespace aql
 }  // namespace arangodb
-#endif
+
+#endif  // ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H

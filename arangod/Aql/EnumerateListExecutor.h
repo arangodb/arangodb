@@ -29,15 +29,19 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
 
-
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
-class AqlItemRow;
+class InputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
@@ -73,7 +77,7 @@ class EnumerateListExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(AqlItemRow& output);
+  ExecutionState produceRow(OutputAqlItemRow &output);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);

@@ -82,6 +82,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/BlockFetcherMock.cpp
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/FilterExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp

@@ -26,7 +26,8 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 
 using namespace arangodb;
@@ -48,8 +49,8 @@ class OurLessThan {
 
   bool operator()(size_t const& a,
                   size_t const& b) const {
-    AqlItemRow const* left = _input.getRow(a);
-    AqlItemRow const* right = _input.getRow(b);
+    InputAqlItemRow const* left = _input.getRow(a);
+    InputAqlItemRow const* right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       auto const& lhs = left->getValue(reg.reg);
       auto const& rhs = right->getValue(reg.reg);
@@ -113,7 +114,7 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _input(nullptr), _returnNext(0) {};
 SortExecutor::~SortExecutor() = default;
 
-ExecutionState SortExecutor::produceRow(AqlItemRow& output) {
+ExecutionState SortExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data

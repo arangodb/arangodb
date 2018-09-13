@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
@@ -69,12 +69,16 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     _getSomeOutRowsAdded = 0;
   }
 
+  // TODO It's not very obvious that `state` will be initialized, because
+  // it's not obvious that the loop will run at least once (e.g. after a
+  // WAITING). It should, but I'd like that to be clearer. Initializing here
+  // won't help much because it's unclear whether the value will be correct.
   ExecutionState state;
-  std::unique_ptr<AqlItemRow> row;  // holds temporary rows
+  std::unique_ptr<OutputAqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
+  row = std::make_unique<OutputAqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
   while (_getSomeOutRowsAdded < atMost) {
     row->changeRow(_getSomeOutRowsAdded);
     state = _executor.produceRow(*row);
@@ -93,8 +97,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
       } else if (_getSomeOutRowsAdded < atMost) {
         _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
       }
-      //_getSomeOutBlock is gurantted to be nullptr after move.
-      //keep this invariant incase we switch to another type!!!!!
+      // _getSomeOutBlock is guaranteed to be nullptr after move.
+      // keep this invariant in case we switch to another type!!!!!
       return {state, std::move(_getSomeOutBlock)};
     }
   }

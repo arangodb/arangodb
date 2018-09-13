@@ -28,10 +28,10 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortExecutor.h"
@@ -100,7 +100,7 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
 
 SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
-std::pair<ExecutionState, AqlItemRow const*>
+std::pair<ExecutionState, InputAqlItemRow const*>
 SingleRowFetcherHelper::fetchRow() {
   // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
@@ -116,7 +116,7 @@ SingleRowFetcherHelper::fetchRow() {
     return {ExecutionState::DONE, nullptr};
   }
   TRI_ASSERT(_itemBlock);
-  _lastReturnedRow = std::make_unique<AqlItemRow>(_itemBlock.get(), _nrCalled -1);
+  _lastReturnedRow = std::make_unique<InputAqlItemRow>(_itemBlock.get(), _nrCalled -1);
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;

@@ -25,13 +25,16 @@
 
 #include "BlockFetcherHelper.h"
 #include "catch.hpp"
+#include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/InputAqlItemRow.h"
+#include "Aql/AqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/FilterExecutor.h"
+#include "Aql/EnumerateListExecutor.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -43,23 +46,35 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
+SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
   AqlItemBlock block(&monitor, 1000, 1);
 
-  ExecutorInfos infos(0, 0, 1, 1, {});
+  // Mock of the Transaction
+  // Enough for this test, will only be passed through and accessed
+  // on documents alone.
+  fakeit::Mock<transaction::Methods> mockTrx;
+  transaction::Methods& trx = mockTrx.get();
+
+  fakeit::Mock<transaction::Context> mockContext;
+  transaction::Context& ctxt = mockContext.get();
+
+  fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
+  fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
+
+  EnumerateListExecutorInfos infos(0, 0, 1, 1, {}, &trx);
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input.steal(), false);
-      FilterExecutor testee(fetcher, infos);
+      EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
+        AqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -68,10 +83,10 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input.steal(), true);
-      FilterExecutor testee(fetcher, infos);
+      EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
+        AqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -85,74 +100,6 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     }
   }
 
-  GIVEN("there are rows in the upstream") {
-    auto input =
-        VPackParser::fromJson("[ [true], [false], [true], [false], [true] ]");
-
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper fetcher(input->steal(), true);
-      FilterExecutor testee(fetcher, infos);
-
-      THEN("the executor should return DONE with nullptr") {
-        std::size_t current = 0;
-        OutputAqlItemRow row(&block, current, infos.registersToKeep());
-
-        /*
-        1  produce => WAIT                 RES1
-        2  produce => HASMORE, Row 1     RES1
-        3  => WAIT                         RES2
-        4  => WAIT                         RES2
-        5   => HASMORE, Row 3            RES2
-        6   => WAIT,                       RES3
-        7   => WAIT,                       RES3
-        8   => DONE, Row 5               RES3
-        */
-
-        //1
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        //2
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.changeRow(++current);
-
-        //3
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        //4
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        //5
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.changeRow(++current);
-
-        //6
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        //7
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        //8
-        state = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
-        row.changeRow(++current);
-      }
-    }
-  }
 
   GIVEN("there are rows in the upstream") {
     auto input = VPackParser::fromJson(
@@ -160,13 +107,13 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
-      FilterExecutor testee(fetcher, infos);
+      EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result1(&block, 0, infos.registersToKeep());
-        OutputAqlItemRow result2(&block, 1, infos.registersToKeep());
-        OutputAqlItemRow result3(&block, 2, infos.registersToKeep());
-        OutputAqlItemRow result4(&block, 3, infos.registersToKeep());
+        AqlItemRow result1(&block, 0, infos.registersToKeep());
+        AqlItemRow result2(&block, 1, infos.registersToKeep());
+        AqlItemRow result3(&block, 2, infos.registersToKeep());
+        AqlItemRow result4(&block, 3, infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1
@@ -179,7 +126,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
          => HASMORE, Row 5               RES3
          => WAITING, Row 6               RES3
          => DONE, no output!             RES3
-          */
+        */
 
         state = testee.produceRow(result1);
         REQUIRE(state == ExecutionState::WAITING);

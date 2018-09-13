@@ -41,7 +41,7 @@ namespace arangodb {
 
 namespace aql {
 class AqlItemBlock;
-class AqlItemRow;
+class InputAqlItemRow;
 class AqlItemMatrix;
 }
 
@@ -57,7 +57,7 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
                          bool returnsWaiting);
   virtual ~SingleRowFetcherHelper();
 
-  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::AqlItemRow const*> fetchRow() override;
+  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow const*> fetchRow() override;
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
@@ -68,7 +68,7 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   std::unique_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
-  std::unique_ptr<arangodb::aql::AqlItemRow> _lastReturnedRow;
+  std::unique_ptr<arangodb::aql::InputAqlItemRow> _lastReturnedRow;
 };
 
 /**

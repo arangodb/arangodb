@@ -29,7 +29,7 @@
 #include "catch.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutorInfos.h"
@@ -52,7 +52,7 @@ namespace aql {
 
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
   ExecutionState state;
-  AqlItemRow const* row;
+  InputAqlItemRow const* row;
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;

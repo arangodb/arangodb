@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,54 +17,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Goedderz
+/// @author Tobias Gödderz
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FILTER_EXECUTOR_H
-#define ARANGOD_AQL_FILTER_EXECUTOR_H
+#include "InputAqlItemRow.h"
 
-#include "Aql/ExecutionState.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/types.h"
-#include <memory>
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlValue.h"
 
+using namespace arangodb;
+using namespace arangodb::aql;
 
-namespace arangodb {
-namespace aql {
+InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex) {
+  // Using this constructor we are not allowed to write
+  TRI_ASSERT(block != nullptr);
+}
 
-class InputAqlItemRow;
-class ExecutorInfos;
-class SingleRowFetcher;
-
-/**
- * @brief Implementation of Filter Node
- */
-class FilterExecutor {
- public:
-  using Fetcher = SingleRowFetcher;
-
-  FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
-  ~FilterExecutor();
-
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  ExecutionState produceRow(OutputAqlItemRow &output);
-
- private:
-  Fetcher& _fetcher;
-
-  ExecutorInfos& _infos;
-
-};
-
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
+  TRI_ASSERT(registerId < getNrRegisters());
+  return _block->getValueReference(_baseIndex, registerId);
+}
