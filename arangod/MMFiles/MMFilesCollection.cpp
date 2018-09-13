@@ -1334,6 +1334,11 @@ MMFilesCollection::datafilesInRange(TRI_voc_tick_t dataMin,
         << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
         << ", tick max: " << datafile->_tickMax;
+    
+    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+        << "checking datafile " << datafile->fid() << " with data range "
+        << datafile->_dataMin << " - " << datafile->_dataMax
+        << ", tick max: " << datafile->_tickMax;
 
     if (datafile->_dataMin == 0 || datafile->_dataMax == 0) {
       // datafile doesn't have any data
