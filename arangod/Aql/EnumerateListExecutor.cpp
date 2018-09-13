@@ -41,7 +41,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
     : _fetcher(fetcher), _infos(infos){};
 EnumerateListExecutor::~EnumerateListExecutor() = default;
 
-ExecutionState EnumerateListExecutor::produceRow(InputAqlItemRow& output) {
+ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow &output) {
   ExecutionState state;
   InputAqlItemRow const* input = nullptr;
 

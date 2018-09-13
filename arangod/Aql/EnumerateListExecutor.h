@@ -29,6 +29,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -73,7 +74,7 @@ class EnumerateListExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(InputAqlItemRow& output);
+  ExecutionState produceRow(OutputAqlItemRow &output);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);

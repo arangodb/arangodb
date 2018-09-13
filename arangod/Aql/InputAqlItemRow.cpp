@@ -17,10 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Tobias Gödderz
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/InputAqlItemRow.h"
+#include "InputAqlItemRow.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 
@@ -28,53 +32,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex)
-    : _block(block), _baseIndex(baseIndex), _regsToKeep(), _produced(true) {
+    : _block(block), _baseIndex(baseIndex) {
   // Using this constructor we are not allowed to write
   TRI_ASSERT(block != nullptr);
 }
 
-InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
-    : _block(block)
-    , _baseIndex(baseIndex)
-    , _regsToKeep(regsToKeep)
-    , _produced(false)
-    {
-      TRI_ASSERT(block != nullptr);
-    }
-
-const AqlValue& InputAqlItemRow::getValue(RegisterId variableNr) const {
-  TRI_ASSERT(variableNr < getNrRegisters());
-  return _block->getValueReference(_baseIndex, variableNr);
-}
-
-void InputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow, AqlValue const& value) {
-  TRI_ASSERT(variableNr < getNrRegisters());
-  _block->emplaceValue(_baseIndex, variableNr, value);
-  copyRow(sourceRow);
-}
-
-void InputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
-  if (_produced) {
-    return;
-  }
-
-  for (auto itemId : _regsToKeep) {
-    // copy entries to keep
-    _block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
-
-    // auto const& value = sourceRow.getValue(itemId);
-    // if (!value.isEmpty()) {
-    //   AqlValue clonedValue = value.clone();
-    //   AqlValueGuard guard(clonedValue, true);
-
-    //   TRI_IF_FAILURE("InputAqlItemRow::copyRow") {
-    //     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    //   }
-
-    //   _block.setValue(_baseIndex, itemId, clonedValue);
-    //   guard.steal();
-    // }
-  }
-
-  _produced = true;
+const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
+  TRI_ASSERT(registerId < getNrRegisters());
+  return _block->getValueReference(_baseIndex, registerId);
 }

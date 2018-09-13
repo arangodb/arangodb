@@ -235,6 +235,7 @@ SET(ARANGOD_SOURCES
   Aql/OptimizerRulesCluster.cpp
   Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerRulesFeature.cpp
+  Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
   Aql/QueryExecutionState.cpp

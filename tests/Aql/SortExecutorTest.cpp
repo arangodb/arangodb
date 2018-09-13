@@ -30,12 +30,12 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Variable.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -94,7 +94,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        InputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -106,7 +106,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        InputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -130,7 +130,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        InputAqlItemRow firstResult(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow firstResult(&block, 0, infos.registersToKeep());
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           state = testee.produceRow(firstResult);
@@ -143,47 +143,47 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(firstResult.produced());
 
-          InputAqlItemRow secondResult(&block, 1, infos.registersToKeep());
+          OutputAqlItemRow secondResult(&block, 1, infos.registersToKeep());
           state = testee.produceRow(secondResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(secondResult.produced());
 
-          InputAqlItemRow thirdResult(&block, 2, infos.registersToKeep());
+          OutputAqlItemRow thirdResult(&block, 2, infos.registersToKeep());
           state = testee.produceRow(thirdResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(thirdResult.produced());
 
-          InputAqlItemRow fourthResult(&block, 3, infos.registersToKeep());
+          OutputAqlItemRow fourthResult(&block, 3, infos.registersToKeep());
           state = testee.produceRow(fourthResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(fourthResult.produced());
 
-          InputAqlItemRow fifthResult(&block, 4, infos.registersToKeep());
+          OutputAqlItemRow fifthResult(&block, 4, infos.registersToKeep());
           state = testee.produceRow(fifthResult);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(fifthResult.produced());
 
-          AqlValue v = firstResult.getValue(0);
+          AqlValue v = block.getValue(0, 0);
           REQUIRE(v.isNumber());
           int64_t number = v.toInt64(nullptr);
           REQUIRE(number == 1);
 
-          v = secondResult.getValue(0);
+          v = block.getValue(1, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 2);
 
-          v = thirdResult.getValue(0);
+          v = block.getValue(2, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 3);
 
-          v = fourthResult.getValue(0);
+          v = block.getValue(3, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 4);
 
-          v = fifthResult.getValue(0);
+          v = block.getValue(4, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 5);

@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 #include <memory>
 
@@ -54,7 +55,7 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(InputAqlItemRow& output);
+  ExecutionState produceRow(OutputAqlItemRow &output);
 
  private:
   Fetcher& _fetcher;

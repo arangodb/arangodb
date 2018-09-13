@@ -27,6 +27,7 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 
 using namespace arangodb;
@@ -113,7 +114,7 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _input(nullptr), _returnNext(0) {};
 SortExecutor::~SortExecutor() = default;
 
-ExecutionState SortExecutor::produceRow(InputAqlItemRow& output) {
+ExecutionState SortExecutor::produceRow(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data

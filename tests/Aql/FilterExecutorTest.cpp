@@ -59,7 +59,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        InputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -71,7 +71,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        InputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -95,7 +95,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         std::size_t current = 0;
-        InputAqlItemRow row(&block, current, infos.registersToKeep());
+        OutputAqlItemRow row(&block, current, infos.registersToKeep());
 
         /*
         1  produce => WAIT                 RES1
@@ -163,10 +163,10 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        InputAqlItemRow result1(&block, 0, infos.registersToKeep());
-        InputAqlItemRow result2(&block, 1, infos.registersToKeep());
-        InputAqlItemRow result3(&block, 2, infos.registersToKeep());
-        InputAqlItemRow result4(&block, 3, infos.registersToKeep());
+        OutputAqlItemRow result1(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result2(&block, 1, infos.registersToKeep());
+        OutputAqlItemRow result3(&block, 2, infos.registersToKeep());
+        OutputAqlItemRow result4(&block, 3, infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1

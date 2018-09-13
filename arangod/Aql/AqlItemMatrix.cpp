@@ -54,7 +54,7 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
 
     if (index < block_ptr->size()) {
       if(_lastRow) {
-        _prevRow->changeRow(block_ptr, index);
+        *_prevRow = InputAqlItemRow{block_ptr, index};
         std::swap(_prevRow,_lastRow);
       } else {
         _lastRow = std::make_unique<InputAqlItemRow>(block_ptr, index);
