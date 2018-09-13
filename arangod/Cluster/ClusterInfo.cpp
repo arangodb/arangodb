@@ -761,10 +761,14 @@ void ClusterInfo::loadPlan() {
                 if (it != _plannedCollections.end()) {
                   auto it2 = (*it).second.find(collectionId);
                   if (it2 != (*it).second.end()) {
-                    auto estimates = (*it2).second->clusterIndexEstimates(false);
-                    if (!estimates.empty()) {
-                      // already have an estimate... now copy it over
-                      newCollection->clusterIndexEstimates(std::move(estimates));
+                    try {
+                      auto estimates = (*it2).second->clusterIndexEstimates(false);
+                      if (!estimates.empty()) {
+                        // already have an estimate... now copy it over
+                        newCollection->clusterIndexEstimates(std::move(estimates));
+                      }
+                    } catch (...) {
+                      // may fail during unit tests with mocks
                     }
                   }
                 }

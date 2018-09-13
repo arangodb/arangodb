@@ -63,12 +63,13 @@ std::unordered_map<std::string, double> PhysicalCollection::clusterIndexEstimate
 
 /// @brief sets the current index selectivity estimates
 void PhysicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+  // default-implementation is a no-op. the operation is only useful for cluster collections
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cluster index estimates called for non-cluster collection");
 }
 
 /// @brief flushes the current index selectivity estimates
 void PhysicalCollection::flushClusterIndexEstimates() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cluster index estimates called for non-cluster collection");
+  // default-implementation is a no-op. the operation is only useful for cluster collections
 }
 
 void PhysicalCollection::drop() {
