@@ -242,19 +242,20 @@ void V8ShellFeature::copyInstallationFiles() {
   if (FileUtils::exists(_copyDirectory)) {
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning path '" <<
-      TRI_errno_string(res) << "'";
+      LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
+      << "' (" << TRI_errno_string(res) << ")";
       FATAL_ERROR_EXIT();
     }
   }
   if (!FileUtils::createDirectory(_copyDirectory, &res)) {
-    LOG_TOPIC(FATAL, Logger::V8) << "Error creating path '" << TRI_errno_string(res) << "'";
+    LOG_TOPIC(FATAL, Logger::V8) << "Error creating JS installation path '" << _copyDirectory
+    << "' (" << TRI_errno_string(res) << "'";
     FATAL_ERROR_EXIT();
   }
   std::string error;
   if (!FileUtils::copyRecursive(_startupDirectory, _copyDirectory, error)) {
-    LOG_TOPIC(FATAL, Logger::V8) << "Error copying installation files '" << error << "'";
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << _copyDirectory
+    << "' (" << error << ")";
     FATAL_ERROR_EXIT();
   }
   _startupDirectory = _copyDirectory;
