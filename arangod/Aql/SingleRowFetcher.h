@@ -107,7 +107,7 @@ class SingleRowFetcher {
   *        until the next fetchRow() call.
   *        TODO Avoid allocating a new AqlItemRow on each fetchRow() call
   */
-  std::unique_ptr<AqlItemRow> _currentRow;
+  std::unique_ptr<AqlItemRow const> _currentRow;
 
  private:
   /**
