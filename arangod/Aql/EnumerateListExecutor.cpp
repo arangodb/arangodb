@@ -32,9 +32,28 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+EnumerateListExecutorInfos::EnumerateListExecutorInfos(
+    RegisterId inputRegister, RegisterId outputRegister,
+    RegisterId nrOutputRegisters, RegisterId nrInputRegisters,
+    std::unordered_set<RegisterId> const registersToClear,
+    transaction::Methods* trx)
+    : ExecutorInfos(inputRegister, outputRegister, nrOutputRegisters,
+                    nrInputRegisters, registersToClear),
+      _trx(trx) {
+  TRI_ASSERT(trx != nullptr);
+}
+
+EnumerateListExecutorInfos::~EnumerateListExecutorInfos() {
+}
+
+transaction::Methods* EnumerateListExecutorInfos::trx() const {
+  return _trx;
+}
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
