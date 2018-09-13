@@ -87,7 +87,12 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     }
 
     if (state == ExecutionState::DONE) {
-      _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
+      if (_getSomeOutRowsAdded == 0) {
+        // No results, just throw it away
+        _getSomeOutBlock.reset();
+      } else if (_getSomeOutRowsAdded < atMost) {
+        _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
+      }
       //_getSomeOutBlock is gurantted to be nullptr after move.
       //keep this invariant incase we switch to another type!!!!!
       return {state, std::move(_getSomeOutBlock)};
