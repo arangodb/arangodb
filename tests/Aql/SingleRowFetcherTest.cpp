@@ -228,11 +228,12 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
   // specification should be compared with the actual output.
   GIVEN("there are multiple blocks upstream") {
     fakeit::Mock<BlockFetcher> blockFetcherMock;
+    ResourceMonitor monitor;
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
-    std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>({{{1}}, {{2}}, {{3}}}),
-                                  block2 = buildBlock<1>({{{4}}, {{5}}}),
-                                  block3 = buildBlock<1>({{{6}}});
+    std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),
+                                  block2 = buildBlock<1>(&monitor, {{{4}}, {{5}}}),
+                                  block3 = buildBlock<1>(&monitor, {{{6}}});
 
     WHEN("the producer does not wait") {
       // Using .Return doesn't work here, as unique_ptr is not
