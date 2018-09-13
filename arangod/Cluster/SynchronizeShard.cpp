@@ -956,8 +956,10 @@ bool SynchronizeShard::first() {
 
 void SynchronizeShard::setState(ActionState state) {
   
-  TRI_ASSERT(_description.has("shard"));
-  _feature.incShardVersion(_description.get("shard"));
+  if ((COMPLETE==state || FAILED==state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
   
   ActionBase::setState(state);
   
