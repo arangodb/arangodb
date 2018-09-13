@@ -79,7 +79,8 @@ class AqlItemMatrix {
 
     // Location to keep the memory of the last
     // AQL item row. Will be mutated by getRow
-    mutable std::unique_ptr<AqlItemRow const> _lastRow;
+    mutable std::unique_ptr<AqlItemRow> _lastRow;
+    mutable std::unique_ptr<AqlItemRow> _prevRow;
 };
 
 }  // namespace aql

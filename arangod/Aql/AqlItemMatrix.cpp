@@ -53,8 +53,13 @@ AqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
     TRI_ASSERT(block_ptr != nullptr);
 
     if (index < block_ptr->size()) {
-      // We are in this row
-      _lastRow = std::make_unique<AqlItemRow const>(block_ptr, index);
+      if(_lastRow) {
+        _prevRow->changeRow(block_ptr, index);
+        std::swap(_prevRow,_lastRow);
+      } else {
+        _lastRow = std::make_unique<AqlItemRow>(block_ptr, index);
+        _prevRow = std::make_unique<AqlItemRow>(block_ptr, index);
+      }
       return _lastRow.get();
     }
 
