@@ -456,7 +456,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
     }
   
     // flush estimates
-    collection->clusterIndexEstimatesTTL(0.0);
+    collection->flushClusterIndexEstimates();
 
     // the cluster won't set a proper id value
     std::string iid = tmp.slice().get("id").copyString();
@@ -599,7 +599,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
     }
     
     // flush estimates
-    collection->clusterIndexEstimatesTTL(0.0);
+    collection->flushClusterIndexEstimates();
 
 #ifdef USE_ENTERPRISE
     return Indexes::dropCoordinatorEE(collection, iid);
