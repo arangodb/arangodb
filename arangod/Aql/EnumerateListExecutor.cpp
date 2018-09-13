@@ -28,7 +28,7 @@
 
 #include "Basics/Common.h"
 
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
@@ -41,9 +41,9 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
     : _fetcher(fetcher), _infos(infos){};
 EnumerateListExecutor::~EnumerateListExecutor() = default;
 
-ExecutionState EnumerateListExecutor::produceRow(AqlItemRow& output) {
+ExecutionState EnumerateListExecutor::produceRow(InputAqlItemRow& output) {
   ExecutionState state;
-  AqlItemRow const* input = nullptr;
+  InputAqlItemRow const* input = nullptr;
 
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();

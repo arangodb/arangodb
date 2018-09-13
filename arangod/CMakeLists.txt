@@ -180,7 +180,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemMatrix.cpp
-  Aql/AqlItemRow.cpp
+  Aql/InputAqlItemRow.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp

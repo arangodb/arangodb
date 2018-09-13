@@ -29,7 +29,7 @@
 namespace arangodb {
 namespace aql {
 
-class AqlItemRow;
+class InputAqlItemRow;
 class AqlItemBlock;
 
 /**
@@ -69,7 +69,7 @@ class AqlItemMatrix {
      *
      * @return A single row in the Matrix
      */
-    AqlItemRow const* getRow(size_t index) const;
+    InputAqlItemRow const* getRow(size_t index) const;
 
   private:
 
@@ -79,8 +79,8 @@ class AqlItemMatrix {
 
     // Location to keep the memory of the last
     // AQL item row. Will be mutated by getRow
-    mutable std::unique_ptr<AqlItemRow> _lastRow;
-    mutable std::unique_ptr<AqlItemRow> _prevRow;
+    mutable std::unique_ptr<InputAqlItemRow> _lastRow;
+    mutable std::unique_ptr<InputAqlItemRow> _prevRow;
 };
 
 }  // namespace aql

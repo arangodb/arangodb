@@ -37,7 +37,7 @@
 namespace arangodb {
 namespace aql {
 
-class AqlItemRow;
+class InputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
@@ -73,7 +73,7 @@ class EnumerateListExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(AqlItemRow& output);
+  ExecutionState produceRow(InputAqlItemRow& output);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);

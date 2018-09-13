@@ -30,7 +30,7 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/SortExecutor.h"
@@ -94,7 +94,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result(&block, 0, infos.registersToKeep());
+        InputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -106,7 +106,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        AqlItemRow result(&block, 0, infos.registersToKeep());
+        InputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -130,7 +130,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        AqlItemRow firstResult(&block, 0, infos.registersToKeep());
+        InputAqlItemRow firstResult(&block, 0, infos.registersToKeep());
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           state = testee.produceRow(firstResult);
@@ -143,22 +143,22 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(firstResult.produced());
 
-          AqlItemRow secondResult(&block, 1, infos.registersToKeep());
+          InputAqlItemRow secondResult(&block, 1, infos.registersToKeep());
           state = testee.produceRow(secondResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(secondResult.produced());
 
-          AqlItemRow thirdResult(&block, 2, infos.registersToKeep());
+          InputAqlItemRow thirdResult(&block, 2, infos.registersToKeep());
           state = testee.produceRow(thirdResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(thirdResult.produced());
 
-          AqlItemRow fourthResult(&block, 3, infos.registersToKeep());
+          InputAqlItemRow fourthResult(&block, 3, infos.registersToKeep());
           state = testee.produceRow(fourthResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(fourthResult.produced());
 
-          AqlItemRow fifthResult(&block, 4, infos.registersToKeep());
+          InputAqlItemRow fifthResult(&block, 4, infos.registersToKeep());
           state = testee.produceRow(fifthResult);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(fifthResult.produced());

@@ -23,7 +23,7 @@
 #include "AqlItemMatrix.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -45,7 +45,7 @@ bool AqlItemMatrix::empty() const {
   return _blocks.empty();
 }
 
-AqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
+InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
 
   for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
@@ -57,8 +57,8 @@ AqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
         _prevRow->changeRow(block_ptr, index);
         std::swap(_prevRow,_lastRow);
       } else {
-        _lastRow = std::make_unique<AqlItemRow>(block_ptr, index);
-        _prevRow = std::make_unique<AqlItemRow>(block_ptr, index);
+        _lastRow = std::make_unique<InputAqlItemRow>(block_ptr, index);
+        _prevRow = std::make_unique<InputAqlItemRow>(block_ptr, index);
       }
       return _lastRow.get();
     }

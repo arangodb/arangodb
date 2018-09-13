@@ -40,7 +40,7 @@ class Methods;
 
 namespace aql {
 
-class AqlItemRow;
+class InputAqlItemRow;
 class AqlItemMatrix;
 class AllRowsFetcher;
 class ExecutorInfos;
@@ -84,7 +84,7 @@ class SortExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  ExecutionState produceRow(AqlItemRow& output);
+  ExecutionState produceRow(InputAqlItemRow& output);
 
  private:
   void doSorting();

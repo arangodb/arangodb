@@ -20,20 +20,20 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex)
     : _block(block), _baseIndex(baseIndex), _regsToKeep(), _produced(true) {
   // Using this constructor we are not allowed to write
   TRI_ASSERT(block != nullptr);
 }
 
-AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
+InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
     : _block(block)
     , _baseIndex(baseIndex)
     , _regsToKeep(regsToKeep)
@@ -42,18 +42,18 @@ AqlItemRow::AqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set
       TRI_ASSERT(block != nullptr);
     }
 
-const AqlValue& AqlItemRow::getValue(RegisterId variableNr) const {
+const AqlValue& InputAqlItemRow::getValue(RegisterId variableNr) const {
   TRI_ASSERT(variableNr < getNrRegisters());
   return _block->getValueReference(_baseIndex, variableNr);
 }
 
-void AqlItemRow::setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const& value) {
+void InputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow, AqlValue const& value) {
   TRI_ASSERT(variableNr < getNrRegisters());
   _block->emplaceValue(_baseIndex, variableNr, value);
   copyRow(sourceRow);
 }
 
-void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
+void InputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   if (_produced) {
     return;
   }
@@ -67,7 +67,7 @@ void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
     //   AqlValue clonedValue = value.clone();
     //   AqlValueGuard guard(clonedValue, true);
 
-    //   TRI_IF_FAILURE("AqlItemRow::copyRow") {
+    //   TRI_IF_FAILURE("InputAqlItemRow::copyRow") {
     //     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     //   }
 

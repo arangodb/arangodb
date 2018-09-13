@@ -34,7 +34,7 @@
 namespace arangodb {
 namespace aql {
 
-class AqlItemRow;
+class InputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
@@ -54,7 +54,7 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(AqlItemRow& output);
+  ExecutionState produceRow(InputAqlItemRow& output);
 
  private:
   Fetcher& _fetcher;

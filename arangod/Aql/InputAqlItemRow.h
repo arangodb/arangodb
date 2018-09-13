@@ -33,17 +33,17 @@ namespace aql {
 struct AqlValue;
 
 /**
- * @brief One row within an AqlItemBlock
+ * @brief One row within an AqlItemBlock, for reading.
  *
  * Does not keep a reference to the data.
  * Caller needs to make sure that the underlying
  * AqlItemBlock is not going out of scope.
  */
-class AqlItemRow {
+class InputAqlItemRow {
  public:
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex);
+  InputAqlItemRow(AqlItemBlock* block, size_t baseIndex);
 
-  AqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep);
+  InputAqlItemRow(AqlItemBlock* block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -53,8 +53,8 @@ class AqlItemRow {
    * @return Reference to the AqlValue stored in that variable.
    */
   const AqlValue& getValue(RegisterId variableNr) const;
-  void setValue(RegisterId variableNr, AqlItemRow const& sourceRow, AqlValue const&);
-  void copyRow(AqlItemRow const& sourceRow);
+  void setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow, AqlValue const&);
+  void copyRow(InputAqlItemRow const& sourceRow);
   std::size_t getNrRegisters() const { return _block->getNrRegs(); }
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;

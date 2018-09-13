@@ -37,7 +37,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemRow;
+class InputAqlItemRow;
 class ExecutionNode;
 class ExecutionEngine;
 

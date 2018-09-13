@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
@@ -70,11 +70,11 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
   }
 
   ExecutionState state;
-  std::unique_ptr<AqlItemRow> row;  // holds temporary rows
+  std::unique_ptr<InputAqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
+  row = std::make_unique<InputAqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
   while (_getSomeOutRowsAdded < atMost) {
     row->changeRow(_getSomeOutRowsAdded);
     state = _executor.produceRow(*row);
