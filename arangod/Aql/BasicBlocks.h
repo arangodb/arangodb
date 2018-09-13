@@ -56,7 +56,7 @@ class SingletonBlock final : public ExecutionBlock {
 
 class FilterBlock final : public ExecutionBlock {
  public:
-  FilterBlock(ExecutionEngine*, FilterNode const*);
+  FilterBlock(ExecutionEngine*, FilterNode const*, bool letItFail);
 
   ~FilterBlock();
 

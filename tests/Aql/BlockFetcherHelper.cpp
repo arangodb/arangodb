@@ -79,7 +79,6 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       _nrCalled(0),
       _didWait(false),
       _resourceMonitor(),
-      _regInfo(),
       _itemBlock(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -92,9 +91,6 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
       uint64_t nrRegs = oneRow.length();
-      _regInfo.numRegs = nrRegs;
-      _regInfo.toClear = {};
-      _regInfo.toKeep = {};
       _itemBlock =
           std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
       VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
@@ -119,7 +115,7 @@ SingleRowFetcherHelper::fetchRow() {
   if (_nrCalled > _nrItems) {
     return {ExecutionState::DONE, nullptr};
   }
-  _lastReturnedRow = std::make_unique<AqlItemRow>(*_itemBlock.get(), _nrCalled -1, _regInfo);
+  _lastReturnedRow = std::make_unique<AqlItemRow>(*_itemBlock.get(), _nrCalled -1);
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;
