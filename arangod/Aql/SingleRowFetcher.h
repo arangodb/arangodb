@@ -48,7 +48,7 @@ class BlockFetcher;
 class SingleRowFetcher {
  public:
   explicit SingleRowFetcher(BlockFetcher& executionBlock);
-  TEST_VIRTUAL ~SingleRowFetcher() = default;
+  TEST_VIRTUAL ~SingleRowFetcher();
 
  protected:
   // only for testing! Does not initialize _blockFetcher!
@@ -107,7 +107,7 @@ class SingleRowFetcher {
   *        until the next fetchRow() call.
   *        TODO Avoid allocating a new AqlItemRow on each fetchRow() call
   */
-  std::unique_ptr<AqlItemRow> _currentRow;
+  std::unique_ptr<AqlItemRow const> _currentRow;
 
  private:
   /**
@@ -125,6 +125,12 @@ class SingleRowFetcher {
   bool isLastRowInBlock();
 
   size_t getRowIndex();
+
+  /**
+  * @brief return block to the BlockFetcher (and, by extension, to the
+  *        AqlItemBlockManager)
+  */
+  void returnCurrentBlock() noexcept;
 };
 
 }  // namespace aql

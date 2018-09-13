@@ -70,7 +70,7 @@ class AqlItemMatrix {
      * @return A single row in the Matrix
      */
     AqlItemRow const* getRow(size_t index) const;
-    
+
   private:
 
     std::vector<std::shared_ptr<AqlItemBlock>> _blocks;

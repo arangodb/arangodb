@@ -1075,7 +1075,7 @@ AqlValue AqlValue::CreateFromBlocks(
   return AqlValue(buffer.get(), shouldDelete);
 }
 
-/// @brief 3-way comparison for AqlValue objects
+/// @brief comparison for AqlValue objects
 int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
   AqlValue::AqlValueType const leftType = left.type();

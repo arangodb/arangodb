@@ -115,7 +115,8 @@ SingleRowFetcherHelper::fetchRow() {
   if (_nrCalled > _nrItems) {
     return {ExecutionState::DONE, nullptr};
   }
-  _lastReturnedRow = std::make_unique<AqlItemRow>(*_itemBlock.get(), _nrCalled -1);
+  TRI_ASSERT(_itemBlock);
+  _lastReturnedRow = std::make_unique<AqlItemRow>(_itemBlock.get(), _nrCalled -1);
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;

@@ -43,7 +43,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutorInfos&& infos)
     : ExecutionBlock(engine, node),
       _infos(infos),
-      _blockFetcher(*this),
+      _blockFetcher(this),
       _rowFetcher(_blockFetcher),
       _executor(_rowFetcher, _infos),
       _getSomeOutBlock(nullptr),
@@ -74,7 +74,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<AqlItemRow>(*_getSomeOutBlock, _getSomeOutRowsAdded, _infos.registersToKeep());
+  row = std::make_unique<AqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
   while (_getSomeOutRowsAdded < atMost) {
     row->changeRow(_getSomeOutRowsAdded);
     state = _executor.produceRow(*row);
@@ -87,7 +87,12 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     }
 
     if (state == ExecutionState::DONE) {
-      _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
+      if (_getSomeOutRowsAdded == 0) {
+        // No results, just throw it away
+        _getSomeOutBlock.reset();
+      } else if (_getSomeOutRowsAdded < atMost) {
+        _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
+      }
       //_getSomeOutBlock is gurantted to be nullptr after move.
       //keep this invariant incase we switch to another type!!!!!
       return {state, std::move(_getSomeOutBlock)};
