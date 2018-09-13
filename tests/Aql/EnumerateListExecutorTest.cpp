@@ -28,7 +28,7 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ResourceUsage.h"
@@ -74,7 +74,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -86,7 +86,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        AqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -100,20 +100,19 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
     }
   }
 
-
   GIVEN("there are rows in the upstream") {
-    auto input = VPackParser::fromJson(
-        "[ [true], [false], [true], [false], [true], [false] ]");
+    auto input =
+        VPackParser::fromJson("[ 1, 2, 3, [[true, true, true]] ]");
 
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        AqlItemRow result1(&block, 0, infos.registersToKeep());
-        AqlItemRow result2(&block, 1, infos.registersToKeep());
-        AqlItemRow result3(&block, 2, infos.registersToKeep());
-        AqlItemRow result4(&block, 3, infos.registersToKeep());
+        OutputAqlItemRow result1(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result2(&block, 1, infos.registersToKeep());
+        OutputAqlItemRow result3(&block, 2, infos.registersToKeep());
+        OutputAqlItemRow result4(&block, 3, infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1
