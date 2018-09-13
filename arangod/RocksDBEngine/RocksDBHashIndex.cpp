@@ -32,6 +32,8 @@ using namespace arangodb;
 /// @brief Test if this index matches the definition
 /// different to the Index::matchesDefinition because the ordering can
 /// be arbitrary
+/// an index on ["a", "b"] is considered identical to an index on ["b", "a"]
+/// this is to ensure compatibility with the MMFiles engine's hash index
 bool RocksDBHashIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

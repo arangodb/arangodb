@@ -1424,7 +1424,7 @@ static int clusterSendToAllServers(
   DBServers = ci->getCurrentDBServers();
   std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
-    cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
+    cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }
 
@@ -1432,14 +1432,14 @@ static int clusterSendToAllServers(
   size_t count = DBServers.size();
 
   for (; count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_TIMEOUT) {
-      cc->drop("", coordTransactionID, 0, "");
+      cc->drop(coordTransactionID, 0, "");
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
         res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-      cc->drop("", coordTransactionID, 0, "");
+      cc->drop(coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
   }
