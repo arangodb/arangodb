@@ -51,14 +51,14 @@ namespace aql {
 // TODO check that blocks are not returned to early (e.g. not before the next row
 //      is fetched)
 
-// TODO implement a "real" BlockFetcherMock instead of using fakeit
-
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
   ExecutionState state;
   AqlItemRow const* row;
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
+    // TODO use the BlockFetcherMock class instead of fakeit, as in
+    // GIVEN("there are multiple blocks upstream")
     fakeit::Mock<BlockFetcher> blockFetcherMock;
     fakeit::When(Method(blockFetcherMock, returnBlock)).AlwaysReturn();
 
@@ -109,6 +109,8 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
 
   GIVEN("A single upstream block with a single row") {
     VPackBuilder input;
+    // TODO use the BlockFetcherMock class instead of fakeit, as in
+    // GIVEN("there are multiple blocks upstream")
     fakeit::Mock<BlockFetcher> blockFetcherMock;
     fakeit::When(Method(blockFetcherMock, returnBlock)).AlwaysReturn();
 
