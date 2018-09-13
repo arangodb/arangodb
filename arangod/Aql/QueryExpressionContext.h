@@ -43,9 +43,9 @@ class QueryExpressionContext : public ExpressionContext {
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) override;
   icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*, bool& isEmptyExpression) override;
 
-  bool killed() const override;
-  TRI_vocbase_t& vocbase() const override;
-  Query* query() const override;
+  bool killed() const override final;
+  TRI_vocbase_t& vocbase() const override final;
+  Query* query() const override final;
 
  private:
   Query* _query;
