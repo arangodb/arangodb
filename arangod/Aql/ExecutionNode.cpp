@@ -45,6 +45,8 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/FilterExecutor.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
@@ -1790,7 +1792,16 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine &engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<FilterBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId inputRegister = it->second.registerId;
+
+  ExecutorInfos infos(inputRegister, 0, getRegisterPlan()->nrRegs[getDepth()],
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                      getRegsToClear());
+  return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this, std::move(infos));
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,

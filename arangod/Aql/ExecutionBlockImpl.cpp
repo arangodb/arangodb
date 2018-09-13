@@ -37,31 +37,12 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-static RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
-  auto nrOut = thisBlock->getNrOutputRegisters();
-  auto nrIn = thisBlock->getNrInputRegisters();
-  std::unordered_set<RegisterId> toKeep;
-  auto toClear = thisBlock->getPlanNode()->getRegsToClear();
-
-  for (RegisterId i = 0; i < nrIn; i++) {
-    toKeep.emplace(i);
-  }
-
-  for(auto item : toClear){
-    toKeep.erase(item);
-  }
-
-  return { nrOut
-         , std::move(toKeep)
-         , std::move(toClear)
-         };
-}
-
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                 ExecutionNode const* node)
+                                                 ExecutionNode const* node,
+                                                 ExecutorInfos&& infos)
     : ExecutionBlock(engine, node),
-      _infos(0, 0),
+      _infos(infos),
       _blockFetcher(*this),
       _rowFetcher(_blockFetcher),
       _executor(_rowFetcher, _infos),
@@ -80,10 +61,8 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 
-  auto regInfo = getRegisterInfo(this);
-
   if(!_getSomeOutBlock) {
-    auto block = this->requestBlock(atMost, this->getNrOutputRegisters());
+    auto block = this->requestBlock(atMost, _infos.numberOfRegisters());
     _getSomeOutBlock = std::unique_ptr<AqlItemBlock>(block);
     //auto deleter = [=](AqlItemBlock* b){_engine->_itemBlockManager.returnBlock(b); };
     //_getSomeOutBlock = std::unique_ptr<AqlItemBlock, decltype(deleter)>(block, deleter);
@@ -95,7 +74,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<AqlItemRow>(*_getSomeOutBlock, _getSomeOutRowsAdded, regInfo);
+  row = std::make_unique<AqlItemRow>(*_getSomeOutBlock, _getSomeOutRowsAdded, _infos.registersToKeep());
   while (_getSomeOutRowsAdded < atMost) {
     row->changeRow(_getSomeOutRowsAdded);
     state = _executor.produceRow(*row);

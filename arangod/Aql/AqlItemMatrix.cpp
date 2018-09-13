@@ -55,7 +55,7 @@ AqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
 
     if (index < block.size()) {
       // We are in this row
-      _lastRow = std::make_unique<AqlItemRow const>(block, index, RegInfo{});
+      _lastRow = std::make_unique<AqlItemRow const>(block, index);
       return _lastRow.get();
     }
 

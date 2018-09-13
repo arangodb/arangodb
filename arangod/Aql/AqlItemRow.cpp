@@ -27,10 +27,15 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemRow::AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info)
+AqlItemRow::AqlItemRow(AqlItemBlock& block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex), _regsToKeep(), _produced(true) {
+  // Using this constructor we are not allowed to write
+}
+
+AqlItemRow::AqlItemRow(AqlItemBlock &block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep)
     : _block(block)
     , _baseIndex(baseIndex)
-    , _registerInfo(std::move(info))
+    , _regsToKeep(regsToKeep)
     , _produced(false)
     { }
 
@@ -50,11 +55,11 @@ void AqlItemRow::copyRow(AqlItemRow const& sourceRow) {
     return;
   }
 
-  for (auto itemId : _registerInfo.toKeep) {
-    auto const& value = sourceRow.getValue(itemId);
-
+  for (auto itemId : _regsToKeep) {
+    // copy entries to keep
     _block.emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
+    // auto const& value = sourceRow.getValue(itemId);
     // if (!value.isEmpty()) {
     //   AqlValue clonedValue = value.clone();
     //   AqlValueGuard guard(clonedValue, true);

@@ -74,7 +74,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *               required for the execution.
    * @param node The Node used to create this ExecutionBlock
    */
-  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node);
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node, ExecutorInfos&& infos);
   ~ExecutionBlockImpl();
 
   /**

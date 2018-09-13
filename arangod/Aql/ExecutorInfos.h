@@ -32,14 +32,29 @@
 namespace arangodb {
 namespace aql {
 
-  /**
-   * @brief Class to be handed into Executors during construction
-   *        This class should be independend from AQL internal
-   *        knowledge for easy unit-testability.
-   */
+/**
+ * @brief Class to be handed into Executors during construction
+ *        This class should be independend from AQL internal
+ *        knowledge for easy unit-testability.
+ */
 class ExecutorInfos {
  public:
-  ExecutorInfos(RegisterId inputRegister, RegisterId outputRegister) : _inReg(inputRegister), _outReg(outputRegister), _filtered(0) {}
+  ExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
+                RegisterId nrOutputRegisters,
+                RegisterId nrInputRegisters,
+                std::unordered_set<RegisterId> const registersToClear)
+      : _inReg(inputRegister),
+        _outReg(outputRegister),
+        _filtered(0),
+        _numRegs(nrOutputRegisters),
+        _registersToKeep(),
+        _registersToClear(registersToClear) {
+    for (RegisterId i = 0; i < nrInputRegisters; i++) {
+      if (_registersToClear.find(i) == _registersToClear.end()) {
+        _registersToKeep.emplace(i);
+      }
+    }
+  }
 
   ~ExecutorInfos() = default;
 
@@ -70,6 +85,12 @@ class ExecutorInfos {
    */
   void countFiltered() { _filtered++; } 
 
+  size_t numberOfRegisters() { return _numRegs; }
+
+  std::unordered_set<RegisterId> const& registersToKeep() { return _registersToKeep; }
+
+  std::unordered_set<RegisterId> const& registersToClear() { return _registersToClear; }
+
  private:
 
   RegisterId _inReg;
@@ -77,6 +98,12 @@ class ExecutorInfos {
   RegisterId _outReg;
 
   size_t _filtered;
+
+  size_t _numRegs;
+
+  std::unordered_set<RegisterId> _registersToKeep;
+
+  std::unordered_set<RegisterId> const _registersToClear;
 };
 
 } // aql

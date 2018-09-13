@@ -41,7 +41,9 @@ struct AqlValue;
  */
 class AqlItemRow {
  public:
-  AqlItemRow(AqlItemBlock &block, size_t baseIndex, RegInfo info);
+  AqlItemRow(AqlItemBlock &block, size_t baseIndex);
+
+  AqlItemRow(AqlItemBlock &block, size_t baseIndex, std::unordered_set<RegisterId> const& regsToKeep);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -73,7 +75,8 @@ class AqlItemRow {
    */
   size_t _baseIndex;
 
-  RegInfo _registerInfo;
+  std::unordered_set<RegisterId> const _regsToKeep;
+
   bool _produced;
 };
 
