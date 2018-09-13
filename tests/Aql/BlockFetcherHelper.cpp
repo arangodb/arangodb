@@ -91,6 +91,8 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
       uint64_t nrRegs = oneRow.length();
+      // NOTE: If this class ever gets more than one block, fetchRow() must
+      // be adapted to give valid block IDs to InputAqlItemRow!
       _itemBlock =
           std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
       VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
@@ -116,7 +118,9 @@ SingleRowFetcherHelper::fetchRow() {
     return {ExecutionState::DONE, nullptr};
   }
   TRI_ASSERT(_itemBlock);
-  _lastReturnedRow = std::make_unique<InputAqlItemRow>(_itemBlock.get(), _nrCalled -1);
+  // Note that the blockId is hard coded to 42. If this class ever should get
+  // multiple blocks, this has to be changed.
+  _lastReturnedRow = std::make_unique<InputAqlItemRow>(_itemBlock.get(), _nrCalled -1, 42);
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;

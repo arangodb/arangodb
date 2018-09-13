@@ -138,7 +138,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(!firstResult.produced());
         }
 
-        AND_THEN("we procude the rows in order") {
+        AND_THEN("we produce the rows in order") {
           state = testee.produceRow(firstResult);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(firstResult.produced());

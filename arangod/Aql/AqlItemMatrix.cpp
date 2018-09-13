@@ -52,13 +52,15 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
     AqlItemBlock* block_ptr = it->get();
     TRI_ASSERT(block_ptr != nullptr);
 
+    InputAqlItemRow::AqlItemBlockId blockId = it - _blocks.begin();
+
     if (index < block_ptr->size()) {
       if(_lastRow) {
-        *_prevRow = InputAqlItemRow{block_ptr, index};
+        *_prevRow = InputAqlItemRow{block_ptr, index, blockId};
         std::swap(_prevRow,_lastRow);
       } else {
-        _lastRow = std::make_unique<InputAqlItemRow>(block_ptr, index);
-        _prevRow = std::make_unique<InputAqlItemRow>(block_ptr, index);
+        _lastRow = std::make_unique<InputAqlItemRow>(block_ptr, index, blockId);
+        _prevRow = std::make_unique<InputAqlItemRow>(block_ptr, index, blockId);
       }
       return _lastRow.get();
     }
@@ -67,5 +69,5 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
     index -= block_ptr->size();
   }
   // We have asked for a row outside of this Vector
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An exector block is reading out of bounds.");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An executor block is reading out of bounds.");
 }

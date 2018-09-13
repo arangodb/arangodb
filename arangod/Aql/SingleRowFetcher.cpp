@@ -60,7 +60,7 @@ std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
   } else {
     TRI_ASSERT(_currentBlock);
     _currentRow =
-        std::make_unique<InputAqlItemRow const>(_currentBlock.get(), _rowIndex);
+        std::make_unique<InputAqlItemRow const>(_currentBlock.get(), _rowIndex, _blockId);
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
@@ -76,13 +76,17 @@ std::pair<ExecutionState, const InputAqlItemRow*> SingleRowFetcher::fetchRow() {
 }
 
 SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
-    : _blockFetcher(&executionBlock) {}
+    : _blockFetcher(&executionBlock), _blockId(-1) {}
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 SingleRowFetcher::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
+
+  if (res.second != nullptr) {
+    _blockId++;
+  }
 
   return res;
 }

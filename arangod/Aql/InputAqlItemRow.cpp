@@ -31,8 +31,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex)
-    : _block(block), _baseIndex(baseIndex) {
+InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
+                                 AqlItemBlockId blockId_)
+    : _block(block), _baseIndex(baseIndex), _blockId(blockId_) {
   // Using this constructor we are not allowed to write
   TRI_ASSERT(block != nullptr);
 }

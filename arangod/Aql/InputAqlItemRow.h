@@ -45,7 +45,10 @@ struct AqlValue;
  */
 class InputAqlItemRow {
  public:
-  InputAqlItemRow(AqlItemBlock* block, size_t baseIndex);
+  using AqlItemBlockId = int64_t;
+  // InputAqlItemRow(AqlItemBlock* block, size_t baseIndex);
+  InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
+                  AqlItemBlockId blockId);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -72,6 +75,12 @@ class InputAqlItemRow {
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
+
+  /**
+   * @brief Block ID. Is assumed to biuniquely identify an AqlItemBlock. The
+   *        Fetcher is responsible for assigning these.
+   */
+  AqlItemBlockId _blockId;
 };
 
 }  // namespace aql
