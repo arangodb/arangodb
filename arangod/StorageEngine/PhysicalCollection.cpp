@@ -23,8 +23,9 @@
 
 #include "PhysicalCollection.h"
 
-#include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -52,6 +53,24 @@ PhysicalCollection::PhysicalCollection(
   : _logicalCollection(collection),
     _isDBServer(ServerState::instance()->isDBServer()),
     _indexes() {}
+  
+/// @brief fetches current index selectivity estimates
+/// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+/// fetch current values!
+std::unordered_map<std::string, double> PhysicalCollection::clusterIndexEstimates(bool allowUpdate) const {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cluster index estimates called for non-cluster collection");
+}
+
+/// @brief sets the current index selectivity estimates
+void PhysicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+  // default-implementation is a no-op. the operation is only useful for cluster collections
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cluster index estimates called for non-cluster collection");
+}
+
+/// @brief flushes the current index selectivity estimates
+void PhysicalCollection::flushClusterIndexEstimates() {
+  // default-implementation is a no-op. the operation is only useful for cluster collections
+}
 
 void PhysicalCollection::drop() {
   {
