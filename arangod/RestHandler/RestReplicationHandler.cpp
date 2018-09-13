@@ -357,7 +357,7 @@ RestStatus RestReplicationHandler::execute() {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
-      
+
       handleCommandRestoreView();
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
@@ -680,7 +680,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
-  auto views = ci->getViews(dbName);
+  auto views = _vocbase.views(); // ci does not store links in the view objects
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
@@ -711,7 +711,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("views", VPackValue(VPackValueType::Array));
   for (auto const& view : views) {
     resultBuilder.openObject();
-    view->toVelocyPack(resultBuilder, /*details*/false, /*forPersistence*/true);
+    view->toVelocyPack(resultBuilder, /*details*/true, /*forPersistence*/false);
+    resultBuilder.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
     resultBuilder.close();
   }
   resultBuilder.close();  // views
@@ -1371,7 +1372,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() && collectionName == "_users");
 
   // Now try to insert all keys for which the last marker was a document
@@ -1728,7 +1729,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-  
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
     << nameSlice.copyString();
   auto view = _vocbase.lookupView(nameSlice.copyString());
@@ -2170,7 +2171,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {

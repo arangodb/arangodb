@@ -317,7 +317,7 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(map);
 }
-  
+
 int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
                                            bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
@@ -638,7 +638,14 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, Index::makeFlags());
+  getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
+    // we have to exclude the primary and the edge index here, because otherwise
+    // at least the MMFiles engine will try to create it
+    // AND exclude arangosearch indexes
+    return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+            idx->type() != arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+  });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
@@ -720,8 +727,8 @@ void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
     bool forPersistence) const {
   TRI_ASSERT(result.isOpenObject());
   VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
-  result.add(VPackObjectIterator(b.slice())); 
-} 
+  result.add(VPackObjectIterator(b.slice()));
+}
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
@@ -751,7 +758,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // ... probably a few others missing here ...
 
   MUTEX_LOCKER(guard, _infoLock); // prevent simultanious updates
-  
+
   size_t rf = _sharding->replicationFactor();
   VPackSlice rfSl = slice.get("replicationFactor");
   if (!rfSl.isNone()) {
@@ -766,7 +773,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       if ((!isSatellite() && rf == 0) || rf > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
       }
-      
+
       if (!_isLocal && rf != _sharding->replicationFactor()) { // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
@@ -1053,7 +1060,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
 
   trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection](LocalDocumentId const& token) {
     collection->readDocumentWithCallback(&trx, token, [&](LocalDocumentId const&, VPackSlice slice) {
-      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
+      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
       if (withRevisions) {
         localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
@@ -1070,7 +1077,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
           // was already handled before
           VPackValueLength keyLength;
           char const* key = it.key.getString(keyLength);
-          if (keyLength >= 3 && 
+          if (keyLength >= 3 &&
               key[0] == '_' &&
               ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
               (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
@@ -1078,8 +1085,8 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
             continue;
           }
 
-          localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+          localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
         }
       }
 

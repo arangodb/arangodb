@@ -340,11 +340,43 @@ bool IResearchViewCoordinator::emplace(
     uint64_t planVersion,
     LogicalView::PreCommitCallback const& preCommit
 ) {
+  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
+  std::string error;
+
+  bool hasLinks = properties.hasKey("links");
+
   auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
-  auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  std::string error;
+
+  if (hasLinks) {
+    auto* engine = arangodb::ClusterInfo::instance();
+
+    if (!engine) {
+      return nullptr;
+    }
+
+    // check link auth as per https://github.com/arangodb/backlog/issues/459
+    if (arangodb::ExecContext::CURRENT) {
+      // check new links
+      if (info.hasKey(StaticStrings::LinksField)) {
+        for (arangodb::velocypack::ObjectIterator itr(info.get(StaticStrings::LinksField)); itr.valid(); ++itr) {
+          if (!itr.key().isString()) {
+            continue; // not a resolvable collection (invalid jSON)
+          }
+
+          auto collection =
+            engine->getCollection(vocbase.name(), itr.key().copyString());
+
+          if (collection
+              && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+            return nullptr;
+          }
+        }
+      }
+    }
+  }
+
 
   if (!view->_meta.init(properties, error)) {
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
@@ -396,6 +428,32 @@ bool IResearchViewCoordinator::emplace(
         << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << error;
 
       return nullptr;
+    }
+
+    // create links - "on a best-effort basis"
+    if (info.hasKey("links")) {
+
+      arangodb::velocypack::Builder viewNewProperties;
+      viewNewProperties.openObject();
+      bool modified = false;
+      std::unordered_set<TRI_voc_cid_t> newCids;
+      std::unordered_set<TRI_voc_cid_t> currentCids;
+      auto result = updateLinks(
+        info.get("links"),
+        emptyObjectSlice(),
+        *view.get(),
+        false,
+        currentCids,
+        modified,
+        viewNewProperties,
+        newCids
+      );
+
+      if (result.fail()) {
+        TRI_set_errno(result.errorNumber());
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "Failure to construct links on new view in database '" << vocbase.id() << "', error: " << error;
+      }
     }
   }
 
