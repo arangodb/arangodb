@@ -395,6 +395,9 @@ function reloadRouting () {
 }
 
 function propagateSelfHeal () {
+  if (!ArangoClusterControl.isCoordinator()) {
+    return;
+  }
   try {
     parallelClusterRequests(function * () {
       for (const coordId of getPeerCoordinatorIds()) {
