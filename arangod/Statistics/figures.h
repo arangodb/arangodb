@@ -38,7 +38,7 @@ namespace basics {
 struct StatisticsCounter {
   StatisticsCounter() : _count(0) {}
 
-  StatisticsCounter const& operator=(StatisticsCounter const& other) {
+  StatisticsCounter& operator=(StatisticsCounter const& other) {
     _count.store(other._count.load());
     return *this;
   }

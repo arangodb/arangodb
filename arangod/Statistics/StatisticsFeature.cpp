@@ -57,7 +57,7 @@ std::vector<double> const TRI_RequestTimeDistributionVectorStatistics({ 0.01, 0.
 StatisticsCounter TRI_AsyncRequestsStatistics;
 StatisticsCounter TRI_HttpConnectionsStatistics;
 StatisticsCounter TRI_TotalRequestsStatistics;
-std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics{};
+std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
 
 StatisticsDistribution TRI_BytesReceivedDistributionStatistics(TRI_BytesReceivedDistributionVectorStatistics);
 StatisticsDistribution TRI_BytesSentDistributionStatistics(TRI_BytesSentDistributionVectorStatistics);
@@ -66,6 +66,7 @@ StatisticsDistribution TRI_IoTimeDistributionStatistics(TRI_RequestTimeDistribut
 StatisticsDistribution TRI_QueueTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_RequestTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
+
 }
 }
 

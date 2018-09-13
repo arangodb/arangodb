@@ -23,6 +23,8 @@
 #ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
 #define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
+#include <array>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"

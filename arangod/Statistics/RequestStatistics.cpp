@@ -114,7 +114,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
 
     {
       MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
-      TRI_MethodRequestsStatistics[(int)statistics->_requestType].incCounter();
+      TRI_MethodRequestsStatistics[(size_t)statistics->_requestType].incCounter();
     }
 
     // check that the request was completely received and transmitted
