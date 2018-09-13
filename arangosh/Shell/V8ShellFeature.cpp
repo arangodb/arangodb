@@ -107,9 +107,9 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "add current directory to module path",
                      new BooleanParameter(&_currentModuleDirectory));
 
-  options->addHiddenOption("--javascript.copy-installation",
-                           "copy contents of 'javascript.startup-directory'",
-                           new BooleanParameter(&_copyInstallation));
+  options->addOption("--javascript.copy-installation",
+                     "copy contents of 'javascript.startup-directory'",
+                     new BooleanParameter(&_copyInstallation));
 
   options->addOption(
       "--javascript.gc-interval",
