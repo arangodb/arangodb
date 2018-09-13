@@ -109,28 +109,16 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
 
   GIVEN("A single upstream block with a single row") {
     VPackBuilder input;
-    // TODO use the BlockFetcherMock class instead of fakeit, as in
-    // GIVEN("there are multiple blocks upstream")
-    fakeit::Mock<BlockFetcher> blockFetcherMock;
-    fakeit::When(Method(blockFetcherMock, returnBlock)).AlwaysReturn();
-
+    BlockFetcherMock blockFetcherMock{};
     ResourceMonitor monitor;
-    std::unique_ptr<AqlItemBlock> block =
-        std::make_unique<AqlItemBlock>(&monitor, 1, 1);
-    // using an int asserts that the AqlValueType is INLINE, so we can just use
-    // slice() later
-    AqlValue const val{AqlValueHintInt{42}};
-    block->setValue(0, 0, val);
+
+    std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
 
     WHEN("the producer returns DONE immediately") {
-      // Using .Return doesn't work here, as unique_ptr is not
-      // copy-constructible.
-      fakeit::When(Method(blockFetcherMock, fetchBlock)).Do([&block] {
-        return std::make_pair(ExecutionState::DONE, std::move(block));
-      });
+      blockFetcherMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
       {
-        SingleRowFetcher testee(blockFetcherMock.get());
+        SingleRowFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should return the row with DONE") {
           std::tie(state, row) = testee.fetchRow();
@@ -142,22 +130,17 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      fakeit::Verify(Method(blockFetcherMock, fetchBlock)).Once();
-      fakeit::Verify(Method(blockFetcherMock, returnBlock)).Once();
-      fakeit::VerifyNoOtherInvocations(blockFetcherMock);
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 1);
     }
 
     WHEN("the producer returns HASMORE, then DONE with a nullptr") {
-      // Using .Return doesn't work here, as unique_ptr is not
-      // copy-constructible.
-      fakeit::When(Method(blockFetcherMock, fetchBlock))
-          .Do([&block] {
-            return std::make_pair(ExecutionState::HASMORE, std::move(block));
-          })
-          .Do([] { return std::make_pair(ExecutionState::DONE, nullptr); });
+      blockFetcherMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
+          .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        SingleRowFetcher testee(blockFetcherMock.get());
+        SingleRowFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should return the row with HASMORE") {
           std::tie(state, row) = testee.fetchRow();
@@ -175,22 +158,17 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      fakeit::Verify(Method(blockFetcherMock, fetchBlock)).Twice();
-      fakeit::Verify(Method(blockFetcherMock, returnBlock)).Once();
-      fakeit::VerifyNoOtherInvocations(blockFetcherMock);
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
     }
 
     WHEN("the producer WAITs, then returns DONE") {
-      // Using .Return doesn't work here, as unique_ptr is not
-      // copy-constructible.
-      fakeit::When(Method(blockFetcherMock, fetchBlock))
-          .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
-          .Do([&block] {
-            return std::make_pair(ExecutionState::DONE, std::move(block));
-          });
+      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::DONE, std::move(block));
 
       {
-        SingleRowFetcher testee(blockFetcherMock.get());
+        SingleRowFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, row) = testee.fetchRow();
@@ -208,23 +186,18 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      fakeit::Verify(Method(blockFetcherMock, fetchBlock)).Twice();
-      fakeit::Verify(Method(blockFetcherMock, returnBlock)).Once();
-      fakeit::VerifyNoOtherInvocations(blockFetcherMock);
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 2);
     }
 
     WHEN("the producer WAITs, returns HASMORE, then DONE") {
-      // Using .Return doesn't work here, as unique_ptr is not
-      // copy-constructible.
-      fakeit::When(Method(blockFetcherMock, fetchBlock))
-          .Do([] { return std::make_pair(ExecutionState::WAITING, nullptr); })
-          .Do([&block] {
-            return std::make_pair(ExecutionState::HASMORE, std::move(block));
-          })
-          .Do([] { return std::make_pair(ExecutionState::DONE, nullptr); });
+      blockFetcherMock.shouldReturn(ExecutionState::WAITING, nullptr)
+          .andThenReturn(ExecutionState::HASMORE, std::move(block))
+          .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        SingleRowFetcher testee(blockFetcherMock.get());
+        SingleRowFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
           std::tie(state, row) = testee.fetchRow();
@@ -248,9 +221,9 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR]") {
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
       // in the destructor
-      fakeit::Verify(Method(blockFetcherMock, fetchBlock)).Exactly(3);
-      fakeit::Verify(Method(blockFetcherMock, returnBlock)).Once();
-      fakeit::VerifyNoOtherInvocations(blockFetcherMock);
+      REQUIRE(blockFetcherMock.allBlocksFetched());
+      REQUIRE(blockFetcherMock.allFetchedBlocksReturned());
+      REQUIRE(blockFetcherMock.numFetchBlockCalls() == 3);
     }
   }
 
