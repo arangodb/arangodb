@@ -66,7 +66,8 @@ protected:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
   std::string _myRole;
-  std::string _myAddress;
+  std::string _myEndpoint;
+  std::string _myAdvertisedEndpoint;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
