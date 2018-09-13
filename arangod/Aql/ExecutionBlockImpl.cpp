@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 
 static RegInfo getRegisterInfo( ExecutionBlock* thisBlock){
   auto nrOut = thisBlock->getNrOutputRegisters();
-  auto nrIn = thisBlock->getNrOutputRegisters();
+  auto nrIn = thisBlock->getNrInputRegisters();
   std::unordered_set<RegisterId> toKeep;
   auto toClear = thisBlock->getPlanNode()->getRegsToClear();
 
