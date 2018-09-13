@@ -95,7 +95,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new StringParameter(&_clientModule));
   
   options->addOption("--javascript.copy-directory",
-                     "client module to use at startup",
+                     "target directory to copy files from 'javascript.startup-directory' into (only used when `--javascript.copy-installation` is enabled)",
                      new StringParameter(&_copyDirectory));
 
   options->addHiddenOption(
@@ -113,7 +113,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--javascript.gc-interval",
-      "request-based garbage collection interval (each n.th commands)",
+      "request-based garbage collection interval (each n.th command)",
       new UInt64Parameter(&_gcInterval));
 }
 
@@ -220,8 +220,9 @@ void V8ShellFeature::unprepare() {
 void V8ShellFeature::stop() {
   if (_removeCopyInstallation && !_copyDirectory.empty()) {
     int res = TRI_RemoveDirectory(_copyDirectory.c_str());
+
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, Logger::V8) << "could not cleanup installation file copy";
+      LOG_TOPIC(DEBUG, Logger::V8) << "could not cleanup installation file copy in path '" << _copyDirectory << "': " << TRI_errno_string(res);
     }
   }
 }
@@ -239,25 +240,27 @@ void V8ShellFeature::copyInstallationFiles() {
   
   LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files to '" << _copyDirectory << "'";
   int res = TRI_ERROR_NO_ERROR;
+
   if (FileUtils::exists(_copyDirectory)) {
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
-      << "' (" << TRI_errno_string(res) << ")";
+      << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
   }
   if (!FileUtils::createDirectory(_copyDirectory, &res)) {
     LOG_TOPIC(FATAL, Logger::V8) << "Error creating JS installation path '" << _copyDirectory
-    << "' (" << TRI_errno_string(res) << "'";
+    << "': " << TRI_errno_string(res);
     FATAL_ERROR_EXIT();
   }
   std::string error;
   if (!FileUtils::copyRecursive(_startupDirectory, _copyDirectory, error)) {
     LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << _copyDirectory
-    << "' (" << error << ")";
+    << "': " << error;
     FATAL_ERROR_EXIT();
   }
+
   _startupDirectory = _copyDirectory;
 }
 
