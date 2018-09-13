@@ -194,3 +194,13 @@ bool CreateCollection::first() {
 
   return false;
 }
+
+
+void CreateCollection::setState(ActionState state) {
+  
+  TRI_ASSERT(_description.has("shard"));
+  _feature.incShardVersion(_description.get("shard"));
+  
+  ActionBase::setState(state);
+  
+}

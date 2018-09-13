@@ -108,9 +108,12 @@ bool DropCollection::first() {
     return false;
   }
 
-  notify();
 
+  // We're removing the shard version from MaintenanceFeature before notifying
+  // for new Maintenance run. This should make sure that the next round does not
+  // get rejected.
   _feature.delShardVersion(collection);
+  notify();
 
   return false;
 

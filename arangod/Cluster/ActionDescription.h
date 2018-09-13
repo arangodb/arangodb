@@ -164,8 +164,6 @@ public:
   
 private:
 
-  /// Note: members are const. No thread safety guards needed.
-
   /** @brief discriminatory properties */
   std::map<std::string, std::string> _description;
 

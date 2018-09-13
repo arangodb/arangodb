@@ -43,6 +43,8 @@ public:
 
   virtual bool first() override final;
 
+  virtual void setState(ActionState state) override final;
+
 };
 
 }}

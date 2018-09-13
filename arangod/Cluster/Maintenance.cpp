@@ -1091,8 +1091,6 @@ arangodb::Result arangodb::maintenance::phaseTwo (
           plan, cur, local, serverId, feature, actions);
 
         for (auto& action : actions) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-            << "phase two adding action " << action << " to feature ";
           { VPackObjectBuilder b(&report);
             action.toVelocyPack(report);
           }
@@ -1103,6 +1101,8 @@ arangodb::Result arangodb::maintenance::phaseTwo (
             action.set("shardVersion",
                        std::to_string(feature.shardVersion(action.get(SHARD))));
           }
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "phase two adding action " << action << " to feature ";
           feature.addAction(std::make_shared<ActionDescription>(action), false);
         }
       } catch (std::exception const& e) {

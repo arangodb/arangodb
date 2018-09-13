@@ -306,7 +306,7 @@ public:
   /**
    * @brief increment volatile local shard version
    */
-  void incShardVersion(std::string const& shardId);
+  uint64_t incShardVersion(std::string const& shardId);
 
   /**
    * @brief clean up after shard has been dropped locally
@@ -399,7 +399,6 @@ protected:
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
 
-  
   /// @brief lock for shard version map
   mutable arangodb::Mutex _versionLock;
   /// @brief shards have versions in order to be able to distinguish between

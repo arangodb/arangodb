@@ -99,15 +99,11 @@ class ActionBase {
   VPackSlice const properties() const;
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  ActionState getState() const {
-    return _state;
-  }
+  ActionState getState() const;
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  void setState(ActionState state) {
-    _state = state;
-  }
-
+  virtual void setState(ActionState state);
+  
   /// @brief update incremental statistics
   void startStats();
 

@@ -756,16 +756,12 @@ uint64_t MaintenanceFeature::shardVersion (std::string const& shname) const {
 }
 
 
-void MaintenanceFeature::incShardVersion (std::string const& shname) {
+uint64_t MaintenanceFeature::incShardVersion (std::string const& shname) {
   MUTEX_LOCKER(guard, _versionLock);
-  auto const it = _shardVersion.find(shname);
-  if (it != _shardVersion.end()) {
-    it->second++;
-  } else {
-    _shardVersion[shname] = 1;
-  }
+  auto ret = ++_shardVersion[shname];
   LOG_TOPIC(TRACE, Logger::MAINTENANCE)
-    << "incremented shard version for " << shname << " to " << _shardVersion; 
+    << "incremented shard version for " << shname << " to " << ret;
+  return ret;
 }
 
 void MaintenanceFeature::delShardVersion (std::string const& shname) {
