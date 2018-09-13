@@ -40,10 +40,10 @@ build a matrix with 4 rows and 3 columns
 the number of columns has to be specified as a template parameter:
 
   std::unique_ptr<AqlItemBlock> block = buildBlock<3>({
-    { 1, 2, R"({ "iam": [ "a", "json" ] })"},
-    { 4, 5, "\"and will be converted\"" },
-    { 7, 8, R"({ "into": [], "a": [], "vpack": [] })"},
-    { 10, 11, 12 },
+    { {1}, {2}, {R"({ "iam": [ "a", "json" ] })"} },
+    { {4}, {5}, {"\"and will be converted\""} },
+    { {7}, {8}, {R"({ "into": [], "a": [], "vpack": [] })"} },
+    { {10}, {11}, {12} },
   });
 
 Currently supported types for values are `int` and `const char*`.

@@ -40,14 +40,21 @@ namespace aql {
  */
 class BlockFetcher {
  public:
-  explicit BlockFetcher(ExecutionBlock& executionBlock_)
-      : _executionBlock(&executionBlock_){};
+  explicit BlockFetcher(ExecutionBlock* executionBlock_)
+      : _executionBlock(executionBlock_){};
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
   TEST_VIRTUAL inline std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
   fetchBlock() {
     return _executionBlock->fetchBlock();
+  };
+
+  TEST_VIRTUAL inline void returnBlock(std::unique_ptr<AqlItemBlock> block) noexcept {
+    AqlItemBlock* blockPtr = block.get();
+    _executionBlock->returnBlockUnlessNull(blockPtr);
+    TRI_ASSERT(blockPtr == nullptr);
+    block.release();
   };
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() {

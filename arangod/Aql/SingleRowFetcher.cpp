@@ -37,6 +37,9 @@ using namespace arangodb::aql;
 std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
+    returnCurrentBlock();
+    TRI_ASSERT(_currentBlock == nullptr);
+
     ExecutionState state;
     std::unique_ptr<AqlItemBlock> newBlock;
     std::tie(state, newBlock) = fetchBlock();
@@ -44,8 +47,7 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
       return {ExecutionState::WAITING, nullptr};
     }
 
-    // TODO return the old block to the item block manager
-    _currentBlock.swap(newBlock);
+    _currentBlock = std::move(newBlock);
     _rowIndex = 0;
   }
 
@@ -58,7 +60,7 @@ std::pair<ExecutionState, const AqlItemRow*> SingleRowFetcher::fetchRow() {
   } else {
     TRI_ASSERT(_currentBlock);
     _currentRow =
-        std::make_unique<AqlItemRow>(_currentBlock.get(), _rowIndex);
+        std::make_unique<AqlItemRow const>(_currentBlock.get(), _rowIndex);
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
@@ -101,4 +103,18 @@ bool SingleRowFetcher::isLastRowInBlock() {
 size_t SingleRowFetcher::getRowIndex() {
   TRI_ASSERT(indexIsValid());
   return _rowIndex;
+}
+
+void SingleRowFetcher::returnCurrentBlock() noexcept {
+  if (_currentBlock == nullptr) {
+    // Leave this checks here, so tests can more easily check the number
+    // of returned blocks by the number of returnBlock calls
+    return;
+  }
+
+  _blockFetcher->returnBlock(std::move(_currentBlock));
+}
+
+SingleRowFetcher::~SingleRowFetcher() {
+  returnCurrentBlock();
 }

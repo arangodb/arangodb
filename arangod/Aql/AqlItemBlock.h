@@ -270,10 +270,10 @@ class AqlItemBlock {
   }
 
   /// @brief getter for _nrRegs
-  inline RegisterId getNrRegs() const { return _nrRegs; }
+  inline RegisterId getNrRegs() const noexcept { return _nrRegs; }
 
   /// @brief getter for _nrItems
-  inline size_t size() const { return _nrItems; }
+  inline size_t size() const noexcept { return _nrItems; }
   
   inline size_t capacity() const { return _data.size(); }
 
