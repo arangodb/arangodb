@@ -99,7 +99,7 @@ V8DealerFeature::V8DealerFeature(
       _gcFrequency(60.0),
       _gcInterval(2000),
       _maxContextAge(60.0),
-      _copyInstallation(true),
+      _copyInstallation(false),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
