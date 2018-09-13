@@ -694,7 +694,7 @@ void ClusterInfo::loadPlan() {
 
       databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
-        bool isCoordinator = ServerState::instance()->isCoordinator();
+        bool const isCoordinator = ServerState::instance()->isCoordinator();
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& collectionsSlice = databasePairSlice.value;
@@ -761,10 +761,14 @@ void ClusterInfo::loadPlan() {
                 if (it != _plannedCollections.end()) {
                   auto it2 = (*it).second.find(collectionId);
                   if (it2 != (*it).second.end()) {
-                    auto estimates = (*it2).second->clusterIndexEstimates(false);
-                    if (!estimates.empty()) {
-                      // already have an estimate... now copy it over
-                      newCollection->clusterIndexEstimates(std::move(estimates));
+                    try {
+                      auto estimates = (*it2).second->clusterIndexEstimates(false);
+                      if (!estimates.empty()) {
+                        // already have an estimate... now copy it over
+                        newCollection->clusterIndexEstimates(std::move(estimates));
+                      }
+                    } catch (...) {
+                      // this may fail during unit tests, when mocks are used
                     }
                   }
                 }
@@ -800,7 +804,7 @@ void ClusterInfo::loadPlan() {
               // cluster should not fail.
               LOG_TOPIC(ERR, Logger::AGENCY)
                 << "Failed to load information for collection '" << collectionId
-                << "': " << ex.what() << ". invalid information in plan. The"
+                << "': " << ex.what() << ". invalid information in plan. The "
                 "collection will be ignored for now and the invalid information"
                 "will be repaired. VelocyPack: "
                 << collectionSlice.toJson();

@@ -68,7 +68,7 @@ void PhysicalCollection::clusterIndexEstimates(std::unordered_map<std::string, d
 
 /// @brief flushes the current index selectivity estimates
 void PhysicalCollection::flushClusterIndexEstimates() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cluster index estimates called for non-cluster collection");
+  // default-implementation is a no-op. the operation is only useful for cluster collections
 }
 
 void PhysicalCollection::drop() {
