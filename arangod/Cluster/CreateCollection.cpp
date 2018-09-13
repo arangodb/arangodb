@@ -81,11 +81,6 @@ CreateCollection::CreateCollection(
   }
   TRI_ASSERT(desc.has(SERVER_ID));
 
-  if (!desc.has(SHARD_VERSION)) {
-    error << "local shard version must be specified. ";
-  }
-  TRI_ASSERT(desc.has(SHARD_VERSION));
-
   if (!properties().hasKey(StaticStrings::DataSourceType) || !properties().get(StaticStrings::DataSourceType).isNumber()) {
     error << "properties slice must specify collection type. ";
   }
@@ -191,8 +186,8 @@ bool CreateCollection::first() {
   }
 
   if (_result.fail()) {
-    _feature.storeShardError(database, collection, shard,
-        _description.get(SERVER_ID), _result);
+    _feature.storeShardError(
+      database, collection, shard, _description.get(SERVER_ID), _result);
   }
 
   notify();

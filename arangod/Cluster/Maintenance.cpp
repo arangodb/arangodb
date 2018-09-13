@@ -256,7 +256,6 @@ void handlePlanShard(
         ActionDescription(
           {{NAME, CREATE_COLLECTION}, {COLLECTION, colname}, {SHARD, shname},
            {DATABASE, dbname}, {SERVER_ID, serverId},
-           {SHARD_VERSION, std::to_string(feature.shardVersion(shname))},
            {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     } else {
