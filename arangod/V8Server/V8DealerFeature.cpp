@@ -144,7 +144,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "additional paths containing JavaScript modules",
       new VectorParameter<StringParameter>(&_moduleDirectory));
   
-  options->addHiddenOption(
+  options->addOption(
      "--javascript.copy-installation",
      "copy contents of 'javascript.startup-directory' on first start",
      new BooleanParameter(&_copyInstallation));

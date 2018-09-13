@@ -90,13 +90,13 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "startup paths containing the Javascript files",
                            new StringParameter(&_startupDirectory));
 
-  options->addHiddenOption("--javascript.client-module",
-                           "client module to use at startup",
-                           new StringParameter(&_clientModule));
+  options->addOption("--javascript.client-module",
+                     "client module to use at startup",
+                     new StringParameter(&_clientModule));
   
-  options->addHiddenOption("--javascript.copy-directory",
-                           "client module to use at startup",
-                           new StringParameter(&_copyDirectory));
+  options->addOption("--javascript.copy-directory",
+                     "client module to use at startup",
+                     new StringParameter(&_copyDirectory));
 
   options->addHiddenOption(
       "--javascript.module-directory",
