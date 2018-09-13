@@ -21,50 +21,54 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
+#ifndef ARANGODB_CLUSTER_MAINTENANCE_STRINGS_H
+#define ARANGODB_CLUSTER_MAINTENANCE_STRINGS_H
 
 namespace arangodb {
 namespace maintenance {
 
-extern std::string const ACTIONS;
-extern std::string const AGENCY;
-extern std::string const COLLECTION;
-extern std::string const CREATE_COLLECTION;
-extern std::string const CREATE_DATABASE;
-extern std::string const DATABASE;
-extern std::string const DO_COMPACT;
-extern std::string const DROP_COLLECTION;
-extern std::string const DROP_DATABASE;
-extern std::string const DROP_INDEX;
-extern std::string const DB;
-extern std::string const EDGE;
-extern std::string const ENSURE_INDEX;
-extern std::string const FIELDS;
-extern std::string const FOLLOWER_ID;
-extern std::string const GLOB_UID;
-extern std::string const ID;
-extern std::string const INDEX;
-extern std::string const INDEX_BUCKETS;
-extern std::string const INDEXES;
-extern std::string const JOURNAL_SIZE;
-extern std::string const KEY;
-extern std::string const LOCAL_LEADER;
-extern std::string const NAME;
-extern std::string const OBJECT_ID;
-extern std::string const OP;
-extern std::string const PHASE_ONE;
-extern std::string const PHASE_TWO;
-extern std::string const PRIMARY;
-extern std::string const RESIGN_SHARD_LEADERSHIP;
-extern std::string const SELECTIVITY_ESTIMATE;
-extern std::string const SERVER_ID;
-extern std::string const SERVERS;
-extern std::string const SHARD;
-extern std::string const SHARDS;
-extern std::string const SYNCHRONIZE_SHARD;
-extern std::string const THE_LEADER;
-extern std::string const UNDERSCORE;
-extern std::string const UPDATE_COLLECTION;
+constexpr char const* ACTIONS = "actions";
+constexpr char const* AGENCY = "agency";
+constexpr char const* COLLECTION = "collection";
+constexpr char const* CREATE_COLLECTION = "CreateCollection";
+constexpr char const* CREATE_DATABASE = "CreateDatabase";
+constexpr char const* DATABASE = "database";
+constexpr char const* DB = "/_db/";
+constexpr char const* DO_COMPACT = "doCompact";
+constexpr char const* DROP_COLLECTION = "DropCollection";
+constexpr char const* DROP_DATABASE = "DropDatabase";
+constexpr char const* DROP_INDEX = "DropIndex";
+constexpr char const* EDGE = "edge";
+constexpr char const* ENSURE_INDEX = "EnsureIndex";
+constexpr char const* FIELDS = "fields";
+constexpr char const* FOLLOWER_ID = "followerId";
+constexpr char const* GLOB_UID = "globallyUniqueId";
+constexpr char const* ID = "id";
+constexpr char const* INDEX = "index";
+constexpr char const* INDEX_BUCKETS = "indexBuckets";
+constexpr char const* INDEXES = "indexes";
+constexpr char const* JOURNAL_SIZE = "journalSize";
+constexpr char const* KEY = "key";
+constexpr char const* LOCAL_LEADER = "localLeader";
+constexpr char const* NAME = "name";
+constexpr char const* OBJECT_ID = "objectId";
+constexpr char const* OP = "op";
+constexpr char const* PHASE_ONE = "phaseOne";
+constexpr char const* PHASE_TWO = "phaseTwo";
+constexpr char const* PRIMARY = "primary";
+constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
+constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
+constexpr char const* SERVER_ID = "serverId";
+constexpr char const* SERVERS = "servers";
+constexpr char const* SHARD = "shard";
+constexpr char const* SHARDS = "shards";
+constexpr char const* SYNCHRONIZE_SHARD = "SynchronizeShard";
+constexpr char const* THE_LEADER = "theLeader";
+constexpr char const* UNDERSCORE = "_";
+constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
+constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
-}}
+}
+}
 
+#endif

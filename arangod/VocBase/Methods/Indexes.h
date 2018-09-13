@@ -60,7 +60,7 @@ struct Indexes {
       velocypack::Slice const& definition, bool create,
       velocypack::Builder& output);
 
-  static arangodb::Result drop(LogicalCollection const* collection,
+  static arangodb::Result drop(LogicalCollection* collection,
                                velocypack::Slice const& indexArg);
 
   static arangodb::Result extractHandle(

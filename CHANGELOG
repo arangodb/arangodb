@@ -6,11 +6,22 @@ devel
 * use `-std=c++14` for ArangoDB compilation
 
 
-v3.4.0-rc.1
------------
+v3.4.0-rc.2 (XXXX-XX-XX)
+------------------------
+
+* added AQL VERSION function to return the server version as a string
+
+* the ArangoDB starter is now part of the Windows packages (was missing before)
+
+* The Windows installer now offers a way to continue the installation if it 
+  failed because of a locked database
+
+
+v3.4.0-rc.1 (2018-09-06)
+------------------------
 
 * Release Candidate for 3.4.0, please check the `ReleaseNotes/KnownIssues34.md`
-  file for a list of known issues.
+  file for a list of known issues
 
 * upgraded bundled RocksDB version to 5.16.0
 

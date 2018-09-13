@@ -265,8 +265,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       // Mocking the ClusterComm for count calls
       fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
@@ -346,8 +345,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
       fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                        CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                         OperationID const operationID, ShardID const& shardID,
                         ClusterCommTimeout timeout) {
             REQUIRE(coordTransactionID == cordTrxId);
@@ -892,8 +890,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       // Mocking the ClusterComm for count calls
       fakeit::When(Method(commMock, asyncRequest))
         .AlwaysDo(
-            [&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+            [&](CoordTransactionID const coordTransactionID,
               std::string const& destination, rest::RequestType reqtype,
               std::string const& path,
               std::shared_ptr<std::string const> body,
@@ -930,8 +927,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             });
 
       fakeit::When(Method(commMock, wait))
-        .AlwaysDo([&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+        .AlwaysDo([&](CoordTransactionID const coordTransactionID,
               OperationID const operationID, ShardID const& shardID,
               ClusterCommTimeout timeout) {
             if (operationID != 0) {
@@ -997,8 +993,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       // Mocking the ClusterComm for count calls
       fakeit::When(Method(commMock, asyncRequest))
         .AlwaysDo(
-            [&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+            [&](CoordTransactionID const coordTransactionID,
               std::string const& destination, rest::RequestType reqtype,
               std::string const& path,
               std::shared_ptr<std::string const> body,
@@ -1035,8 +1030,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             });
 
       fakeit::When(Method(commMock, wait))
-        .AlwaysDo([&](ClientTransactionID const&,
-              CoordTransactionID const coordTransactionID,
+        .AlwaysDo([&](CoordTransactionID const coordTransactionID,
               OperationID const operationID, ShardID const& shardID,
               ClusterCommTimeout timeout) {
             if (operationID != 0) {
@@ -1113,8 +1107,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1144,8 +1137,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1157,8 +1149,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1221,8 +1212,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1261,8 +1251,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1277,8 +1266,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1339,8 +1327,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1380,8 +1367,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1396,8 +1382,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1445,8 +1430,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1476,8 +1460,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1489,8 +1472,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1553,8 +1535,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1593,8 +1574,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1609,8 +1589,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1671,8 +1650,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         // Mocking the ClusterComm for count calls
         fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
-              [&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+              [&](CoordTransactionID const coordTransactionID,
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
@@ -1712,8 +1690,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
               });
         fakeit::When(Method(commMock, wait))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID,
                 ClusterCommTimeout timeout) {
               if (operationID != 0) {
@@ -1728,8 +1705,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               });
 
         fakeit::When(Method(commMock, drop))
-          .AlwaysDo([&](ClientTransactionID const&,
-                CoordTransactionID const coordTransactionID,
+          .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                 OperationID const operationID, ShardID const& shardID
                 ) {
               // We need to abort this trx
@@ -1836,8 +1812,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
           // Mocking the ClusterComm for count calls
           fakeit::When(Method(commMock, asyncRequest))
             .AlwaysDo(
-                [&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
+                [&](CoordTransactionID const coordTransactionID,
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
@@ -1874,8 +1849,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 });
 
           fakeit::When(Method(commMock, wait))
-            .AlwaysDo([&](ClientTransactionID const&,
-                  CoordTransactionID const coordTransactionID,
+            .AlwaysDo([&](CoordTransactionID const coordTransactionID,
                   OperationID const operationID, ShardID const& shardID,
                   ClusterCommTimeout timeout) {
                 if (operationID != 0) {
