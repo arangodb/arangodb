@@ -638,7 +638,7 @@ void Agent::sendAppendEntriesRPC() {
       // Send request
       std::unordered_map<std::string, std::string> headerFields;
       cc->asyncRequest(
-        "1", 1, _config.poolAt(followerId),
+        1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
@@ -715,7 +715,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   // Send request
   std::unordered_map<std::string, std::string> headerFields;
   cc->asyncRequest(
-    "1", 1, _config.poolAt(followerId),
+    1, _config.poolAt(followerId),
     arangodb::rest::RequestType::POST, path.str(),
     std::make_shared<std::string>("[]"), headerFields,
     std::make_shared<AgentCallback>(this, followerId, 0, 0),
@@ -1443,7 +1443,6 @@ int64_t Agent::leaderFor() const {
   return std::chrono::duration_cast<std::chrono::duration<int64_t>>(
     std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
-
 
 void Agent::updatePeerEndpoint(query_t const& message) {
   VPackSlice slice = message->slice();

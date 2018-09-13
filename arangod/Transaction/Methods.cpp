@@ -3372,7 +3372,7 @@ transaction::Methods::indexesForCollectionCoordinator(
   auto selectivity = collection->clusterIndexEstimates();
 
   // push updated values into indexes
-  for(std::shared_ptr<Index>& idx : indexes){
+  for(std::shared_ptr<Index>& idx : indexes) {
     auto it = selectivity.find(std::to_string(idx->id()));
     if (it != selectivity.end()) {
       idx->updateClusterSelectivityEstimate(it->second);

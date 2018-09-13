@@ -762,7 +762,7 @@ void ClusterInfo::loadPlan() {
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
                 newCollection->clusterIndexEstimates(std::move(selectivity));
                 newCollection->clusterIndexEstimatesTTL(selectivityTTL);
-                for(std::shared_ptr<Index>& idx : newCollection->getIndexes()){
+                for (std::shared_ptr<Index>& idx : newCollection->getIndexes()) {
                   auto it = selectivity.find(std::to_string(idx->id()));
                   if (it != selectivity.end()) {
                     idx->updateClusterSelectivityEstimate(it->second);

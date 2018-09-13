@@ -996,7 +996,7 @@ Result EngineInfoContainerDBServer::buildEngines(
     // [engineId]}}
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    auto res = cc->syncRequest("", coordTransactionID, serverDest,
+    auto res = cc->syncRequest(coordTransactionID, serverDest,
                                RequestType::POST, url, infoBuilder.toJson(),
                                headers, SETUP_TIMEOUT);
 

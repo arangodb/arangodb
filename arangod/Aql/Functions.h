@@ -443,6 +443,8 @@ struct Functions {
                          VPackFunctionParameters const&);
     static AqlValue Apply(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+    static AqlValue Version(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
     static AqlValue IsSameCollection(arangodb::aql::Query*,
                                      transaction::Methods*,
                                      VPackFunctionParameters const&);
