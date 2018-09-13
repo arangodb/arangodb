@@ -94,12 +94,6 @@ void MaintenanceWorker::nextState(bool actionMore) {
                      || FAILED == _curAction->getState()))
   {
     actionMore = false;
-
-    auto const& description = _curAction->describe();
-    if (description.has("shardVersion")) {
-      TRI_ASSERT(description.has("shard"));
-      _feature.incShardVersion(description.get("shard"));
-    }
   } // if
 
   // actionMore means iterate again
