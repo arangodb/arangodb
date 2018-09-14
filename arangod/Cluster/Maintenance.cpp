@@ -190,7 +190,8 @@ void handlePlanShard(
   std::string const& dbname, std::string const& colname, std::string const& shname,
   std::string const& serverId, std::string const& leaderId,
   std::unordered_set<std::string>& commonShrds, std::unordered_set<std::string>& indis,
-  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions) {
+  MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
+  std::vector<ActionDescription>& actions) {
 
   bool shouldBeLeading = serverId == leaderId;
 
@@ -350,7 +351,8 @@ struct NotEmpty {
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
-  MaintenanceFeature::errors_t& errors, std::vector<ActionDescription>& actions) {
+  MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
+  std::vector<ActionDescription>& actions) {
 
   arangodb::Result result;
   std::unordered_set<std::string> commonShrds; // Intersection collections plan&local
@@ -405,7 +407,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
                 handlePlanShard(
                   cprops, ldb, dbname, pcol.key.copyString(),
                   shard.key.copyString(), serverId, shard.value[0].copyString(),
-                  commonShrds, indis, errors, actions);
+                  commonShrds, indis, errors, feature, actions);
                 break ;
               }
             }
@@ -494,7 +496,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   std::vector<ActionDescription> actions;
   report.add(VPackValue(AGENCY));
   { VPackArrayBuilder a(&report);
-    diffPlanLocal(plan, local, serverId, errors, actions); }
+    diffPlanLocal(plan, local, serverId, errors, feature, actions); }
 
   for (auto const& i : errors.databases) {
     if (i.second == nullptr) {
@@ -974,7 +976,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
 arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
   VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
-  std::string const& serverId, std::vector<ActionDescription>& actions) {
+  std::string const& serverId, MaintenanceFeature& feature,
+  std::vector<ActionDescription>& actions) {
 
   auto pdbs = plan.get(COLLECTIONS);
   auto cdbs = current.get(COLLECTIONS);
@@ -1035,7 +1038,8 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             actions.emplace_back(
               ActionDescription(
                 {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
-                 {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader}}));
+                 {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader},
+                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname))}}));
 
           }
         }
@@ -1080,7 +1084,7 @@ arangodb::Result arangodb::maintenance::phaseTwo (
       try {
         std::vector<ActionDescription> actions;
         result = syncReplicatedShardsWithLeaders(
-          plan, cur, local, serverId, actions);
+          plan, cur, local, serverId, feature, actions);
 
         for (auto const& action : actions) {
           feature.addAction(std::make_shared<ActionDescription>(action), false);
