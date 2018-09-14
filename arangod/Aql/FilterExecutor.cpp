@@ -54,6 +54,7 @@ ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return state;
     }
+    TRI_ASSERT(input.isInitialized());
 
     if (input.getValue(_infos.getInput()).toBoolean()) {
       output.copyRow(input);

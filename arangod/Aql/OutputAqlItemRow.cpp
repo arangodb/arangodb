@@ -50,6 +50,7 @@ void OutputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& so
 }
 
 void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
+  TRI_ASSERT(sourceRow.isInitialized());
   if (_produced) {
     return;
   }
