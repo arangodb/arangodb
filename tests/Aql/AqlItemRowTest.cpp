@@ -76,7 +76,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
 
 
-    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
+    OutputAqlItemRow testee(outputData.get(), regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -114,7 +114,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
     std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
 
-    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
+    OutputAqlItemRow testee(outputData.get(), regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -158,7 +158,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
     std::unordered_set<RegisterId> regsToKeep{0, 2};
 
-    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
+    OutputAqlItemRow testee(outputData.get(), regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {

@@ -36,7 +36,10 @@ namespace aql {
 
 struct AqlValue;
 
-struct CreateInvalidInputRowHint{};
+struct CreateInvalidInputRowHint{
+  // Forbid creating this via `{}`
+  explicit CreateInvalidInputRowHint() = default;
+};
 
 /**
  * @brief One row within an AqlItemBlock, for reading.
@@ -50,7 +53,7 @@ class InputAqlItemRow {
   using AqlItemBlockId = int64_t;
 
   // The default constructor contains an invalid item row
-  InputAqlItemRow(CreateInvalidInputRowHint);
+  explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
   InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
                   AqlItemBlockId blockId);
