@@ -50,7 +50,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlock block(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
@@ -74,7 +74,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -86,7 +86,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -109,7 +109,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1

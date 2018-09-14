@@ -45,7 +45,7 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(AqlItemBlock* block,
+  OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
                    std::unordered_set<RegisterId> const& regsToKeep);
 
   void setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow,
@@ -69,11 +69,13 @@ class OutputAqlItemRow {
   // returns true if row was produced
   bool produced() const { return _produced; };
 
+  std::unique_ptr<AqlItemBlock> stealBlock() { return std::move(_block); }
+
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  AqlItemBlock* _block;
+  std::unique_ptr<AqlItemBlock> _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

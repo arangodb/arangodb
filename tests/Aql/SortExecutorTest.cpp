@@ -64,7 +64,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlock block(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
@@ -94,7 +94,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -106,7 +106,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -130,7 +130,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           state = testee.produceRow(result);
@@ -167,27 +167,28 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(result.produced());
 
-          AqlValue v = block.getValue(0, 0);
+          block = result.stealBlock();
+          AqlValue v = block->getValue(0, 0);
           REQUIRE(v.isNumber());
           int64_t number = v.toInt64(nullptr);
           REQUIRE(number == 1);
 
-          v = block.getValue(1, 0);
+          v = block->getValue(1, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 2);
 
-          v = block.getValue(2, 0);
+          v = block->getValue(2, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 3);
 
-          v = block.getValue(3, 0);
+          v = block->getValue(3, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 4);
 
-          v = block.getValue(4, 0);
+          v = block->getValue(4, 0);
           REQUIRE(v.isNumber());
           number = v.toInt64(nullptr);
           REQUIRE(number == 5);

@@ -84,7 +84,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
 
 
-    OutputAqlItemRow testee(outputData.get(), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -111,6 +111,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         REQUIRE(testee.produced());
       }
       auto expected = VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
+      outputData = testee.stealBlock();
       AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
 
@@ -144,6 +145,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         "[\"dddddddddddddddddddd\", \"eeeeeeeeeeeeeeeeeeee\", \"ffffffffffffffffffff\"],"
         "[\"gggggggggggggggggggg\", \"hhhhhhhhhhhhhhhhhhhh\", \"iiiiiiiiiiiiiiiiiiii\"]"
       "]");
+      outputData = testee.stealBlock();
       AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep, true);
     }
 
@@ -153,7 +155,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
     std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
 
-    OutputAqlItemRow testee(outputData.get(), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -189,6 +191,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         "[\"a\",\"b\",\"c\"],"
         "[\"a\",\"b\",\"c\"]"
       "]");
+      outputData = testee.stealBlock();
       AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
   }
@@ -197,7 +200,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
     std::unordered_set<RegisterId> regsToKeep{0, 2};
 
-    OutputAqlItemRow testee(outputData.get(), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -225,6 +228,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         "[4,5,6],"
         "[\"a\",\"b\",\"c\"]"
       "]");
+      outputData = testee.stealBlock();
       AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
   }
@@ -239,7 +243,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     THEN("should be able to drop registers and write new values") {
       regsToKeep = {0};
     }
-    OutputAqlItemRow testee(outputData.get(), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
     {
       // Make sure this data is cleared before the assertions
       auto inputData = buildBlock<3>(&monitor, {
@@ -275,6 +279,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     // add these two here as they are needed for output validation but not for copy in ItemRows
     regsToKeep.emplace(3);
     regsToKeep.emplace(4);
+    outputData = testee.stealBlock();
     AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
   }
 

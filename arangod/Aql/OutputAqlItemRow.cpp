@@ -33,13 +33,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-    AqlItemBlock* block, std::unordered_set<RegisterId> const& regsToKeep)
-    : _block(block),
+    std::unique_ptr<AqlItemBlock> block,
+    std::unordered_set<RegisterId> const& regsToKeep)
+    : _block(std::move(block)),
       _baseIndex(0),
       _regsToKeep(regsToKeep),
       _produced(false),
       _lastSourceRow{CreateInvalidInputRowHint{}} {
-  TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(_block != nullptr);
 }
 
 void OutputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow, AqlValue const& value) {
