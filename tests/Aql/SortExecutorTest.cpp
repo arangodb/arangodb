@@ -130,38 +130,42 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       SortExecutor testee(fetcher, infos);
 
       THEN("we will hit waiting 5 times") {
-        OutputAqlItemRow firstResult(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
-          state = testee.produceRow(firstResult);
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!firstResult.produced());
+          REQUIRE(!result.produced());
         }
 
         AND_THEN("we produce the rows in order") {
-          state = testee.produceRow(firstResult);
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(firstResult.produced());
+          REQUIRE(result.produced());
 
-          OutputAqlItemRow secondResult(&block, 1, infos.registersToKeep());
-          state = testee.produceRow(secondResult);
+          result.advanceRow();
+
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(secondResult.produced());
+          REQUIRE(result.produced());
 
-          OutputAqlItemRow thirdResult(&block, 2, infos.registersToKeep());
-          state = testee.produceRow(thirdResult);
+          result.advanceRow();
+
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(thirdResult.produced());
+          REQUIRE(result.produced());
 
-          OutputAqlItemRow fourthResult(&block, 3, infos.registersToKeep());
-          state = testee.produceRow(fourthResult);
+          result.advanceRow();
+
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(fourthResult.produced());
+          REQUIRE(result.produced());
 
-          OutputAqlItemRow fifthResult(&block, 4, infos.registersToKeep());
-          state = testee.produceRow(fifthResult);
+          result.advanceRow();
+
+          state = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(fifthResult.produced());
+          REQUIRE(result.produced());
 
           AqlValue v = block.getValue(0, 0);
           REQUIRE(v.isNumber());
