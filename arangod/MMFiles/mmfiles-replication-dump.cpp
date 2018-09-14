@@ -230,12 +230,12 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
       // transaction id
-      builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
+      builder.add("tid", VPackValue(std::to_string(MMFilesDatafileHelper::TransactionId(marker))));
     }
     if (databaseId > 0) {
-      builder.add("database", VPackValue(databaseId));
+      builder.add("database", VPackValue(std::to_string(databaseId)));
       if (collectionId > 0) {
-        builder.add("cid", VPackValue(collectionId));
+        builder.add("cid", VPackValue(std::to_string(collectionId)));
         // also include collection name
         std::string const& cname = nameFromCid(dump, collectionId);
         if (!cname.empty()) {
@@ -246,7 +246,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
   } else {
     // collection dump
     if (withTicks) {
-      builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+      builder.add("tick", VPackValue(std::to_string(static_cast<uint64_t>(marker->getTick()))));
     }
     builder.add("type",
                 VPackValue(static_cast<uint64_t>(TranslateType(marker))));
