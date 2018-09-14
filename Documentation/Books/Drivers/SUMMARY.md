@@ -5,7 +5,7 @@
 
 ## Official Drivers
 
-#   https://@github.com/arangodb/arangodb-java-driver.git;arangodb-java-driver;docs/Drivers;;/ 
+  #https://@github.com/arangodb/arangodb-java-driver.git;arangodb-java-driver;docs/Drivers;;/ 
 * [Java Driver](Java/README.md)
   * [Getting Started](Java/GettingStarted/README.md)
   * [Reference](Java/Reference/README.md)
@@ -35,7 +35,7 @@
       * [Edges Manipulation](Java/Reference/Graph/Edges.md)
     * [Route](Java/Reference/Route.md)
     * [Serialization](Java/Reference/Serialization.md)
-#   https://@github.com/arangodb/arangodbjs.git;arangodbjs;docs/Drivers;;/ 
+  #https://@github.com/arangodb/arangodbjs.git;arangodbjs;docs/Drivers;;/ 
 * [ArangoJS - JavaScript Driver](JS/README.md)
   * [Getting Started](JS/GettingStarted/README.md)
   * [Reference](JS/Reference/README.md)
@@ -65,7 +65,7 @@
       * [VertexCollection](JS/Reference/Graph/VertexCollection.md)
       * [EdgeCollection](JS/Reference/Graph/EdgeCollection.md)
     * [Route](JS/Reference/Route.md) 
-#   https://@github.com/arangodb/arangodb-php.git;arangodb-php;docs/Drivers;;/
+  #https://@github.com/arangodb/arangodb-php.git;arangodb-php;docs/Drivers;;/
 * [ArangoDB-PHP](PHP/README.md)
   * [Getting Started](PHP/GettingStarted/README.md)
   * [Tutorial](PHP/Tutorial/README.md)
@@ -77,7 +77,7 @@
 
 ## Integrations
 
-#   https://@github.com/arangodb/spring-data.git;spring-data;docs/Drivers;;/ 
+  #https://@github.com/arangodb/spring-data.git;spring-data;docs/Drivers;;/ 
 * [Spring Data ArangoDB](SpringData/README.md)
   * [Getting Started](SpringData/GettingStarted/README.md)
   * [Reference](SpringData/Reference/README.md)
@@ -107,7 +107,7 @@
     * [Migrating 1.x to 3.0](SpringData/Migration/Migrating-1.x-3.0.md)
     * [Migrating 2.x to 3.0](SpringData/Migration/Migrating-2.x-3.0.md)
 
-#   https://@github.com/arangodb/arangodb-spark-connector.git;arangodb-spark-connector;docs/Drivers;;/
+  #https://@github.com/arangodb/arangodb-spark-connector.git;arangodb-spark-connector;docs/Drivers;;/
 * [ArangoDB Spark Connector](SparkConnector/README.md)
   * [Getting Started](SparkConnector/GettingStarted/README.md)
   * [Reference](SparkConnector/Reference/README.md)
