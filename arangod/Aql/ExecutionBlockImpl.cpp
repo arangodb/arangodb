@@ -45,15 +45,13 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(infos),
       _blockFetcher(this),
       _rowFetcher(_blockFetcher),
-      _executor(_rowFetcher, _infos),
-      _getSomeOutBlock(nullptr),
-      _getSomeOutRowsAdded(0)
+      _executor(_rowFetcher, _infos)
     {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if(_getSomeOutBlock){
-    AqlItemBlock* block = _getSomeOutBlock.release();
+  if(_outputItemRow){
+    AqlItemBlock* block = _outputItemRow->stealBlock().release();
     _engine->_itemBlockManager.returnBlock(block);
   }
 }
@@ -61,12 +59,8 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 
-  if(!_getSomeOutBlock) {
+  if(!_outputItemRow) {
     auto newBlock = this->requestBlock(atMost, _infos.numberOfRegisters());
-    // _getSomeOutBlock = std::unique_ptr<AqlItemBlock>(newBlock);
-    //auto deleter = [=](AqlItemBlock* b){_engine->_itemBlockManager.returnBlock(b); };
-    //_getSomeOutBlock = std::unique_ptr<AqlItemBlock, decltype(deleter)>(block, deleter);
-    _getSomeOutRowsAdded = 0;
     _outputItemRow = std::make_unique<OutputAqlItemRow>(
         std::unique_ptr<AqlItemBlock>{newBlock}, _infos.registersToKeep());
   }
@@ -80,18 +74,13 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
 
-  while (_getSomeOutRowsAdded < atMost) {
+  while (!_outputItemRow->isFull()) {
     state = _executor.produceRow(*_outputItemRow);
     // TODO I'm not quite happy with produced(). Internally in OutputAqlItemRow,
     // this means "we copied registers from a source row", while here, it means
     // "the executor wrote its values".
     if (_outputItemRow && _outputItemRow->produced()) {
       _outputItemRow->advanceRow();
-      // TODO Maybe we should remove _getSomeOutRowsAdded; `_outputItemRow` has this
-      // information already, and it's more authoritative. And when we're there,
-      // maybe we should make the output row responsible for the item block,
-      // and only steal or replace it after it's full.
-      ++_getSomeOutRowsAdded;
     }
 
     if (state == ExecutionState::WAITING) {
@@ -99,21 +88,25 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     }
 
     if (state == ExecutionState::DONE) {
-      if (_getSomeOutRowsAdded == 0) {
-        // No results, just throw it away
-        _getSomeOutBlock.reset();
-      } else if (_getSomeOutRowsAdded < atMost) {
-        _getSomeOutBlock->shrink(_getSomeOutRowsAdded);
-      }
-      // _getSomeOutBlock is guaranteed to be nullptr after move.
-      // keep this invariant in case we switch to another type!!!!!
-      return {state, std::move(_getSomeOutBlock)};
+      auto outputBlock = _outputItemRow->stealBlock();
+      // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
+
+      // This is not strictly necessary here, as we shouldn't be called again
+      // after DONE.
+      _outputItemRow.reset(nullptr);
+
+      return {state, std::move(outputBlock)};
     }
   }
 
   TRI_ASSERT(state == ExecutionState::HASMORE);
-  TRI_ASSERT(_getSomeOutRowsAdded == atMost);
-  return {state, std::move(_getSomeOutBlock)};
+  TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
+
+  auto outputBlock = _outputItemRow->stealBlock();
+  // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
+  _outputItemRow.reset(nullptr);
+
+  return {state, std::move(outputBlock)};
 }
 
 template <class Executor>

@@ -38,7 +38,7 @@ OutputAqlItemRow::OutputAqlItemRow(
     : _block(std::move(block)),
       _baseIndex(0),
       _regsToKeep(regsToKeep),
-      _produced(false),
+      _currentRowIsComplete(false),
       _lastSourceRow{CreateInvalidInputRowHint{}} {
   TRI_ASSERT(_block != nullptr);
 }
@@ -51,7 +51,7 @@ void OutputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& so
 
 void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(sourceRow.isInitialized());
-  if (_produced) {
+  if (_currentRowIsComplete) {
     return;
   }
 
@@ -83,6 +83,6 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
     }
   }
 
-  _produced = true;
+  _currentRowIsComplete = true;
   _lastSourceRow = sourceRow;
 }

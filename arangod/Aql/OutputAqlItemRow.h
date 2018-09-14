@@ -58,18 +58,36 @@ class OutputAqlItemRow {
   /// @deprecated Is unneeded, advanceRow() suffices.
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;
-    _produced = false;
+    _currentRowIsComplete = false;
   }
 
   void advanceRow() {
     ++_baseIndex;
-    _produced = false;
+    _currentRowIsComplete = false;
   }
 
   // returns true if row was produced
-  bool produced() const { return _produced; };
+  bool produced() const { return _currentRowIsComplete; };
 
-  std::unique_ptr<AqlItemBlock> stealBlock() { return std::move(_block); }
+  std::unique_ptr<AqlItemBlock> stealBlock() {
+    if (numRowsWritten() == 0) {
+      // blocks may not be empty
+      _block.reset(nullptr);
+    } else {
+      _block->shrink(numRowsWritten());
+    }
+    return std::move(_block);
+  }
+
+  bool isFull() { return numRowsWritten() >= _block->size(); }
+
+  size_t numRowsWritten() const noexcept {
+    if (_currentRowIsComplete) {
+      return _baseIndex + 1;
+    }
+
+    return _baseIndex;
+  }
 
  private:
   /**
@@ -84,13 +102,19 @@ class OutputAqlItemRow {
 
   std::unordered_set<RegisterId> const _regsToKeep;
 
-  bool _produced;
+  bool _currentRowIsComplete;
 
   /**
   * @brief The last source row seen. Note that this is invalid before the first
   *        source row is seen.
   */
   InputAqlItemRow _lastSourceRow;
+
+ private:
+
+  size_t nextUnwrittenIndex() const noexcept {
+    return numRowsWritten();
+  }
 };
 
 }  // namespace aql
