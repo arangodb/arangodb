@@ -797,12 +797,12 @@ SECTION("detachRace") {
   std::mutex m;
   std::condition_variable condition;
  
+  std::unique_lock<std::mutex> guard(m);
   std::thread t1([&]{
     std::lock_guard<std::mutex> guard(m);
     condition.notify_one();
     p.reset();
   });
-  std::unique_lock<std::mutex> guard(m);
   condition.wait(guard);
   f.reset();
   t1.join();
