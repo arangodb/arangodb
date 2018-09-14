@@ -34,7 +34,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-aql::QueryRegistry* QueryRegistryFeature::QUERY_REGISTRY = nullptr;
+std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
 QueryRegistryFeature::QueryRegistryFeature(
     application_features::ApplicationServer& server
@@ -56,7 +56,7 @@ QueryRegistryFeature::QueryRegistryFeature(
 void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("query", "Configure queries");
-  
+
   options->addOldOption("database.query-cache-mode", "query.cache-mode");
   options->addOldOption("database.query-cache-max-results", "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
@@ -66,13 +66,13 @@ void QueryRegistryFeature::collectOptions(
 
   options->addOption("--query.tracking", "whether to track slow AQL queries",
                      new BooleanParameter(&_trackSlowQueries));
-  
+
   options->addOption("--query.tracking-with-bindvars", "whether to track bind vars with AQL queries",
                      new BooleanParameter(&_trackBindVars));
-  
+
   options->addOption("--query.fail-on-warning", "whether AQL queries should fail with errors even for recoverable warnings",
                      new BooleanParameter(&_failOnWarning));
-  
+
   options->addOption("--query.slow-threshold", "threshold for slow AQL queries (in seconds)",
                      new DoubleParameter(&_slowQueryThreshold));
 
@@ -83,7 +83,7 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.cache-entries",
                      "maximum number of results in query result cache per database",
                      new UInt64Parameter(&_queryCacheEntries));
-  
+
   options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
 
@@ -114,14 +114,14 @@ void QueryRegistryFeature::prepare() {
 
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
-  QUERY_REGISTRY = _queryRegistry.get();
+  QUERY_REGISTRY.store(_queryRegistry.get());
 }
 
 void QueryRegistryFeature::start() {}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery
-  QUERY_REGISTRY = nullptr;
+  QUERY_REGISTRY.store(nullptr);
 }
 
 } // arangodb

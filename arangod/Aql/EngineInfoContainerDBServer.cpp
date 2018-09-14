@@ -335,7 +335,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     previous = clone;
   }
   TRI_ASSERT(previous != nullptr);
-    
+
   plan.root(previous);
   plan.setVarUsageComputed();
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
@@ -553,11 +553,11 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   }
   infoBuilder.close();  // lockInfo
   infoBuilder.add(VPackValue("options"));
-  
+
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
   if (query.trx()->state()->options().skipInaccessibleCollections) {
-    
+
     aql::QueryOptions opts = query.queryOptions();
     TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
     for (auto const& it : _engineInfos) {
@@ -580,7 +580,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 #else
   query.queryOptions().toVelocyPack(infoBuilder, true);
 #endif
-  
+
   infoBuilder.add(VPackValue("variables"));
   // This will open and close an Object.
   query.ast()->variables()->toVelocyPack(infoBuilder);
@@ -676,7 +676,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
       infoBuilder.close();
     }
     infoBuilder.close();  // edges
-    
+
 #ifdef USE_ENTERPRISE
     if (!list.inaccessibleShards.empty()) {
       infoBuilder.add(VPackValue("inaccessible"));
@@ -955,10 +955,11 @@ Result EngineInfoContainerDBServer::buildEngines(
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
-  
+
   double ttl = QueryRegistryFeature::DefaultQueryTTL;
-  if (QueryRegistryFeature::QUERY_REGISTRY != nullptr) {
-    ttl = QueryRegistryFeature::QUERY_REGISTRY->defaultTTL();
+  auto registry = QueryRegistryFeature::QUERY_REGISTRY.load();
+  if (registry != nullptr) {
+    ttl = registry->defaultTTL();
   }
   TRI_ASSERT(ttl > 0);
 
@@ -993,7 +994,7 @@ Result EngineInfoContainerDBServer::buildEngines(
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
-                               
+
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest(coordTransactionID, serverDest,
                                RequestType::POST, url, infoBuilder.toJson(),
