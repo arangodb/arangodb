@@ -1811,7 +1811,6 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ONLY_IN_CLUSTER
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getId()");
