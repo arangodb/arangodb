@@ -239,7 +239,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
     THEN("should be able to drop registers and write new values") {
       regsToKeep = {0};
     }
-    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
+    OutputAqlItemRow testee(outputData.get(), regsToKeep);
     {
       // Make sure this data is cleared before the assertions
       auto inputData = buildBlock<3>(&monitor, {
