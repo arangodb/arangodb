@@ -65,7 +65,7 @@ class State {
 
   /// @brief Log entries (leader)
   std::vector<index_t> logLeaderMulti(query_t const& query,
-                           std::vector<bool> const& indices, term_t term);
+                           std::vector<apply_ret_t> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
   index_t logLeaderSingle(velocypack::Slice const& slice, term_t term,

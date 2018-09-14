@@ -139,7 +139,8 @@ bool State::persist(index_t index, term_t term,
 bool State::persistconf(
   index_t index, term_t term, arangodb::velocypack::Slice const& entry,
   std::string const& clientId) const {
-  
+
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   LOG_TOPIC(TRACE, Logger::AGENCY)
     << "persist configuration index=" << index << " term=" << term
     << " entry: " << entry.toJson();
@@ -153,6 +154,7 @@ bool State::persistconf(
     log.add("clientId", Value(clientId));
     log.add("timestamp", Value(timestamp())); }
   
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   // The new configuration to be persisted.-------------------------------------
   // Actual agent's configuration is changed after successful persistence.
   auto config = entry.valueAt(0);
@@ -173,6 +175,7 @@ bool State::persistconf(
     config = builder.slice();
   }
   
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   Builder configuration;
   { VPackObjectBuilder b(&configuration);
     configuration.add("_key", VPackValue("0"));
@@ -181,6 +184,7 @@ bool State::persistconf(
   // Multi docment transaction for log entry and configuration replacement -----
   TRI_ASSERT(_vocbase != nullptr);
 
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
   transaction::Methods trx(
     ctx, {}, {"log", "configuration"}, {}, transaction::Options());
@@ -190,6 +194,7 @@ bool State::persistconf(
     THROW_ARANGO_EXCEPTION(res);
   }
   
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   OperationResult logResult, confResult;
   try {
     logResult = trx.insert("log", log.slice(), _options);
@@ -198,11 +203,13 @@ bool State::persistconf(
     LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist log entry:" << e.what();
     return false;
   }
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   
   res = trx.finish(confResult.result);
   
   // Successful persistence affects local configuration ------------------------
   if (res.ok()) {
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
     _agent->updateConfiguration(config);
   }
   
@@ -216,13 +223,15 @@ bool State::persistconf(
 
 
 /// Log transaction (leader)
-std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
-                                           std::vector<bool> const& applicable,
-                                           term_t term) {
+std::vector<index_t> State::logLeaderMulti(
+  query_t const& transactions, std::vector<apply_ret_t> const& applicable,
+  term_t term) {
+
   std::vector<index_t> idx(applicable.size());
   size_t j = 0;
   auto const& slice = transactions->slice();
 
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   if (!slice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         30000, "Agency syntax requires array of transactions [[<queries>]]");
@@ -232,27 +241,32 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
     THROW_ARANGO_EXCEPTION_MESSAGE(30000, "Invalid transaction syntax");
   }
 
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   MUTEX_LOCKER(mutexLocker, _logLock);
 
   TRI_ASSERT(!_log.empty());  // log must never be empty
 
   for (auto const& i : VPackArrayIterator(slice)) {
     if (!i.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(30000,
-                                     "Transaction syntax is [{<operations>}, "
-                                     "{<preconditions>}, \"clientId\"]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        30000,
+        "Transaction syntax is [{<operations>}, <preconditions>}, \"clientId\"]");
     }
 
-    if (applicable[j]) {
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
+    if (applicable[j] == 0) {
       std::string clientId((i.length() == 3) ? i[2].copyString() : "");
 
       auto transaction = i[0];
       TRI_ASSERT(transaction.isObject());
       TRI_ASSERT(transaction.length() > 0);
+      LOG_TOPIC(ERR, Logger::FIXME) << transaction.toJson();
       size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
       
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
       idx[j] = logNonBlocking(
         _log.back().index + 1, i[0], term, clientId, true, pos == 0 || pos == 1);
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
     }
     ++j;
@@ -273,6 +287,7 @@ index_t State::logNonBlocking(
   std::string const& clientId, bool leading, bool reconfiguration) {
 
   _logLock.assertLockedByCurrentThread();
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
 
   auto buf = std::make_shared<Buffer<uint8_t>>();
   buf->append((char const*)slice.begin(), slice.byteSize());

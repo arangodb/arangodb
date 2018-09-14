@@ -437,7 +437,6 @@ void config_t::update(query_t const& message) {
 
 void config_t::toBuilder(VPackBuilder& builder) const {
   
-  VPackObjectBuilder a(&builder);
   READ_LOCKER(readLocker, _lock);
   {
     
@@ -476,7 +475,8 @@ void config_t::toBuilder(VPackBuilder& builder) const {
 /// @brief vpack representation
 query_t config_t::toBuilder() const {
   query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-  toBuilder(*ret);
+  { VPackObjectBuilder a(ret.get());
+    toBuilder(*ret); }
   return ret;
 }
 
@@ -677,7 +677,8 @@ bool config_t::merge(VPackSlice const& conf) {
 void config_t::updateConfiguration(VPackSlice const& other) {
 
   WRITE_LOCKER(writeLocker, _lock);
-  
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
+
   auto pool = other.get(poolStr);
   TRI_ASSERT(pool.isObject());
   _pool.clear();
@@ -685,6 +686,7 @@ void config_t::updateConfiguration(VPackSlice const& other) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
   _poolSize = _pool.size();
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
   auto active = other.get(activeStr);
   TRI_ASSERT(active.isArray());
@@ -693,6 +695,7 @@ void config_t::updateConfiguration(VPackSlice const& other) {
     _active.push_back(id.copyString());
   }
   _agencySize = _pool.size();
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   
   if (other.hasKey(minPingStr)) {
     _minPing = other.get(minPingStr).getNumber<double>();
@@ -715,6 +718,7 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   if (other.hasKey(compactionKeepSizeStr)) {
     _compactionKeepSize = other.get(compactionKeepSizeStr).getNumber<uint64_t>();
   }
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   
   ++_version;
   
