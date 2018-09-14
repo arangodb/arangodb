@@ -245,7 +245,6 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
 
     if (applicable[j]) {
       std::string clientId((i.length() == 3) ? i[2].copyString() : "");
-<<<<<<< HEAD
 
       auto transaction = i[0];
       TRI_ASSERT(transaction.isObject());
@@ -254,10 +253,7 @@ std::vector<index_t> State::logLeaderMulti(query_t const& transactions,
       
       idx[j] = logNonBlocking(
         _log.back().index + 1, i[0], term, clientId, true, pos == 0 || pos == 1);
-=======
-      idx[j] =
-          logNonBlocking(_log.back().index + 1, i[0], term, clientId, true);
->>>>>>> 0dfabd8f042dacbbc027ee19adf1aec4b55dd3df
+
     }
     ++j;
   }
@@ -272,7 +268,6 @@ index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
 }
 
 /// Log transaction (leader)
-<<<<<<< HEAD
 index_t State::logNonBlocking(
   index_t idx, velocypack::Slice const& slice, term_t term,
   std::string const& clientId, bool leading, bool reconfiguration) {
@@ -287,18 +282,6 @@ index_t State::logNonBlocking(
     persist(idx, term, slice, clientId);
   
   if (!success) {         // log to disk or die
-=======
-index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
-                              term_t term, std::string const& clientId,
-                              bool leading) {
-  _logLock.assertLockedByCurrentThread();
-
-  auto buf = std::make_shared<Buffer<uint8_t>>();
-
-  buf->append((char const*)slice.begin(), slice.byteSize());
-
-  if (!persist(idx, term, slice, clientId)) {  // log to disk or die
->>>>>>> 0dfabd8f042dacbbc027ee19adf1aec4b55dd3df
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
           << "RAFT leader fails to persist log entries!";
@@ -430,13 +413,7 @@ index_t State::logFollower(query_t const& transactions) {
         query.keyAt(0).copyString().compare(0, RECONFIGURE.size(), RECONFIGURE) == 0;
       
       // first to disk
-<<<<<<< HEAD
       if (logNonBlocking(index, query, term, clientId, false, reconfiguration)==0) {
-=======
-      if (logNonBlocking(slice.get("index").getUInt(), slice.get("query"),
-                         slice.get("term").getUInt(),
-                         slice.get("clientId").copyString()) == 0) {
->>>>>>> 0dfabd8f042dacbbc027ee19adf1aec4b55dd3df
         break;
       }
     }
