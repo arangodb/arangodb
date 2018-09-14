@@ -33,7 +33,7 @@ namespace futures {
 /// std::is_invocable_r
 /// std::invoke
 
-#if __cplusplus == 201402L
+#if __cplusplus < 201703L
 struct in_place_tag {};
 using in_place_t = in_place_tag (&)(in_place_tag);
 inline in_place_tag in_place(in_place_tag = {}) {
