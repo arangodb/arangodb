@@ -120,7 +120,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 }; // IResearchLogTopic
 
 arangodb::aql::AqlValue filter(
-    arangodb::aql::Query*,
+    arangodb::aql::ExpressionContext*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -130,7 +130,7 @@ arangodb::aql::AqlValue filter(
 }
 
 arangodb::aql::AqlValue scorer(
-    arangodb::aql::Query*,
+    arangodb::aql::ExpressionContext*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -140,7 +140,7 @@ arangodb::aql::AqlValue scorer(
 }
 
 typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
-  arangodb::aql::Query*,
+  arangodb::aql::ExpressionContext*,
   arangodb::transaction::Methods* ,
   arangodb::SmallVector<arangodb::aql::AqlValue> const&
 );
@@ -168,7 +168,7 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
     ),
-    [](arangodb::aql::Query*,
+    [](arangodb::aql::ExpressionContext*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
       auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
