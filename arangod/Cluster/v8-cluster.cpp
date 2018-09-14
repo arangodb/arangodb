@@ -1038,7 +1038,7 @@ static void JS_AddressServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("address()");
   }
 
-  std::string const address = ServerState::instance()->getAddress();
+  std::string const address = ServerState::instance()->getEndpoint();
   TRI_V8_RETURN_STD_STRING(address);
   TRI_V8_TRY_CATCH_END
 }

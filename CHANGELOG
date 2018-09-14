@@ -3,6 +3,7 @@ v3.4.0-rc.2 (XXXX-XX-XX)
 
 * added AQL VERSION function to return the server version as a string
 
+* added startup parameter advertised-endpoints
 
 v3.4.0-rc.1 (2018-09-06)
 ------------------------
