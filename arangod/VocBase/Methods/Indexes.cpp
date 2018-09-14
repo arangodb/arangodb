@@ -170,7 +170,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.openArray(true);
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
 #ifdef USE_IRESEARCH
-      if (withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (!withLinks && idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
         continue;
       }
 #endif
