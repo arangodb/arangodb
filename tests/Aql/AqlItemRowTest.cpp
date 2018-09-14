@@ -189,6 +189,52 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
   }
+
+  WHEN("writing rows to target") {
+    auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
+
+    std::unordered_set<RegisterId> regsToKeep = {};
+    THEN("should keep all registers and add new values") {
+      regsToKeep = {0, 1, 2};
+    }
+    THEN("should be able to drop registers and write new values") {
+      regsToKeep = {0};
+    }
+    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
+    {
+      // Make sure this data is cleared before the assertions
+      auto inputData = buildBlock<3>(&monitor, {
+        {{ {1}, {2}, {3} }},
+        {{ {4}, {5}, {6} }},
+        {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
+      });
+
+
+      for (size_t i = 0; i < 3; ++i) {
+        // Iterate over source rows
+        InputAqlItemRow source{inputData.get(), i, 0};
+        for(size_t j = 3; j < 5; ++j) {
+          AqlValue v{ AqlValueHintInt{(int64_t)(j + 5)} };
+          testee.setValue(j, source, v);
+        }
+        REQUIRE(testee.produced());
+        if (i < 2) {
+          // Not at the last one, we are at the end
+          testee.advanceRow();
+        }
+      }
+    }
+    auto expected = VPackParser::fromJson("["
+      "[1,2,3,8,9],"
+      "[4,5,6,8,9],"
+      "[\"a\",\"b\",\"c\",8,9]"
+    "]");
+    // add these two here as they are needed for output validation but not for copy in ItemRows
+    regsToKeep.emplace(3);
+    regsToKeep.emplace(4);
+    AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
+  }
+
 }
 
 }  // namespace aql
