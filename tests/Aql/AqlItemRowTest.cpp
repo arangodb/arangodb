@@ -47,7 +47,7 @@ static void AssertEntry(InputAqlItemRow& in, RegisterId reg, VPackSlice value) {
   REQUIRE(basics::VelocyPackHelper::compare(value, v.slice(), true) == 0);
 }
 
-static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result) {
+static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result, std::unordered_set<RegisterId>& regsToKeep) {
   INFO("Expecting: " << result.toJson() << " Got: " << *in);
   REQUIRE(result.isArray());
   REQUIRE(in->size() == result.length());
@@ -58,7 +58,12 @@ static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result) {
     REQUIRE(in->getNrRegs() == row.length());
     for (RegisterId j = 0; j < in->getNrRegs(); ++j) {
       AqlValue v = validator.getValue(j);
-      REQUIRE(basics::VelocyPackHelper::compare(row.at(j), v.slice(), true) == 0);
+      if (regsToKeep.find(j) == regsToKeep.end()) {
+        // If this should not be kept it has to be set to NONE!
+        REQUIRE(v.slice().isNone());
+      } else {
+        REQUIRE(basics::VelocyPackHelper::compare(row.at(j), v.slice(), true) == 0);
+      }
     }
   }
 }
@@ -99,10 +104,9 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         INFO("The input was " << (*(inputData.get())));
         INFO("The output is " << (*(outputData.get())));
-        // TODO hard nullify source block
       }
       auto expected = VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
-      AssertResultMatrix(outputData.get(), expected->slice());
+      AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
   }
 
@@ -134,7 +138,6 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
             }
           }
         }
-        // TODO hard nullify source block
       }
       auto expected = VPackParser::fromJson("["
         "[1,2,3],"
@@ -147,7 +150,43 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         "[\"a\",\"b\",\"c\"],"
         "[\"a\",\"b\",\"c\"]"
       "]");
-      AssertResultMatrix(outputData.get(), expected->slice());
+      AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
+    }
+  }
+
+  WHEN("dropping a register from source while writing to target") {
+    auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
+    std::unordered_set<RegisterId> regsToKeep{0, 2};
+
+    OutputAqlItemRow testee(outputData.get(), 0, regsToKeep);
+
+    THEN("the output rows need to be valid even if the source rows are gone") {
+      {
+        // Make sure this data is cleared before the assertions
+        auto inputData = buildBlock<3>(&monitor, {
+          {{ {1}, {2}, {3} }},
+          {{ {4}, {5}, {6} }},
+          {{ {"\"a\""}, {"\"b\""}, {"\"c\""} }}
+        });
+
+
+        for (size_t i = 0; i < 3; ++i) {
+          // Iterate over source rows
+          InputAqlItemRow source{inputData.get(), i, 0};
+          testee.copyRow(source);
+          REQUIRE(testee.produced());
+          if (i < 2) {
+            // Not at the last one, we are at the end
+            testee.advanceRow();
+          }
+        }
+      }
+      auto expected = VPackParser::fromJson("["
+        "[1,2,3],"
+        "[4,5,6],"
+        "[\"a\",\"b\",\"c\"]"
+      "]");
+      AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
   }
 }
