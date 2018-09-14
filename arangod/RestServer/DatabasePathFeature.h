@@ -33,6 +33,10 @@ class DatabasePathFeature final
   explicit DatabasePathFeature(
     application_features::ApplicationServer& server
   );
+      
+  static constexpr const char* name() {
+    return "DatabasePath";
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
