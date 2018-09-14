@@ -1166,9 +1166,12 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
 
       applied = _spearhead.applyTransactions(chunk, wmode);
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
       auto tmp = _state.logLeaderMulti(chunk, applied, term());
+  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
       indices.insert(indices.end(), tmp.begin(), tmp.end());
 
     }
@@ -1330,7 +1333,7 @@ void Agent::persistConfiguration(term_t t) {
   { VPackArrayBuilder trxs(agency.get());
     { VPackArrayBuilder trx(agency.get());
       { VPackObjectBuilder oper(agency.get());
-        agency->add(VPackValue(".agency"));
+        agency->add(VPackValue(RECONFIGURE));
         { VPackObjectBuilder a(agency.get());
           agency->add("term", VPackValue(t));
           agency->add("id", VPackValue(id()));
@@ -1760,15 +1763,19 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
       if (!challengeLeadership()) {
         auto tmp = _config;
-
+        tmp.upsertPool(pslice, id);
   LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
         auto query = std::make_shared<VPackBuilder>();
-        { VPackArrayBuilder trs(query.get());
-          { VPackArrayBuilder tr(query.get());
-            query->add(VPackValue(RECONFIGURE));
-            { VPackObjectBuilder c(query.get());
-              _config.toBuilder(*query); }}}
-
+        { VPackArrayBuilder trs(query.get()); //[
+          { VPackArrayBuilder tr(query.get()); //[
+            { VPackObjectBuilder o(query.get()); //{
+              query->add(VPackValue(RECONFIGURE)); //.agency :
+              { VPackObjectBuilder o(query.get()); // { op:set 
+                query->add("op", VPackValue("set")); // new: 
+                query->add(VPackValue("new"));       // {
+                { VPackObjectBuilder c(query.get()); // }
+                  tmp.toBuilder(*query); }}}}} // ]]
+        
   LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   LOG_TOPIC(ERR, Logger::FIXME) << query->toJson();
         LOG_TOPIC(DEBUG, Logger::AGENCY)

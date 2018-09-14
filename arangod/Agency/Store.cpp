@@ -152,11 +152,9 @@ std::vector<apply_ret_t> Store::applyTransactions(
   query_t const& query, Agent::WriteMode const& wmode) {
   std::vector<apply_ret_t> success;
   
-
   if (query->slice().isArray()) {
     try {
       for (auto const& i : VPackArrayIterator(query->slice())) {
-
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
@@ -167,6 +165,8 @@ std::vector<apply_ret_t> Store::applyTransactions(
             }
           }
           if (found) {
+            
+            LOG_TOPIC(ERR, Logger::FIXME) << "forbidden";
             success.push_back(FORBIDDEN);
             continue;
           }
@@ -202,8 +202,8 @@ std::vector<apply_ret_t> Store::applyTransactions(
       }
 
     } catch (std::exception const& e) {  // Catch any errors
-      LOG_TOPIC(ERR, Logger::AGENCY) << __FILE__ << ":" << __LINE__ << " "
-                                     << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << __FILE__ << ":" << __LINE__ << " " << e.what();
       success.push_back(UNKNOWN_ERROR);
     }
 

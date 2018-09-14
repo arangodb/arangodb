@@ -157,7 +157,8 @@ bool State::persistconf(
   LOG_TOPIC(ERR, Logger::FIXME) << __FILE__<<__LINE__;  
   // The new configuration to be persisted.-------------------------------------
   // Actual agent's configuration is changed after successful persistence.
-  auto config = entry.valueAt(0);
+  LOG_TOPIC(ERR, Logger::FIXME) << entry.valueAt(0).toJson();
+  auto config = entry.valueAt(0).get("new");
   auto const myId = _agent->id();
   Builder builder;
   if (config.get("id").copyString() != myId) {
@@ -253,7 +254,7 @@ std::vector<index_t> State::logLeaderMulti(
         "Transaction syntax is [{<operations>}, <preconditions>}, \"clientId\"]");
     }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
+    LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__ << " " << applicable[j];
     if (applicable[j] == 0) {
       std::string clientId((i.length() == 3) ? i[2].copyString() : "");
 
