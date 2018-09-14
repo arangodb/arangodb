@@ -167,15 +167,15 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyResult); // race with setResult
-          [[gnu::fallthrough]];
-          
+          [[fallthrough]];
+
         case State::OnlyResult:
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
-          [[gnu::fallthrough]];
-          
+          [[fallthrough]];
+
         default:
           TRI_ASSERT(false); // unexpected state
       }
@@ -203,14 +203,14 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyCallback); // race with setCallback
-          [[gnu::fallthrough]];
+          [[fallthrough]];
           
         case State::OnlyCallback:
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
-          [[gnu::fallthrough]];
+          [[fallthrough]];
           
         default:
           TRI_ASSERT(false); // unexpected state
