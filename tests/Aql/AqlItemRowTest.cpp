@@ -33,7 +33,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <iostream>
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -47,7 +46,8 @@ static void AssertEntry(InputAqlItemRow& in, RegisterId reg, VPackSlice value) {
   REQUIRE(basics::VelocyPackHelper::compare(value, v.slice(), true) == 0);
 }
 
-static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result, std::unordered_set<RegisterId>& regsToKeep) {
+static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result, std::unordered_set<RegisterId>& regsToKeep,
+    bool assertNotInline = false) {
   INFO("Expecting: " << result.toJson() << " Got: " << *in);
   REQUIRE(result.isArray());
   REQUIRE(in->size() == result.length());
@@ -63,6 +63,14 @@ static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result, std::unorder
         REQUIRE(v.slice().isNone());
       } else {
         REQUIRE(basics::VelocyPackHelper::compare(row.at(j), v.slice(), true) == 0);
+        // Work around test as we are unable to check the type via API.
+        if (assertNotInline) {
+          // If this object is not inlined it requires some memory
+          REQUIRE(v.memoryUsage() != 0);
+        } else {
+          // If it is inlined it does not require memory.
+          REQUIRE(v.memoryUsage() == 0);
+        }
       }
     }
   }
@@ -101,13 +109,44 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         testee.advanceRow();
         testee.copyRow(source);
         REQUIRE(testee.produced());
-
-        INFO("The input was " << (*(inputData.get())));
-        INFO("The output is " << (*(outputData.get())));
       }
       auto expected = VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
       AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep);
     }
+
+    THEN("the data should stay valid for large input values") {
+      {
+        // Make sure this data is cleared before the assertions
+        // Every of these entries has a size > 16 uint_8 
+        auto inputData = buildBlock<3>(&monitor, {
+          {{ {"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""} }},
+          {{ {"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""} }},
+          {{ {"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""} }}
+        });
+
+        InputAqlItemRow source{inputData.get(), 0, 0};
+
+        testee.copyRow(source);
+        REQUIRE(testee.produced());
+
+        source = {inputData.get(), 1, 0};
+        testee.advanceRow();
+        testee.copyRow(source);
+        REQUIRE(testee.produced());
+
+        source = {inputData.get(), 2, 0};
+        testee.advanceRow();
+        testee.copyRow(source);
+        REQUIRE(testee.produced());
+      }
+      auto expected = VPackParser::fromJson("["
+        "[\"aaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbb\", \"cccccccccccccccccccc\"],"
+        "[\"dddddddddddddddddddd\", \"eeeeeeeeeeeeeeeeeeee\", \"ffffffffffffffffffff\"],"
+        "[\"gggggggggggggggggggg\", \"hhhhhhhhhhhhhhhhhhhh\", \"iiiiiiiiiiiiiiiiiiii\"]"
+      "]");
+      AssertResultMatrix(outputData.get(), expected->slice(), regsToKeep, true);
+    }
+
   }
 
   WHEN("only copying from source to target but multiplying rows") {
@@ -218,7 +257,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
           testee.setValue(j, source, v);
           if (j == 3) {
             // We are not allowed to declare an incomplete row as produced
-            REQUIRE(!testee.produced);
+            REQUIRE(!testee.produced());
           }
         }
         REQUIRE(testee.produced());
