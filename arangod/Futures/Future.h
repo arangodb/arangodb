@@ -334,16 +334,12 @@ public:
     auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
-      try {
-        if (t.hasException()) {
-          pr.setException(std::move(t).exception());
-        } else {
-          pr.setTry(detail::makeTryWith([&fn, &t]{
-            return futures::invoke(std::forward<DF>(fn), std::move(t).get());
-          }));
-        }
-      } catch(...) {
-        pr.setException(std::current_exception());
+      if (t.hasException()) {
+        pr.setException(std::move(t).exception());
+      } else {
+        pr.setTry(detail::makeTryWith([&fn, &t] {
+          return futures::invoke(std::forward<DF>(fn), std::move(t).get());
+        }));
       }
     });
     return std::move(future);
@@ -366,18 +362,19 @@ public:
     auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
-      try {
-        if (t.hasException()) {
-          pr.setException(std::move(t).exception());
-        } else {
+      if (t.hasException()) {
+        pr.setException(std::move(t).exception());
+      } else {
+        try {
           futures::invoke(std::forward<DF>(fn), std::move(t).get())
           .then([pr = std::move(pr)] (Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
+        } catch(...) {
+          pr.setException(std::current_exception());
         }
-      } catch(...) {
-        pr.setException(std::current_exception());
       }
+
     });
     return std::move(future);
   }
@@ -399,13 +396,9 @@ public:
     auto future = promise.getFuture();
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
-      try {
-        pr.setTry(detail::makeTryWith([&fn, &t]{
-          return futures::invoke(std::forward<DF>(fn), std::move(t));
-        }));
-      } catch(...) {
-        pr.setException(std::current_exception());
-      }
+      pr.setTry(detail::makeTryWith([&fn, &t]{
+        return futures::invoke(std::forward<DF>(fn), std::move(t));
+      }));
     });
     return std::move(future);
   }
