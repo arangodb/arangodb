@@ -216,6 +216,10 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
         for(size_t j = 3; j < 5; ++j) {
           AqlValue v{ AqlValueHintInt{(int64_t)(j + 5)} };
           testee.setValue(j, source, v);
+          if (j == 3) {
+            // We are not allowed to declare an incomplete row as produced
+            REQUIRE(!testee.produced);
+          }
         }
         REQUIRE(testee.produced());
         if (i < 2) {
