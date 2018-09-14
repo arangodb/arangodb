@@ -29,6 +29,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
@@ -81,10 +82,15 @@ class EnumerateListExecutor {
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
-  void throwArrayExpectedException(AqlValue const& value);
+  void initialize();
 
  private:
   Fetcher& _fetcher;
+
+  InputAqlItemRow _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  ExecutionState _rowState;
+  size_t _inputArrayPosition = 0;
+  size_t _inputArrayLength = 0;
 
   EnumerateListExecutorInfos& _infos;
 };

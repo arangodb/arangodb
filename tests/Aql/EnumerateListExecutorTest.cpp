@@ -46,11 +46,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
+SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlock block(&monitor, 1000, 1);
 
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
@@ -64,9 +63,11 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
   fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
-  EnumerateListExecutorInfos infos(0, 0, 1, 1, {}, &trx);
+  EnumerateListExecutorInfos infos(0, 1, 2, 1, {}, &trx);
 
+  /*
   GIVEN("there are no rows upstream") {
+    AqlItemBlock block(&monitor, 1000, 1);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -99,30 +100,29 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       }
     }
   }
+  */
 
   GIVEN("there are rows in the upstream") {
+    EnumerateListExecutorInfos infos(3, 4, 5, 4, {}, &trx);
+    AqlItemBlock block(&monitor, 1000, 5);
     auto input =
-        VPackParser::fromJson("[ 1, 2, 3, [[true, true, true]] ]");
+        VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
-    WHEN("the producer does not wait") {
+    WHEN("the producer does wait") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return DONE") {
         OutputAqlItemRow result(&block, infos.registersToKeep());
 
         /*
-        produce => WAIT                  RES1
-        produce => HASMORE, Row 1        RES1
-        => WAIT                          RES2
-        => WAIT                          RES2
-         => HASMORE, Row 3               RES2
-         => WAIT,                        RES3
-         => WAIT,                        RES3
-         => HASMORE, Row 5               RES3
-         => WAITING, Row 6               RES3
-         => DONE, no output!             RES3
-        */
+       1  produce => WAIT                 RES1
+       2  produce => HASMORE              RES1
+       3  produce => WAIT                 RES2
+       4  produce => HASMORE              RES2
+       5  produce => WAIT                 RES3
+       6  produce => DONE                 RES3
+       */
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
@@ -139,10 +139,6 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
         REQUIRE(!result.produced());
 
         state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
 
@@ -153,20 +149,10 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
         REQUIRE(!result.produced());
 
         state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
 
         result.advanceRow();
-
-        state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
