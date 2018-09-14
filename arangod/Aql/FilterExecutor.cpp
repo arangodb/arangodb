@@ -59,6 +59,8 @@ ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {
     if (input.getValue(_infos.getInput()).toBoolean()) {
       output.copyRow(input);
       return state;
+    } else {
+      _infos.countFiltered();
     }
 
     if (state == ExecutionState::DONE) {

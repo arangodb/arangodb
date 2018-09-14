@@ -112,44 +112,53 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         //2
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.changeRow(++current);
+        REQUIRE(infos.getFiltered() == 0);
 
         //3
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         //4
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        // We have one filter here
+        REQUIRE(infos.getFiltered() == 1);
 
         //5
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.changeRow(++current);
+        REQUIRE(infos.getFiltered() == 1);
 
         //6
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
         //7
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
         //8
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
         row.changeRow(++current);
+        REQUIRE(infos.getFiltered() == 2);
       }
     }
   }
@@ -181,48 +190,58 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         result.advanceRow();
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
         result.advanceRow();
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
         result.advanceRow();
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 3);
       }
     }
   }
