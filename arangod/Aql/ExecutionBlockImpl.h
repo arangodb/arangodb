@@ -149,10 +149,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   Executor _executor;
 
-  std::unique_ptr<AqlItemBlock> _getSomeOutBlock;
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
-  std::size_t _getSomeOutRowsAdded;
-  //ExecutionState _getSomeState;
 
 };
 

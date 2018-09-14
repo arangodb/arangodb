@@ -50,7 +50,6 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
   // on documents alone.
@@ -65,9 +64,8 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
 
   EnumerateListExecutorInfos infos(0, 1, 2, 1, {}, &trx);
 
-  /*
   GIVEN("there are no rows upstream") {
-    AqlItemBlock block(&monitor, 1000, 1);
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -75,7 +73,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -87,7 +85,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -100,11 +98,10 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       }
     }
   }
-  */
 
   GIVEN("there are rows in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 5, 4, {}, &trx);
-    AqlItemBlock block(&monitor, 1000, 5);
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto input =
         VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
@@ -112,8 +109,8 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
 
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+      THEN("the executor should return DONE with nullptr") {
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
 
         /*
        1  produce => WAIT                 RES1

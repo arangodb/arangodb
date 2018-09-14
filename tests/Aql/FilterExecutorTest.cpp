@@ -47,7 +47,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlock block(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
   ExecutorInfos infos(0, 0, 1, 1, {});
 
@@ -59,7 +59,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -71,7 +71,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -95,7 +95,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         std::size_t current = 0;
-        OutputAqlItemRow row(&block, infos.registersToKeep());
+        OutputAqlItemRow row(std::move(block), infos.registersToKeep());
 
         /*
         1  produce => WAIT                 RES1
@@ -172,7 +172,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1
