@@ -67,6 +67,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     //auto deleter = [=](AqlItemBlock* b){_engine->_itemBlockManager.returnBlock(b); };
     //_getSomeOutBlock = std::unique_ptr<AqlItemBlock, decltype(deleter)>(block, deleter);
     _getSomeOutRowsAdded = 0;
+    _outputItemRow = std::make_unique<OutputAqlItemRow>(
+        _getSomeOutBlock.get(), _infos.registersToKeep());
   }
 
   // TODO It's not very obvious that `state` will be initialized, because
@@ -78,11 +80,17 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
 
   TRI_ASSERT(atMost > 0);
 
-  row = std::make_unique<OutputAqlItemRow>(_getSomeOutBlock.get(), _getSomeOutRowsAdded, _infos.registersToKeep());
   while (_getSomeOutRowsAdded < atMost) {
-    row->changeRow(_getSomeOutRowsAdded);
-    state = _executor.produceRow(*row);
-    if (row && row->produced()) {
+    state = _executor.produceRow(*_outputItemRow);
+    // TODO I'm not quite happy with produced(). Internally in OutputAqlItemRow,
+    // this means "we copied registers from a source row", while here, it means
+    // "the executor wrote its values".
+    if (_outputItemRow && _outputItemRow->produced()) {
+      _outputItemRow->advanceRow();
+      // TODO Maybe we should remove _getSomeOutRowsAdded; `_outputItemRow` has this
+      // information already, and it's more authoritative. And when we're there,
+      // maybe we should make the output row responsible for the item block,
+      // and only steal or replace it after it's full.
       ++_getSomeOutRowsAdded;
     }
 

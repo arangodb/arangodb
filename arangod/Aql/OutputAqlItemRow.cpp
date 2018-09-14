@@ -33,10 +33,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-    AqlItemBlock* block, size_t baseIndex,
-    std::unordered_set<RegisterId> const& regsToKeep)
+    AqlItemBlock* block, std::unordered_set<RegisterId> const& regsToKeep)
     : _block(block),
-      _baseIndex(baseIndex),
+      _baseIndex(0),
       _regsToKeep(regsToKeep),
       _produced(false),
       _lastSourceRow{CreateInvalidInputRowHint{}} {

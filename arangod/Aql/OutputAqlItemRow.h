@@ -45,7 +45,7 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
+  OutputAqlItemRow(AqlItemBlock* block,
                    std::unordered_set<RegisterId> const& regsToKeep);
 
   void setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow,
