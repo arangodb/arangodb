@@ -24,16 +24,21 @@
 #ifndef ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
 
-#include "ExpressionContext.h"
+#include "QueryExpressionContext.h"
 #include "Aql/AqlValue.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 class AqlItemBlock;
 
-class FixedVarExpressionContext final : public ExpressionContext {
+class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  FixedVarExpressionContext() : ExpressionContext() {}
+  explicit FixedVarExpressionContext(Query* query) 
+      : QueryExpressionContext(query) {}
 
   ~FixedVarExpressionContext() {}
 
