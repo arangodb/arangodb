@@ -76,9 +76,8 @@ namespace iresearch {
 
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << "Could not create view: "
           << "Collection not found: " << colname;
-        continue ;
-        /*TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-        return nullptr;*/
+        TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        return nullptr;
       }
 
       // check if the collection can be used
