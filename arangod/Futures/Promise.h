@@ -136,7 +136,6 @@ private:
   
   inline void throwIfFulfilled() const {
     if (isFulfilled()) {
-      TRI_ASSERT(false);
       throw FutureException(ErrorCode::PromiseAlreadySatisfied);
     }
   }
