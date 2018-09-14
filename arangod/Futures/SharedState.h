@@ -27,8 +27,8 @@
 
 #include "Futures/Try.h"
 #include "Futures/function/cxx_function.hpp"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
+//#include "Scheduler/Scheduler.h"
+//#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb { namespace futures { namespace detail {
 
@@ -266,15 +266,16 @@ class SharedState {
   void doCallback() {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
-    TRI_ASSERT(SchedulerFeature::SCHEDULER);
+    //TRI_ASSERT(SchedulerFeature::SCHEDULER);
     
     // in case the scheduler throws away this lamda
     _attached.fetch_add(1);
     SharedStateScope scope(this); // will call detachOne()
-    SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
+    _callback(std::move(_result));
+    /*SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
       SharedState* state = ref._state;
       state->_callback(std::move(state->_result));
-    });
+    });*/
   }
   
 private:

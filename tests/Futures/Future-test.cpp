@@ -271,8 +271,7 @@ STMT; \
 SECTION("hasPreconditionValid") {
     // Ops that require validity; precondition: valid();
     // throw FutureInvalid if !valid()
-  SchedulerTestSetup setup;
-    
+  
 #define DOIT(STMT)                     \
 do {                                 \
 auto f = makeValid();              \
@@ -392,8 +391,6 @@ do {                     \
 REQUIRE_FALSE(theFlag); \
 theFlag = false;       \
 } while (0);
-
-   SchedulerTestSetup setup;
   
     // By reference
     {
@@ -667,8 +664,6 @@ SECTION("special") {
 }
 
 SECTION("then") {
-  SchedulerTestSetup setup;
-  
   auto f =
   makeFuture<std::string>("0")
   .thenValue([](std::string) { return makeFuture<std::string>("1"); })
@@ -693,8 +688,6 @@ SECTION("then") {
 }
   
 SECTION("then static functions") {
-  SchedulerTestSetup setup;
-
   auto f = makeFuture<int>(10).thenValue(&onThenHelperAddFive);
   REQUIRE(f.get() == 15);
   
@@ -763,8 +756,6 @@ SECTION("makeFuture") {
 }
   
 SECTION("finish") {
-  SchedulerTestSetup setup;
-  
   auto x = std::make_shared<int>(0);
   
   Promise<int> p;
@@ -820,8 +811,6 @@ SECTION("detachRace") {
   // to have one because of possible memory leaks. Here we test that
   // we can handle freeing of the Future while it is running.
 SECTION("CircularDependencySharedPtrSelfReset") {
-  SchedulerTestSetup setup;
-
   Promise<int64_t> promise;
   auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
 
@@ -865,8 +854,6 @@ SECTION("makeFutureNoThrow") {
 }
 
 SECTION("invokeCallbackReturningValueAsRvalue") {
-  SchedulerTestSetup setup;
-
   struct Foo {
     int operator()(int x) & {
       return x + 1;
@@ -891,8 +878,6 @@ SECTION("invokeCallbackReturningValueAsRvalue") {
 }
 
 SECTION("invokeCallbackReturningFutureAsRvalue") {
-  SchedulerTestSetup setup;
-
   struct Foo {
     Future<int> operator()(int x) & {
       return x + 1;
@@ -917,8 +902,6 @@ SECTION("invokeCallbackReturningFutureAsRvalue") {
 }
   
 SECTION("Basic Example") {
-  SchedulerTestSetup setup;
-
   Promise<int> p;
   Future<int> f = p.getFuture();
   auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
