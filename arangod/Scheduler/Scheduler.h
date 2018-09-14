@@ -47,7 +47,7 @@ namespace rest {
 class GeneralCommTask;
 class SocketTask;
 
-class Scheduler {
+class Scheduler : public std::enable_shared_from_this<Scheduler> {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
