@@ -299,7 +299,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
 double RocksDBVPackIndex::selectivityEstimate(
-    arangodb::StringRef const*) const {
+    arangodb::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -927,11 +927,13 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
 }
 
 bool RocksDBVPackIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
-                                                                  estimatedItems, estimatedCost);
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(
+    allIndexes, this, node, reference, itemsInIndex,
+    estimatedItems, estimatedCost);
 }
 
 bool RocksDBVPackIndex::supportsSortCondition(
