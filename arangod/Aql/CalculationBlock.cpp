@@ -105,6 +105,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
                                  ->_conditionVariable != nullptr);
   TRI_ASSERT(!hasCondition); // currently not implemented
 
+  Query* query = _engine->getQuery();
   size_t const n = result->size();
 
   for (size_t i = 0; i < n; i++) {
@@ -123,7 +124,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
 
     // execute the expression
     bool mustDestroy;
-    BaseExpressionContext ctx(i, result, _inVars, _inRegs);
+    BaseExpressionContext ctx(query, i, result, _inVars, _inRegs);
     AqlValue a = _expression->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 

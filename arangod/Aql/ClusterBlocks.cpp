@@ -837,7 +837,6 @@ Result RemoteBlock::sendAsyncRequest(
   }
 
   // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
@@ -853,7 +852,7 @@ Result RemoteBlock::sendAsyncRequest(
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+  cc->asyncRequest(coordTransactionId, _server, type,
                    std::move(url), body, headers, callback, defaultTimeOut,
                    true);
 
@@ -871,7 +870,6 @@ Result RemoteBlock::sendAsyncRequest(
   }
 
   // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
@@ -884,7 +882,7 @@ Result RemoteBlock::sendAsyncRequest(
 
   ++_engine->_stats.requests;
 
-  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+  return cc->syncRequest(coordTransactionId, _server, type,
                          std::move(url), body, headers, defaultTimeOut);
 }*/
 

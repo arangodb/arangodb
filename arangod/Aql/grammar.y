@@ -1774,8 +1774,12 @@ in_or_into_collection_name:
   | T_QUOTED_STRING {
       $$ = parser->ast()->createNodeCollection($1.value, $1.length, arangodb::AccessMode::Type::WRITE);
     }
-  | bind_parameter {
-      $$ = $1;
+  | T_DATA_SOURCE_PARAMETER {
+      if ($1.length < 2 || $1.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
     }
   ;
 

@@ -358,6 +358,8 @@
 ---
 
 * [Release Notes](ReleaseNotes/README.md)
+  * [Version 3.5](ReleaseNotes/35.md)
+    * [What's New in 3.5](ReleaseNotes/NewFeatures35.md)
   * [Version 3.4](ReleaseNotes/34.md)
     * [What's New in 3.4](ReleaseNotes/NewFeatures34.md)
     * [Known Issues in 3.4](ReleaseNotes/KnownIssues34.md)

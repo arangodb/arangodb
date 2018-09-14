@@ -407,10 +407,11 @@ void HeartbeatThread::runDBServer() {
       if (--currentCount == 0) {
         currentCount = currentCountStart;
 
+        // DBServers disregard the ReadOnly flag, otherwise (without authentication and JWT)
+        // we are not able to identify valid requests from other cluster servers
         AgencyReadTransaction trx(
           std::vector<std::string>({
               AgencyCommManager::path("Shutdown"),
-              AgencyCommManager::path("Readonly"),
               AgencyCommManager::path("Current/Version"),
               "/.agency"}));
 
@@ -459,10 +460,6 @@ void HeartbeatThread::runDBServer() {
               syncDBServerStatusQuo();
             }
           }
-
-          auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
-            {AgencyCommManager::path(), "Readonly"}));
-          updateServerMode(readOnlySlice);
         }
       }
 

@@ -54,8 +54,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
-  bool isSuperUser = req.authenticated() && req.user().empty() &&
-                     req.authenticationMethod() == rest::AuthenticationMethod::JWT;
+  const bool isSuperUser = req.authenticated() && req.user().empty() &&
+                           req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
     return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                               /*sysLevel*/ auth::Level::RW,
