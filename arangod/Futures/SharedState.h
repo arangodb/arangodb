@@ -167,14 +167,18 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyResult); // race with setResult
+#ifndef _MSC_VER
           [[fallthrough]];
+#endif
 
         case State::OnlyResult:
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
+#ifndef _MSC_VER
           [[fallthrough]];
+#endif
 
         default:
           TRI_ASSERT(false); // unexpected state
@@ -203,14 +207,18 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyCallback); // race with setCallback
+#ifndef _MSC_VER
           [[fallthrough]];
+#endif
           
         case State::OnlyCallback:
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
+#ifndef _MSC_VER
           [[fallthrough]];
+#endif
           
         default:
           TRI_ASSERT(false); // unexpected state
