@@ -8,7 +8,7 @@ GITAUTH="$1"
 
 for book in ${ALLBOOKS}; do 
 
-    repos=$(grep '^#' "../Books/${book}/SUMMARY.md" |grep git |sed 's;#  *;;')
+    repos=$(grep '^ *#' "../Books/${book}/SUMMARY.md" |grep git |sed 's;# +;;')
 
     for oneRepo in ${repos}; do
 
