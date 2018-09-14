@@ -781,7 +781,6 @@ SECTION("finish") {
 }
   
 SECTION("detachRace") {
-  // Task #5438209
   // This test is designed to detect a race that was in Core::detachOne()
   // where detached_ was incremented and then tested, and that
   // allowed a race where both Promise and Future would think they were the
@@ -799,8 +798,9 @@ SECTION("detachRace") {
  
   std::unique_lock<std::mutex> guard(m);
   std::thread t1([&]{
-    std::lock_guard<std::mutex> guard(m);
+    std::unique_lock<std::mutex> lock(m);
     condition.notify_one();
+    lock.unlock();
     p.reset();
   });
   condition.wait(guard);
