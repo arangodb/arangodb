@@ -796,8 +796,9 @@ SECTION("detachRace") {
   //folly::Baton<> baton;
   std::mutex m;
   std::condition_variable condition;
+ 
   std::thread t1([&]{
-    //baton.post();
+    std::lock_guard<std::mutex> guard(m);
     condition.notify_one();
     p.reset();
   });
