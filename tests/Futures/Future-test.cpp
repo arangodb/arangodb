@@ -75,7 +75,7 @@ namespace {
     return makeFuture(20);
   }
   
-  struct SchedulerTestSetup {
+  /*struct SchedulerTestSetup {
     arangodb::application_features::ApplicationServer server;
     
     SchedulerTestSetup() : server(nullptr, nullptr) {
@@ -123,7 +123,7 @@ namespace {
     }
     
     std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
-  };
+  };*/
 } // namespace
 
 
@@ -505,21 +505,21 @@ theFlag = false;       \
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw eggs; })
-      .thenError<const eggs_t&>(&onErrorHelperEggs)
-      .thenError<std::exception const&>(&onErrorHelperGeneric);
+      .thenError<const eggs_t&>(onErrorHelperEggs)
+      .thenError<std::exception const&>(onErrorHelperGeneric);
       REQUIRE(10 == f.get());
     }
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-      .thenError<const eggs_t&>(&onErrorHelperEggs)
-      .thenError<std::exception>(&onErrorHelperGeneric);
+      .thenError<const eggs_t&>(onErrorHelperEggs)
+      .thenError<std::exception>(onErrorHelperGeneric);
       REQUIRE(20 == f.get());
     }
     {
       auto f = makeFuture()
       .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-      .thenError<const eggs_t&>(&onErrorHelperEggs);
+      .thenError<const eggs_t&>(onErrorHelperEggs);
       REQUIRE_THROWS_AS(f.get(), std::runtime_error);
     }
 
@@ -688,10 +688,10 @@ SECTION("then") {
 }
   
 SECTION("then static functions") {
-  auto f = makeFuture<int>(10).thenValue(&onThenHelperAddFive);
+  auto f = makeFuture<int>(10).thenValue(onThenHelperAddFive);
   REQUIRE(f.get() == 15);
   
-  auto f2 = makeFuture<int>(15).thenValue(&onThenHelperAddFutureFive);
+  auto f2 = makeFuture<int>(15).thenValue(onThenHelperAddFutureFive);
   REQUIRE(f2.get() == 20);
 }
   
@@ -903,6 +903,14 @@ SECTION("invokeCallbackReturningFutureAsRvalue") {
 }
   
 SECTION("Basic Example") {
+  Promise<int> p;
+  Future<int> f = p.getFuture();
+  auto f2 = std::move(f).thenValue(onThenHelperAddOne);
+  p.setValue(42);
+  REQUIRE(f2.get() == 43);
+}
+  
+SECTION("Basic Example f-pointer") {
   Promise<int> p;
   Future<int> f = p.getFuture();
   auto f2 = std::move(f).thenValue(&onThenHelperAddOne);

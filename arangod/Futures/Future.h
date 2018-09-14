@@ -114,22 +114,20 @@ namespace detail {
     }
   }
   
-//  template <typename F, typename T>
-//  decltype(auto) invoke(F&& fn, Try<T>&& /* t */) {
-//    return futures::invoke(std::forward<F>(fn));
-//  }
-//  template <typename F, typename T, typename Arg>
-//  decltype(auto) invoke(F&& fn, Try<T>&& t) {
-//    return futures::invoke(std::forward<F>(fn), std::move(t).get());
-//  }
-//  template <typename F, typename T>
-//  decltype(auto) tryInvoke(F&& fn, Try<T>&& /* t */) {
-//    return futures::invoke(std::forward<F>(fn));
-//  }
-//  template <typename F, typename T, typename Arg>
-//  decltype(auto) tryInvoke(F&& fn, Try<T>&& t) {
-//    return futures::invoke(std::forward<F>(fn), std::move(t));
-//  }
+  // decay variant that does not remove cv-qualifier
+  template< class T >
+  struct decay {
+  private:
+    typedef typename std::remove_reference<T>::type U;
+  public:
+    typedef typename std::conditional<
+          std::is_function<U>::value,
+          typename std::add_pointer<U>::type,
+          T>::type type;
+  };
+  
+  template< class T >
+  using decay_t = typename decay<T>::type;
   
   struct EmptyConstructor{};
 }
@@ -326,22 +324,22 @@ public:
                         typename R::FutureT>::type
   thenValue(F&& fn) && {
     typedef typename R::ReturnsFuture::inner B;
+    using DF = detail::decay_t<F>;
+
     static_assert(!isFuture<B>::value, "");
     static_assert(!std::is_same<B, void>::value, "");
-    //static_assert(is_invocable_r<B, F, T>::value, "Function must be invocable with T");
-    //static_assert(is_invocable<F, T>::value, "Function must be invocable with T");
     static_assert(!R::ReturnsFuture::value, "");
     
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(fn),
+    getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       try {
         if (t.hasException()) {
           pr.setException(std::move(t).exception());
         } else {
           pr.setTry(detail::makeTryWith([&fn, &t]{
-            return futures::invoke(std::forward<F>(fn), std::move(t).get());
+            return futures::invoke(std::forward<DF>(fn), std::move(t).get());
           }));
         }
       } catch(...) {
@@ -359,18 +357,20 @@ public:
                           typename R::FutureT>::type
   thenValue(F&& fn) && {
     typedef typename R::ReturnsFuture::inner B;
+    using DF = detail::decay_t<F>;
+
     static_assert(!isFuture<B>::value, "");
     static_assert(is_invocable_r<Future<B>, F, T>::value, "Function must be invocable with T");
     
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(fn),
+    getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       try {
         if (t.hasException()) {
           pr.setException(std::move(t).exception());
         } else {
-          futures::invoke(std::forward<F>(fn), std::move(t).get())
+          futures::invoke(std::forward<DF>(fn), std::move(t).get())
           .then([pr = std::move(pr)] (Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
@@ -390,16 +390,18 @@ public:
                           typename R::FutureT>::type
   then(F&& func) && {
     typedef typename R::ReturnsFuture::inner B;
+    using DF = detail::decay_t<F>;
+
     static_assert(!isFuture<B>::value, "");
     static_assert(!std::is_same<B,void>::value, "");
     
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(func),
+    getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       try {
         pr.setTry(detail::makeTryWith([&fn, &t]{
-          return futures::invoke(std::forward<F>(fn), std::move(t));
+          return futures::invoke(std::forward<DF>(fn), std::move(t));
         }));
       } catch(...) {
         pr.setException(std::current_exception());
@@ -440,7 +442,7 @@ public:
   template <typename F, typename R = typename std::result_of<F&&(Try<T>&&)>::type>
   typename std::enable_if<std::is_same<R, void>::value>::type
   thenFinal(F&& fn) {
-    getState().setCallback(std::forward<F>(fn));
+    getState().setCallback(std::forward<detail::decay_t<F>>(fn));
   }
 
   /// Set an error continuation for this Future where the continuation can
@@ -452,17 +454,18 @@ public:
   thenError(F&& func) && {
     typedef typename lift_unit<R>::type B;
     typedef std::decay_t<ExceptionType> ET;
+    using DF = detail::decay_t<F>;
     
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(func),
+    getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
         } catch(ET& e) {
           pr.setTry(detail::makeTryWith([&fn, &e]() mutable {
-            return futures::invoke(std::forward<F>(fn), e);
+            return futures::invoke(std::forward<DF>(fn), e);
           }));
         } catch(...) {
           pr.setException(std::current_exception());
@@ -483,17 +486,18 @@ public:
   thenError(F&& fn) && {
     typedef typename isFuture<R>::inner B;
     typedef std::decay_t<ExceptionType> ET;
+    using DF = detail::decay_t<F>;
     
     Promise<B> promise;
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(fn),
+    getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
         } catch(ET& e) {
           try {
-            futures::invoke(std::forward<F>(fn), e)
+            futures::invoke(std::forward<DF>(fn), e)
             .then([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
