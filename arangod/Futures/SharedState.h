@@ -26,7 +26,7 @@
 #include <atomic>
 
 #include "Futures/Try.h"
-#include "Futures/function/cxx_function.hpp"
+#include "Futures/function2/function2.hpp"
 //#include "Scheduler/Scheduler.h"
 //#include "Scheduler/SchedulerFeature.h"
 
@@ -279,7 +279,7 @@ class SharedState {
   }
   
 private:
-  using Callback = cxx_function::unique_function<void(Try<T>&&)>;
+  using Callback = fu2::unique_function<void(Try<T>&&)>;
   Callback _callback;
   union { // avoids having to construct the result
     Try<T> _result;
