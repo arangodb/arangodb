@@ -65,10 +65,54 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
+
+/// @brief state during opening of a collection
+namespace arangodb {
+struct OpenIteratorState {
+  LogicalCollection* _collection;
+  arangodb::MMFilesPrimaryIndex* _primaryIndex;
+  TRI_voc_tid_t _tid;
+  TRI_voc_fid_t _fid;
+  std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*>
+      _stats;
+  MMFilesDatafileStatisticsContainer* _dfi;
+  transaction::Methods* _trx;
+  ManagedDocumentResult _mdr;
+  IndexLookupContext _context;
+  uint64_t _deletions;
+  uint64_t _documents;
+  int64_t _initialCount;
+
+  OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
+      : _collection(collection),
+        _primaryIndex(
+            static_cast<MMFilesCollection*>(collection->getPhysical())
+                ->primaryIndex()),
+        _tid(0),
+        _fid(0),
+        _stats(),
+        _dfi(nullptr),
+        _trx(trx),
+        _context(trx, collection, &_mdr, 1),
+        _deletions(0),
+        _documents(0),
+        _initialCount(-1) {
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(trx != nullptr);
+  }
+
+  ~OpenIteratorState() {
+    for (auto& it : _stats) {
+      delete it.second;
+    }
+  }
+};
+}
 
 namespace {
 
@@ -100,7 +144,7 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
 
 /// @brief find a statistics container for a given file id
 static MMFilesDatafileStatisticsContainer* FindDatafileStats(
-    MMFilesCollection::OpenIteratorState* state, TRI_voc_fid_t fid) {
+    OpenIteratorState* state, TRI_voc_fid_t fid) {
   auto it = state->_stats.find(fid);
 
   if (it != state->_stats.end()) {
@@ -216,7 +260,7 @@ PhysicalCollection* MMFilesCollection::clone(LogicalCollection& logical) const {
 /// @brief process a document (or edge) marker when opening a collection
 int MMFilesCollection::OpenIteratorHandleDocumentMarker(
     MMFilesMarker const* marker, MMFilesDatafile* datafile,
-    MMFilesCollection::OpenIteratorState* state) {
+    OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   TRI_ASSERT(collection != nullptr);
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
@@ -265,7 +309,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   MMFilesSimpleIndexElement* found =
-      state->_primaryIndex->lookupKeyRef(trx, keySlice, state->_mmdr);
+      state->_primaryIndex->lookupKeyRef(trx, keySlice, state->_mdr);
 
   // it is a new entry
   if (found == nullptr || !found->isSet()) {
@@ -274,7 +318,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
     // insert into primary index
     Result res = state->_primaryIndex->insertKey(trx, localDocumentId,
                                                  VPackSlice(vpack),
-                                                 state->_mmdr,
+                                                 state->_mdr,
                                                  Index::OperationMode::normal);
 
     if (res.fail()) {
@@ -336,7 +380,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
 /// @brief process a deletion marker when opening a collection
 int MMFilesCollection::OpenIteratorHandleDeletionMarker(
     MMFilesMarker const* marker, MMFilesDatafile* datafile,
-    MMFilesCollection::OpenIteratorState* state) {
+    OpenIteratorState* state) {
   LogicalCollection* collection = state->_collection;
   TRI_ASSERT(collection != nullptr);
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
@@ -371,7 +415,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
   // no primary index lock required here because we are the only ones reading
   // from the index ATM
   MMFilesSimpleIndexElement found =
-      state->_primaryIndex->lookupKey(trx, keySlice, state->_mmdr);
+      state->_primaryIndex->lookupKey(trx, keySlice, state->_mdr);
 
   // it is a new entry, so we missed the create
   if (!found) {
@@ -407,7 +451,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
     state->_dfi->numberDeletions++;
 
     state->_primaryIndex->removeKey(trx, oldLocalDocumentId, VPackSlice(vpack),
-                                    state->_mmdr, Index::OperationMode::normal);
+                                    state->_mdr, Index::OperationMode::normal);
 
     physical->removeLocalDocumentId(oldLocalDocumentId, true);
   }
@@ -417,7 +461,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
 
 /// @brief iterator for open
 bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker,
-                                     MMFilesCollection::OpenIteratorState* data,
+                                     OpenIteratorState* data,
                                      MMFilesDatafile* datafile) {
   TRI_voc_tick_t const tick = marker->getTick();
   MMFilesMarkerType const type = marker->getType();
@@ -434,15 +478,8 @@ bool MMFilesCollection::OpenIterator(MMFilesMarker const* marker,
     if (tick > datafile->_dataMax) {
       datafile->_dataMax = tick;
     }
-
-    if (++data->_operations % 1024 == 0) {
-      data->_mmdr.reset();
-    }
   } else if (type == TRI_DF_MARKER_VPACK_REMOVE) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, data);
-    if (++data->_operations % 1024 == 0) {
-      data->_mmdr.reset();
-    }
   } else {
     if (type == TRI_DF_MARKER_HEADER) {
       // ensure there is a datafile info entry for each datafile of the
@@ -3290,7 +3327,7 @@ Result MMFilesCollection::update(
 
   if (newSlice.length() <= 1) {
     // no need to do anything
-    result = std::move(previous);
+    result = previous;
 
     if (_logicalCollection.waitForSync()) {
       options.waitForSync = true;
