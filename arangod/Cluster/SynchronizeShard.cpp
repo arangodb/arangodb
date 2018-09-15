@@ -107,6 +107,11 @@ SynchronizeShard::SynchronizeShard(
   }
   TRI_ASSERT(desc.has(THE_LEADER));
 
+  if (!desc.has(SHARD_VERSION)) {
+    error << "local shard version must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SHARD_VERSION));
+
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -122,6 +127,8 @@ public:
     return true;
   }
 };
+
+SynchronizeShard::~SynchronizeShard() {}
 
 
 arangodb::Result getReadLockId (
@@ -951,4 +958,17 @@ bool SynchronizeShard::first() {
 
 }
 
-SynchronizeShard::~SynchronizeShard() {}
+
+void SynchronizeShard::setState(ActionState state) {
+  
+  if ((COMPLETE==state || FAILED==state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
+  
+  ActionBase::setState(state);
+  
+}
+
+
+
