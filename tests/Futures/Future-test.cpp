@@ -571,17 +571,11 @@ theFlag = false;       \
     }
 
     // Returned future propagates
-//    {
-//      auto f = makeFuture()
-//      .thenValue([](Unit) -> int { throw eggs; })
-//      .thenError<eggs_t&>([&](eggs_t& /* e */) { return makeFuture<int>(42); });
-//      REQUIRE(42 == f.get());
-//    }
     {
-      auto f1 = makeFuture();
-      auto f2 = std::move(f1).thenValue([](Unit) -> int { throw eggs; });
-      auto f3 = std::move(f2).thenError<eggs_t&>([&](eggs_t& /* e */) { return makeFuture<int>(42); });
-      REQUIRE(42 == f3.get());
+      auto f = makeFuture()
+      .thenValue([](Unit) -> int { throw eggs; })
+      .thenError<eggs_t&>([&](eggs_t& /* e */) { return makeFuture<int>(42); });
+      REQUIRE(42 == f.get());
     }
 
     // Throw in callback

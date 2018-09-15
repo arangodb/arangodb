@@ -366,8 +366,8 @@ public:
         pr.setException(std::move(t).exception());
       } else {
         try {
-          futures::invoke(std::forward<DF>(fn), std::move(t).get())
-          .then([pr = std::move(pr)] (Try<B>&& t) mutable {
+          auto f = futures::invoke(std::forward<DF>(fn), std::move(t).get());
+          std::move(f).then([pr = std::move(pr)] (Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
         } catch(...) {
@@ -418,8 +418,8 @@ public:
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)] (Try<T>&& t) mutable {
       try {
-        futures::invoke(std::forward<F>(fn), std::move(t))
-        .then([pr = std::move(pr)] (Try<B>&& t) mutable {
+        auto f = futures::invoke(std::forward<F>(fn), std::move(t));
+        std::move(f).then([pr = std::move(pr)] (Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
       } catch(...) {
@@ -490,8 +490,8 @@ public:
           std::rethrow_exception(std::move(t).exception());
         } catch(ET& e) {
           try {
-            futures::invoke(std::forward<DF>(fn), e)
-            .then([pr = std::move(pr)](Try<B>&& t) mutable {
+            auto f = futures::invoke(std::forward<DF>(fn), e);
+            std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
           } catch (...) {
