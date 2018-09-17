@@ -212,10 +212,11 @@ void handlePlanShard(
           errors.shards.end()) {
         actions.emplace_back(
           ActionDescription(
-            {{NAME, UPDATE_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname},
-            {SHARD, shname}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-            {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()}},
-            properties));
+            std::map<std::string,std::string> {
+              {NAME, UPDATE_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname},
+              {SHARD, shname}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+              {SERVER_ID, serverId}, {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()}},
+              properties));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for local shard " << dbname
@@ -236,7 +237,9 @@ void handlePlanShard(
       if (difference.slice().isArray()) {
         for (auto const& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(
-            ActionDescription({{NAME, "EnsureIndex"}, {DATABASE, dbname},
+            ActionDescription(
+              std::map<std::string,std::string>{
+                {NAME, "EnsureIndex"}, {DATABASE, dbname},
                 {COLLECTION, colname}, {SHARD, shname},
                 {StaticStrings::IndexType,
                     index.get(StaticStrings::IndexType).copyString()},
@@ -251,8 +254,10 @@ void handlePlanShard(
         errors.shards.end()) {
       actions.emplace_back(
         ActionDescription(
-          {{NAME, CREATE_COLLECTION}, {COLLECTION, colname}, {SHARD, shname},
-           {DATABASE, dbname}, {SERVER_ID, serverId}, {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
+          std::map<std::string,std::string>{
+            {NAME, CREATE_COLLECTION}, {COLLECTION, colname}, {SHARD, shname},
+            {DATABASE, dbname}, {SERVER_ID, serverId},
+            {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
           props));
     } else {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -280,7 +285,8 @@ void handleLocalShard(
   if (plannedLeader == UNDERSCORE + serverId && localLeader) {
     actions.emplace_back(
       ActionDescription (
-        {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
+        std::map<std::string,std::string> {
+          {NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
   } else {
     bool drop = false;
     // check if shard is in plan, if not drop it
@@ -295,8 +301,8 @@ void handleLocalShard(
 
     if (drop) {
       actions.emplace_back(
-        ActionDescription({{NAME, DROP_COLLECTION},
-            {DATABASE, dbname}, {COLLECTION, colname}}));
+        ActionDescription(std::map<std::string,std::string> {
+          {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}}));
     } else {
       // The shard exists in both Plan and Local
       commonShrds.erase(it);  // it not a common shard?
@@ -317,7 +323,9 @@ void handleLocalShard(
               } else {
                 actions.emplace_back(
                   ActionDescription(
-                  {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
+                  std::map<std::string,std::string> {
+                    {NAME, "DropIndex"}, {DATABASE, dbname},
+                    {COLLECTION, colname}, {"index", id}}));
               }
             }
           }
@@ -364,7 +372,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
-          ActionDescription({{NAME, CREATE_DATABASE}, {DATABASE, dbname}}));
+          ActionDescription(std::map<std::string,std::string> {
+              {NAME, CREATE_DATABASE}, {DATABASE, dbname}}));
       } else {
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating database " << dbname
@@ -378,7 +387,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string> {DATABASES, dbname})) {
       actions.emplace_back(
-        ActionDescription({{NAME, DROP_DATABASE}, {DATABASE, dbname}}));
+        ActionDescription(
+          std::map<std::string,std::string> {
+            {NAME, DROP_DATABASE}, {DATABASE, dbname}}));
     }
   }
 
@@ -1041,8 +1052,9 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             auto const leader = pservers[0].copyString();
             actions.emplace_back(
               ActionDescription(
-                {{NAME, "SynchronizeShard"}, {DATABASE, dbname},
-                 {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader}}));
+                std::map<std::string,std::string> {
+                  {NAME, "SynchronizeShard"}, {DATABASE, dbname},
+                  {COLLECTION, colname}, {SHARD, shname}, {THE_LEADER, leader}}));
 
           }
         }
