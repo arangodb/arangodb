@@ -545,12 +545,12 @@ RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 
 /// @brief return a selectivity estimate for the index
 double RocksDBEdgeIndex::selectivityEstimate(
-    arangodb::StringRef const* attribute) const {
+    arangodb::StringRef const& attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
   }
-  if (attribute != nullptr && attribute->compare(_directionAttr)) {
+  if (!attribute.empty() && attribute.compare(_directionAttr)) {
     return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
@@ -674,6 +674,7 @@ void RocksDBEdgeIndex::batchInsert(
 
 /// @brief checks whether the index supports the condition
 bool RocksDBEdgeIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {

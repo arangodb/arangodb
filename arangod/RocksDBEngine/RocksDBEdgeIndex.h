@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/LocalTaskQueue.h"
+#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -137,7 +138,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   bool needToPersistEstimate() const override;
@@ -152,7 +153,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   bool hasBatchInsert() const override { return false; }
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

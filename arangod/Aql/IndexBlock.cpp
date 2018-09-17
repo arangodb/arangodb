@@ -127,7 +127,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     for (size_t i = 0; i < fields.size(); ++i) {
       if (idx->isAttributeExpanded(i)) {
         ++expansions;
-        if (expansions > 1) {
+        if (expansions > 1 || i > 0) {
           _hasMultipleExpansions = true;
           break;
         }
