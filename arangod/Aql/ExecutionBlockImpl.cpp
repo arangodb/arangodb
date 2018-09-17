@@ -60,9 +60,9 @@ template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 
   if(!_outputItemRow) {
-    auto newBlock = this->requestBlock(atMost, _infos.numberOfRegisters());
+    auto newBlock = this->requestBlock(atMost, _infos.numberOfOutputRegisters());
     _outputItemRow = std::make_unique<OutputAqlItemRow>(
-        std::unique_ptr<AqlItemBlock>{newBlock}, _infos.registersToKeep());
+        std::unique_ptr<AqlItemBlock>{newBlock}, _infos);
   }
 
   // TODO It's not very obvious that `state` will be initialized, because

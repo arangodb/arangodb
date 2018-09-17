@@ -1798,9 +1798,9 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
 
-  ExecutorInfos infos(inputRegister, 0, getRegisterPlan()->nrRegs[getDepth()],
+  ExecutorInfos infos(inputRegister, 0,
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegsToClear());
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this, std::move(infos));
 }
 
