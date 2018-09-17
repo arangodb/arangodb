@@ -86,11 +86,10 @@ class LogicalCollection: public LogicalDataSource {
     uint64_t planVersion = 0
   );
   LogicalCollection(LogicalCollection const&) = delete;
-  virtual ~LogicalCollection();
-
-  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
-
   LogicalCollection& operator=(LogicalCollection const&) = delete;
+  virtual ~LogicalCollection();
+  
+  enum CollectionVersions { VERSION_30 = 5, VERSION_31 = 6, VERSION_33 = 7 };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -188,20 +187,16 @@ class LogicalCollection: public LogicalDataSource {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback);
 
-  // Estimates
-  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
-  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
-
-  double clusterIndexEstimatesTTL() const {
-    return _clusterEstimateTTL;
-  }
-
-  void clusterIndexEstimatesTTL(double ttl) {
-    _clusterEstimateTTL = ttl;
-  }
-  // End - Estimates
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate);
   
-  //// SECTION: Indexes
+  /// @brief sets the current index selectivity estimates
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  void flushClusterIndexEstimates();
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
@@ -401,10 +396,6 @@ class LogicalCollection: public LogicalDataSource {
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
-  std::unordered_map<std::string, double> _clusterEstimates;
-  double _clusterEstimateTTL; //only valid if above vector is not empty
-  basics::ReadWriteLock _clusterEstimatesLock;
-  
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.

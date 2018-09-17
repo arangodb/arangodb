@@ -35,7 +35,7 @@ class QueryRegistry;
 
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:
-  static aql::QueryRegistry* QUERY_REGISTRY;
+  static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
   static constexpr double DefaultQueryTTL = 600.0;
 
   explicit QueryRegistryFeature(

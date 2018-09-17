@@ -34,8 +34,6 @@ using namespace arangodb::basics;
 // --SECTION--                                                    static members
 // -----------------------------------------------------------------------------
 
-arangodb::Mutex RequestStatistics::_dataLock;
-
 std::unique_ptr<RequestStatistics[]> RequestStatistics::_statisticsBuffer;
 
 boost::lockfree::queue<RequestStatistics*,
@@ -107,7 +105,6 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   TRI_ASSERT(statistics != nullptr);
 
   {
-    MUTEX_LOCKER(mutexLocker, _dataLock);
 
     TRI_TotalRequestsStatistics.incCounter();
 
@@ -115,7 +112,10 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       TRI_AsyncRequestsStatistics.incCounter();
     }
 
-    TRI_MethodRequestsStatistics[(int)statistics->_requestType].incCounter();
+    {
+      MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
+      TRI_MethodRequestsStatistics[(size_t)statistics->_requestType].incCounter();
+    }
 
     // check that the request was completely received and transmitted
     if (statistics->_readStart != 0.0 &&
@@ -200,8 +200,6 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
-
-  MUTEX_LOCKER(mutexLocker, _dataLock);
 
   totalTime = TRI_TotalTimeDistributionStatistics;
   requestTime = TRI_RequestTimeDistributionStatistics;

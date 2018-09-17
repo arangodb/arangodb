@@ -37,6 +37,7 @@
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/ExpressionContext.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -44,6 +45,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -122,7 +124,7 @@ bool IdentityAnalyzer::reset(irs::string_ref const& data) {
 }
 
 arangodb::aql::AqlValue aqlFnTokens(
-    arangodb::aql::Query* query,
+    arangodb::aql::ExpressionContext* expressionContext,
     arangodb::transaction::Methods* trx,
     arangodb::aql::VPackFunctionParameters const& args
 ) {
