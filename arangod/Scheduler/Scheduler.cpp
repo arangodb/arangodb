@@ -215,7 +215,7 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> cb, bool isV8,
+void Scheduler::post(std::function<void()> const cb, bool isV8,
                      uint64_t timeout) {
   // increment number of queued and guard against exceptions
   incQueued();
@@ -287,7 +287,7 @@ void Scheduler::post(std::function<void()> cb, bool isV8,
 }
 
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> cb) {
+                     std::function<void()> const cb) {
   incQueued();
   try {
     // capture without self, ioContext will not live longer than scheduler
