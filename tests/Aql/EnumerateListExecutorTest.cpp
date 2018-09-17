@@ -62,7 +62,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
   fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
-  EnumerateListExecutorInfos infos(0, 1, 2, 1, {}, &trx);
+  EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, &trx);
 
   GIVEN("there are no rows upstream") {
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
