@@ -65,7 +65,7 @@ class SharedQueryState {
       return false;
     }
     
-    bool res = cb();
+    bool res = std::forward<F>(cb)();
     if (_hasHandler) {
       if (ADB_UNLIKELY(!executeContinueCallback())) {
         return false; // likely shutting down

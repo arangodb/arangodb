@@ -215,7 +215,7 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const& cb, bool isV8,
+void Scheduler::post(std::function<void()> cb, bool isV8,
                      uint64_t timeout) {
   // increment number of queued and guard against exceptions
   incQueued();
@@ -234,7 +234,7 @@ void Scheduler::post(std::function<void()> const& cb, bool isV8,
   });
 
   // capture without self, ioContext will not live longer than scheduler
-  asio_ns::post([this, cb, isV8, timeout]() {
+  asio_ns::post([this, cb = std::move(cb), isV8, timeout]() {
     // at the end (either success or exception),
     // reduce number of queued V8
     auto guard = scopeGuard([this, isV8]() {
@@ -287,18 +287,18 @@ void Scheduler::post(std::function<void()> const& cb, bool isV8,
 }
 
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const& callback) {
+                     std::function<void()> cb) {
   incQueued();
   try {
     // capture without self, ioContext will not live longer than scheduler
     // do not pass callback by reference, might get deleted before execution
-    asio_ns::post(strand, [this, callback]() {
+    asio_ns::post(strand, [this, cb = std::move(cb)]() {
       decQueued();
 
       JobGuard guard(this);
       guard.work();
 
-      callback();
+      cb();
     });
   } catch (...) {
     decQueued();

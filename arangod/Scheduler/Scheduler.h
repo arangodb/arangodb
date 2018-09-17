@@ -95,31 +95,12 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     uint64_t _queuedV8;
   };
 
-  void post(std::function<void()> const&, bool isV8,
+  void post(std::function<void()>, bool isV8,
             uint64_t timeout = 0);
-  void post(asio_ns::io_context::strand&, std::function<void()> const&);
+  void post(asio_ns::io_context::strand&, std::function<void()>);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
-  
-  /// Used by futures that want to continue the execution
-  /// uses perfect forwarding to avoid copying lambdas
-  template<typename F>
-  void postContinuation(F&& cb) {
-    incQueued();
-    try {
-      // capture without self, ioContext will not live longer than scheduler
-      asio_ns::post(*_ioContext, [this, cb = std::forward<F>(cb)]() {
-        decQueued();
-        //JobGuard guard(this);
-        //guard.work();
-        cb();
-      });
-    } catch (...) {
-      decQueued();
-      throw;
-    }
-  }
 
   void addQueueStatistics(velocypack::Builder&) const;
   QueueStatistics queueStatistics() const;

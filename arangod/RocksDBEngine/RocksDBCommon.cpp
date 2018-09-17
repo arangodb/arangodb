@@ -133,7 +133,6 @@ std::size_t countKeyRange(rocksdb::DB* db,
 
   rocksdb::ReadOptions readOptions;
   readOptions.prefix_same_as_start = prefix_same_as_start;
-  readOptions.ignore_range_deletions = false;
   readOptions.iterate_upper_bound = &upper;
   readOptions.total_order_seek = !prefix_same_as_start;
   readOptions.verify_checksums = false;
