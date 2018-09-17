@@ -1593,6 +1593,11 @@ constexpr int TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS                         
 /// An AQL block wrote an output register twice
 constexpr int TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE                             = 2203;
 
+/// 2204: ERROR_INPUT_REGISTERS_NOT_COPIED
+/// "An AQL block did not copy its input registers"
+/// An AQL block did not copy its input registers
+constexpr int TRI_ERROR_INPUT_REGISTERS_NOT_COPIED                              = 2204;
+
 /// 3000: ERROR_MALFORMED_MANIFEST_FILE
 /// "failed to parse manifest file"
 /// The service manifest file is not well-formed JSON.

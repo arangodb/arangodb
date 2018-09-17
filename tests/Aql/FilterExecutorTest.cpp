@@ -94,7 +94,6 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        std::size_t current = 0;
         OutputAqlItemRow row(std::move(block), infos);
 
         /*
@@ -118,7 +117,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
-        row.changeRow(++current);
+        row.advanceRow();
         REQUIRE(infos.getFiltered() == 0);
 
         //3
@@ -138,7 +137,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
-        row.changeRow(++current);
+        row.advanceRow();
         REQUIRE(infos.getFiltered() == 1);
 
         //6
@@ -157,7 +156,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
-        row.changeRow(++current);
+        row.advanceRow();
         REQUIRE(infos.getFiltered() == 2);
       }
     }
