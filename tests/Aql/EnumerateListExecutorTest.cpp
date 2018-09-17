@@ -65,7 +65,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, &trx);
 
   GIVEN("there are no rows upstream") {
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
