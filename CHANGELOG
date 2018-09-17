@@ -3,6 +3,20 @@ v3.3.16 (XXXX-XX-XX)
 
 * fixed issue #6495 (Document not found when removing records)
 
+* fixed undefined behavior is cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* reduce overhead of function initialization in AQL COLLECT aggregate functions,
+  for functions COUNT/LENGTH, SUM and AVG
+
+  this optimization will only be noticable when the COLLECT produces many groups
+  and the "hash" COLLECT variant is used
+
+* fixed potential out-of-bounds access in admin log REST handler /_admin/log,
+  which could have led to the server returning an HTTP 500 error
+
+* catch more exceptions in replication and handle them appropriately
+
 
 v3.3.15 (2018-09-10)
 --------------------
