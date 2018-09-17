@@ -47,6 +47,9 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/WalAccess.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -572,15 +575,26 @@ void HeartbeatThread::runSingleServer() {
           continue; // try again next time
         }
       }
+      
+      TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
+      auto sendTransient = [&]() {
+        VPackBuilder builder;
+        builder.openObject();
+        builder.add("leader", leader);
+        builder.add("lastTick", VPackValue(lastTick));
+        builder.close();
+        double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
+        _agency.setTransient(transientPath, builder.slice(), ttl);
+      };
+      TRI_DEFER(sendTransient());
 
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         if (applier->isActive()) {
           applier->stopAndJoin();
-          // preemtily remove the transient entry from the agency
-          _agency.setTransient(transientPath, VPackSlice::emptyObjectSlice(), 0);
         }
+        lastTick = EngineSelectorFeature::ENGINE->walAccess()->lastTick();
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
@@ -620,28 +634,16 @@ void HeartbeatThread::runSingleServer() {
             << res.errorMessage();
         }
         // wait for everything to calm down for good measure
-        sleep(10);
+        std::this_thread::sleep_for(std::chrono::seconds(10));
       }
-
-      TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
-      auto sendTransient = [&]() {
-        VPackBuilder builder;
-        builder.openObject();
-        builder.add("leader", leader);
-        builder.add("lastTick", VPackValue(lastTick));
-        builder.close();
-        double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
-        _agency.setTransient(transientPath, builder.slice(), ttl);
-      };
-      TRI_DEFER(sendTransient());
 
       if (applier->isActive() && applier->endpoint() == endpoint) {
         lastTick = applier->lastTick();
       } else if (applier->endpoint() != endpoint) { // configure applier for new endpoint
+        // this means there is a new leader in the agency
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
-
         while (applier->isShuttingDown() && !isStopping()) {
           std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
@@ -670,7 +672,10 @@ void HeartbeatThread::runSingleServer() {
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
+          } else if (error.isNot(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_MASTER_CHANGE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_LOOP) &&
+                     error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
             VPackBuilder debug;

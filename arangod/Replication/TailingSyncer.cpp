@@ -1000,10 +1000,17 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
-    {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << "stopping applier: " << res.errorMessage();
+    try {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
       _applier->_state._totalRequests++;
       getLocalState();
+    } catch (basics::Exception const& ex) {
+      res = Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      res = Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
     }
 
     _applier->stop(res);
