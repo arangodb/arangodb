@@ -122,8 +122,8 @@ public:
     }
 
 
-    void post(std::function<void()> handler) {
-      _asioIoContext.post(handler);
+    void post(std::function<void()> && handler) {
+      _asioIoContext.post(std::move(handler));
     }
 
     void start();

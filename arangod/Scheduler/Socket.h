@@ -85,8 +85,8 @@ class Socket {
     }
   }
 
-  void post(std::function<void()> handler) {
-    _context.post(handler);
+  void post(std::function<void()> && handler) {
+    _context.post(std::move(handler));
   }
 
   bool runningInThisThread() { return _context.runningInThisThread(); }

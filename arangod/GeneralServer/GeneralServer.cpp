@@ -57,7 +57,7 @@ void GeneralServer::startListening() {
                                               << it.first << "' for requests";
 
     // distribute endpoints across all io contexts
-    IoContext &ioContext = _contexts[i % _numIoThreads];
+    IoContext &ioContext = _contexts[i++ % _numIoThreads];
     bool ok = openEndpoint(ioContext, it.second);
 
     if (ok) {
