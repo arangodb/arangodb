@@ -313,7 +313,6 @@ SET(ARANGOD_SOURCES
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
-  Cluster/MaintenanceStrings.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
   Cluster/ReplicationTimeoutFeature.cpp
