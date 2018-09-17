@@ -1179,7 +1179,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   grantTemporaryRights();
 
-  if (colName == "_users") {
+  if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   }
@@ -1414,7 +1414,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
   builder.clear();
-  if (ServerState::instance()->isCoordinator() && collectionName == "_users") {
+  if (ServerState::instance()->isCoordinator() && collectionName == TRI_COL_NAME_USERS) {
     // Special-case for _users, we need to remove the _key and _id from the
     // marker
     VPackArrayBuilder guard(&builder);
