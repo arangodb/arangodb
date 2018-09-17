@@ -528,15 +528,22 @@ RestStatus RestAgencyHandler::handleConfig() {
 
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
-    try {
-      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
-    } catch (std::exception const& e) {
-      generateError(
-        rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+    
+    auto const leaderID = _agent->leaderID();
+    if (leaderID == _agent->id()) { // Only leaders are eligible for such endevours 
+      try {
+        _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
+      } catch (std::exception const& e) {
+        generateError(
+          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+        return RestStatus::DONE;
+      }
+    } else {
+      redirectRequest(leaderID);
       return RestStatus::DONE;
     }
   }
-
+  
   // Respond with configuration
   auto last = _agent->lastCommitted();
   Builder body;

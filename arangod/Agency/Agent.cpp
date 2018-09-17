@@ -1673,9 +1673,7 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// If I know more immediately contact peer with my list.
 query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: "
-      << in->slice().toJson();
-
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: " << in->slice().toJson();
 
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
@@ -1685,6 +1683,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
             slice.typeName());
   }
 
+  if (slice.hasKey(StaticStrings::Error)) {
+      query_t out = std::make_shared<Builder>();
+      return out;
+  }
+  
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
@@ -1744,6 +1747,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
 
+    std::string err;
     
     /// Only leaders can update pool through RAFT
     if (_config.poolComplete()) {
@@ -1769,10 +1773,9 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         write_ret_t ret;
         try {
           ret = write(query, WriteMode(false,true));
-
         } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "failed to write new agency to RAFT" << e.what();
+          err = std::string("failed to write new agency to RAFT") + e.what();
+          LOG_TOPIC(ERR, Logger::AGENCY) << err;
         }
       
         // Single write in transaction:
@@ -1780,19 +1783,22 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         try {
           max_index =
             *std::max_element(ret.indices.begin(), ret.indices.end());
+          if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
+            auto result = waitFor(max_index);
+            if (result != Agent::raft_commit_t::OK) {
+              err = "failed to retrieve RAFT index for updated agency endpoints";
+            }
+          } else {
+            err = "failed to retrieve RAFT index for updated agency endpoints";
+          }
         } catch (std::exception const& e) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
-            << "failed to write new agency to RAFT" << e.what();
+          err = std::string(
+            "failed to retrieve RAFT index for updated agency endpoints") + e.what();
+          LOG_TOPIC(WARN, Logger::AGENCY) << err;
         }
         
-        if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
-          auto result = waitFor(max_index);
-          if (result != Agent::raft_commit_t::OK) {
-#warning Report error
-          }
-        }
       } else {
-#warning Report error
+        
       }
       
     } else {
@@ -1802,25 +1808,32 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
     }
 
+    if (!err.empty()) {
+      out->add(StaticStrings::Code, VPackValue(500));
+      out->add(StaticStrings::Error, VPackValue(true));
+      out->add(StaticStrings::ErrorMessage, VPackValue(err));
+      out->add(StaticStrings::ErrorNum, VPackValue(500));
+    } else {
       
-    if (!isCallback) { // no gain in callback to a callback.
-      auto pool = _config.pool();
-      auto active = _config.active();
+      if (!isCallback) { // no gain in callback to a callback.
+        auto pool = _config.pool();
+        auto active = _config.active();
 
-      // Wrapped in envelope in RestAgencyPrivHandler
-      out->add(VPackValue("pool"));
-      {
-        VPackObjectBuilder bb(out.get());
-        for (auto const& i : pool) {
-          out->add(i.first, VPackValue(i.second));
+        // Wrapped in envelope in RestAgencyPrivHandler
+        out->add(VPackValue("pool"));
+        {
+          VPackObjectBuilder bb(out.get());
+          for (auto const& i : pool) {
+            out->add(i.first, VPackValue(i.second));
+          }
         }
       }
     }
   }
 
   if (!isCallback) {
-    LOG_TOPIC(TRACE, Logger::AGENCY) << "Answering with gossip "
-                                     << out->slice().toJson();
+    LOG_TOPIC(TRACE, Logger::AGENCY)
+      << "Answering with gossip " << out->slice().toJson();
   }
 
   // let gossip loop know that it has new data

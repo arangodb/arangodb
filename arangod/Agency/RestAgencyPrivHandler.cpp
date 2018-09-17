@@ -78,6 +78,28 @@ inline RestStatus RestAgencyPrivHandler::reportGone() {
   return RestStatus::DONE;
 }
 
+RestStatus RestAgencyPrivHandler::reportMessage(
+  rest::ResponseCode code, std::string const& message) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  Builder body;
+  { VPackObjectBuilder b(&body);
+    body.add("message", VPackValue(message)); }
+  generateResult(code, body.slice());
+  return RestStatus::DONE;
+}
+
+void RestAgencyPrivHandler::redirectRequest(std::string const& leaderId) {
+  try {
+    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
+      _request->requestPath();
+    _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
+    _response->setHeaderNC(StaticStrings::Location, url);
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+  } catch (std::exception const&) {
+    reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
+  }
+}
+
 RestStatus RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
@@ -143,14 +165,21 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        query_t query = _request->toVelocyPackBuilderPtr();
-        try {
-          query_t ret = _agent->gossip(query);
-          for (auto const& obj : VPackObjectIterator(ret->slice())) {
-            result.add(obj.key.copyString(), obj.value);
+        
+        auto const leaderID = _agent->leaderID();
+        if (leaderID != NO_LEADER && leaderID != _agent->id()) { 
+          redirectRequest(leaderID);
+          return RestStatus::DONE;
+        } else {              // We're still trying to figure, what's going on
+          query_t query = _request->toVelocyPackBuilderPtr();
+          try {
+            query_t ret = _agent->gossip(query);
+            for (auto const& obj : VPackObjectIterator(ret->slice())) {
+              result.add(obj.key.copyString(), obj.value);
+            }
+          } catch (std::exception const& e) {
+            return reportBadQuery(e.what());
           }
-        } catch (std::exception const& e) {
-          return reportBadQuery(e.what());
         }
       } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
