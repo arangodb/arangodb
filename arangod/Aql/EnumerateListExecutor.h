@@ -50,7 +50,7 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
  public:
   EnumerateListExecutorInfos(
       RegisterId inputRegister, RegisterId outputRegister,
-      RegisterId nrOutputRegisters, RegisterId nrInputRegisters,
+      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
       std::unordered_set<RegisterId> const registersToClear,
       transaction::Methods* trx);
 

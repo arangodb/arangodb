@@ -62,10 +62,10 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
   fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
-  EnumerateListExecutorInfos infos(0, 1, 2, 1, {}, &trx);
+  EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, &trx);
 
   GIVEN("there are no rows upstream") {
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -100,7 +100,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream") {
-    EnumerateListExecutorInfos infos(3, 4, 5, 4, {}, &trx);
+    EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto input =
         VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");

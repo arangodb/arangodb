@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister,
-    RegisterId nrOutputRegisters, RegisterId nrInputRegisters,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const registersToClear,
     transaction::Methods* trx)
     : ExecutorInfos(inputRegister, outputRegister, nrInputRegisters,
