@@ -614,7 +614,7 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double Index::selectivityEstimate(StringRef const* extra) const {
+double Index::selectivityEstimate(StringRef const&) const {
   if (_unique) {
     return 1.0;
   }
@@ -657,7 +657,8 @@ int Index::sizeHint(transaction::Methods*, size_t) {
 bool Index::hasBatchInsert() const { return false; }
 
 /// @brief default implementation for supportsFilterCondition
-bool Index::supportsFilterCondition(arangodb::aql::AstNode const*,
+bool Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
+                                    arangodb::aql::AstNode const*,
                                     arangodb::aql::Variable const*,
                                     size_t itemsInIndex, size_t& estimatedItems,
                                     double& estimatedCost) const {
