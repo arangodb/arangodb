@@ -97,7 +97,7 @@ CreateCollection::CreateCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
+  
 }
 
 
@@ -186,11 +186,23 @@ bool CreateCollection::first() {
   }
 
   if (_result.fail()) {
-    _feature.storeShardError(database, collection, shard,
-        _description.get(SERVER_ID), _result);
+    _feature.storeShardError(
+      database, collection, shard, _description.get(SERVER_ID), _result);
   }
 
   notify();
 
   return false;
+}
+
+
+void CreateCollection::setState(ActionState state) {
+  
+  if ((COMPLETE==state || FAILED==state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
+  
+  ActionBase::setState(state);
+  
 }
