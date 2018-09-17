@@ -1166,12 +1166,9 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
       _tiLock.assertNotLockedByCurrentThread();
       MUTEX_LOCKER(ioLocker, _ioLock);
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
 
       applied = _spearhead.applyTransactions(chunk, wmode);
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
       auto tmp = _state.logLeaderMulti(chunk, applied, term());
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
       indices.insert(indices.end(), tmp.begin(), tmp.end());
 
     }
@@ -1326,8 +1323,6 @@ void Agent::run() {
 
 void Agent::persistConfiguration(term_t t) {
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
-
   // Agency configuration
   auto agency = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(agency.get());
@@ -1335,15 +1330,16 @@ void Agent::persistConfiguration(term_t t) {
       { VPackObjectBuilder oper(agency.get());
         agency->add(VPackValue(RECONFIGURE));
         { VPackObjectBuilder a(agency.get());
-          agency->add("term", VPackValue(t));
-          agency->add("id", VPackValue(id()));
-          agency->add("active", _config.activeToBuilder()->slice());
-          agency->add("pool", _config.poolToBuilder()->slice());
-          agency->add("size", VPackValue(size()));
-          agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
-        }}}}
-
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << ":" << __LINE__;
+          agency->add("op", VPackValue("set"));
+          agency->add(VPackValue("new"));
+          { VPackObjectBuilder aa(agency.get());
+            agency->add("term", VPackValue(t));
+            agency->add("id", VPackValue(id()));
+            agency->add("active", _config.activeToBuilder()->slice());
+            agency->add("pool", _config.poolToBuilder()->slice());
+            agency->add("size", VPackValue(size()));
+            agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
+          }}}}}
 
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
@@ -1680,7 +1676,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Incoming gossip: "
       << in->slice().toJson();
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
   VPackSlice slice = in->slice();
   if (!slice.isObject()) {
@@ -1690,26 +1685,22 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
             slice.typeName());
   }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
   }
   std::string id = slice.get("id").copyString();
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
   if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
   }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   // If pool complete but knabe is not member => reject at all times
   if (_config.poolComplete()) {
     auto pool = _config.pool();
@@ -1730,7 +1721,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   VPackSlice pslice = slice.get("pool");
 
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
   for (auto const& pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
@@ -1740,7 +1730,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   query_t out = std::make_shared<Builder>();
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
   {
     VPackObjectBuilder b(out.get());
@@ -1756,15 +1745,12 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     }
 
     
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
     /// Only leaders can update pool through RAFT
     if (_config.poolComplete()) {
 
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
       if (!challengeLeadership()) {
         auto tmp = _config;
         tmp.upsertPool(pslice, id);
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
         auto query = std::make_shared<VPackBuilder>();
         { VPackArrayBuilder trs(query.get()); //[
           { VPackArrayBuilder tr(query.get()); //[
@@ -1776,17 +1762,13 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
                 { VPackObjectBuilder c(query.get()); // }
                   tmp.toBuilder(*query); }}}}} // ]]
         
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
-  LOG_TOPIC(ERR, Logger::FIXME) << query->toJson();
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "persisting new agency configuration via RAFT: " << query->toJson();
             
         // Do write
         write_ret_t ret;
         try {
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
           ret = write(query, WriteMode(false,true));
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
 
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY)
@@ -1796,31 +1778,24 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         // Single write in transaction:
         arangodb::consensus::index_t max_index = 0;
         try {
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
           max_index =
             *std::max_element(ret.indices.begin(), ret.indices.end());
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
         } catch (std::exception const& e) {
           LOG_TOPIC(WARN, Logger::AGENCY)
             << "failed to write new agency to RAFT" << e.what();
         }
         
         if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
           auto result = waitFor(max_index);
           if (result != Agent::raft_commit_t::OK) {
 #warning Report error
           }
         }
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
       } else {
 #warning Report error
       }
-  LOG_TOPIC(ERR, Logger::FIXME) << __FILE__ << __LINE__;
       
     } else {
-      LOG_TOPIC(ERR, Logger::FIXME) << _config.toBuilder()->toJson();
-      LOG_TOPIC(ERR, Logger::FIXME) << pslice.toJson();
       if (!_config.upsertPool(pslice, id)) {
         LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
         FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
