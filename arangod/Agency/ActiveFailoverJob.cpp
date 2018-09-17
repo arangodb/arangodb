@@ -281,7 +281,7 @@ std::string ActiveFailoverJob::findBestFollower() {
         if (!isAvailable) {
           continue; // skip inaccessible servers
         }
-        TRI_ASSERT(srvUUID != _server);
+        TRI_ASSERT(srvUUID != _server); // assumption: _server is unhealthy
         
         VPackSlice leader = pair.value.get("leader"); // broken leader
         VPackSlice lastTick = pair.value.get("lastTick");

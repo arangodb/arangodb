@@ -573,7 +573,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
-    if (idx->supportsFilterCondition(node, reference, itemsInIndex,
+    if (idx->supportsFilterCondition(indexes, node, reference, itemsInIndex,
                                      estimatedItems, estimatedCost)) {
       // index supports the filter condition
       filterCost = estimatedCost;
@@ -661,7 +661,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
-    bool supportsFilter = idx->supportsFilterCondition(node, reference, itemsInIndex,
+    bool supportsFilter = idx->supportsFilterCondition(indexes, node, reference, itemsInIndex,
                                                        estimatedItems, estimatedCost);
 
     // enable the following line to see index candidates considered with their
@@ -2712,7 +2712,7 @@ bool transaction::Methods::supportsFilterCondition(
                                    "The index id cannot be empty.");
   }
 
-  return idx->supportsFilterCondition(condition, reference, itemsInIndex,
+  return idx->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, reference, itemsInIndex,
                                       estimatedItems, estimatedCost);
 }
 

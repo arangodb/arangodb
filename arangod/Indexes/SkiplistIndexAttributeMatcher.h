@@ -38,7 +38,8 @@ class Index;
 /// Contains code for in-memory skiplist indexes (MMFilesSkiplistIndex)
 namespace SkiplistIndexAttributeMatcher {
 
-bool supportsFilterCondition(arangodb::Index const*,
+bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                             arangodb::Index const* index,
                              arangodb::aql::AstNode const* node,
                              arangodb::aql::Variable const* reference,
                              size_t itemsInIndex, size_t& estimatedItems,

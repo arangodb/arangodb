@@ -451,6 +451,7 @@ void MMFilesPrimaryIndex::invokeOnAllElementsForRemoval(
 
 /// @brief checks whether the index supports the condition
 bool MMFilesPrimaryIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {

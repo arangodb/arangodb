@@ -207,7 +207,7 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(
 
 /// @brief return a selectivity estimate for the index
 double MMFilesEdgeIndex::selectivityEstimate(
-    arangodb::StringRef const* attribute) const {
+    arangodb::StringRef const& attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -217,14 +217,14 @@ double MMFilesEdgeIndex::selectivityEstimate(
     return 0.1;
   }
 
-  if (attribute != nullptr) {
+  if (!attribute.empty()) {
     // the index attribute is given here
     // now check if we can restrict the selectivity estimation to the correct
     // part of the index
-    if (attribute->compare(StaticStrings::FromString) == 0) {
+    if (attribute.compare(StaticStrings::FromString) == 0) {
       // _from
       return _edgesFrom->selectivity();
-    } else if (attribute->compare(StaticStrings::ToString) == 0) {
+    } else if (attribute.compare(StaticStrings::ToString) == 0) {
       // _to
       return _edgesTo->selectivity();
     }
@@ -409,6 +409,7 @@ int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
 
 /// @brief checks whether the index supports the condition
 bool MMFilesEdgeIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
