@@ -113,12 +113,13 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
         OutputAqlItemRow result(std::move(block), infos.registersToKeep());
 
         /*
-       1  produce => WAIT                 RES1
-       2  produce => HASMORE              RES1
-       3  produce => WAIT                 RES2
-       4  produce => HASMORE              RES2
-       5  produce => WAIT                 RES3
-       6  produce => DONE                 RES3
+         * Here we are not waiting after every row produce, because the fetcher does not need
+         * to refetch a new row to produce the next one.
+         * 1. produce => WAIT                 RES1  - due true flag in SingleRowFetcherHelper
+         * 2. produce => HASMORE              RES1 - return a row
+         * 3. produce => HASMORE              RES2 - return a row
+         * 4. produce => HASMORE              RES3 - return a row
+         * 5. produce => DONE                 RES4 - DONE - do not return a row
        */
 
         state = testee.produceRow(result);
@@ -132,8 +133,10 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
         result.advanceRow();
 
         state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(result.produced());
+
+        result.advanceRow();
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
@@ -142,14 +145,6 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
         result.advanceRow();
 
         state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(result.produced());
-
-        result.advanceRow();
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
