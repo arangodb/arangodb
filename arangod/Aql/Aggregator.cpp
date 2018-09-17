@@ -697,8 +697,6 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       builder.add(VPackSlice(pos));
     }
   }
-  
-  arangodb::velocypack::Builder builder;
 };
 
 /// @brief the single-server and DB server variant of SORTED_UNIQUE
