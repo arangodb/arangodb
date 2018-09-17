@@ -268,7 +268,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFilterBlock2 : function () {
-      internal.debugSetFailAt("FilterBlock::getOrSkipSome2");
+      internal.debugSetFailAt("FilterExecutor::produceRow");
       assertFailingQuery("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER HAS(prop, 'DATA') RETURN [ attr, prop.DATA ]"); 
     },
 
@@ -277,7 +277,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFilterBlock3 : function () {
-      internal.debugSetFailAt("FilterBlock::getOrSkipSome3");
+      internal.debugSetFailAt("FilterExecutor::produceRow");
       assertFailingQuery("FOR i IN [1,2,3,4] FILTER i IN [1,2,3,4] RETURN i");
     },
 

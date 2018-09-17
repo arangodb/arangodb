@@ -40,6 +40,9 @@ FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetche
 FilterExecutor::~FilterExecutor() = default;
 
 ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {
+  TRI_IF_FAILURE("FilterExecutor::produceRow") {
+     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   ExecutionState state;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
