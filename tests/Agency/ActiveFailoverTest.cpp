@@ -110,7 +110,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Mock<AgentInterface> mockAgent;
 
     write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
         REQUIRE(typeName(q->slice()) == "array" );
@@ -152,7 +152,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     VPackBuilder mod = VPackCollection::merge(base.slice(), overw.slice(), true);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       INFO(q->slice().toJson());
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
@@ -171,7 +171,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
       REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
       
-      return write_ret_t{false, "", std::vector<bool> {false}, std::vector<index_t> {0}};
+      return write_ret_t{false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {0}};
     });
     
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -191,7 +191,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     VPackBuilder mod = VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");
@@ -220,7 +220,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     REQUIRE(job.status() == JOB_STATUS::TODO);
     Verify(Method(mockAgent,write)).Exactly(1);
     
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       // check that the job finishes now, without changing leader
       VPackSlice writes = q->slice()[0][0];
       REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
@@ -242,7 +242,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     VPackBuilder mod = VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
   
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");
@@ -271,7 +271,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     REQUIRE(job.status() == JOB_STATUS::TODO);
     Verify(Method(mockAgent,write)).Exactly(1);
   
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       // check that the job finishes now, without changing leader
       VPackSlice writes = q->slice()[0][0];
       REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
@@ -293,7 +293,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(noInSync))};
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");
@@ -323,7 +323,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent,write)).Exactly(1);
     
     When(Method(mockAgent, transient)).Return(fakeTransient);
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       // check that the job fails now
       auto writes = q->slice()[0][0];
       REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
@@ -345,7 +345,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(transient))};
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");
@@ -375,7 +375,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent,write)).Exactly(1);
     
     When(Method(mockAgent, transient)).Return(fakeTransient);
-    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");

@@ -203,7 +203,7 @@ SECTION("cleanout server should fail if the server does not exist") {
   };
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
@@ -340,7 +340,7 @@ SECTION("cleanout server should fail if the server is already cleaned") {
   };
   
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
@@ -387,7 +387,7 @@ SECTION("cleanout server should fail if the server is failed") {
   };
   
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
@@ -436,7 +436,7 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
   };
   
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
@@ -486,7 +486,7 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
   };
   
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
@@ -531,7 +531,7 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
   };
   
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WRITE: " << q->toJson());
     
     REQUIRE(std::string(q->slice().typeName()) == "array" );
@@ -612,7 +612,7 @@ SECTION("a cleanout server job should abort after a long timeout") {
   
   int qCount = 0;
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     if (qCount++ == 0) {
       // first the moveShard job should be aborted
       INFO("WRITE FIRST: " << q->toJson());
@@ -718,7 +718,7 @@ SECTION("once all subjobs were successful then the job should be finished") {
     return builder;
   };
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     INFO("WRITE: " << q->toJson());
     
     REQUIRE(std::string(q->slice().typeName()) == "array" );
@@ -777,7 +777,7 @@ SECTION("if there was a failed subjob then the job should also fail") {
     return builder;
   };
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     checkFailed(JOB_STATUS::PENDING, q);
     return fakeWriteResult;
   });
@@ -823,7 +823,7 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
   };
   Mock<AgentInterface> mockAgent;
   int qCount = 0;
-  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     if (qCount++ == 0) {
       // first the moveShard job should be aborted
       INFO("WRITE FIRST: " << q->toJson());

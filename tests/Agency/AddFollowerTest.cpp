@@ -119,7 +119,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
   SECTION("creating a job should create a job in todo") {
     Mock<AgentInterface> mockAgent;
 
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
         REQUIRE(typeName(q->slice()) == "array" );
@@ -190,7 +190,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -249,7 +249,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     auto agency = createNodeFromBuilder(*builder);
 
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -312,7 +312,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -369,7 +369,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     auto agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -424,7 +424,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -475,7 +475,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -530,7 +530,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
@@ -583,7 +583,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     Node agency = createNodeFromBuilder(*builder);
     
     Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
+    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
         INFO(q->slice().toJson());
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
