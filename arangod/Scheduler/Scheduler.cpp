@@ -215,7 +215,7 @@ Scheduler::~Scheduler() {
 }
 
 // do not pass callback by reference, might get deleted before execution
-void Scheduler::post(std::function<void()> const cb, bool isV8,
+void Scheduler::post(std::function<void()> const& cb, bool isV8,
                      uint64_t timeout) {
   // increment number of queued and guard against exceptions
   incQueued();
@@ -269,8 +269,8 @@ void Scheduler::post(std::function<void()> const cb, bool isV8,
 
       std::shared_ptr<asio_ns::deadline_timer> timer(
           newDeadlineTimer(boost::posix_time::millisec(timeout)));
-      timer->async_wait(
-        [this, cb, isV8, t, timer](const asio::error_code& error) {
+      timer->async_wait([this, cb = std::move(cb), isV8, t, timer]
+                        (const asio::error_code& error) {
             if (error != asio::error::operation_aborted) {
               post(cb, isV8, t);
             }
@@ -288,7 +288,7 @@ void Scheduler::post(std::function<void()> const cb, bool isV8,
 }
 
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> const cb) {
+                     std::function<void()> const& cb) {
   incQueued();
   try {
     // capture without self, ioContext will not live longer than scheduler
