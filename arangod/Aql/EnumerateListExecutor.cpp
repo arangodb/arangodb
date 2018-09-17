@@ -61,23 +61,16 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
   while (true) {
     // HIT in first run, because pos and length are initiliazed
     // both with 0
-    LOG_DEVEL << "========== START ===========";
-    LOG_DEVEL << "pos is : " << _inputArrayPosition;
-    LOG_DEVEL << "length is : " << _inputArrayLength;
-    LOG_DEVEL << "===========================";
 
-    if (_inputArrayPosition == _inputArrayLength ||
-        _inputArrayPosition == _inputArrayLength - 1) {
-      LOG_DEVEL << "got soemthing new, beginning";
+    // if (_inputArrayPosition == _inputArrayLength || _inputArrayPosition == _inputArrayLength - 1) {
+    if (_inputArrayPosition == _inputArrayLength) {
       // we need to set position back to zero
       // because we finished iterating over existing array
       // element and need to refetch another row
-      _inputArrayPosition = 0;
+      // _inputArrayPosition = 0;
+      initialize();
       std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
-      LOG_DEVEL << "X - ROW STATE IS: " << _rowState;
-      LOG_DEVEL << "ARE WE INITIALIZED? :" << _currentRow.isInitialized();
       if (_rowState == ExecutionState::WAITING) {
-        LOG_DEVEL << "we're just waiting.";
         return _rowState;
       }
     }
@@ -97,19 +90,12 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
       } else {
         _inputArrayLength = value.length();
       }
-      LOG_DEVEL << "Position is zero, array length is: " << _inputArrayLength;
-    } else {
-      // read current array length
-      LOG_DEVEL << "Position is: " << _inputArrayLength
-                << ", array length is: " << _inputArrayLength;
     }
 
     if (_inputArrayLength == 0) {
-      LOG_DEVEL << "length is zero, skipping";
       continue;
-    } else if (_inputArrayLength == _inputArrayPosition - 1) {
+    } else if (_inputArrayLength == _inputArrayPosition) {
       // we reached the end, forget all state
-      LOG_DEVEL << "end reached. re-initializing.";
       initialize();
 
       if (_rowState == ExecutionState::HASMORE) {
@@ -118,8 +104,6 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
         return _rowState;
       }
     } else {
-      //  for (size_t j = _inputArrayPosition; j < _inputArrayLength; j++) {
-      LOG_DEVEL << "currently at position: " << _inputArrayPosition;
       bool mustDestroy = false;
 
       AqlValue innerValue =

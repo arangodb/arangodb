@@ -46,7 +46,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
+SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
@@ -139,10 +139,14 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
         result.advanceRow();
 
         state = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(state == ExecutionState::DONE);
         REQUIRE(result.produced());
 
         result.advanceRow();
+
+        state = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
 
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
