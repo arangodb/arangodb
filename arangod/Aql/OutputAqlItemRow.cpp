@@ -33,14 +33,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-    AqlItemBlock* block, size_t baseIndex,
+    std::unique_ptr<AqlItemBlock> block,
     std::unordered_set<RegisterId> const& regsToKeep)
-    : _block(block),
-      _baseIndex(baseIndex),
+    : _block(std::move(block)),
+      _baseIndex(0),
       _regsToKeep(regsToKeep),
-      _produced(false),
+      _currentRowIsComplete(false),
       _lastSourceRow{CreateInvalidInputRowHint{}} {
-  TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(_block != nullptr);
 }
 
 void OutputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow, AqlValue const& value) {
@@ -50,7 +50,8 @@ void OutputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& so
 }
 
 void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
-  if (_produced) {
+  TRI_ASSERT(sourceRow.isInitialized());
+  if (_currentRowIsComplete) {
     return;
   }
 
@@ -82,6 +83,6 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
     }
   }
 
-  _produced = true;
+  _currentRowIsComplete = true;
   _lastSourceRow = sourceRow;
 }

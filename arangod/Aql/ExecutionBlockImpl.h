@@ -32,6 +32,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "OutputAqlItemRow.h"
 
 namespace arangodb {
 namespace aql {
@@ -148,9 +149,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   Executor _executor;
 
-  std::unique_ptr<AqlItemBlock> _getSomeOutBlock;
-  std::size_t _getSomeOutRowsAdded;
-  //ExecutionState _getSomeState;
+  std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
 };
 

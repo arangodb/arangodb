@@ -47,7 +47,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlock block(&monitor, 1000, 1);
+  auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
   ExecutorInfos infos(0, 0, 1, 1, {});
 
@@ -59,7 +59,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -71,7 +71,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -95,7 +95,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
       THEN("the executor should return DONE with nullptr") {
         std::size_t current = 0;
-        OutputAqlItemRow row(&block, current, infos.registersToKeep());
+        OutputAqlItemRow row(std::move(block), infos.registersToKeep());
 
         /*
         1  produce => WAIT                 RES1
@@ -112,44 +112,53 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         //2
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.changeRow(++current);
+        REQUIRE(infos.getFiltered() == 0);
 
         //3
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
         //4
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        // We have one filter here
+        REQUIRE(infos.getFiltered() == 1);
 
         //5
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.changeRow(++current);
+        REQUIRE(infos.getFiltered() == 1);
 
         //6
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
         //7
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
         //8
         state = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
         row.changeRow(++current);
+        REQUIRE(infos.getFiltered() == 2);
       }
     }
   }
@@ -163,10 +172,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
       FilterExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result1(&block, 0, infos.registersToKeep());
-        OutputAqlItemRow result2(&block, 1, infos.registersToKeep());
-        OutputAqlItemRow result3(&block, 2, infos.registersToKeep());
-        OutputAqlItemRow result4(&block, 3, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
 
         /*
         produce => WAIT                  RES1
@@ -181,45 +187,61 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
          => DONE, no output!             RES3
           */
 
-        state = testee.produceRow(result1);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result1.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
-        state = testee.produceRow(result1);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result1.produced());
+        REQUIRE(result.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
-        state = testee.produceRow(result2);
+        result.advanceRow();
+
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result2.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 0);
 
-        state = testee.produceRow(result2);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result2.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
-        state = testee.produceRow(result2);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result2.produced());
+        REQUIRE(result.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
-        state = testee.produceRow(result3);
+        result.advanceRow();
+
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result3.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 1);
 
-        state = testee.produceRow(result3);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result3.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
-        state = testee.produceRow(result3);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result3.produced());
+        REQUIRE(result.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
-        state = testee.produceRow(result4);
+        result.advanceRow();
+
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result4.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 2);
 
-        state = testee.produceRow(result4);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result4.produced());
+        REQUIRE(!result.produced());
+        REQUIRE(infos.getFiltered() == 3);
       }
     }
   }

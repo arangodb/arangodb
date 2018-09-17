@@ -46,12 +46,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
+SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlock block(&monitor, 1000, 1);
-
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
   // on documents alone.
@@ -64,9 +62,10 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&ctxt);
   fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
-  EnumerateListExecutorInfos infos(0, 0, 1, 1, {}, &trx);
+  EnumerateListExecutorInfos infos(0, 1, 2, 1, {}, &trx);
 
   GIVEN("there are no rows upstream") {
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -74,7 +73,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -86,7 +85,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(&block, 0, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -101,71 +100,58 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream") {
+    EnumerateListExecutorInfos infos(3, 4, 5, 4, {}, &trx);
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto input =
-        VPackParser::fromJson("[ 1, 2, 3, [[true, true, true]] ]");
+        VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
-    WHEN("the producer does not wait") {
+    WHEN("the producer does wait") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result1(&block, 0, infos.registersToKeep());
-        OutputAqlItemRow result2(&block, 1, infos.registersToKeep());
-        OutputAqlItemRow result3(&block, 2, infos.registersToKeep());
-        OutputAqlItemRow result4(&block, 3, infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
 
         /*
-        produce => WAIT                  RES1
-        produce => HASMORE, Row 1        RES1
-        => WAIT                          RES2
-        => WAIT                          RES2
-         => HASMORE, Row 3               RES2
-         => WAIT,                        RES3
-         => WAIT,                        RES3
-         => HASMORE, Row 5               RES3
-         => WAITING, Row 6               RES3
-         => DONE, no output!             RES3
-        */
+       1  produce => WAIT                 RES1
+       2  produce => HASMORE              RES1
+       3  produce => WAIT                 RES2
+       4  produce => HASMORE              RES2
+       5  produce => WAIT                 RES3
+       6  produce => DONE                 RES3
+       */
 
-        state = testee.produceRow(result1);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result1.produced());
+        REQUIRE(!result.produced());
 
-        state = testee.produceRow(result1);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result1.produced());
+        REQUIRE(result.produced());
 
-        state = testee.produceRow(result2);
+        result.advanceRow();
+
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result2.produced());
+        REQUIRE(!result.produced());
 
-        state = testee.produceRow(result2);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result2.produced());
-
-        state = testee.produceRow(result2);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result2.produced());
+        REQUIRE(result.produced());
 
-        state = testee.produceRow(result3);
+        result.advanceRow();
+
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result3.produced());
+        REQUIRE(!result.produced());
 
-        state = testee.produceRow(result3);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result3.produced());
-
-        state = testee.produceRow(result3);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(result3.produced());
-
-        state = testee.produceRow(result4);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result4.produced());
-
-        state = testee.produceRow(result4);
+        state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result4.produced());
+        REQUIRE(result.produced());
+
+        result.advanceRow();
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result.produced());
       }
     }
   }
