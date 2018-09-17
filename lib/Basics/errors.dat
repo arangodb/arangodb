@@ -412,6 +412,7 @@ ERROR_INTERNAL_AQL,2200,"General internal AQL error","Internal error during AQL 
 ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS,2201,"An AQL block wrote too few output registers","An AQL block wrote too few output registers"
 ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS,2202,"An AQL block wrote too many output registers","An AQL block wrote too many output registers"
 ERROR_WROTE_OUTPUT_REGISTER_TWICE,2203,"An AQL block wrote an output register twice","An AQL block wrote an output register twice"
+ERROR_INPUT_REGISTERS_NOT_COPIED,2204,"An AQL block did not copy its input registers","An AQL block did not copy its input registers"
 
 ################################################################################
 ## Foxx management errors
