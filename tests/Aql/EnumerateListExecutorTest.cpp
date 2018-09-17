@@ -73,7 +73,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -85,7 +85,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos);
         state = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -110,7 +110,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
       EnumerateListExecutor testee(fetcher, infos);
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos.registersToKeep());
+        OutputAqlItemRow result(std::move(block), infos);
 
         /*
          * Here we are not waiting after every row produce, because the fetcher does not need

@@ -477,6 +477,14 @@ class ClusterInfo {
   std::string getServerEndpoint(ServerID const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the advertised endpoint of a server from its ID.
+  /// If it is not found in the cache, the cache is reloaded once, if
+  /// it is still not there an empty string is returned as an error.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getServerAdvertisedEndpoint(ServerID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief find the server ID for an endpoint.
   /// If it is not found in the cache, the cache is reloaded once, if
   /// it is still not there an empty string is returned as an error.
@@ -594,7 +602,9 @@ class ClusterInfo {
   std::unordered_map<ServerID, std::string> getServers();
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
-  
+
+  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -690,6 +700,8 @@ class ClusterInfo {
       _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string>
       _serverAliases;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string>
+      _serverAdvertisedEndpoints;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:

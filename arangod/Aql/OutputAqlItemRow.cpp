@@ -25,33 +25,58 @@
 
 #include "OutputAqlItemRow.h"
 
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(
-    std::unique_ptr<AqlItemBlock> block,
-    std::unordered_set<RegisterId> const& regsToKeep)
+OutputAqlItemRow::OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
+                                   const ExecutorInfos& executorInfos)
     : _block(std::move(block)),
       _baseIndex(0),
-      _regsToKeep(regsToKeep),
-      _currentRowIsComplete(false),
-      _lastSourceRow{CreateInvalidInputRowHint{}} {
+      _executorInfos(executorInfos),
+      _inputRowCopied(false),
+      _lastSourceRow{CreateInvalidInputRowHint{}},
+      _numValuesWritten(0) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_block->getNrRegs() == _executorInfos.numberOfOutputRegisters());
 }
 
-void OutputAqlItemRow::setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow, AqlValue const& value) {
-  TRI_ASSERT(variableNr < getNrRegisters());
-  _block->emplaceValue(_baseIndex, variableNr, value);
-  copyRow(sourceRow);
+void OutputAqlItemRow::setValue(RegisterId registerId,
+                                InputAqlItemRow const& sourceRow,
+                                AqlValue const& value) {
+  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(executorInfos().numberOfInputRegisters() <= registerId &&
+             registerId < executorInfos().numberOfOutputRegisters());
+  if (_numValuesWritten >= numRegistersToWrite()) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);
+  }
+  if (!_block->getValueReference(_baseIndex, registerId).isNone()) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
+  }
+
+  _block->emplaceValue(_baseIndex, registerId, value);
+  _numValuesWritten++;
+  // allValuesWritten() must be called only *after* _numValuesWritten was
+  // increased.
+  if (allValuesWritten()) {
+    copyRow(sourceRow);
+  }
 }
 
 void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(sourceRow.isInitialized());
-  if (_currentRowIsComplete) {
+  // While violating the following asserted states would do no harm, the
+  // implementation as planned should only copy a row after all values have been
+  // set, and copyRow should only be called once.
+  TRI_ASSERT(!_inputRowCopied);
+  TRI_ASSERT(allValuesWritten());
+  if (_inputRowCopied) {
     return;
   }
 
@@ -60,7 +85,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-  for (auto itemId : _regsToKeep) {
+  for (auto itemId : executorInfos().registersToKeep()) {
     // copy entries to keep
     //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
@@ -79,10 +104,11 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
       }
     } else {
       TRI_ASSERT(_baseIndex > 0);
-      _block->copyValuesFromRow(_baseIndex, _regsToKeep, _baseIndex-1);
+      _block->copyValuesFromRow(_baseIndex, executorInfos().registersToKeep(),
+                                _baseIndex - 1);
     }
   }
 
-  _currentRowIsComplete = true;
+  _inputRowCopied = true;
   _lastSourceRow = sourceRow;
 }

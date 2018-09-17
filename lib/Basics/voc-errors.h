@@ -1573,6 +1573,26 @@ constexpr int TRI_COMMUNICATOR_REQUEST_ABORTED                                  
 /// Communication was disabled.
 constexpr int TRI_COMMUNICATOR_DISABLED                                         = 2101;
 
+/// 2200: ERROR_INTERNAL_AQL
+/// "General internal AQL error"
+/// Internal error during AQL execution
+constexpr int TRI_ERROR_INTERNAL_AQL                                            = 2200;
+
+/// 2201: ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS
+/// "An AQL block wrote too few output registers"
+/// An AQL block wrote too few output registers
+constexpr int TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS                          = 2201;
+
+/// 2202: ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS
+/// "An AQL block wrote too many output registers"
+/// An AQL block wrote too many output registers
+constexpr int TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS                         = 2202;
+
+/// 2203: ERROR_WROTE_OUTPUT_REGISTER_TWICE
+/// "An AQL block wrote an output register twice"
+/// An AQL block wrote an output register twice
+constexpr int TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE                             = 2203;
+
 /// 3000: ERROR_MALFORMED_MANIFEST_FILE
 /// "failed to parse manifest file"
 /// The service manifest file is not well-formed JSON.

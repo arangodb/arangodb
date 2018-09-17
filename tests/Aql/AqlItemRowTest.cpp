@@ -46,8 +46,9 @@ static void AssertEntry(InputAqlItemRow& in, RegisterId reg, VPackSlice value) {
   REQUIRE(basics::VelocyPackHelper::compare(value, v.slice(), true) == 0);
 }
 
-static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result, std::unordered_set<RegisterId>& regsToKeep,
-    bool assertNotInline = false) {
+static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
+                               std::unordered_set<RegisterId> const& regsToKeep,
+                               bool assertNotInline = false) {
   INFO("Expecting: " << result.toJson() << " Got: " << *in);
   REQUIRE(result.isArray());
   REQUIRE(in->size() == result.length());
@@ -81,10 +82,11 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("only copying from source to target") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
+    ExecutorInfos executorInfos{0, 0, 3, 3, {}};
+    std::unordered_set<RegisterId> const& regsToKeep =
+        executorInfos.registersToKeep();
 
-
-    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), executorInfos);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -153,9 +155,11 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("only copying from source to target but multiplying rows") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
-    std::unordered_set<RegisterId> regsToKeep{0, 1, 2};
+    ExecutorInfos executorInfos{0, 0, 3, 3, {}};
+    std::unordered_set<RegisterId> const& regsToKeep =
+      executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), executorInfos);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -198,9 +202,11 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("dropping a register from source while writing to target") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    std::unordered_set<RegisterId> regsToKeep{0, 2};
+    ExecutorInfos executorInfos{0, 0, 3, 3, {1}};
+    std::unordered_set<RegisterId> const& regsToKeep =
+      executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
+    OutputAqlItemRow testee(std::move(outputData), executorInfos);
 
     THEN("the output rows need to be valid even if the source rows are gone") {
       {
@@ -235,15 +241,20 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("writing rows to target") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
+    std::unique_ptr<ExecutorInfos> executorInfos{nullptr};
 
-    std::unordered_set<RegisterId> regsToKeep = {};
     THEN("should keep all registers and add new values") {
-      regsToKeep = {0, 1, 2};
+      executorInfos = std::make_unique<ExecutorInfos>(
+          0, 3, 3, 5, std::unordered_set<RegisterId>{});
     }
     THEN("should be able to drop registers and write new values") {
-      regsToKeep = {0};
+      executorInfos = std::make_unique<ExecutorInfos>(
+          0, 3, 3, 5, std::unordered_set<RegisterId>{1, 2});
     }
-    OutputAqlItemRow testee(std::move(outputData), regsToKeep);
+    std::unordered_set<RegisterId> regsToKeep =
+        executorInfos->registersToKeep();
+
+    OutputAqlItemRow testee(std::move(outputData), *executorInfos);
     {
       // Make sure this data is cleared before the assertions
       auto inputData = buildBlock<3>(&monitor, {

@@ -154,7 +154,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, 
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
-      if(!revision){
+      if (!revision) {
         _buffer.reserve(sizeof(uint64_t));
         uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
       } else {

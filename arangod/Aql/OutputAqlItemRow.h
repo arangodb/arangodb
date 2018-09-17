@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -46,9 +47,9 @@ struct AqlValue;
 class OutputAqlItemRow {
  public:
   OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
-                   std::unordered_set<RegisterId> const& regsToKeep);
+                   const ExecutorInfos& executorInfos);
 
-  void setValue(RegisterId variableNr, InputAqlItemRow const& sourceRow,
+  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
                 AqlValue const&);
 
   void copyRow(InputAqlItemRow const& sourceRow);
@@ -58,16 +59,26 @@ class OutputAqlItemRow {
   /// @deprecated Is unneeded, advanceRow() suffices.
   void changeRow(std::size_t baseIndex) {
     _baseIndex = baseIndex;
-    _currentRowIsComplete = false;
+    _inputRowCopied = false;
   }
 
+  /**
+   * @brief May only be called after all output values in the current row have
+   * been set, or in case there are zero output registers, after copyRow has
+   * been called.
+   */
   void advanceRow() {
+    TRI_ASSERT(produced());
+    TRI_ASSERT(_inputRowCopied);
     ++_baseIndex;
-    _currentRowIsComplete = false;
+    _inputRowCopied = false;
+    _numValuesWritten = 0;
   }
 
   // returns true if row was produced
-  bool produced() const { return _currentRowIsComplete; };
+  bool produced() const {
+    return allValuesWritten() && _inputRowCopied;
+  }
 
   std::unique_ptr<AqlItemBlock> stealBlock() {
     if (numRowsWritten() == 0) {
@@ -82,7 +93,7 @@ class OutputAqlItemRow {
   bool isFull() { return numRowsWritten() >= _block->size(); }
 
   size_t numRowsWritten() const noexcept {
-    if (_currentRowIsComplete) {
+    if (_inputRowCopied) {
       return _baseIndex + 1;
     }
 
@@ -100,21 +111,43 @@ class OutputAqlItemRow {
    */
   size_t _baseIndex;
 
-  std::unordered_set<RegisterId> const _regsToKeep;
-
-  bool _currentRowIsComplete;
+  ExecutorInfos const _executorInfos;
 
   /**
-  * @brief The last source row seen. Note that this is invalid before the first
-  *        source row is seen.
-  */
+   * @brief Whether the input registers were copied from a source row.
+   */
+  bool _inputRowCopied;
+
+  /**
+   * @brief The last source row seen. Note that this is invalid before the first
+   *        source row is seen.
+   */
   InputAqlItemRow _lastSourceRow;
+
+  /**
+   * @brief Number of setValue() calls. Each entry may be written at most once,
+   * so this can be used to check when all values are written.
+   */
+  size_t _numValuesWritten;
 
  private:
 
   size_t nextUnwrittenIndex() const noexcept {
     return numRowsWritten();
   }
+
+  ExecutorInfos const& executorInfos() const {
+    return _executorInfos;
+  }
+
+  size_t numRegistersToWrite() const {
+    return executorInfos().numberOfOutputRegisters() -
+           executorInfos().numberOfInputRegisters();
+  }
+
+  bool allValuesWritten() const {
+    return _numValuesWritten == numRegistersToWrite();
+  };
 };
 
 }  // namespace aql

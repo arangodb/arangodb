@@ -67,7 +67,8 @@ let hasDistributeNode = function(nodes) {
 
 let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
   return nodes.filter(function(node) {
-    return node.type === typeName;
+    return node.type === typeName &&
+           node.collection === collection.name();
   }).every(function(node) {
     return (collection.shards().indexOf(node.restrictedTo) !== -1);
   });
@@ -531,7 +532,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
@@ -553,7 +554,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'IndexNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
@@ -774,10 +775,11 @@ function ahuacatlModifySuite () {
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
-        expected = { writesExecuted: 100, writesIgnored: 400 };
+        expected = { writesExecuted: 100, writesIgnored: 0 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       } else {
         expected = { writesExecuted: 100, writesIgnored: 0 };
       }
@@ -822,12 +824,13 @@ function ahuacatlModifySuite () {
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d.id == 42 REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
-      
+
       if (isCluster) {
-        expected = { writesExecuted: 1, writesIgnored: 4 };
+        expected = { writesExecuted: 1, writesIgnored: 0 };
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
       assertEqual(99, c.count());

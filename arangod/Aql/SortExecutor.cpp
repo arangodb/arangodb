@@ -82,12 +82,11 @@ class OurLessThan {
 
 SortExecutorInfos::SortExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister,
-    RegisterId nrOutputRegisters, RegisterId nrInputRegisters,
-    std::unordered_set<RegisterId> const registersToClear,
-    transaction::Methods* trx, std::vector<SortRegister>&& sortRegisters,
-    bool stable)
-    : ExecutorInfos(inputRegister, outputRegister, nrOutputRegisters,
-                    nrInputRegisters, registersToClear),
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
+    std::vector<SortRegister>&& sortRegisters, bool stable)
+    : ExecutorInfos(inputRegister, outputRegister, nrInputRegisters,
+                    nrOutputRegisters, std::move(registersToClear)),
       _trx(trx),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {

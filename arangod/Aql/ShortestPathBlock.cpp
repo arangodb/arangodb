@@ -162,7 +162,7 @@ std::pair<ExecutionState, Result> ShortestPathBlock::shutdown(int errorCode) {
         arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
         std::unordered_map<std::string, std::string> headers;
         auto res = cc->syncRequest(
-            "", coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
+            coordTransactionID, "server:" + it.first, RequestType::DELETE_REQ,
             url + arangodb::basics::StringUtils::itoa(it.second), "", headers,
             30.0);
 

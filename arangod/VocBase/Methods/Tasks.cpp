@@ -228,14 +228,14 @@ Task::~Task() {}
 
 void Task::setOffset(double offset) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
-  _periodic = false;
+  _periodic.store(false);
 }
 
 void Task::setPeriod(double offset, double period) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
   _interval =
       std::chrono::microseconds(static_cast<long long>(period * 1000000));
-  _periodic = true;
+  _periodic.store(true);
 }
 
 void Task::setParameter(
@@ -289,7 +289,7 @@ std::function<void(const asio::error_code&)> Task::callbackFunction() {
 
           work(execContext.get());
 
-          if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
+          if (_periodic.load() && !SchedulerFeature::SCHEDULER->isStopping()) {
             // requeue the task
             queue(_interval);
           } else {
@@ -305,8 +305,10 @@ void Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
-
-  _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  {
+    MUTEX_LOCKER(lock, _timerMutex);
+    _timer.reset(SchedulerFeature::SCHEDULER->newSteadyTimer());
+  }
 
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
@@ -317,16 +319,20 @@ void Task::start() {
 }
 
 void Task::queue(std::chrono::microseconds offset) {
+  MUTEX_LOCKER(lock, _timerMutex);
   _timer->expires_from_now(offset);
   _timer->async_wait(callbackFunction());
 }
 
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
-  _periodic = false;
+  _periodic.store(false);
 
   asio::error_code ec;
-  _timer->cancel(ec);
+  {
+    MUTEX_LOCKER(lock, _timerMutex);
+    _timer->cancel(ec);
+  }
 }
 
 std::shared_ptr<VPackBuilder> Task::toVelocyPack() const {
@@ -347,7 +353,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("name", VPackValue(_name));
   builder.add("created", VPackValue(_created));
 
-  if (_periodic) {
+  if (_periodic.load()) {
     builder.add("type", VPackValue("periodic"));
     builder.add("period", VPackValue(_interval.count() / 1000000.0));
   } else {

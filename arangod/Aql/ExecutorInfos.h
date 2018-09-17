@@ -39,21 +39,29 @@ namespace aql {
  */
 class ExecutorInfos {
  public:
+  // inputRegister and outputRegister do not generally apply for all blocks.
+  // TODO Thus they should not be part of this class, but only of its
+  // descendants.
   ExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                RegisterId nrOutputRegisters,
-                RegisterId nrInputRegisters,
-                std::unordered_set<RegisterId> const registersToClear)
+                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                std::unordered_set<RegisterId> registersToClear)
       : _inReg(inputRegister),
         _outReg(outputRegister),
         _filtered(0),
-        _numRegs(nrOutputRegisters),
+        _numInRegs(nrInputRegisters),
+        _numOutRegs(nrOutputRegisters),
         _registersToKeep(),
-        _registersToClear(registersToClear) {
+        _registersToClear(std::move(registersToClear)) {
+    TRI_ASSERT(_inReg < nrInputRegisters);
+    TRI_ASSERT(_outReg < nrOutputRegisters);
+    TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
     for (RegisterId i = 0; i < nrInputRegisters; i++) {
       if (_registersToClear.find(i) == _registersToClear.end()) {
         _registersToKeep.emplace(i);
       }
     }
+    TRI_ASSERT(_registersToClear.size() + _registersToKeep.size() ==
+               nrInputRegisters);
   }
 
   ~ExecutorInfos() = default;
@@ -83,13 +91,19 @@ class ExecutorInfos {
   /**
    * @brief Increase the counter of filtered documents by one
    */
-  void countFiltered() { _filtered++; } 
+  void countFiltered() { _filtered++; }
 
-  size_t numberOfRegisters() { return _numRegs; }
+  size_t numberOfInputRegisters() const { return _numInRegs; }
 
-  std::unordered_set<RegisterId> const& registersToKeep() { return _registersToKeep; }
+  size_t numberOfOutputRegisters() const { return _numOutRegs; }
 
-  std::unordered_set<RegisterId> const& registersToClear() { return _registersToClear; }
+  std::unordered_set<RegisterId> const& registersToKeep() const {
+    return _registersToKeep;
+  }
+
+  std::unordered_set<RegisterId> const& registersToClear() const {
+    return _registersToClear;
+  }
 
  private:
 
@@ -99,7 +113,9 @@ class ExecutorInfos {
 
   size_t _filtered;
 
-  size_t _numRegs;
+  size_t _numInRegs;
+
+  size_t _numOutRegs;
 
   std::unordered_set<RegisterId> _registersToKeep;
 

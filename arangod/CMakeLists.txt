@@ -244,6 +244,7 @@ SET(ARANGOD_SOURCES
   Aql/Query.cpp
   Aql/QueryCache.cpp
   Aql/QueryCursor.cpp
+  Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
@@ -323,7 +324,6 @@ SET(ARANGOD_SOURCES
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
-  Cluster/MaintenanceStrings.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/NonAction.cpp
   Cluster/ReplicationTimeoutFeature.cpp

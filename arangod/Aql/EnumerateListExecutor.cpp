@@ -42,8 +42,8 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId nrOutputRegisters, RegisterId nrInputRegisters,
     std::unordered_set<RegisterId> const registersToClear,
     transaction::Methods* trx)
-    : ExecutorInfos(inputRegister, outputRegister, nrOutputRegisters,
-                    nrInputRegisters, registersToClear),
+    : ExecutorInfos(inputRegister, outputRegister, nrInputRegisters,
+                    nrOutputRegisters, registersToClear),
       _trx(trx) {
   TRI_ASSERT(trx != nullptr);
 }

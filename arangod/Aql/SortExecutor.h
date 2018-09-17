@@ -48,11 +48,11 @@ struct SortRegister;
 
 class SortExecutorInfos : public ExecutorInfos {
  public:
-  SortExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                    RegisterId nrOutputRegisters, RegisterId nrInputRegisters,
-                    std::unordered_set<RegisterId> const registersToClear,
-                    transaction::Methods* trx,
-                    std::vector<SortRegister>&& sortRegisters, bool stable);
+  SortExecutorInfos(
+      RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> registersToClear, transaction::Methods *trx,
+      std::vector<SortRegister> &&sortRegisters, bool stable
+    );
 
   ~SortExecutorInfos();
 

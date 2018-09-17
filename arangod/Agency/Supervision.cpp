@@ -50,6 +50,7 @@ struct HealthRecord {
   std::string syncStatus;
   std::string status;
   std::string endpoint;
+  std::string advertisedEndpoint;
   std::string lastAcked;
   std::string hostId;
   size_t version;
@@ -76,6 +77,9 @@ struct HealthRecord {
     if (endpoint.empty()) {
       endpoint = node.hasAsString("Endpoint").first;
     }
+    if (hostId.empty()) {
+      hostId = node.hasAsString("Host").first;
+    }
     if (node.has("Status")) {
       status = node.hasAsString("Status").first;
       if (node.has("SyncStatus")) { // New format
@@ -87,6 +91,10 @@ struct HealthRecord {
         if (node.has("LastAcked")) {
           lastAcked = node.hasAsString("LastAcked").first;
         }
+        if (node.has("AdvertisedEndpoint")) {
+          version = 3;
+          advertisedEndpoint = node.hasAsString("AdvertisedEndpoint").first;
+        }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
         syncStatus = node.hasAsString("LastHeartbeatStatus").first;
@@ -97,9 +105,6 @@ struct HealthRecord {
           lastAcked = node.hasAsString("LastHeartbeatAcked").first;
         }
       }
-      if (node.has("Host")) {
-        hostId = node.hasAsString("Host").first;
-      }
     }
     return *this;
   }
@@ -108,6 +113,7 @@ struct HealthRecord {
     shortName = other.shortName;
     syncStatus = other.syncStatus;
     status = other.status;
+    advertisedEndpoint = other.advertisedEndpoint;
     endpoint = other.endpoint;
     hostId = other.hostId;
     version = other.version;
@@ -118,6 +124,7 @@ struct HealthRecord {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
+    obj.add("AdvertisedEndpoint", VPackValue(advertisedEndpoint));
     obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
@@ -436,17 +443,25 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       shortName = tmp_shortName.first;
 
-      // Endpoint
+      // "/arango/Current/<serverId>/endpoint"
       std::string endpoint;
       std::string epPath = serverID + "/endpoint";
       if (serversRegistered.has(epPath)) {
         endpoint = serversRegistered.hasAsString(epPath).first;
       }
+      // "/arango/Current/<serverId>/host"
       std::string hostId;
       std::string hoPath = serverID + "/host";
       if (serversRegistered.has(hoPath)) {
         hostId = serversRegistered.hasAsString(hoPath).first;
       }
+      
+      // "/arango/Current/<serverId>/externalEndpoint"
+      /*std::string externalEndpoint;
+      std::string extEndPath = serverID + "/externalEndpoint";
+      if (serversRegistered.has(extEndPath)) {
+        externalEndpoint = serversRegistered.hasAsString(extEndPath).first;
+      }*/
 
       // Health records from persistence, from transience and a new one
       HealthRecord transist(shortName, endpoint, hostId);

@@ -230,12 +230,12 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
       // transaction id
-      builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
+      builder.add("tid", VPackValue(std::to_string(MMFilesDatafileHelper::TransactionId(marker))));
     }
     if (databaseId > 0) {
-      builder.add("database", VPackValue(databaseId));
+      builder.add("database", VPackValue(std::to_string(databaseId)));
       if (collectionId > 0) {
-        builder.add("cid", VPackValue(collectionId));
+        builder.add("cid", VPackValue(std::to_string(collectionId)));
         // also include collection name
         std::string const& cname = nameFromCid(dump, collectionId);
         if (!cname.empty()) {
@@ -246,7 +246,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
   } else {
     // collection dump
     if (withTicks) {
-      builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+      builder.add("tick", VPackValue(std::to_string(static_cast<uint64_t>(marker->getTick()))));
     }
     builder.add("type",
                 VPackValue(static_cast<uint64_t>(TranslateType(marker))));
@@ -372,11 +372,12 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
+  size_t numMarkers = 0;
   bool bufferFull = false;
 
   auto callback = [&dump, &lastFoundTick, &databaseId, &collectionId,
                    &withTicks, &isEdgeCollection, &bufferFull, &useVst,
-                   &collection](
+                   &collection, &numMarkers](
       TRI_voc_tick_t foundTick, MMFilesMarker const* marker) {
     // note the last tick we processed
     lastFoundTick = foundTick;
@@ -389,6 +390,8 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       res = StringifyMarker(dump, databaseId, collectionId, marker, true,
                             withTicks, isEdgeCollection);
     }
+
+    ++numMarkers;
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, arangodb::Logger::REPLICATION) << "got error during dump dump of collection '" << collection->name() << "': " << TRI_errno_string(res);
@@ -420,6 +423,12 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       dump->_hasMore = false;
       dump->_bufferFull = false;
     }
+  
+    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+        << "dumped collection " << collection->id()
+        << ", tick range " << dataMin << " - " << dataMax 
+        << ", markers: " << numMarkers << ", last found tick: " << dump->_lastFoundTick 
+        << ", hasMore: " << dump->_hasMore << ", buffer full: " << dump->_bufferFull;
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
