@@ -1,3 +1,9 @@
+v3.3.16 (XXXX-XX-XX)
+--------------------
+
+* fixed issue #6495 (Document not found when removing records)
+
+
 v3.3.15 (2018-09-10)
 --------------------
 
