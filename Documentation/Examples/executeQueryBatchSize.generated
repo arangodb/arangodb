@@ -1,40 +1,40 @@
 arangosh&gt; q = db.users.all(); q.setBatchSize(<span class="hljs-number">20</span>); q.execute(); <span class="hljs-keyword">while</span> (q.hasNext()) { print(q.next()); }
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16467"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16467"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XaSNedS--_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16469"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16469"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xcgb3SG--B"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16464"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16464"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XaSNedO--B"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16462"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16462"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xcgb3SC--_"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
 }
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16460"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16460"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XaSNedO--_"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16466"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16466"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xcgb3SG--_"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
 }
 SimpleQueryAll(users)
 arangosh&gt; q = db.users.all(); q.execute(<span class="hljs-number">20</span>); <span class="hljs-keyword">while</span> (q.hasNext()) { print(q.next()); }
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16467"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16467"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XaSNedS--_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16469"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16469"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xcgb3SG--B"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16464"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16464"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XaSNedO--B"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16462"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16462"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xcgb3SC--_"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
 }
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16460"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16460"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XaSNedO--_"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"16466"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/16466"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Xcgb3SG--_"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
 }
 SimpleQueryAll(users)

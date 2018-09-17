@@ -11,10 +11,10 @@ EOF
 
 HTTP/1.1 202 Accepted
 x-content-type-options: nosniff
-x-arango-async-id: 153660943263023
+x-arango-async-id: 153720596652066
 content-type: text/plain; charset=utf-8
 
-shell> curl --dump - http://localhost:8529/_api/job/153660943263023
+shell> curl --dump - http://localhost:8529/_api/job/153720596652066
 
 HTTP/1.1 204 No Content
 content-type: text/plain; charset=utf-8
