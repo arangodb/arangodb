@@ -255,7 +255,7 @@ class Index {
       arangodb::StringRef const* extra = nullptr) const;
   
   /// @brief update the cluster selectivity estimate
-  virtual void updateClusterSelectivityEstimate(double estimate = 0.1) {
+  virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
     TRI_ASSERT(false); // should never be called except on Coordinator
   }
 

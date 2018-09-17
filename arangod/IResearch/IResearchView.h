@@ -132,7 +132,7 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final
+class IResearchView
   : public arangodb::LogicalViewStorageEngine,
     public arangodb::FlushTransaction {
  public:

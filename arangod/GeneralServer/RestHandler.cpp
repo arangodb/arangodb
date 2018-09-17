@@ -187,7 +187,7 @@ bool RestHandler::forwardRequest() {
     }
 
     // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -195,7 +195,7 @@ bool RestHandler::forwardRequest() {
   } else {
     // do we need to handle multiple payloads here? - TODO
     // here we switch from vst to http
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,

@@ -3366,20 +3366,10 @@ transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collection = clusterInfo->getCollection(vocbase().name(), name);
-  std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
-
-  // update estimates in logical collection
-  auto selectivity = collection->clusterIndexEstimates();
-
-  // push updated values into indexes
-  for(std::shared_ptr<Index>& idx : indexes){
-    auto it = selectivity.find(std::to_string(idx->id()));
-    if (it != selectivity.end()) {
-      idx->updateClusterSelectivityEstimate(it->second);
-    }
-  }
-
-  return indexes;
+  
+  // update selectivity estimates if they were expired
+  collection->clusterIndexEstimates(true);
+  return collection->getIndexes();
 }
 
 /// @brief get the index by it's identifier. Will either throw or

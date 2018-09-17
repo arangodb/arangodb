@@ -1124,20 +1124,12 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
   if (_done) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
+
+  TRI_ASSERT(_dependencies.size() == 1);
   
-  while (!_done) {  
-    if (_buffer.empty()) {
-      auto upstreamRes = ExecutionBlock::getBlock(DefaultBatchSize());
-      if (upstreamRes.first == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-      }
-      if (upstreamRes.first == ExecutionState::DONE ||
-          !upstreamRes.second) {
-        _done = true;
-      }
-    }
-  
-    if (!_buffer.empty()) {
+  while (!_done) { 
+    // consume all the buffers we still have queued 
+    while (!_buffer.empty()) {
       AqlItemBlock* cur = _buffer.front();
       TRI_ASSERT(cur != nullptr);
       _count += cur->size();
@@ -1147,6 +1139,18 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
       _buffer.pop_front();
       _pos = 0;
       returnBlock(cur);
+    }
+
+    auto upstreamRes = _dependencies[0]->skipSome(DefaultBatchSize());
+    if (upstreamRes.first == ExecutionState::WAITING) {
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+    if (upstreamRes.first == ExecutionState::DONE ||
+        upstreamRes.second == 0) {
+      _done = true;
+    }
+    if (upstreamRes.second > 0) {
+      _count += upstreamRes.second;
     }
   
     throwIfKilled();  // check if we were aborted

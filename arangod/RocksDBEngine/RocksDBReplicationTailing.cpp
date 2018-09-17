@@ -418,7 +418,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         marker->add("database", VPackValue(std::to_string(dbid)));
         marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
-        marker->add("cid", VPackValue(cid));
+        marker->add("cid", VPackValue(std::to_string(cid)));
         marker->add("cname", VPackValue(col->name()));
         marker->add("data", RocksDBValue::data(value));
       }

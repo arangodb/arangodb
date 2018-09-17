@@ -1334,6 +1334,11 @@ MMFilesCollection::datafilesInRange(TRI_voc_tick_t dataMin,
         << "checking datafile " << datafile->fid() << " with data range "
         << datafile->_dataMin << " - " << datafile->_dataMax
         << ", tick max: " << datafile->_tickMax;
+    
+    LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+        << "checking datafile " << datafile->fid() << " with data range "
+        << datafile->_dataMin << " - " << datafile->_dataMax
+        << ", tick max: " << datafile->_tickMax;
 
     if (datafile->_dataMin == 0 || datafile->_dataMax == 0) {
       // datafile doesn't have any data
@@ -1380,6 +1385,9 @@ bool MMFilesCollection::applyForTickRange(
   // now we have a list of datafiles...
 
   size_t const n = datafiles.size();
+  
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+      << "getting datafiles in data range " << dataMin << " - " << dataMax << " produced " << n << " datafile(s)";
 
   for (size_t i = 0; i < n; ++i) {
     auto const& e = datafiles[i];

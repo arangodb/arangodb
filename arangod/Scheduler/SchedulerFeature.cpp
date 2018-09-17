@@ -211,7 +211,7 @@ void SchedulerFeature::stop() {
 }
 
 void SchedulerFeature::unprepare() { SCHEDULER = nullptr; }
-    
+
 /// @brief return the default number of threads to use (upper bound)
 size_t SchedulerFeature::defaultNumberOfThreads() const {
   // use two times the number of hardware threads as the default
@@ -298,7 +298,7 @@ bool CtrlHandler(DWORD eventType) {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
+  _scheduler = std::make_shared<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                            _queueSize, _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();
