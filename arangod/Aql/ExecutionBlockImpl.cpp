@@ -119,7 +119,12 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
 
   auto res = getSome(atMost);
 
-  return {res.first, res.second->size()};
+  size_t skipped = 0;
+  if (res.second != nullptr) {
+    skipped = res.second->size();
+  }
+
+  return {res.first, skipped};
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
