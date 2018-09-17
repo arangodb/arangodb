@@ -56,12 +56,6 @@ class OutputAqlItemRow {
 
   std::size_t getNrRegisters() const { return _block->getNrRegs(); }
 
-  /// @deprecated Is unneeded, advanceRow() suffices.
-  void changeRow(std::size_t baseIndex) {
-    _baseIndex = baseIndex;
-    _inputRowCopied = false;
-  }
-
   /**
    * @brief May only be called after all output values in the current row have
    * been set, or in case there are zero output registers, after copyRow has
