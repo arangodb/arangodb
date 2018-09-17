@@ -100,7 +100,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXXECUTOR]") {
   }
 
   GIVEN("there are rows in the upstream") {
-    EnumerateListExecutorInfos infos(3, 4, 5, 4, {}, &trx);
+    EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto input =
         VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
