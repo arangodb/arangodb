@@ -292,7 +292,7 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
   try {
     // capture without self, ioContext will not live longer than scheduler
     // do not pass callback by reference, might get deleted before execution
-    asio_ns::post(strand, [this, cb = std::move(cb)]() {
+    strand.post([this, cb = std::move(cb)]() {
       decQueued();
 
       JobGuard guard(this);
