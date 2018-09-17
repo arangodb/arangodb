@@ -323,7 +323,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       att = StringRef(attribute->getStringValue(), attribute->getStringLength());
     }
-    double estimate = index->selectivityEstimate(&att);
+    double estimate = index->selectivityEstimate(att);
     if (estimate <= 0.0) {
       // prevent division by zero
       estimatedItems = itemsInIndex;
