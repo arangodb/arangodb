@@ -298,7 +298,7 @@ bool CtrlHandler(DWORD eventType) {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
+  _scheduler = std::make_shared<Scheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                            _queueSize, _fifo1Size, _fifo2Size);
 
   SCHEDULER = _scheduler.get();

@@ -88,6 +88,17 @@ class PhysicalCollection {
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
+  
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
+  
+  /// @brief sets the current index selectivity estimates
+  virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  virtual void flushClusterIndexEstimates();
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
   

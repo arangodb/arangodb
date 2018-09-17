@@ -97,7 +97,7 @@ RestStatus RestStatusHandler::execute() {
       result.add("persistedId", VPackValue(serverState->getPersistedId()));
 
       if (!serverState->isAgent()) {
-        result.add("address", VPackValue(serverState->getAddress()));
+        result.add("address", VPackValue(serverState->getEndpoint()));
         result.add("serverId", VPackValue(serverState->getId()));
 
         result.add(

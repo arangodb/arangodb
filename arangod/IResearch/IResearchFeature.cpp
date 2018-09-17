@@ -120,7 +120,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 }; // IResearchLogTopic
 
 arangodb::aql::AqlValue filter(
-    arangodb::aql::Query*,
+    arangodb::aql::ExpressionContext*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -130,7 +130,7 @@ arangodb::aql::AqlValue filter(
 }
 
 arangodb::aql::AqlValue scorer(
-    arangodb::aql::Query*,
+    arangodb::aql::ExpressionContext*,
     arangodb::transaction::Methods* ,
     arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -140,7 +140,7 @@ arangodb::aql::AqlValue scorer(
 }
 
 typedef arangodb::aql::AqlValue (*IResearchFunctionPtr)(
-  arangodb::aql::Query*,
+  arangodb::aql::ExpressionContext*,
   arangodb::transaction::Methods* ,
   arangodb::SmallVector<arangodb::aql::AqlValue> const&
 );
@@ -168,7 +168,7 @@ void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
       arangodb::aql::Function::Flags::Cacheable,
       arangodb::aql::Function::Flags::CanRunOnDBServer
     ),
-    [](arangodb::aql::Query*,
+    [](arangodb::aql::ExpressionContext*,
        arangodb::transaction::Methods*,
        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
       auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
@@ -737,7 +737,7 @@ void IResearchFeature::asyncNotify() const {
 }
 
 void IResearchFeature::beginShutdown() {
-  _running = false;
+  _running.store(false);
   ApplicationFeature::beginShutdown();
 }
 
@@ -746,7 +746,7 @@ void IResearchFeature::collectOptions(
 ) {
   auto section = FEATURE_NAME;
 
-  _running = false;
+  _running.store(false);
   std::transform(section.begin(), section.end(), section.begin(), ::tolower);
   ApplicationFeature::collectOptions(options);
   options->addSection(section, std::string("Configure the ") + FEATURE_NAME + " feature");
@@ -771,7 +771,7 @@ void IResearchFeature::prepare() {
     return;
   }
 
-  _running = false;
+  _running.store(false);
   ApplicationFeature::prepare();
 
   // load all known codecs
@@ -828,14 +828,14 @@ void IResearchFeature::start() {
 
   }
 
-  _running = true;
+  _running.store(true);
 }
 
 void IResearchFeature::stop() {
   if (!isEnabled()) {
     return;
   }
-  _running = false;
+  _running.store(false);
   ApplicationFeature::stop();
 }
 
@@ -844,14 +844,14 @@ void IResearchFeature::unprepare() {
     return;
   }
 
-  _running = false;
+  _running.store(false);
   ApplicationFeature::unprepare();
 }
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options
 ) {
-  _running = false;
+  _running.store(false);
   ApplicationFeature::validateOptions(options);
 }
 

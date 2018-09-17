@@ -58,6 +58,20 @@ function IResearchFeatureDDLTestSuite () {
       }
     },
 
+    testStressAddRemoveViewWithDirectLinks : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      for (let i = 0; i < 100; ++i) {
+        db._createView("TestView", "arangosearch", {links:{"TestCollection0":{}}});
+        var view = db._view("TestView");
+        assertTrue(null != view);
+        assertEqual(Object.keys(view.properties().links).length, 1);
+        db._dropView("TestView");
+        assertTrue(null == db._view("TestView"));
+      }
+    },
+
     testStressAddRemoveViewWithLink : function() {
       db._drop("TestCollection0");
       db._dropView("TestView");
@@ -161,6 +175,12 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.links.constructor);
       assertEqual(1, Object.keys(properties.links).length);
 
+      // create with links
+      db._dropView("TestView");
+      view = db._createView("TestView", "arangosearch", meta);
+      properties = view.properties();
+      assertTrue(Object === properties.links.constructor);
+      assertEqual(1, Object.keys(properties.links).length);
 
       // consolidate
       db._dropView("TestView");

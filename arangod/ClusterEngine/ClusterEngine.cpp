@@ -105,7 +105,7 @@ ClusterEngineType ClusterEngine::engineType() const {
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void ClusterEngine::prepare() {
-  // get base path from DatabaseServerFeature
+  // get base path from DatabasePathFeature
   auto databasePathFeature =
       application_features::ApplicationServer::getFeature<DatabasePathFeature>(
           "DatabasePath");

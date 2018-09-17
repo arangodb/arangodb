@@ -2930,7 +2930,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
 
   Expression exp(nullptr, this, node);
-  FixedVarExpressionContext context;
+  FixedVarExpressionContext context(_query);
   bool mustDestroy;
 
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
@@ -3285,7 +3285,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   }
 
   Expression exp(nullptr, this, node);
-  FixedVarExpressionContext context;
+  FixedVarExpressionContext context(_query);
   bool mustDestroy;
 
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);

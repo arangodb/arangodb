@@ -114,7 +114,7 @@ IResearchViewBlockBase::IResearchViewBlockBase(
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
     _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
-    _ctx(en),
+    _ctx(engine.getQuery(), en),
     _reader(reader),
     _filter(irs::filter::prepared::empty()),
     _execCtx(*_trx, _ctx),
