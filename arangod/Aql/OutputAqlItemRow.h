@@ -69,7 +69,12 @@ class OutputAqlItemRow {
    */
   void advanceRow() {
     TRI_ASSERT(produced());
-    TRI_ASSERT(_inputRowCopied);
+    if (!allValuesWritten()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
+    }
+    if (!_inputRowCopied) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
+    }
     ++_baseIndex;
     _inputRowCopied = false;
     _numValuesWritten = 0;
