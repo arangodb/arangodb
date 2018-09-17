@@ -753,7 +753,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           }
         }
 
-        // note: aggregateValues may be a nullptr!
         allGroups.emplace(group, aggregateValues.get());
         aggregateValues.release();
       } else {

@@ -58,8 +58,6 @@ struct Aggregator {
   static bool requiresInput(std::string const&);
 
   transaction::Methods* trx;
-
-  arangodb::velocypack::Builder builder;
 };
 
 struct AggregatorLength final : public Aggregator {
@@ -90,6 +88,7 @@ struct AggregatorMin final : public Aggregator {
   AqlValue stealValue() override final;
 
   AqlValue value;
+  arangodb::velocypack::Builder builder;
 };
 
 struct AggregatorMax final : public Aggregator {
@@ -105,6 +104,7 @@ struct AggregatorMax final : public Aggregator {
   AqlValue stealValue() override final;
 
   AqlValue value;
+  arangodb::velocypack::Builder builder;
 };
 
 struct AggregatorSum final : public Aggregator {
