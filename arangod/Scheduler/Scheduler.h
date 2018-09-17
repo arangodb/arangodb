@@ -95,9 +95,9 @@ class Scheduler : public std::enable_shared_from_this<Scheduler> {
     uint64_t _queuedV8;
   };
 
-  void post(std::function<void()>, bool isV8,
-            uint64_t timeout = 0);
-  void post(asio_ns::io_context::strand&, std::function<void()>);
+  void post(std::function<void()> const callback, bool isV8,
+                      uint64_t timeout = 0);
+  void post(asio_ns::io_context::strand&, std::function<void()> const callback);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
