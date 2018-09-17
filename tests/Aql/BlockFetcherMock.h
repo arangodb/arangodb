@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_TESTS_BLOCK_FETCHER_MOCK_H
 
 #include "Aql/BlockFetcher.h"
+#include "Aql/types.h"
 
 #include <stdint.h>
 
@@ -33,7 +34,7 @@ namespace aql {
 
 class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
  public:
-  BlockFetcherMock();
+  explicit BlockFetcherMock(::arangodb::aql::RegisterId nrRegisters);
 
  public:
   // mock methods
@@ -56,11 +57,11 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   BlockFetcherMock& shouldReturn(arangodb::aql::ExecutionState,
                                  std::unique_ptr<arangodb::aql::AqlItemBlock>);
   BlockFetcherMock& shouldReturn(FetchBlockReturnItem);
-  BlockFetcherMock& shouldReturn(std::vector<FetchBlockReturnItem>&&);
+  BlockFetcherMock& shouldReturn(std::vector<FetchBlockReturnItem>);
   BlockFetcherMock& andThenReturn(FetchBlockReturnItem);
   BlockFetcherMock& andThenReturn(arangodb::aql::ExecutionState,
                                   std::unique_ptr<arangodb::aql::AqlItemBlock>);
-  BlockFetcherMock& andThenReturn(std::vector<FetchBlockReturnItem>&&);
+  BlockFetcherMock& andThenReturn(std::vector<FetchBlockReturnItem>);
 
   bool allBlocksFetched() const;
   bool allFetchedBlocksReturned() const;
@@ -74,6 +75,8 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   std::unordered_set<AqlItemBlockPtr> _fetchedBlocks;
   std::unordered_set<AqlItemBlockPtr> _returnedBlocks;
   size_t _numFetchBlockCalls;
+
+  ::arangodb::aql::RegisterId _nrRegs;
 };
 
 }  // namespace aql

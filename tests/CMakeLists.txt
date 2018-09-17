@@ -76,6 +76,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
   Aql/AqlItemBlockHelper.cpp
   Aql/AqlItemRowTest.cpp
   Aql/BlockFetcherHelper.cpp

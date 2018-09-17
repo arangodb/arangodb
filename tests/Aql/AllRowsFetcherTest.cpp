@@ -24,21 +24,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "BlockFetcherHelper.h"
 #include "BlockFetcherMock.h"
 #include "catch.hpp"
 
-#include "Aql/AqlItemBlock.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/BlockFetcher.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/FilterExecutor.h"
-#include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -47,12 +37,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// TODO check that blocks are not returned to early (e.g. not before the next row
-//      is fetched)
 
-SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
+SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
   ExecutionState state;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  AqlItemMatrix const *matrix = nullptr;
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
@@ -62,12 +50,20 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
-        THEN("the fetcher should return DONE with nullptr") {
-          std::tie(state, row) = testee.fetchRow();
+        THEN("the fetcher should return DONE with an empty matrix") {
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row);
+          REQUIRE(matrix != nullptr);
+          REQUIRE(matrix->empty());
+          REQUIRE(matrix->size() == 0);
+
+          AND_THEN("null should be returned") {
+            std::tie(state, matrix) = testee.fetchAllRows();
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(matrix == nullptr);
+          }
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -82,17 +78,25 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
-          std::tie(state, row) = testee.fetchRow();
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!row);
+          REQUIRE(matrix == nullptr);
 
-          AND_THEN("the fetcher should return DONE with nullptr") {
-            std::tie(state, row) = testee.fetchRow();
+          AND_THEN("the fetcher should return DONE with an empty matrix") {
+            std::tie(state, matrix) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(!row);
+            REQUIRE(matrix != nullptr);
+            REQUIRE(matrix->empty());
+            REQUIRE(matrix->size() == 0);
+
+            AND_THEN("null should be returned") {
+              std::tie(state, matrix) = testee.fetchAllRows();
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(matrix == nullptr);
+            }
           }
         }
       } // testee is destroyed here
@@ -115,14 +119,22 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       blockFetcherMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
-        THEN("the fetcher should return the row with DONE") {
-          std::tie(state, row) = testee.fetchRow();
+        THEN("the fetcher should return the matrix with DONE") {
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row);
-          REQUIRE(row.getNrRegisters() == 1);
-          REQUIRE(row.getValue(0).slice().getInt() == 42);
+          REQUIRE(matrix != nullptr);
+          REQUIRE(matrix->getNrRegisters() == 1);
+          REQUIRE(!matrix->empty());
+          REQUIRE(matrix->size() == 1);
+          REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+
+          AND_THEN("null should be returned") {
+            std::tie(state, matrix) = testee.fetchAllRows();
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(matrix == nullptr);
+          }
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -137,19 +149,21 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
-        THEN("the fetcher should return the row with HASMORE") {
-          std::tie(state, row) = testee.fetchRow();
-          REQUIRE(state == ExecutionState::HASMORE);
-          REQUIRE(row);
-          REQUIRE(row.getNrRegisters() == 1);
-          REQUIRE(row.getValue(0).slice().getInt() == 42);
+        THEN("the fetcher should return the matrix with DONE") {
+          std::tie(state, matrix) = testee.fetchAllRows();
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(matrix != nullptr);
+          REQUIRE(matrix->getNrRegisters() == 1);
+          REQUIRE(!matrix->empty());
+          REQUIRE(matrix->size() == 1);
+          REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
 
-          AND_THEN("the fetcher shall return DONE") {
-            std::tie(state, row) = testee.fetchRow();
+          AND_THEN("null should be returned") {
+            std::tie(state, matrix) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(!row);
+            REQUIRE(matrix == nullptr);
           }
         }
       } // testee is destroyed here
@@ -165,19 +179,27 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, std::move(block));
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
-          std::tie(state, row) = testee.fetchRow();
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!row);
+          REQUIRE(matrix == nullptr);
 
-          AND_THEN("the fetcher should return the row with DONE") {
-            std::tie(state, row) = testee.fetchRow();
+          AND_THEN("the fetcher should return the matrix with DONE") {
+            std::tie(state, matrix) = testee.fetchAllRows();
             REQUIRE(state == ExecutionState::DONE);
-            REQUIRE(row);
-            REQUIRE(row.getNrRegisters() == 1);
-            REQUIRE(row.getValue(0).slice().getInt() == 42);
+            REQUIRE(matrix != nullptr);
+            REQUIRE(!matrix->empty());
+            REQUIRE(matrix->size() == 1);
+            REQUIRE(matrix->getNrRegisters() == 1);
+            REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+
+            AND_THEN("null should be returned") {
+              std::tie(state, matrix) = testee.fetchAllRows();
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(matrix == nullptr);
+            }
           }
         }
       } // testee is destroyed here
@@ -194,24 +216,26 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, nullptr);
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
         THEN("the fetcher should first return WAIT with nullptr") {
-          std::tie(state, row) = testee.fetchRow();
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!row);
+          REQUIRE(matrix == nullptr);
 
-          AND_THEN("the fetcher should return the row with HASMORE") {
-            std::tie(state, row) = testee.fetchRow();
-            REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row);
-            REQUIRE(row.getNrRegisters() == 1);
-            REQUIRE(row.getValue(0).slice().getInt() == 42);
+          AND_THEN("the fetcher should return the matrix with DONE") {
+            std::tie(state, matrix) = testee.fetchAllRows();
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(matrix != nullptr);
+            REQUIRE(!matrix->empty());
+            REQUIRE(matrix->size() == 1);
+            REQUIRE(matrix->getNrRegisters() == 1);
+            REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
 
-            AND_THEN("the fetcher shall return DONE") {
-              std::tie(state, row) = testee.fetchRow();
+            AND_THEN("null should be returned") {
+              std::tie(state, matrix) = testee.fetchAllRows();
               REQUIRE(state == ExecutionState::DONE);
-              REQUIRE(!row);
+              REQUIRE(matrix == nullptr);
             }
           }
         }
@@ -242,23 +266,26 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
                       .andThenReturn(ExecutionState::DONE, std::move(block3));
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
-        THEN("the fetcher should return all rows and DONE with the last") {
-          int64_t rowIdxAndValue;
-          for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
-            std::tie(state, row) = testee.fetchRow();
-            REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row);
-            REQUIRE(row.getNrRegisters() == 1);
-            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
-          }
-          rowIdxAndValue = 6;
-          std::tie(state, row) = testee.fetchRow();
+        THEN("the fetcher should return the matrix with DONE") {
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row);
-          REQUIRE(row.getNrRegisters() == 1);
-          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+          REQUIRE(matrix != nullptr);
+          REQUIRE(!matrix->empty());
+          REQUIRE(matrix->size() == 6);
+          REQUIRE(matrix->getNrRegisters() == 1);
+          for (int64_t i = 0; i < 6; i++) {
+            int64_t rowIdx = i;
+            int64_t rowValue = i+1;
+            REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+          }
+
+          AND_THEN("null should be returned") {
+            std::tie(state, matrix) = testee.fetchAllRows();
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(matrix == nullptr);
+          }
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -277,34 +304,40 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
           .andThenReturn(ExecutionState::DONE, std::move(block3));
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
-        THEN("the fetcher should return all rows and DONE with the last") {
-          size_t rowIdxAndValue;
-          for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
-            if (rowIdxAndValue == 1 || rowIdxAndValue == 4) {
-              // wait at the beginning of the 1st and 2nd block
-              std::tie(state, row) = testee.fetchRow();
-              REQUIRE(state == ExecutionState::WAITING);
-              REQUIRE(!row);
-            }
-            std::tie(state, row) = testee.fetchRow();
-            REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row);
-            REQUIRE(row.getNrRegisters() == 1);
-            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
-          }
-          rowIdxAndValue = 6;
-          // wait at the beginning of the 3rd block
-          std::tie(state, row) = testee.fetchRow();
+        THEN("the fetcher should return WAITING three times") {
+          // wait when fetching the 1st and 2nd block
+          std::tie(state, matrix) = testee.fetchAllRows();
           REQUIRE(state == ExecutionState::WAITING);
-          REQUIRE(!row);
-          // last row and DONE
-          std::tie(state, row) = testee.fetchRow();
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(row);
-          REQUIRE(row.getNrRegisters() == 1);
-          REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+          REQUIRE(matrix == nullptr);
+          std::tie(state, matrix) = testee.fetchAllRows();
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(matrix == nullptr);
+          std::tie(state, matrix) = testee.fetchAllRows();
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(matrix == nullptr);
+
+          AND_THEN("the fetcher should return the matrix and DONE") {
+            // now get the matrix
+            std::tie(state, matrix) = testee.fetchAllRows();
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(matrix != nullptr);
+            REQUIRE(!matrix->empty());
+            REQUIRE(matrix->size() == 6);
+            REQUIRE(matrix->getNrRegisters() == 1);
+            for (int64_t i = 0; i < 6; i++) {
+              int64_t rowIdx = i;
+              int64_t rowValue = i+1;
+              REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+            }
+
+            AND_THEN("null should be returned") {
+              std::tie(state, matrix) = testee.fetchAllRows();
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(matrix == nullptr);
+            }
+          }
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock
@@ -325,25 +358,41 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
       ;
 
       {
-        SingleRowFetcher testee(blockFetcherMock);
+        AllRowsFetcher testee(blockFetcherMock);
 
-        THEN("the fetcher should return all rows and DONE with the last") {
-          for (size_t rowIdxAndValue = 1; rowIdxAndValue <= 6; rowIdxAndValue++) {
-            if (rowIdxAndValue == 1 || rowIdxAndValue == 4 || rowIdxAndValue == 6) {
-              // wait at the beginning of the 1st, 2nd and 3rd block
-              std::tie(state, row) = testee.fetchRow();
-              REQUIRE(state == ExecutionState::WAITING);
-              REQUIRE(!row);
+
+        THEN("the fetcher should return WAITING three times") {
+          // wait when fetching the 1st and 2nd block
+          std::tie(state, matrix) = testee.fetchAllRows();
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(matrix == nullptr);
+          std::tie(state, matrix) = testee.fetchAllRows();
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(matrix == nullptr);
+          std::tie(state, matrix) = testee.fetchAllRows();
+          REQUIRE(state == ExecutionState::WAITING);
+          REQUIRE(matrix == nullptr);
+
+          AND_THEN("the fetcher should return the matrix and DONE") {
+            // now get the matrix
+            std::tie(state, matrix) = testee.fetchAllRows();
+            REQUIRE(state == ExecutionState::DONE);
+            REQUIRE(matrix != nullptr);
+            REQUIRE(!matrix->empty());
+            REQUIRE(matrix->size() == 6);
+            REQUIRE(matrix->getNrRegisters() == 1);
+            for (int64_t i = 0; i < 6; i++) {
+              int64_t rowIdx = i;
+              int64_t rowValue = i+1;
+              REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
             }
-            std::tie(state, row) = testee.fetchRow();
-            REQUIRE(state == ExecutionState::HASMORE);
-            REQUIRE(row);
-            REQUIRE(row.getNrRegisters() == 1);
-            REQUIRE(row.getValue(0).slice().getInt() == rowIdxAndValue);
+
+            AND_THEN("null should be returned") {
+              std::tie(state, matrix) = testee.fetchAllRows();
+              REQUIRE(state == ExecutionState::DONE);
+              REQUIRE(matrix == nullptr);
+            }
           }
-          std::tie(state, row) = testee.fetchRow();
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row);
         }
       } // testee is destroyed here
       // testee must be destroyed before verify, because it may call returnBlock

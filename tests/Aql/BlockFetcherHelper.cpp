@@ -141,11 +141,10 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
       _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
+      _nrRegs(0),
       _nrCalled(0),
       _resourceMonitor(),
-      _itemBlock(nullptr),
       _matrix(nullptr) {
-  _matrix = std::make_unique<AqlItemMatrix>();
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
   } else {
@@ -153,15 +152,19 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
   }
   if (_data.isArray()) {
     _nrItems = _data.length();
-    if (_nrItems > 0) {
-      VPackSlice oneRow = _data.at(0);
-      REQUIRE(oneRow.isArray());
-      uint64_t nrRegs = oneRow.length();
-      _itemBlock =
-          std::make_shared<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
-      _matrix->addBlock(_itemBlock);
-    }
+  }
+  if (_nrItems > 0) {
+    VPackSlice oneRow = _data.at(0);
+    REQUIRE(oneRow.isArray());
+    _nrRegs = oneRow.length();
+    auto itemBlock =
+        std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, _nrRegs);
+    VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
+    _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
+    _matrix->addBlock(std::move(itemBlock));
+  }
+  if (_matrix == nullptr) {
+    _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
   }
 }
 

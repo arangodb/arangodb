@@ -36,16 +36,21 @@ using namespace arangodb::aql;
  * Mocks
  * * * * */
 
-BlockFetcherMock::BlockFetcherMock()
+BlockFetcherMock::BlockFetcherMock(RegisterId nrRegisters)
     : BlockFetcher(nullptr),
       _itemsToReturn(),
       _fetchedBlocks(),
       _returnedBlocks(),
-      _numFetchBlockCalls(0) {}
+      _numFetchBlockCalls(0),
+      _nrRegs(nrRegisters) {}
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 BlockFetcherMock::fetchBlock() {
   _numFetchBlockCalls++;
+
+  if (_itemsToReturn.empty()) {
+    return {ExecutionState::DONE, nullptr};
+  }
 
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> returnValue =
       std::move(_itemsToReturn.front());
@@ -75,7 +80,7 @@ void BlockFetcherMock::returnBlock(
 }
 
 RegisterId BlockFetcherMock::getNrInputRegisters() {
-  return BlockFetcher::getNrInputRegisters();
+  return _nrRegs;
 }
 
 /* * * * * * * * * * * * *
@@ -96,7 +101,7 @@ BlockFetcherMock& BlockFetcherMock::shouldReturn(
 }
 
 BlockFetcherMock& BlockFetcherMock::shouldReturn(
-    std::vector<std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>>&&
+    std::vector<std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>>
         firstReturnValues) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
@@ -114,10 +119,10 @@ BlockFetcherMock& BlockFetcherMock::andThenReturn(
 }
 
 BlockFetcherMock& BlockFetcherMock::andThenReturn(
-    std::vector<std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>>&&
+    std::vector<std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>>
         additionalReturnValues) {
   for (auto& it : additionalReturnValues) {
-    _itemsToReturn.emplace_back(std::move(it));
+    andThenReturn(std::move(it));
   }
 
   return *this;

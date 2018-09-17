@@ -76,20 +76,23 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
 */
 class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
  public:
-  AllRowsFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
-                         bool returnsWaiting);
+  AllRowsFetcherHelper(
+      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
+      bool returnsWaiting);
   ~AllRowsFetcherHelper();
 
-  std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::AqlItemMatrix const*> fetchAllRows() override;
+  std::pair<::arangodb::aql::ExecutionState,
+            ::arangodb::aql::AqlItemMatrix const*>
+  fetchAllRows() override;
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
   bool _returnsWaiting;
   uint64_t _nrItems;
+  uint64_t _nrRegs;
   uint64_t _nrCalled;
   arangodb::aql::ResourceMonitor _resourceMonitor;
-  std::shared_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
   std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };
 

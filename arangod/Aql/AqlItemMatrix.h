@@ -36,17 +36,18 @@ class AqlItemBlock;
  * @brief A Matrix of AqlItemRows
  */
 class AqlItemMatrix {
+  friend class AllRowsFetcher;
 
   public:
-    AqlItemMatrix();
-    ~AqlItemMatrix();
+    explicit AqlItemMatrix(size_t nrRegisters);
+    ~AqlItemMatrix() = default;
 
     /**
      * @brief Add this block of rows into the Matrix
      *
      * @param block Block of rows to append in the matrix
      */
-    void addBlock(std::shared_ptr<AqlItemBlock> block);
+    void addBlock(std::unique_ptr<AqlItemBlock> block);
 
     /**
      * @brief Get the number of rows stored in this Matrix
@@ -54,6 +55,11 @@ class AqlItemMatrix {
      * @return Number of Rows
      */
     size_t size() const;
+
+    /**
+    * @brief Number of registers, i.e. width of the matrix.
+    */
+    size_t getNrRegisters() const { return _nrRegs; };
 
     /**
      * @brief Test if this matrix is empty
@@ -71,11 +77,16 @@ class AqlItemMatrix {
      */
     InputAqlItemRow const* getRow(size_t index) const;
 
+  protected:
+    std::vector<std::unique_ptr<AqlItemBlock>>&& stealBlocks();
+
   private:
 
-    std::vector<std::shared_ptr<AqlItemBlock>> _blocks;
+    std::vector<std::unique_ptr<AqlItemBlock>> _blocks;
 
     size_t _size;
+
+    size_t _nrRegs;
 
     // TODO These are probably unnecessary now. They definitely don't need to
     // be unique_ptr.

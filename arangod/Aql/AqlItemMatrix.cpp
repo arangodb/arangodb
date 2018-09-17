@@ -28,13 +28,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemMatrix::AqlItemMatrix() : _size(0) {}
+AqlItemMatrix::AqlItemMatrix(size_t nrRegs_) : _size(0), _nrRegs(nrRegs_) {}
 
-AqlItemMatrix::~AqlItemMatrix() {}
-
-void AqlItemMatrix::addBlock(std::shared_ptr<AqlItemBlock> block) {
-  _blocks.emplace_back(block);
-  _size += block->size();
+void AqlItemMatrix::addBlock(std::unique_ptr<AqlItemBlock> block) {
+  TRI_ASSERT(block->getNrRegs() == getNrRegisters());
+  size_t blockSize = block->size();
+  _blocks.emplace_back(std::move(block));
+  _size += blockSize;
 }
 
 size_t AqlItemMatrix::size() const {
@@ -70,4 +70,10 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
   }
   // We have asked for a row outside of this Vector
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An executor block is reading out of bounds.");
+}
+
+std::vector<std::unique_ptr<AqlItemBlock>>&& AqlItemMatrix::stealBlocks() {
+  _size = 0;
+  _nrRegs = 0;
+  return std::move(_blocks);
 }

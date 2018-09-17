@@ -20,22 +20,65 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AllRowsFetcher.h"
+#include "AllRowsFetcher.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/BlockFetcher.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/SortExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  // Avoid unnecessary upstream calls
+  if (_upstreamState == ExecutionState::DONE) {
+    return {ExecutionState::DONE, nullptr};
+  }
+
+  if (_aqlItemMatrix == nullptr) {
+    _aqlItemMatrix = std::make_unique<AqlItemMatrix>(getNrInputRegisters());
+  }
+
+  ExecutionState state = ExecutionState::HASMORE;
+  std::unique_ptr<AqlItemBlock> block;
+
+  while(state == ExecutionState::HASMORE) {
+    std::tie(state, block) = fetchBlock();
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
+      return {ExecutionState::WAITING, nullptr};
+    }
+    if (block == nullptr) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+    } else {
+      _aqlItemMatrix->addBlock(std::move(block));
+    }
+  }
+
+  TRI_ASSERT(state == ExecutionState::DONE);
+
+  return {ExecutionState::DONE, _aqlItemMatrix.get()};
 }
 
 AllRowsFetcher::AllRowsFetcher(BlockFetcher& executionBlock)
-    : _blockFetcher(&executionBlock) {}
+    : _blockFetcher(&executionBlock),
+      _aqlItemMatrix(nullptr),
+      _upstreamState(ExecutionState::HASMORE) {}
+
+RegisterId AllRowsFetcher::getNrInputRegisters() const {
+  return _blockFetcher->getNrInputRegisters();
+}
+
+AllRowsFetcher::~AllRowsFetcher() {
+  if (_aqlItemMatrix != nullptr) {
+    std::vector<std::unique_ptr<AqlItemBlock>> blocks{
+        _aqlItemMatrix->stealBlocks()};
+    for (auto& it : blocks) {
+      _blockFetcher->returnBlock(std::move(it));
+    }
+  }
+}
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 AllRowsFetcher::fetchBlock() {
@@ -44,8 +87,4 @@ AllRowsFetcher::fetchBlock() {
   _upstreamState = res.first;
 
   return res;
-}
-
-RegisterId AllRowsFetcher::getNrInputRegisters() const {
-  return _blockFetcher->getNrInputRegisters();
 }

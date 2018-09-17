@@ -46,7 +46,7 @@ class AllRowsFetcher {
  public:
   explicit AllRowsFetcher(BlockFetcher& executionBlock);
 
-  TEST_VIRTUAL ~AllRowsFetcher() = default;
+  TEST_VIRTUAL ~AllRowsFetcher();
 
  protected:
   // only for testing! Does not initialize _blockFetcher!
@@ -75,25 +75,20 @@ class AllRowsFetcher {
  private:
   BlockFetcher* _blockFetcher;
 
-  /**
-   * @brief Holds state returned by the last fetchBlock() call.
-   *        This is similar to ExecutionBlock::_upstreamState, but can also be
-   *        WAITING.
-   *        Part of the Fetcher, and may be moved if the Fetcher implementations
-   *        are moved into separate classes.
-   */
+  std::unique_ptr<AqlItemMatrix> _aqlItemMatrix;
+
   ExecutionState _upstreamState;
 
  private:
   /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
-
-  /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
   RegisterId getNrInputRegisters() const;
+
+  /**
+   * @brief Delegates to ExecutionBlock::fetchBlock()
+   */
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 };
 
 }  // namespace aql
