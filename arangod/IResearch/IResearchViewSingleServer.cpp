@@ -57,27 +57,33 @@ namespace iresearch {
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  bool hasLinks = properties.hasKey("links");
+  bool hasLinks = properties.hasKey(StaticStrings::LinksField);
 
   if (hasLinks && isNew) {
 
-    // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT) {
+    arangodb::velocypack::ObjectIterator iterator{info.get(StaticStrings::LinksField)};
 
-      // check new links
-      if (info.hasKey(StaticStrings::LinksField)) {
-        for (arangodb::velocypack::ObjectIterator itr(info.get(StaticStrings::LinksField)); itr.valid(); ++itr) {
-          if (!itr.key().isString()) {
-            continue; // not a resolvable collection (invalid jSON)
-          }
+    for (auto itr : iterator) {
+      if (!itr.key.isString()) {
+        continue; // not a resolvable collection (invalid jSON)
+      }
 
-          auto collection= vocbase.lookupCollection(itr.key().copyString());
+      auto colname = itr.key.copyString();
 
-          if (collection
-              && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
-            return nullptr;
-          }
-        }
+      // check if the collection exists
+      auto collection = vocbase.lookupCollection(colname);
+      if (!collection) {
+
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << "Could not create view: "
+          << "Collection not found: " << colname;
+        TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        return nullptr;
+      }
+
+      // check if the collection can be used
+      if (arangodb::ExecContext::CURRENT &&
+        !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+        return nullptr;
       }
     }
   }
