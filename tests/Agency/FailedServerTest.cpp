@@ -112,7 +112,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     
   auto agency = createRootNode();
   write_ret_t fakeWriteResult {
-    true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   trans_ret_t fakeTransResult {true, "", 1, 0, transBuilder};
   
   SECTION("creating a job should create a job in todo") {

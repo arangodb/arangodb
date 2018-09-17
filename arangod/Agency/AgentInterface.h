@@ -33,7 +33,7 @@ class AgentInterface {
   /// @brief Possible outcome of write process
   enum raft_commit_t {OK, UNKNOWN, TIMEOUT};
  
-struct WriteMode {
+  struct WriteMode {
     bool _discardStartup;
     bool _privileged;
     WriteMode(bool d = false, bool p = false) :

@@ -125,7 +125,7 @@ VPackBuilder createJob(std::string const& collection, std::string const& from, s
 
 TEST_CASE("MoveShard", "[agency][supervision]") {
 auto baseStructure = createRootNode();
-write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
 std::string const jobId = "1";
 
 SECTION("the job should fail if toServer does not exist") {
@@ -2194,7 +2194,7 @@ SECTION("if aborting failed report it back properly") {
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-    return {true, "", std::vector<bool> {true}, std::vector<index_t> {0}};
+    return {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {0}};
   });
 
   AgentInterface& agent = mockAgent.get();
@@ -2253,7 +2253,7 @@ SECTION("if aborting failed due to a precondition report it properly") {
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-    return {false, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    return {false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   });
 
   AgentInterface& agent = mockAgent.get();
@@ -2312,7 +2312,7 @@ SECTION("trying to abort a finished should result in failure") {
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-    return {false, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    return {false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   });
 
   AgentInterface& agent = mockAgent.get();

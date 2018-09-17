@@ -121,7 +121,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
 
     std::string jobId = "1";
 
-    write_ret_t fakeWriteResult{true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    write_ret_t fakeWriteResult{true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
     trans_ret_t fakeTransResult{true, "", 1, 0, std::make_shared<Builder>()};
 
     SECTION("creating a job should create a job in todo") {
@@ -489,7 +489,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
 
     std::string jobId = "1";
 
-    write_ret_t fakeWriteResult{true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
+    write_ret_t fakeWriteResult{true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
     trans_ret_t fakeTransResult{true, "", 1, 0, std::make_shared<Builder>()};
 
 
