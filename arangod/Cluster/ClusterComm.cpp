@@ -839,7 +839,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     ClusterCommTimeout timeout, size_t& nrDone,
                                     arangodb::LogTopic const& logTopic,
                                     bool retryOnCollNotFound) {
-  if (requests.size() == 0) {
+  if (requests.empty()) {
     nrDone = 0;
     return 0;
   }

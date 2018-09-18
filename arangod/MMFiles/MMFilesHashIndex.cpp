@@ -38,6 +38,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
