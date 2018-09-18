@@ -28,11 +28,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
-#include "Utils/OperationResult.h"
+#include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -551,8 +552,15 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
+  /// @brief replicates operations from leader to follower(s)
+  Result replicateOperations(LogicalCollection* collection,
+                             arangodb::velocypack::Slice const& inputValue,
+                             arangodb::velocypack::Builder const& resultBuilder,
+                             std::shared_ptr<std::vector<std::string> const>& followers,
+                             arangodb::rest::RequestType requestType,
+                             std::string const& pathAppendix);
 
-/// @brief Helper create a Cluster Communication document
+  /// @brief Helper create a Cluster Communication document
   OperationResult clusterResultDocument(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
