@@ -1306,10 +1306,16 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
 ) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
   auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
-  EnumerateListExecutorInfos infos(inputRegister, 0,
+
+  it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outRegister = it->second.registerId;
+
+  EnumerateListExecutorInfos infos(inputRegister, outRegister,
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), engine.getQuery()->trx());
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this, std::move(infos));
