@@ -83,6 +83,8 @@ class RocksDBMethods {
   virtual bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) = 0;
   virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                                std::string*) = 0;
+  virtual arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
+                               rocksdb::PinnableSlice*) = 0;
   virtual arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const&, rocksdb::Slice const&,
       rocksutils::StatusHint hint = rocksutils::StatusHint::none) = 0;
@@ -90,10 +92,6 @@ class RocksDBMethods {
   virtual arangodb::Result Delete(rocksdb::ColumnFamilyHandle*,
                                   RocksDBKey const&) = 0;
 
-  /*std::unique_ptr<rocksdb::Iterator> NewIterator(
-      rocksdb::ColumnFamilyHandle* cf) {
-    return this->NewIterator(this->readOptions(), cf);
-  }*/
   virtual std::unique_ptr<rocksdb::Iterator> NewIterator(
       rocksdb::ReadOptions const&, rocksdb::ColumnFamilyHandle*) = 0;
 
@@ -104,7 +102,8 @@ class RocksDBMethods {
   // convenience and compatibility method
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
                        std::string*);
-
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
+                       rocksdb::PinnableSlice*);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::size_t countInBounds(RocksDBKeyBounds const& bounds, bool isElementInRange = false);
@@ -122,6 +121,8 @@ class RocksDBReadOnlyMethods final : public RocksDBMethods {
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                       rocksdb::PinnableSlice* val) override;
   arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
       rocksdb::Slice const& val,
@@ -153,7 +154,8 @@ class RocksDBTrxMethods : public RocksDBMethods {
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
-
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                       rocksdb::PinnableSlice* val) override;
   arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
       rocksdb::Slice const& val,
@@ -193,6 +195,8 @@ class RocksDBBatchedMethods final : public RocksDBMethods {
   bool Exists(rocksdb::ColumnFamilyHandle*, RocksDBKey const&) override;
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
                        std::string* val) override;
+  arangodb::Result Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const& key,
+                       rocksdb::PinnableSlice* val) override;
   arangodb::Result Put(
       rocksdb::ColumnFamilyHandle*, RocksDBKey const& key,
       rocksdb::Slice const& val,

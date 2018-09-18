@@ -1609,18 +1609,18 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     }
   }
 
-  std::string value;
+  rocksdb::PinnableSlice ps;
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
-  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), &value);
-  TRI_ASSERT(value.data());
+  Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), &ps);
+  
   if (res.ok()) {
     if (withCache && useCache() && !lockTimeout) {
       TRI_ASSERT(_cache != nullptr);
       // write entry back to cache
       auto entry = cache::CachedValue::construct(
           key->string().data(), static_cast<uint32_t>(key->string().size()),
-          value.data(), static_cast<uint64_t>(value.size()));
+          ps.data(), static_cast<uint64_t>(ps.size()));
       if (entry) {
         auto status = _cache->insert(entry);
         if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
@@ -1634,7 +1634,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       }
     }
 
-    cb(documentId, VPackSlice(value.data()));
+    cb(documentId, VPackSlice(ps.data()));
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
