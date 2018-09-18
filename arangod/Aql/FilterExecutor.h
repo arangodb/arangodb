@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
+#include "Aql/FilterStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 #include <memory>
@@ -46,6 +47,7 @@ class FilterExecutor {
  public:
   using Fetcher = SingleRowFetcher;
   using Infos = ExecutorInfos;
+  using Stats = FilterStats;
 
   FilterExecutor() = delete;
   FilterExecutor(FilterExecutor&&) = default;

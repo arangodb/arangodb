@@ -30,6 +30,7 @@
 #include "Aql/BlockFetcher.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "OutputAqlItemRow.h"
@@ -151,6 +152,12 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
 };
+
+// no-op statistics for all Executors that don't have custom stats.
+class NoStats {};
+ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
+  return stats;
+}
 
 }  // namespace aql
 }  // namespace arangodb

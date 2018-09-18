@@ -42,8 +42,9 @@ class Methods;
 
 namespace aql {
 
-class InputAqlItemRow;
 class ExecutorInfos;
+class InputAqlItemRow;
+class NoStats;
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
@@ -51,13 +52,13 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
   EnumerateListExecutorInfos(
       RegisterId inputRegister, RegisterId outputRegister,
       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> const registersToClear,
+      std::unordered_set<RegisterId> registersToClear,
       transaction::Methods* trx);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos &&) = default;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
-  ~EnumerateListExecutorInfos();
+  ~EnumerateListExecutorInfos() = default;
 
   arangodb::transaction::Methods* trx() const;
 
@@ -72,10 +73,10 @@ class EnumerateListExecutor {
  public:
   using Fetcher = SingleRowFetcher;
   using Infos = EnumerateListExecutorInfos;
-
+  using Stats = NoStats;
 
   EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
-  ~EnumerateListExecutor();
+  ~EnumerateListExecutor() = default;
 
 
   /**

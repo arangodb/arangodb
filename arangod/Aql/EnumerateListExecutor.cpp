@@ -40,22 +40,18 @@ using namespace arangodb::aql;
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> const registersToClear,
-    transaction::Methods* trx)
+    std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx)
     : ExecutorInfos(inputRegister, outputRegister, nrInputRegisters,
-                    nrOutputRegisters, registersToClear),
+                    nrOutputRegisters, std::move(registersToClear)),
       _trx(trx) {
   TRI_ASSERT(trx != nullptr);
 }
-
-EnumerateListExecutorInfos::~EnumerateListExecutorInfos() {}
 
 transaction::Methods* EnumerateListExecutorInfos::trx() const { return _trx; }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher) {};
-EnumerateListExecutor::~EnumerateListExecutor() = default;
+    : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE) {};
 
 ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
   while (true) {

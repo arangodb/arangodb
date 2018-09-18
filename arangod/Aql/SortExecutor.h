@@ -43,6 +43,7 @@ namespace aql {
 class AllRowsFetcher;
 class AqlItemMatrix;
 class ExecutorInfos;
+class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
@@ -78,6 +79,7 @@ class SortExecutor {
  public:
   using Fetcher = AllRowsFetcher;
   using Infos = SortExecutorInfos;
+  using Stats = NoStats;
 
   SortExecutor(Fetcher& fetcher, SortExecutorInfos&);
   ~SortExecutor();

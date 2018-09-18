@@ -219,6 +219,7 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionStats.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
+  Aql/FilterStats.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
