@@ -112,9 +112,10 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
                                             velocypack::ValueType::String));
           Result r = physical->remove(&trx, builder.slice(), mdr, options,
                                       tick, false, prevRev, revisionId);
-          /*if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) { // conflict detection may remove docs
+          if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            // ignore not found, we remove conflicting docs ahead of time
             THROW_ARANGO_EXCEPTION(r);
-          }*/
+          }
           ++stats.numDocsRemoved;
           // continue iteration
           return true;
@@ -143,9 +144,10 @@ Result removeKeysOutsideRange(VPackSlice chunkSlice,
                                             velocypack::ValueType::String));          
           Result r = physical->remove(&trx, builder.slice(), mdr, options,
                            tick, false, prevRev, revisionId);
-          /*if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) { // conflict detection may remove docs
+          if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            // ignore not found, we remove conflicting docs ahead of time
             THROW_ARANGO_EXCEPTION(r);
-          }*/
+          }
           ++stats.numDocsRemoved;
         }
 
@@ -302,9 +304,10 @@ Result syncChunkRocksDB(
         
         Result r = physical->remove(trx, keyBuilder->slice(), mdr, options,
                                     resultTick, false, prevRev, revisionId);
-        /*if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) { // conflict detection may remove docs
+        if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          // ignore not found, we remove conflicting docs ahead of time
           return r;
-        }*/
+        }
         
         ++stats.numDocsRemoved;
 
@@ -352,9 +355,10 @@ Result syncChunkRocksDB(
       
       Result r = physical->remove(trx, keyBuilder->slice(), mdr, options,
                                   resultTick, false, prevRev, revisionId);
-      /*if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // ignore not found, we remove conflicting docs ahead of time
         return r;
-      }*/
+      }
       ++stats.numDocsRemoved;
     }
     ++nextStart;
@@ -745,9 +749,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             TRI_voc_rid_t prevRev, revisionId;
             Result r = physical->remove(&trx, tempBuilder.slice(), previous, options,
                                         resultMarkerTick, false, prevRev, revisionId);
-            /*if (r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) { // conflict detection may remove docs
+            if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+              // ignore not found, we remove conflicting docs ahead of time
               THROW_ARANGO_EXCEPTION(r);
-            }*/
+            }
 
             ++stats.numDocsRemoved;
             return;
