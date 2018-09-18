@@ -58,10 +58,9 @@ class FilterExecutor {
    */
   ExecutionState produceRow(OutputAqlItemRow &output);
 
+  ExecutorInfos& _infos;
  private:
   Fetcher& _fetcher;
-
-  ExecutorInfos& _infos;
 
 };
 

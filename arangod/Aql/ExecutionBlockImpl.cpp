@@ -47,10 +47,10 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _infos(infos),
       _blockFetcher(this),
       _rowFetcher(_blockFetcher),
-      _executor(_rowFetcher, _infos)
+      _executor(_rowFetcher, infos),
+      _infos(_executor._infos)
     {}
 
 template<class Executor>

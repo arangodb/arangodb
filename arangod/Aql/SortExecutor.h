@@ -86,6 +86,7 @@ class SortExecutor {
    *         if something was written output.hasValue() == true
    */
   ExecutionState produceRow(OutputAqlItemRow& output);
+  SortExecutorInfos& _infos;
 
  private:
   void doSorting();
@@ -93,7 +94,6 @@ class SortExecutor {
  private:
   Fetcher& _fetcher;
 
-  SortExecutorInfos& _infos;
 
   AqlItemMatrix const* _input;
 

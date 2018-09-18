@@ -37,6 +37,8 @@ namespace aql {
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 struct SortRegister {
+   SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
+   SortRegister(SortRegister&&) = default;
 #ifdef USE_IRESEARCH
   typedef int(*CompareFunc)(
     irs::sort::prepared const* scorer,

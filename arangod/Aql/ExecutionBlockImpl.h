@@ -127,8 +127,6 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
- private:
-  typename Executor::Infos _infos;
 
   /**
   * @brief Used to allow the row Fetcher to access selected methods of this
@@ -148,6 +146,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *        to produce a single row from the upstream information.
    */
   Executor _executor;
+  typename Executor::Infos& _infos;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
