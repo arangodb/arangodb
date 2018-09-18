@@ -78,13 +78,12 @@ class EnumerateListExecutor {
   EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor() = default;
 
-
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(OutputAqlItemRow &output);
+  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  public:
   EnumerateListExecutorInfos& _infos;

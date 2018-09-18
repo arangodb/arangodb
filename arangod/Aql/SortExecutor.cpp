@@ -26,6 +26,7 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
@@ -113,13 +114,14 @@ SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     :_infos(infos),  _fetcher(fetcher), _input(nullptr), _returnNext(0) {};
 SortExecutor::~SortExecutor() = default;
 
-ExecutionState SortExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRow(
+    OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data
     std::tie(state, _input) = _fetcher.fetchAllRows();
     if (state == ExecutionState::WAITING) {
-      return state;
+      return {state, NoStats{}};
     }
     // If the execution state was not waiting it is guaranteed that we get a matrix.
     // Maybe empty still
@@ -140,15 +142,15 @@ ExecutionState SortExecutor::produceRow(OutputAqlItemRow& output) {
   if (_returnNext >= _sortedIndexes.size()) {
     // Bail out if called too often,
     // Bail out on no elements
-    return ExecutionState::DONE;
+    return {ExecutionState::DONE, NoStats{}};
   }
   auto inRow = _input->getRow(_sortedIndexes[_returnNext]);
   output.copyRow(*inRow);
   _returnNext++;
   if (_returnNext >= _sortedIndexes.size()) {
-    return ExecutionState::DONE;
+    return {ExecutionState::DONE, NoStats{}};
   }
-  return ExecutionState::HASMORE;
+  return {ExecutionState::HASMORE, NoStats{}};
 }
 
 void SortExecutor::doSorting() {

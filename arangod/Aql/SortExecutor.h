@@ -90,7 +90,7 @@ class SortExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  ExecutionState produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  private:
   void doSorting();

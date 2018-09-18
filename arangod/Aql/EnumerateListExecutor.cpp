@@ -24,15 +24,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateListExecutor.h"
-#include <lib/Logger/LogMacros.h>
-
-#include "Basics/Common.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+
+#include <lib/Logger/LogMacros.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -53,7 +54,8 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE) {};
 
-ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
+    OutputAqlItemRow& output) {
   while (true) {
     // HIT in first run, because pos and length are initiliazed
     // both with 0
@@ -67,13 +69,13 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
       initialize();
       std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
       if (_rowState == ExecutionState::WAITING) {
-        return _rowState;
+        return {_rowState, NoStats{}};
       }
     }
 
     if (!_currentRow.isInitialized()) {
       TRI_ASSERT(_rowState == ExecutionState::DONE);
-      return _rowState;
+      return {_rowState, NoStats{}};
     }
 
     AqlValue const& value = _currentRow.getValue(_infos.getInput());
@@ -97,7 +99,7 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
       if (_rowState == ExecutionState::HASMORE) {
         continue;
       } else {
-        return _rowState;
+        return {_rowState, NoStats{}};
       }
     } else {
       bool mustDestroy = false;
@@ -113,9 +115,9 @@ ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
       _inputArrayPosition++;
 
       if (_inputArrayPosition < _inputArrayLength || _rowState == ExecutionState::HASMORE) {
-        return ExecutionState::HASMORE;
+        return {ExecutionState::HASMORE, NoStats{}};
       }
-      return ExecutionState::DONE;
+      return {ExecutionState::DONE, NoStats{}};
     }
   }
 }
