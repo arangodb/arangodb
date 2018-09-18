@@ -74,6 +74,7 @@ class SortExecutorInfos : public ExecutorInfos {
 class SortExecutor {
  public:
   using Fetcher = AllRowsFetcher;
+  using Infos = SortExecutorInfos;
 
   SortExecutor(Fetcher& fetcher, SortExecutorInfos&);
   ~SortExecutor();
@@ -95,7 +96,7 @@ class SortExecutor {
   SortExecutorInfos& _infos;
 
   AqlItemMatrix const* _input;
-  
+
   std::vector<size_t> _sortedIndexes;
 
   size_t _returnNext;
