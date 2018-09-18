@@ -283,7 +283,7 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions&) override;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

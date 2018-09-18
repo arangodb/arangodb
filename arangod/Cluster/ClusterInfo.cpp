@@ -3594,50 +3594,6 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup full dbserver ID from short ID
-////////////////////////////////////////////////////////////////////////////////
-
-ServerID ClusterInfo::getDBServerByShortID(ServerShortID shortId) {
-  ServerID result;
-
-  if (!_mappingsProt.isValid) {
-    loadCurrentMappings();
-  }
-
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _dbserverIdMap.find(shortId);
-  if (it != _dbserverIdMap.end()) {
-    result = it->second;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup full server ID from short name
-////////////////////////////////////////////////////////////////////////////////
-
-ServerID ClusterInfo::getServerByShortName(ServerShortName const& shortName) {
-  ServerID result;
-
-  if (!_mappingsProt.isValid) {
-    loadCurrentMappings();
-  }
-
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _nameMap.find(shortName);
-  if (it != _nameMap.end()) {
-    result = it->second;
-  }
-
-  return result;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate plan
 //////////////////////////////////////////////////////////////////////////////

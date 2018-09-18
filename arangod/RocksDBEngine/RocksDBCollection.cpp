@@ -628,8 +628,8 @@ void RocksDBCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-void RocksDBCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result RocksDBCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -654,15 +654,15 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
     }
    
-    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") { 
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
+      return Result(TRI_ERROR_DEBUG);
     }
     
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
     s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+      return rocksutils::convertStatus(s);
     }
     
     // delete indexes
@@ -673,7 +673,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
         bounds = ridx->getBounds();
         s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
         if (!s.ok()) {
-          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+          return rocksutils::convertStatus(s);
         }
         idx->afterTruncate(); // clears caches (if applicable)
       }
@@ -691,11 +691,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
-    return;
-  } else {
-    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { 
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+    return Result{};
+  }
+  
+  TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") {
+    return Result(TRI_ERROR_DEBUG);
   }
   
   // normal transactional truncate
@@ -779,11 +779,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 #endif
 
   TRI_IF_FAILURE("FailAfterAllCommits") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    return Result(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_SegfaultDebugging("SegfaultAfterAllCommits");
   }
+  return Result{};
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,

@@ -479,9 +479,9 @@ void ClusterCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-void ClusterCollection::truncate(transaction::Methods* trx,
+Result ClusterCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
