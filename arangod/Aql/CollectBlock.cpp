@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectBlock.h"
+#include "Aql/Aggregator.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -668,9 +669,26 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   };
 
   auto* en = ExecutionNode::castTo<CollectNode const*>(_exeNode);
+  
+  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;   
+  if (en->_aggregateVariables.empty()) {
+    // no aggregate registers. this means we'll only count the number of items
+    if (en->_count) {
+      aggregatorFactories.emplace_back(Aggregator::factoryFromTypeString("LENGTH"));
+    }
+  } else {
+    // we do have aggregate registers. create them as empty AqlValues
+    aggregatorFactories.reserve(_aggregateRegisters.size());
+
+    // initialize aggregators
+    for (auto const& r : en->_aggregateVariables) {
+      aggregatorFactories.emplace_back(
+          Aggregator::factoryFromTypeString(r.second.second));
+    }
+  }
 
   // if no group exists for the current row yet, this builds a new group.
-  auto buildNewGroup = [this, en](
+  auto buildNewGroup = [this, en, &aggregatorFactories](
       const AqlItemBlock* cur, size_t const pos,
       const size_t n) -> std::pair<std::unique_ptr<AggregateValuesType>,
                                    std::vector<AqlValue>> {
@@ -684,23 +702,11 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     }
 
     auto aggregateValues = std::make_unique<AggregateValuesType>();
+    aggregateValues->reserve(aggregatorFactories.size());
 
-    if (en->_aggregateVariables.empty()) {
-      // no aggregate registers. this means we'll only count the number of items
-      if (en->_count) {
-        aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, "LENGTH"));
-      }
-    } else {
-      // we do have aggregate registers. create them as empty AqlValues
-      aggregateValues->reserve(_aggregateRegisters.size());
-
-      // initialize aggregators
-      for (auto const& r : en->_aggregateVariables) {
-        aggregateValues->emplace_back(
-            Aggregator::fromTypeString(_trx, r.second.second));
-      }
+    for (auto const& it : aggregatorFactories) {
+      aggregateValues->emplace_back((*it)(_trx));
     }
-
     return std::make_pair(std::move(aggregateValues), group);
   };
 

@@ -242,13 +242,6 @@ class RemoteBlock final : public ExecutionBlock {
   bool handleAsyncResult(ClusterCommResult* result) override;
 
  private:
-  /// @brief internal method to send a request
-  /// TODO:Deprecated!
-  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::RequestType type, std::string const& urlPart,
-      std::string const& body) const;
-
-
   /**
    * @brief Handle communication errors in Async case.
    *
