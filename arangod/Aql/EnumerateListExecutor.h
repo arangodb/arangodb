@@ -68,6 +68,7 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
 class EnumerateListExecutor {
  public:
   using Fetcher = SingleRowFetcher;
+  using Infos = EnumerateListExecutorInfos;
 
   EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor();

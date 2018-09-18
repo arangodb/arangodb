@@ -45,6 +45,7 @@ class SingleRowFetcher;
 class FilterExecutor {
  public:
   using Fetcher = SingleRowFetcher;
+  using Infos = ExecutorInfos;
 
   FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();

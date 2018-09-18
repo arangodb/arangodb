@@ -75,7 +75,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *               required for the execution.
    * @param node The Node used to create this ExecutionBlock
    */
-  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node, ExecutorInfos&& infos);
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node, typename Executor::Infos&&);
   ~ExecutionBlockImpl();
 
   /**
@@ -128,7 +128,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
  private:
-  ExecutorInfos _infos;
+  typename Executor::Infos _infos;
 
   /**
   * @brief Used to allow the row Fetcher to access selected methods of this

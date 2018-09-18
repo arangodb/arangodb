@@ -31,8 +31,13 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/FilterExecutor.h"
 #include "Aql/ExecutionEngine.h"
+
+#include "Aql/EnumerateListExecutor.h"
+#include "Aql/FilterExecutor.h"
+#include "Aql/SortExecutor.h"
+
+#include "Aql/SortRegister.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -40,7 +45,7 @@ using namespace arangodb::aql;
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
-                                                 ExecutorInfos&& infos)
+                                                 typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
       _infos(infos),
       _blockFetcher(this),
@@ -127,4 +132,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
   return {res.first, skipped};
 }
 
+template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

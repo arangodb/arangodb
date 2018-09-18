@@ -45,10 +45,9 @@ struct SortRegister {
     AqlValue const& rhs
   );
 
-  irs::sort::prepared::ptr scorer;
   CompareFunc comparator;
 #endif
-  std::vector<std::string> const& attributePath;
+  std::vector<std::string>const& attributePath;
   RegisterId reg;
   bool asc;
 
