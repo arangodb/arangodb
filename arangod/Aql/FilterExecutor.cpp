@@ -36,7 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _fetcher(fetcher), _infos(infos) {};
+FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _infos(infos), _fetcher(fetcher){};
 FilterExecutor::~FilterExecutor() = default;
 
 ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {

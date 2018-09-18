@@ -64,6 +64,9 @@ class ExecutorInfos {
                nrInputRegisters);
   }
 
+  ExecutorInfos() = default;
+  ExecutorInfos(ExecutorInfos &&) = default;
+  ExecutorInfos(ExecutorInfos const&) = delete;
   ~ExecutorInfos() = default;
 
   /**

@@ -47,6 +47,9 @@ class FilterExecutor {
   using Fetcher = SingleRowFetcher;
   using Infos = ExecutorInfos;
 
+  FilterExecutor() = delete;
+  FilterExecutor(FilterExecutor&&) = default;
+  FilterExecutor(FilterExecutor const&) = delete;
   FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();
 
@@ -58,6 +61,7 @@ class FilterExecutor {
    */
   ExecutionState produceRow(OutputAqlItemRow &output);
 
+ public:
   ExecutorInfos& _infos;
  private:
   Fetcher& _fetcher;

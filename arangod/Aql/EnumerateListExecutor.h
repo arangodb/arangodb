@@ -54,6 +54,9 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
       std::unordered_set<RegisterId> const registersToClear,
       transaction::Methods* trx);
 
+  EnumerateListExecutorInfos() = delete;
+  EnumerateListExecutorInfos(EnumerateListExecutorInfos &&) = default;
+  EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos();
 
   arangodb::transaction::Methods* trx() const;
@@ -70,6 +73,7 @@ class EnumerateListExecutor {
   using Fetcher = SingleRowFetcher;
   using Infos = EnumerateListExecutorInfos;
 
+
   EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor();
 
@@ -80,6 +84,8 @@ class EnumerateListExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   ExecutionState produceRow(OutputAqlItemRow &output);
+
+ public:
   EnumerateListExecutorInfos& _infos;
 
  private:

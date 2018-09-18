@@ -110,7 +110,7 @@ bool SortExecutorInfos::stable() const {
 }
 
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
-    : _fetcher(fetcher), _infos(infos), _input(nullptr), _returnNext(0) {};
+    :_infos(infos),  _fetcher(fetcher), _input(nullptr), _returnNext(0) {};
 SortExecutor::~SortExecutor() = default;
 
 ExecutionState SortExecutor::produceRow(OutputAqlItemRow& output) {

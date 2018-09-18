@@ -145,8 +145,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
+  typename Executor::Infos _infos;
   Executor _executor;
-  typename Executor::Infos& _infos;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 

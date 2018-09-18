@@ -54,7 +54,7 @@ transaction::Methods* EnumerateListExecutorInfos::trx() const { return _trx; }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
-    : _fetcher(fetcher), _infos(infos){};
+    : _infos(infos), _fetcher(fetcher) {};
 EnumerateListExecutor::~EnumerateListExecutor() = default;
 
 ExecutionState EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {

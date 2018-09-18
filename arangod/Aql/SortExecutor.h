@@ -54,6 +54,9 @@ class SortExecutorInfos : public ExecutorInfos {
       std::vector<SortRegister>&& sortRegisters, bool stable
     );
 
+  SortExecutorInfos() = delete;
+  SortExecutorInfos(SortExecutorInfos &&) = default;
+  SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos();
 
   arangodb::transaction::Methods* trx() const;
@@ -86,10 +89,12 @@ class SortExecutor {
    *         if something was written output.hasValue() == true
    */
   ExecutionState produceRow(OutputAqlItemRow& output);
-  SortExecutorInfos& _infos;
 
  private:
   void doSorting();
+
+ public:
+  SortExecutorInfos& _infos;
 
  private:
   Fetcher& _fetcher;

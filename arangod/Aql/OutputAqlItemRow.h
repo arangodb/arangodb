@@ -110,7 +110,7 @@ class OutputAqlItemRow {
    */
   size_t _baseIndex;
 
-  ExecutorInfos const _executorInfos;
+  ExecutorInfos const& _executorInfos;
 
   /**
    * @brief Whether the input registers were copied from a source row.

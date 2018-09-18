@@ -49,8 +49,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
     : ExecutionBlock(engine, node),
       _blockFetcher(this),
       _rowFetcher(_blockFetcher),
-      _executor(_rowFetcher, infos),
-      _infos(_executor._infos)
+      _infos(std::move(infos)),
+      _executor(_rowFetcher, _infos)
     {}
 
 template<class Executor>
