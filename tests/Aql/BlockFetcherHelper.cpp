@@ -110,12 +110,17 @@ SingleRowFetcherHelper::fetchRow() {
   if (_returnsWaiting) {
     if(!_didWait) {
       _didWait = true;
+      // if once DONE is returned, always return DONE
+      if (_returnedDone) {
+        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+      }
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     _didWait = false;
   }
   _nrCalled++;
   if (_nrCalled > _nrItems) {
+    _returnedDone = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   TRI_ASSERT(_itemBlock);
@@ -126,6 +131,7 @@ SingleRowFetcherHelper::fetchRow() {
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;
   } else {
+    _returnedDone = true;
     state = ExecutionState::DONE;
   }
   return {state, _lastReturnedRow};
@@ -177,6 +183,10 @@ AllRowsFetcherHelper::fetchAllRows() {
   if (_returnsWaiting) {
     if (_nrCalled < _nrItems || _nrCalled == 0) {
       _nrCalled++;
+      // if once DONE is returned, always return DONE
+      if (_returnedDone) {
+        return {ExecutionState::DONE, nullptr};
+      }
       // We will return waiting once for each item
       return {ExecutionState::WAITING, nullptr};
     }
