@@ -23,9 +23,13 @@
 
 #include "SortNode.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortBlock.h"
+#include "Aql/SortRegister.h"
+#include "Aql/SortExecutor.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionEngine.h"
 #include "Basics/StringBuffer.h"
 
 using namespace arangodb::basics;
@@ -128,7 +132,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 
   return _elements.empty();
 }
-  
+
 void SortNode::removeConditions(size_t count) {
   TRI_ASSERT(_elements.size() > count);
   TRI_ASSERT(count > 0);
@@ -191,7 +195,31 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<SortBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  std::vector<SortRegister> sortRegs;
+  for(auto const& element : _elements){
+    auto it = getRegisterPlan()->varInfo.find(element.var->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    RegisterId id = it->second.registerId;
+#ifdef USE_IRESEARCH
+    sortRegs.push_back(SortRegister{id, element /* TODO add comparator ?! */});
+#else
+    sortRegs.push_back(SortRegister{id, element});
+#endif
+  }
+
+  SortExecutorInfos infos( std::numeric_limits<RegisterId>::max()
+                         , 0
+                         , getRegisterPlan()->nrRegs[previousNode->getDepth()]
+                         , getRegisterPlan()->nrRegs[getDepth()]
+                         , getRegsToClear()
+                         , engine.getQuery()->trx()
+                         , std::move(sortRegs)
+                         , _stable);
+
+  return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief estimateCost
