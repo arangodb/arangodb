@@ -51,7 +51,7 @@ class SortExecutorInfos : public ExecutorInfos {
   SortExecutorInfos(
       RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
       std::unordered_set<RegisterId> registersToClear, transaction::Methods *trx,
-      std::vector<SortRegister> &&sortRegisters, bool stable
+      std::vector<SortRegister>&& sortRegisters, bool stable
     );
 
   ~SortExecutorInfos();
