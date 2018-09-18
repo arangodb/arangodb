@@ -62,6 +62,7 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
+  bool _returnedDone = false;
   bool _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrCalled;
@@ -88,6 +89,7 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
+  bool _returnedDone = false;
   bool _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrRegs;
