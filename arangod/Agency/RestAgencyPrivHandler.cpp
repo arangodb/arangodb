@@ -167,7 +167,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
         
         auto const leaderID = _agent->leaderID();
-        if (leaderID != NO_LEADER && leaderID != _agent->id()) { 
+        if (_agent->ready() && leaderID != _agent->id()) { 
           redirectRequest(leaderID);
           return RestStatus::DONE;
         } else {              // We're still trying to figure, what's going on
