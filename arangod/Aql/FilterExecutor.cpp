@@ -39,35 +39,36 @@ using namespace arangodb::aql;
 FilterExecutor::FilterExecutor(Fetcher& fetcher, ExecutorInfos& infos) : _infos(infos), _fetcher(fetcher){};
 FilterExecutor::~FilterExecutor() = default;
 
-ExecutionState FilterExecutor::produceRow(OutputAqlItemRow &output) {
+std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow &output) {
   TRI_IF_FAILURE("FilterExecutor::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
+  FilterStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (true) {
     std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
-      return state;
+      return {state, stats};
     }
 
     if (!input) {
       TRI_ASSERT(state == ExecutionState::DONE);
-      return state;
+      return {state, stats};
     }
     TRI_ASSERT(input.isInitialized());
 
     if (input.getValue(_infos.getInput()).toBoolean()) {
       output.copyRow(input);
-      return state;
+      return {state, stats};
     } else {
-      _infos.countFiltered();
+      stats.incrFiltered();
     }
 
     if (state == ExecutionState::DONE) {
-      return state;
+      return {state, stats};
     }
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }

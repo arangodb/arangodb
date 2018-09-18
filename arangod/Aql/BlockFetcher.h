@@ -50,7 +50,8 @@ class BlockFetcher {
     return _executionBlock->fetchBlock();
   };
 
-  TEST_VIRTUAL inline void returnBlock(std::unique_ptr<AqlItemBlock> block) noexcept {
+  TEST_VIRTUAL inline void returnBlock(
+      std::unique_ptr<AqlItemBlock> block) noexcept {
     AqlItemBlock* blockPtr = block.get();
     _executionBlock->returnBlockUnlessNull(blockPtr);
     TRI_ASSERT(blockPtr == nullptr);

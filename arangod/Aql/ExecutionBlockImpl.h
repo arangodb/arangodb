@@ -65,6 +65,7 @@ template <class Executor>
 class ExecutionBlockImpl : public ExecutionBlock {
 
   using Fetcher = typename Executor::Fetcher;
+  using ExecutorStats = typename Executor::Stats;
 
  public:
   /**
@@ -128,6 +129,31 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
+ private:
+
+  /**
+  * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
+  *        arguments compatible to getSome's return type.
+  */
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
+      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
+
+  /**
+  * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
+  *        arguments compatible to skipSome's return type.
+  */
+  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state,
+                                                     size_t skipped);
+
+  /**
+  * @brief Inner getSome() part, without the tracing calls. Needed for the
+  *        skipSome() stub that uses this.
+  */
+
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(
+    size_t atMost);
+
+ private:
 
   /**
   * @brief Used to allow the row Fetcher to access selected methods of this
@@ -155,7 +181,7 @@ class ExecutionBlockImpl : public ExecutionBlock {
 
 // no-op statistics for all Executors that don't have custom stats.
 class NoStats {};
-ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
+inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
   return stats;
 }
 

@@ -30,8 +30,8 @@
 #include "Aql/FilterStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
-#include <memory>
 
+#include <memory>
 
 namespace arangodb {
 namespace aql {
@@ -55,19 +55,17 @@ class FilterExecutor {
   FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
   ~FilterExecutor();
 
-
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  ExecutionState produceRow(OutputAqlItemRow &output);
+  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  public:
   ExecutorInfos& _infos;
  private:
   Fetcher& _fetcher;
-
 };
 
 }  // namespace aql

@@ -50,8 +50,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _blockFetcher(this),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
-      _executor(_rowFetcher, _infos)
-    {}
+      _executor(_rowFetcher, _infos) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
@@ -64,13 +63,21 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
   }
 }
 
-template<class Executor>
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
+template <class Executor>
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
+  traceGetSomeBegin(atMost);
+  auto result = getSomeWithoutTrace(atMost);
+  return traceGetSomeEnd(result.first, std::move(result.second));
+}
 
+template<class Executor>
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   if(!_outputItemRow) {
     auto newBlock = this->requestBlock(atMost, _infos.numberOfOutputRegisters());
     _outputItemRow = std::make_unique<OutputAqlItemRow>(
-        std::unique_ptr<AqlItemBlock>{newBlock}, _infos);
+      std::unique_ptr<AqlItemBlock>{newBlock}, _infos);
   }
 
   // TODO It's not very obvious that `state` will be initialized, because
@@ -78,15 +85,16 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
   // WAITING). It should, but I'd like that to be clearer. Initializing here
   // won't help much because it's unclear whether the value will be correct.
   ExecutionState state;
+  ExecutorStats executorStats{};
   std::unique_ptr<OutputAqlItemRow> row;  // holds temporary rows
 
   TRI_ASSERT(atMost > 0);
 
   while (!_outputItemRow->isFull()) {
-    state = _executor.produceRow(*_outputItemRow);
-    // TODO I'm not quite happy with produced(). Internally in OutputAqlItemRow,
-    // this means "we copied registers from a source row", while here, it means
-    // "the executor wrote its values".
+    std::tie(state, executorStats) = _executor.produceRow(*_outputItemRow);
+    // Count global but executor-specific statistics, like number of filtered
+    // rows.
+    _engine->_stats += executorStats;
     if (_outputItemRow && _outputItemRow->produced()) {
       _outputItemRow->advanceRow();
     }
@@ -96,9 +104,11 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlockImpl<Exec
     }
 
     if (state == ExecutionState::DONE) {
+      // TODO Does this work as expected when there was no row produced, or
+      // we were DONE already, so we didn't build a single row?
+      // We must return nullptr then, because empty AqlItemBlocks are not
+      // allowed!
       auto outputBlock = _outputItemRow->stealBlock();
-      // TODO OutputAqlItemRow could get "reset" and "isValid" methods and be reused
-
       // This is not strictly necessary here, as we shouldn't be called again
       // after DONE.
       _outputItemRow.reset(nullptr);
@@ -122,14 +132,33 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
     size_t atMost) {
   // TODO IMPLEMENT ME, this is a stub!
 
-  auto res = getSome(atMost);
+  traceSkipSomeBegin(atMost);
+
+  auto res = getSomeWithoutTrace(atMost);
 
   size_t skipped = 0;
   if (res.second != nullptr) {
     skipped = res.second->size();
+    AqlItemBlock* resultPtr = res.second.get();
+    returnBlock(resultPtr);
+    res.second.release();
   }
 
-  return {res.first, skipped};
+  return traceSkipSomeEnd(res.first, skipped);
+}
+
+template<class Executor>
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ExecutionBlockImpl<Executor>::traceGetSomeEnd(ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+  ExecutionBlock::traceGetSomeEnd(result.get(), state);
+  return {state, std::move(result)};
+}
+
+template<class Executor>
+std::pair<ExecutionState, size_t>
+ExecutionBlockImpl<Executor>::traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+  ExecutionBlock::traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;

@@ -47,7 +47,6 @@ class ExecutorInfos {
                 std::unordered_set<RegisterId> registersToClear)
       : _inReg(inputRegister),
         _outReg(outputRegister),
-        _filtered(0),
         _numInRegs(nrInputRegisters),
         _numOutRegs(nrOutputRegisters),
         _registersToKeep(),
@@ -83,19 +82,6 @@ class ExecutorInfos {
    */
   RegisterId getOutput() const { return _outReg; }
 
-  /**
-   * @brief Get the number of documents that have been filtered
-   *        by the Executor
-   *
-   * @return Number of filtered documents
-   */
-  size_t getFiltered() const { return _filtered; };
-
-  /**
-   * @brief Increase the counter of filtered documents by one
-   */
-  void countFiltered() { _filtered++; }
-
   size_t numberOfInputRegisters() const { return _numInRegs; }
 
   size_t numberOfOutputRegisters() const { return _numOutRegs; }
@@ -113,8 +99,6 @@ class ExecutorInfos {
   RegisterId _inReg;
 
   RegisterId _outReg;
-
-  size_t _filtered;
 
   size_t _numInRegs;
 

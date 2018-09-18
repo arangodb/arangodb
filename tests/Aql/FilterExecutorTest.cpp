@@ -57,10 +57,11 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     WHEN("the producer does not wait") {
       SingleRowFetcherHelper fetcher(input.steal(), false);
       FilterExecutor testee(fetcher, infos);
+      FilterStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result(std::move(block), infos);
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
@@ -69,17 +70,20 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
     WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input.steal(), true);
       FilterExecutor testee(fetcher, infos);
+      FilterStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result(std::move(block), infos);
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
+        REQUIRE(stats.getFiltered() == 0);
 
         AND_THEN("the executor should return DONE with nullptr") {
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
+          REQUIRE(stats.getFiltered() == 0);
         }
       }
     }
@@ -87,13 +91,52 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
 
   GIVEN("there are rows in the upstream") {
     auto input =
-        VPackParser::fromJson("[ [true], [false], [true], [false], [true] ]");
+        VPackParser::fromJson("[ [true], [false], [true], [false], [false], [true] ]");
 
     WHEN("the producer does not wait") {
+      SingleRowFetcherHelper fetcher(input->steal(), false);
+      FilterExecutor testee(fetcher, infos);
+      FilterStats stats{};
+
+      THEN("the executor should return the rows") {
+        OutputAqlItemRow row(std::move(block), infos);
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFiltered() == 0);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFiltered() == 1);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(stats.getFiltered() == 2);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        AND_THEN("The output should stay stable") {
+          std::tie(state, stats) = testee.produceRow(row);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(stats.getFiltered() == 0);
+          REQUIRE(!row.produced());
+        }
+      }
+    }
+
+    WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       FilterExecutor testee(fetcher, infos);
+      FilterStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return the rows") {
         OutputAqlItemRow row(std::move(block), infos);
 
         /*
@@ -104,73 +147,125 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
         5   => HASMORE, Row 3            RES2
         6   => WAIT,                       RES3
         7   => WAIT,                       RES3
-        8   => DONE, Row 5               RES3
+        8   => WAIT,                       RES3
+        9   => DONE, Row 6               RES3
         */
 
         //1
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
-        REQUIRE(infos.getFiltered() == 0);
+        REQUIRE(stats.getFiltered() == 0);
 
         //2
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
-        REQUIRE(infos.getFiltered() == 0);
+        REQUIRE(stats.getFiltered() == 0);
 
         //3
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
-        REQUIRE(infos.getFiltered() == 0);
+        REQUIRE(stats.getFiltered() == 0);
 
         //4
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
         // We have one filter here
-        REQUIRE(infos.getFiltered() == 1);
+        REQUIRE(stats.getFiltered() == 1);
 
         //5
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(row.produced());
         row.advanceRow();
-        REQUIRE(infos.getFiltered() == 1);
+        REQUIRE(stats.getFiltered() == 0);
 
         //6
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
-        REQUIRE(infos.getFiltered() == 1);
+        REQUIRE(stats.getFiltered() == 0);
 
         //7
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!row.produced());
-        REQUIRE(infos.getFiltered() == 2);
+        REQUIRE(stats.getFiltered() == 1);
+
+        //7
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!row.produced());
+        REQUIRE(stats.getFiltered() == 1);
 
         //8
-        state = testee.produceRow(row);
+        std::tie(state, stats) = testee.produceRow(row);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(row.produced());
         row.advanceRow();
-        REQUIRE(infos.getFiltered() == 2);
+        REQUIRE(stats.getFiltered() == 0);
       }
     }
   }
 
-  GIVEN("there are rows in the upstream") {
+  GIVEN("there are rows in the upstream, and the last one has to be filtered") {
     auto input = VPackParser::fromJson(
-        "[ [true], [false], [true], [false], [true], [false] ]");
+        "[ [true], [false], [true], [false], [false], [true], [false] ]");
 
     WHEN("the producer does not wait") {
+      SingleRowFetcherHelper fetcher(input->steal(), false);
+      FilterExecutor testee(fetcher, infos);
+      FilterStats stats{};
+
+      THEN("the executor should return the rows") {
+        OutputAqlItemRow row(std::move(block), infos);
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFiltered() == 0);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFiltered() == 1);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::HASMORE);
+        REQUIRE(stats.getFiltered() == 2);
+        REQUIRE(row.produced());
+
+        row.advanceRow();
+
+        std::tie(state, stats) = testee.produceRow(row);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(stats.getFiltered() == 1);
+        REQUIRE(!row.produced());
+
+        AND_THEN("The output should stay stable") {
+          std::tie(state, stats) = testee.produceRow(row);
+          REQUIRE(state == ExecutionState::DONE);
+          REQUIRE(stats.getFiltered() == 0);
+          REQUIRE(!row.produced());
+        }
+
+      }
+    }
+
+    WHEN("the producer waits") {
       SingleRowFetcherHelper fetcher(input->steal(), true);
       FilterExecutor testee(fetcher, infos);
+      FilterStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
+      THEN("the executor should return the rows") {
         OutputAqlItemRow result(std::move(block), infos);
 
         /*
@@ -181,66 +276,72 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
          => HASMORE, Row 3               RES2
          => WAIT,                        RES3
          => WAIT,                        RES3
-         => HASMORE, Row 5               RES3
-         => WAITING, Row 6               RES3
+         => WAIT,                        RES3
+         => HASMORE, Row 6               RES3
+         => WAITING,                     RES3
          => DONE, no output!             RES3
           */
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 0);
+        REQUIRE(stats.getFiltered() == 0);
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
-        REQUIRE(infos.getFiltered() == 0);
+        REQUIRE(stats.getFiltered() == 0);
 
         result.advanceRow();
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 0);
+        REQUIRE(stats.getFiltered() == 0);
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 1);
+        REQUIRE(stats.getFiltered() == 1);
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
-        REQUIRE(infos.getFiltered() == 1);
+        REQUIRE(stats.getFiltered() == 0);
 
         result.advanceRow();
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 1);
+        REQUIRE(stats.getFiltered() == 0);
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 2);
+        REQUIRE(stats.getFiltered() == 1);
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+        REQUIRE(stats.getFiltered() == 1);
+
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
-        REQUIRE(infos.getFiltered() == 2);
+        REQUIRE(stats.getFiltered() == 0);
 
         result.advanceRow();
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 2);
+        REQUIRE(stats.getFiltered() == 0);
 
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
-        REQUIRE(infos.getFiltered() == 3);
+        REQUIRE(stats.getFiltered() == 1);
       }
     }
   }

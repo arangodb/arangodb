@@ -38,15 +38,18 @@ class FilterStats {
 
   void addFiltered(std::size_t filtered_) noexcept { _filtered += filtered_; }
 
+  void incrFiltered() noexcept { _filtered++; }
+
   constexpr std::size_t getFiltered() const noexcept { return _filtered; }
 
  private:
   std::size_t _filtered;
 };
 
-ExecutionStats& operator+=(ExecutionStats& executionStats,
+inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                            FilterStats const& filterStats) noexcept {
   executionStats.filtered += filterStats.getFiltered();
+  return executionStats;
 }
 
 }
