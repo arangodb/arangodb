@@ -38,6 +38,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
