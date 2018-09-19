@@ -92,7 +92,7 @@ class OutputAqlItemRow {
   bool isFull() { return numRowsWritten() >= _block->size(); }
 
   size_t numRowsWritten() const noexcept {
-    if (_inputRowCopied) {
+    if (produced()) {
       return _baseIndex + 1;
     }
 
