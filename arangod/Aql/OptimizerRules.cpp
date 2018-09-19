@@ -126,7 +126,7 @@ void restrictToShard(arangodb::aql::ExecutionNode* node, std::string shardId) {
 
 struct PairHash {
   template <class T1, class T2>
-  size_t operator()(std::pair<T1, T2> const& pair) const {
+  size_t operator()(std::pair<T1, T2> const& pair) const noexcept {
     size_t first = std::hash<T1>()(pair.first);
     size_t second = std::hash<T2>()(pair.second);
 
