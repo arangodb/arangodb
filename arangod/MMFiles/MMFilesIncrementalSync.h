@@ -40,6 +40,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -179,12 +180,12 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     markers.reserve(trx.documentCollection()->numberDocuments(&trx, transaction::CountType::Normal));
 
     uint64_t iterations = 0;
-    ManagedDocumentResult mmdr;
+    ManagedDocumentResult mdr;
     trx.invokeOnAllElements(
-        trx.name(), [&syncer, &trx, &mmdr, &markers,
+        trx.name(), [&syncer, &trx, &mdr, &markers,
                      &iterations](LocalDocumentId const& token) {
-          if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
-            markers.emplace_back(mmdr.vpack());
+          if (trx.documentCollection()->readDocument(&trx, token, mdr)) {
+            markers.emplace_back(mdr.vpack());
 
             if (++iterations % 10000 == 0) {
               if (syncer.isAborted()) {
@@ -413,7 +414,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    ManagedDocumentResult mmdr;
+    ManagedDocumentResult mdr;
 
     auto physical = static_cast<MMFilesCollection*>(
         trx.documentCollection()->getPhysical());
@@ -620,9 +621,9 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             toFetch.emplace_back(i);
           } else {
             TRI_voc_rid_t currentRevisionId = 0;
-            if (physical->readDocument(&trx, element.localDocumentId(), mmdr)) {
+            if (physical->readDocument(&trx, element.localDocumentId(), mdr)) {
               currentRevisionId = transaction::helpers::extractRevFromDocument(
-                  VPackSlice(mmdr.vpack()));
+                  VPackSlice(mdr.vpack()));
             }
 
             if (TRI_RidToString(currentRevisionId) != pair.at(1).copyString()) {
@@ -765,10 +766,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
               LocalDocumentId conflictId =
                   physical->lookupKey(&trx, conflict.slice());
               if (conflictId.isSet()) {
-                ManagedDocumentResult mmdr;
-                bool success = physical->readDocument(&trx, conflictId, mmdr);
+                ManagedDocumentResult mdr;
+                bool success = physical->readDocument(&trx, conflictId, mdr);
                 if (success) {
-                  VPackSlice conflictingKey(mmdr.vpack());
+                  VPackSlice conflictingKey(mdr.vpack());
                   return trx.remove(coll->name(), conflictingKey, options);
                 }
               }

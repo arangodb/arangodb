@@ -40,6 +40,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -55,12 +56,12 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::MMFilesEdgeIndex const* index,
+    ManagedDocumentResult* mdr, arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
     std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx),
       _index(indexImpl),
-      _context(trx, collection, mmdr, index->fields().size()),
+      _context(trx, collection, mdr, index->fields().size()),
       _keys(std::move(keys)),
       _iterator(_keys->slice()),
       _posInBuffer(0),
@@ -206,7 +207,7 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(
 
 /// @brief return a selectivity estimate for the index
 double MMFilesEdgeIndex::selectivityEstimate(
-    arangodb::StringRef const* attribute) const {
+    arangodb::StringRef const& attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -216,14 +217,14 @@ double MMFilesEdgeIndex::selectivityEstimate(
     return 0.1;
   }
 
-  if (attribute != nullptr) {
+  if (!attribute.empty()) {
     // the index attribute is given here
     // now check if we can restrict the selectivity estimation to the correct
     // part of the index
-    if (attribute->compare(StaticStrings::FromString) == 0) {
+    if (attribute.compare(StaticStrings::FromString) == 0) {
       // _from
       return _edgesFrom->selectivity();
-    } else if (attribute->compare(StaticStrings::ToString) == 0) {
+    } else if (attribute.compare(StaticStrings::ToString) == 0) {
       // _to
       return _edgesTo->selectivity();
     }
@@ -408,6 +409,7 @@ int MMFilesEdgeIndex::sizeHint(transaction::Methods* trx, size_t size) {
 
 /// @brief checks whether the index supports the condition
 bool MMFilesEdgeIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
@@ -418,7 +420,7 @@ bool MMFilesEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -441,7 +443,7 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, mdr, attrNode, valNode);
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -451,7 +453,7 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
       return new EmptyIndexIterator(&_collection, trx);
     }
 
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, mdr, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -468,7 +470,7 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -488,7 +490,7 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
   return new MMFilesEdgeIndexIterator(
     &_collection,
     trx,
-    mmdr,
+    mdr,
     this,
     isFrom ? _edgesFrom.get() : _edgesTo.get(),
     std::move(keys)
@@ -497,7 +499,7 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
 
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -524,7 +526,7 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(
   return new MMFilesEdgeIndexIterator(
     &_collection,
     trx,
-    mmdr,
+    mdr,
     this,
     isFrom ? _edgesFrom.get() : _edgesTo.get(),
     std::move(keys)
