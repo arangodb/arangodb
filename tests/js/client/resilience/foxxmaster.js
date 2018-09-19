@@ -96,7 +96,6 @@ function FoxxmasterSuite() {
   return {
     setUp: function() {
       serverSetup();
-      wait(2.1);
     },
 
     tearDown : function () {
@@ -105,6 +104,13 @@ function FoxxmasterSuite() {
 
     testQueueWorks: function() {
       let document = db._collection('foxxqueuetest').document('test');
+      let count = 0;
+
+      while (document.server == null && count++ < 5) {
+        sleep(1);
+        document = db._collection('foxxqueuetest').document('test');
+      }
+
       assertNotNull(document.server);
     },
     
