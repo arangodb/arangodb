@@ -893,11 +893,17 @@ void LogicalCollection::deferDropCollection(
 /// @brief reads an element from the document collection
 Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::read") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->read(trx, key, result, lock);
 }
 
 Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
             ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::read") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->read(trx, key, result, lock);
 }
 
@@ -906,9 +912,12 @@ Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::
 /// the read-cache
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogicalCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
-  getPhysical()->truncate(trx, options);
+Result LogicalCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+  return getPhysical()->truncate(trx, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -921,6 +930,9 @@ Result LogicalCollection::insert(transaction::Methods* trx,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_tick_t& revisionId) {
+  TRI_IF_FAILURE("LogicalCollection::insert") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
                                lock, revisionId);
@@ -934,6 +946,9 @@ Result LogicalCollection::update(transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::update") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
 
   if (!newSlice.isObject()) {
@@ -959,6 +974,9 @@ Result LogicalCollection::replace(transaction::Methods* trx,
                                   TRI_voc_tick_t& resultMarkerTick, bool lock,
                                   TRI_voc_rid_t& prevRev,
                                   ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::replace") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
 
   if (!newSlice.isObject()) {
@@ -977,6 +995,9 @@ Result LogicalCollection::remove(transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::remove") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
   TRI_voc_rid_t revisionId = 0;
   return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev, revisionId);
@@ -1078,26 +1099,4 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   }
 
   return ChecksumResult(std::move(b));
-}
-
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
-  if (!checksumSlice.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
-    );
-  }
-
-  auto checksum = checksumSlice.copyString();
-
-  if (checksum != referenceChecksum) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "'checksum' is wrong. Expected: "
-        + referenceChecksum
-        + ". Actual: " + checksum
-    );
-  }
-
-  return Result();
 }

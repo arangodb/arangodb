@@ -627,8 +627,8 @@ void RocksDBCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-void RocksDBCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result RocksDBCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -650,18 +650,18 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                                    _logicalCollection.id(), _objectId);
     rocksdb::Status s = batch.PutLogData(log.slice());
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+      return rocksutils::convertStatus(s);
     }
    
     TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") { 
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      return Result(TRI_ERROR_DEBUG);
     }
     
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
     s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+      return rocksutils::convertStatus(s);
     }
     
     // delete indexes
@@ -672,7 +672,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
         bounds = ridx->getBounds();
         s = batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
         if (!s.ok()) {
-          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+          return rocksutils::convertStatus(s);
         }
         idx->afterTruncate(); // clears caches (if applicable)
       }
@@ -681,7 +681,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+      return rocksutils::convertStatus(s);
     }
     uint64_t prevCount = _numberDocuments;
     _numberDocuments = 0; // protected by collection lock
@@ -690,11 +690,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       // also compact the ranges in order to speed up all further accesses
       compact();
     }
-    return;
-  } else {
-    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { 
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+    return Result{};
+  }
+
+  TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { 
+    return TRI_ERROR_DEBUG;
   }
   
   // normal transactional truncate
@@ -737,9 +737,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(trx, docId, doc, options);
     
-    if (res.fail()) {
-      // Failed to remove document in truncate. Throw
-      THROW_ARANGO_EXCEPTION(res);
+    if (res.fail()) { // Failed to remove document in truncate.
+      return res;
     }
     
     bool hasPerformedIntermediateCommit = false;
@@ -747,9 +746,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     res = state->addOperation(_logicalCollection.id(), docId.id(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, hasPerformedIntermediateCommit);
     
-    if (res.fail()) {
-      // This should never happen...
-      THROW_ARANGO_EXCEPTION(res);
+    if (res.fail()) { // This should never happen...
+      return res;
     }
     guard.finish(hasPerformedIntermediateCommit);
 
@@ -778,11 +776,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 #endif
 
   TRI_IF_FAILURE("FailAfterAllCommits") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    return Result(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_SegfaultDebugging("SegfaultAfterAllCommits");
   }
+  return Result{};
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,

@@ -132,7 +132,7 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions&) override;
 
   void deferDropCollection(
     std::function<bool(LogicalCollection&)> const& callback
