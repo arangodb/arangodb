@@ -651,7 +651,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
                                                    _logicalCollection.id(), _objectId);
     rocksdb::Status s = batch.PutLogData(log.slice());
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+      return rocksutils::convertStatus(s);
     }
    
     TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
@@ -682,7 +682,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
-      THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
+      return rocksutils::convertStatus(s);
     }
     uint64_t prevCount = _numberDocuments;
     _numberDocuments = 0; // protected by collection lock
@@ -738,9 +738,8 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
     auto res = removeDocument(trx, docId, doc, options);
     
-    if (res.fail()) {
-      // Failed to remove document in truncate. Throw
-      THROW_ARANGO_EXCEPTION(res);
+    if (res.fail()) { // Failed to remove document in truncate.
+      return res;
     }
     
     bool hasPerformedIntermediateCommit = false;
@@ -748,9 +747,8 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     res = state->addOperation(_logicalCollection.id(), docId.id(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, hasPerformedIntermediateCommit);
     
-    if (res.fail()) {
-      // This should never happen...
-      THROW_ARANGO_EXCEPTION(res);
+    if (res.fail()) { // This should never happen...
+      return res;
     }
     guard.finish(hasPerformedIntermediateCommit);
 
