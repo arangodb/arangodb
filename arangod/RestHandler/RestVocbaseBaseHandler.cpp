@@ -204,8 +204,32 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple,
+              rest::ResponseCode::CREATED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Generate a result for successful delete
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generateDeleted(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
+  generate20x(result, collectionName, type, options, isMultiple,
+              rest::ResponseCode::OK);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a HTTP 20x response
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::generate20x(
+    arangodb::OperationResult const& result, std::string const& collectionName,
+    TRI_col_type_e type, VPackOptions const* options, bool isMultiple,
+    rest::ResponseCode waitForSyncResponseCode) {
+
   if (result.wasSynchronous) {
-    resetResponse(rest::ResponseCode::CREATED);
+    resetResponse(waitForSyncResponseCode);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
   }
@@ -221,31 +245,6 @@ void RestVocbaseBaseHandler::generateSaved(
     _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());
   }
 
-  generate20x(result, collectionName, type, options);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Generate a result for successful delete
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateDeleted(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options) {
-  if (result.wasSynchronous) {
-    resetResponse(rest::ResponseCode::OK);
-  } else {
-    resetResponse(rest::ResponseCode::ACCEPTED);
-  }
-  generate20x(result, collectionName, type, options);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a HTTP 20x response
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generate20x(
-    arangodb::OperationResult const& result, std::string const& collectionName,
-    TRI_col_type_e type, VPackOptions const* options) {
   VPackSlice slice = result.slice();
   if (slice.isNone()) {
     // will happen if silent == true
