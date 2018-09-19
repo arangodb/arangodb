@@ -917,7 +917,7 @@ Result LogicalCollection::truncate(transaction::Methods* trx,
   TRI_IF_FAILURE("LogicalCollection::truncate") {
     return Result(TRI_ERROR_DEBUG);
   }
-  getPhysical()->truncate(trx, options);
+  return getPhysical()->truncate(trx, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -781,6 +781,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_SegfaultDebugging("SegfaultAfterAllCommits");
   }
+  return Result{};
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
