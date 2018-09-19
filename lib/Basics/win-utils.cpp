@@ -24,6 +24,15 @@
 #include <errno.h>
 
 #include <io.h>
+#include <locale>
+#include <iomanip>
+#include <codecvt>
+#include <sys/stat.h>
+#include <wchar.h>
+#include <unicode/locid.h>
+#include <unicode/uchar.h>
+#include <unicode/unistr.h>
+#include <sys/types.h>
 
 #include "win-utils.h"
 
@@ -33,14 +42,13 @@
 #include <crtdbg.h>
 #include <atlstr.h>
 #include <VersionHelpers.h>
-#include <unicode/uchar.h>
-#include <unicode/unistr.h>
 
 #include "Logger/Logger.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/directories.h"
+#include "Basics/Common.h"
 
 using namespace arangodb::basics;
 
@@ -181,11 +189,16 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
 int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int fileDescriptor;
-
+  UnicodeString fn(filename);
+  
   fileHandle =
-      CreateFileA(filename, GENERIC_READ | GENERIC_WRITE,
-                  FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
-                  (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
+    CreateFileW(fn.getTerminatedBuffer(),
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                NULL,
+                (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW,
+                0,
+                NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
     return -1;
@@ -228,8 +241,12 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
       break;
   }
 
-  fileHandle = CreateFileA(
-      filename, mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+  UnicodeString fn(filename);
+  fileHandle = CreateFileW(fn.getTerminatedBuffer(),
+                           mode,
+                           FILE_SHARE_DELETE |
+                           FILE_SHARE_READ |
+                           FILE_SHARE_WRITE,
       NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -239,6 +256,60 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   fileDescriptor = _open_osfhandle((intptr_t)(fileHandle),
                                    (openFlags & O_ACCMODE) | _O_BINARY);
   return fileDescriptor;
+}
+
+
+FILE* TRI_FOPEN(const char* filename, const char *mode) {
+  UnicodeString fn(filename);
+  UnicodeString umod(mode);
+  return _wfopen(fn.getTerminatedBuffer(), umod.getTerminatedBuffer());
+}
+
+
+int TRI_CHDIR(const char *dirname) {
+  UnicodeString dn(dirname);
+  return ::_wchdir(dn.getTerminatedBuffer());
+}
+
+int TRI_STAT(const char *path, TRI_stat_t *buffer) {
+  UnicodeString p(path);
+  auto rc =  ::_wstat64(p.getTerminatedBuffer(), buffer);
+  return rc;
+}
+
+char *TRI_GETCWD(char *buffer, int maxlen){
+  char * rc = nullptr;
+  wchar_t *rcw;
+  int wBufLen = maxlen;
+  wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
+  rcw = ::_wgetcwd(wbuf, wBufLen);
+
+  if (rcw != nullptr) {
+    std::string rcs;
+    
+    UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
+    d.toUTF8String<std::string>(rcs);
+    if (rcs.length() + 1 < maxlen) {
+      memcpy(buffer, rcs.c_str(), rcs.length() + 1);
+      rc = buffer;
+    }
+  }
+  free(wbuf);
+  return rc;
+}
+
+int TRI_MKDIR_WIN32(const char *dirname) {
+  UnicodeString dir(dirname);
+  return ::_wmkdir(dir.getTerminatedBuffer());
+}
+  
+int TRI_RMDIR(const char *dirname) {
+  UnicodeString dir(dirname);
+  return ::_wrmdir(dir.getTerminatedBuffer());
+}
+int TRI_UNLINK(const char *filename) {
+  UnicodeString fn(filename);
+  return ::_wunlink(fn.getTerminatedBuffer());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -655,4 +726,30 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
     return std::string();
   }
   return std::string((LPCTSTR)CString(FileInformation->FileName));
+}
+
+static std::vector<std::string> argVec;
+
+void TRI_GET_ARGV_WIN(int &argc, char** argv) {
+  auto wargStr = GetCommandLineW();
+
+  // if you want your argc in unicode, all you gonna do 
+  // is ask: 
+  wchar_t ** wargv = CommandLineToArgvW(wargStr, &argc);
+
+  argVec.reserve(argc);
+
+  UnicodeString buf;
+  std::string uBuf;
+  for (int i = 0; i < argc; i++) {
+    uBuf.clear();
+    // convert one UTF16 argument to utf8:
+    buf = wargv[i];
+    buf.toUTF8String<std::string>(uBuf);
+    // memorize the utf8 value to keep the instance:
+    argVec.push_back(std::string(uBuf));
+
+    // Now overwrite our original argc entry with the utf8 one:
+    argv[i] = (char*) argVec[i].c_str();
+  }
 }

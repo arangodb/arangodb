@@ -44,6 +44,7 @@
 #ifdef _WIN32
 #include <Psapi.h>
 #include <TlHelp32.h>
+#include <unicode/unistr.h>
 #endif
 
 #include "Logger/Logger.h"
@@ -326,20 +327,59 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   return TRI_ERROR_NO_ERROR;
 }
 
-static char* makeWindowsArgs(ExternalProcess* external) {
-  TRI_string_buffer_t* buf;
+
+static int wAppendQuotedArg(std::wstring &buf, wchar_t const* p) {
+  int err;
+
+  buf += L'"';
+
+  while (*p != 0) {
+    unsigned int i;
+    unsigned int NumberBackslashes = 0;
+    wchar_t const* q = p;
+    while (*q == L'\\') {
+      ++q;
+      ++NumberBackslashes;
+    }
+    if (*q == 0) {
+      // Escape all backslashes, but let the terminating
+      // double quotation mark we add below be interpreted
+      // as a metacharacter.
+      for (i = 0; i < NumberBackslashes; i++) {
+        buf += L'\\';
+        buf += L'\\';
+      }
+      break;
+    } else if (*q == L'"') {
+      // Escape all backslashes and the following
+      // double quotation mark.
+      for (i = 0; i < NumberBackslashes; i++) {
+        buf += L'\\';
+        buf += L'\\';
+      }
+      buf += L'\\';
+      buf += *q;
+    } else {
+      // Backslashes aren't special here.
+      for (i = 0; i < NumberBackslashes; i++) {
+        buf += L'\\';
+      }
+      buf +=  *q;
+    }
+    p = ++q;
+  }
+  buf += L'"';
+  return TRI_ERROR_NO_ERROR;
+}
+static std::wstring makeWindowsArgs(ExternalProcess* external) {
   size_t i;
   int err = TRI_ERROR_NO_ERROR;
-  char* res;
-
-  buf = TRI_CreateStringBuffer();
-  if (buf == nullptr) {
-    return nullptr;
-  }
+  std::wstring res;
 
   if (( external->_executable.find('/') == std::string::npos) && 
       ( external->_executable.find('\\') == std::string::npos)) {
     // oK, this is a binary without path, start the lookup.
+    // This will most probably break with non-ascii paths.
     char buf[MAX_PATH];
     char *pBuf;
     DWORD n;
@@ -349,34 +389,32 @@ static char* makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  TRI_ReserveStringBuffer(buf, 1024);
-  err = appendQuotedArg(buf, external->_executable.c_str());
+  UnicodeString uwargs(external->_executable.c_str());
+
+  err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
   if (err != TRI_ERROR_NO_ERROR) {
-    TRI_FreeStringBuffer(buf);
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
-    err = TRI_AppendCharStringBuffer(buf, ' ');
+    res += L' ';
+    uwargs = external->_arguments[i];
+    err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
     if (err != TRI_ERROR_NO_ERROR) {
-      TRI_FreeStringBuffer(buf);
       return nullptr;
     }
-    err = appendQuotedArg(buf, external->_arguments[i]);
   }
-  res = TRI_StealStringBuffer(buf);
-  TRI_FreeStringBuffer(buf);
   return res;
 }
 
 static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
-  char* args;
+  std::wstring args;
   PROCESS_INFORMATION piProcInfo;
-  STARTUPINFO siStartInfo;
+  STARTUPINFOW siStartInfo;
   BOOL bFuncRetn = FALSE;
   TRI_ERRORBUF;
   
   args = makeWindowsArgs(external);
-  if (args == nullptr) {
+  if (args.length() == 0) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
              << "' failed making args";
     return false;
@@ -386,8 +424,8 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
 
   // set up members of the STARTUPINFO structure
-  ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
-  siStartInfo.cb = sizeof(STARTUPINFO);
+  ZeroMemory(&siStartInfo, sizeof(STARTUPINFOW));
+  siStartInfo.cb = sizeof(STARTUPINFOW);
 
   siStartInfo.dwFlags = STARTF_USESTDHANDLES;
   siStartInfo.hStdInput = rd ? rd : nullptr;
@@ -395,18 +433,16 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
   // create the child process
-  bFuncRetn = CreateProcess(NULL,
-                            args,  // command line
-                            NULL,  // process security attributes
-                            NULL,  // primary thread security attributes
-                            TRUE,  // handles are inherited
-                            CREATE_NEW_PROCESS_GROUP,  // creation flags
-                            NULL,          // use parent's environment
-                            NULL,          // use parent's current directory
-                            &siStartInfo,  // STARTUPINFO pointer
-                            &piProcInfo);  // receives PROCESS_INFORMATION
-
-  TRI_Free(args);
+  bFuncRetn = CreateProcessW(NULL,
+                             (LPWSTR)args.c_str(),  // command line
+                             NULL,  // process security attributes
+                             NULL,  // primary thread security attributes
+                             TRUE,  // handles are inherited
+                             CREATE_NEW_PROCESS_GROUP,  // creation flags
+                             NULL,          // use parent's environment
+                             NULL,          // use parent's current directory
+                             &siStartInfo,  // STARTUPINFO pointer
+                             &piProcInfo);  // receives PROCESS_INFORMATION
 
   if (bFuncRetn == FALSE) {
     TRI_SYSTEM_ERROR();
