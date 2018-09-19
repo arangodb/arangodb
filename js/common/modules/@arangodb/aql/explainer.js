@@ -332,7 +332,7 @@ function printIndexes (indexes) {
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else {
+      } else { 
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
@@ -982,11 +982,11 @@ function processQuery (query, explain) {
     if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
-      if (variable !== false) {
+      if (variable !== false && variable !== undefined) {
         idx.condition = variable;
       }
     }
-    if (idx.condition === '') {
+    if (idx.condition === '' || idx.condition === undefined) {
       idx.condition = '*'; // empty condition. this is likely an index used for sorting or scanning only
     }
     indexes.push(idx);

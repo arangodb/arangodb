@@ -62,7 +62,7 @@ arangodb::Result checkHttpResponse(
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
         "got invalid response from server: '" +
-        client.getErrorMessage() + 
+        client.getErrorMessage() +
         "' while executing '" +
         requestAction +
         "' with this payload: '" +
@@ -74,7 +74,7 @@ arangodb::Result checkHttpResponse(
     return {TRI_ERROR_INTERNAL,
         "got invalid response from server: HTTP " +
         itoa(response->getHttpReturnCode()) + ": '" +
-        response->getHttpReturnMessage() + 
+        response->getHttpReturnMessage() +
         "' while executing '" +
         requestAction +
         "' with this payload: '" +
@@ -440,7 +440,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   }
-  
+
   int64_t const fileSize =  TRI_SizeFile(datafile->path().c_str());
 
   if (jobData.options.progress) {
@@ -506,15 +506,15 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       }
 
       buffer.erase_front(length);
-      
-      if (jobData.options.progress && 
-          fileSize > 0 && 
+
+      if (jobData.options.progress &&
+          fileSize > 0 &&
           numReadSinceLastReport > 1024 * 1024 * 8) {
         // report every 8MB of transferred data
         LOG_TOPIC(INFO, Logger::RESTORE) << "# Still loading data into " << collectionType
-                                         << " collection '" << cname << "', " 
-                                         << numReadForThisCollection << " of " << fileSize 
-                                         << " byte(s) restored (" << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)"; 
+                                         << " collection '" << cname << "', "
+                                         << numReadForThisCollection << " of " << fileSize
+                                         << " byte(s) restored (" << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
         numReadSinceLastReport = 0;
       }
     }
@@ -532,7 +532,7 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
                              arangodb::RestoreFeature::Options const& options,
                              VPackSlice const& viewDefinition) {
   using arangodb::httpclient::SimpleHttpResult;
-  
+
   std::string url = "/_api/replication/restore-view?overwrite=" +
     std::string(options.overwrite ? "true" : "false") +
     "&force=" + std::string(options.force ? "true" : "false");
@@ -548,10 +548,10 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
   if (response->wasHttpError()) {
     return ::checkHttpResponse(httpClient, response, "restoring view", body);
   }
-  
+
   return {TRI_ERROR_NO_ERROR};
 }
-  
+
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
@@ -581,7 +581,7 @@ arangodb::Result processInputDirectory(
       // files
       for (std::string const& file : files) {
         size_t const nameLength = file.size();
-        
+
         if (nameLength > viewsSuffix.size() &&
             file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
           VPackBuilder fileContentBuilder = directory.vpackFromJsonFile(file);
@@ -662,20 +662,10 @@ arangodb::Result processInputDirectory(
       }
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
-   
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
-      // Step 2: recreate all views
-      for (VPackBuilder const& viewDefinition : views) {
-        LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
-        Result res = ::restoreView(httpClient, options, viewDefinition.slice());
-        if (res.fail()) {
-          return res;
-        }
-      }
-    }
-    
-    // Step 3: run the actual import
+
+    std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(collections.size());
+
+    // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
 
@@ -691,9 +681,25 @@ arangodb::Result processInputDirectory(
       }
       stats.totalCollections++;
 
-      // now let the index and data restoration happen async+parallel
-      if (!jobQueue.queueJob(std::move(jobData))) {
-        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
+      jobs.push_back(std::move(jobData));
+    }
+
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
+      // Step 3: recreate all views
+      for (VPackBuilder const& viewDefinition : views) {
+        LOG_TOPIC(DEBUG, Logger::RESTORE) << "# Creating view: " << viewDefinition.toJson();
+        Result res = ::restoreView(httpClient, options, viewDefinition.slice());
+        if (res.fail()) {
+          return res;
+        }
+      }
+    }
+
+    // Step 4: fire up data transfer
+    for (auto &job : jobs) {
+      if (!jobQueue.queueJob(std::move(job))) {
+         return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
       }
     }
 
@@ -708,7 +714,7 @@ arangodb::Result processInputDirectory(
           // done
           break;
         }
-        
+
         double now = TRI_microtime();
         if (now - start >= 5.0) {
           // returns #queued jobs, #workers total, #workers busy
@@ -721,7 +727,7 @@ arangodb::Result processInputDirectory(
               << ", queued jobs: " << std::get<0>(queueStats) << ", workers: " << std::get<1>(queueStats);
           start = now;
         }
-       
+
         // don't sleep for too long, as we want to quickly terminate
         // when the gets empty
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -735,7 +741,7 @@ arangodb::Result processInputDirectory(
     if (firstError.fail()) {
       return firstError;
     }
-    
+
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(
@@ -771,10 +777,10 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   }
-    
+
   ++jobData.stats.restoredCollections;
- 
-  if (jobData.options.progress) {         
+
+  if (jobData.options.progress) {
     VPackSlice const parameters = jobData.collection.get("parameters");
     std::string const cname = arangodb::basics::VelocyPackHelper::getStringValue(
         parameters, "name", "");
@@ -1036,7 +1042,7 @@ void RestoreFeature::start() {
 
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
-      
+
   if (_options.progress) {
     LOG_TOPIC(INFO, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
   }

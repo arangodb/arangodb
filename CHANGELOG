@@ -19,24 +19,44 @@ devel
   Using the `force` flag when upgrading or replacing a service falls back to
   installing the service if it does not already exist.
 
+* the query editor within the web ui is now catching http 501 responses
+  propertly.
+
 * upgraded JEMalloc version to 5.1.0
 
 * use `-std=c++14` for ArangoDB compilation
 
+* added startup parameter advertised-endpoints
 
-v3.4.0-rc.1
------------
+
+v3.4.0-rc.2 (XXXX-XX-XX)
+------------------------
+
+* added AQL VERSION function to return the server version as a string
+
+* the ArangoDB starter is now part of the Windows packages (was missing before)
+
+* The Windows installer now offers a way to continue the installation if it 
+  failed because of a locked database
+
+
+v3.4.0-rc.1 (2018-09-06)
+------------------------
 
 * Release Candidate for 3.4.0, please check the `ReleaseNotes/KnownIssues34.md`
-  file for a list of known issues.
+  file for a list of known issues
 
 * upgraded bundled RocksDB version to 5.16.0
 
 * upgraded bundled Snappy compression library to 1.1.7
 
-* fixed issue #5941 if using breath first search in traversals uniqueness checks
+* fixed issue #5941 if using breadth first search in traversals uniqueness checks
   on path (vertices and edges) have not been applied. In SmartGraphs the checks
   have been executed properly.
+
+* added more detailed progress output to arangorestore, showing the percentage of
+  how much data is restored for bigger collections plus a set of overview statistics
+  after each processed collection
 
 * added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
   informational LOG files into RocksDB's database directory.

@@ -69,7 +69,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   size_t defaultNumberOfThreads() const;
   void buildScheduler();
 
-  std::unique_ptr<rest::Scheduler> _scheduler;
+  std::shared_ptr<rest::Scheduler> _scheduler;
 
   std::function<void(const asio_ns::error_code&, int)> _signalHandler;
   std::function<void(const asio_ns::error_code&, int)> _exitHandler;

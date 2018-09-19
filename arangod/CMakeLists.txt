@@ -71,6 +71,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
     IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
+    IResearch/IResearchViewSingleServer.cpp IResearch/IResearchViewSingleServer.h
     IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
     IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
     IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
@@ -148,6 +149,7 @@ SET(ARANGOD_SOURCES
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
+  Agency/AgencyStrings.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
@@ -234,6 +236,7 @@ SET(ARANGOD_SOURCES
   Aql/Query.cpp
   Aql/QueryCache.cpp
   Aql/QueryCursor.cpp
+  Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp

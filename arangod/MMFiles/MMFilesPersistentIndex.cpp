@@ -40,6 +40,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/utilities/optimistic_transaction_db.h>
 #include <rocksdb/utilities/transaction.h>
@@ -683,10 +684,11 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
 }
 
 bool MMFilesPersistentIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference,
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
                                                                   itemsInIndex, estimatedItems, estimatedCost);
 }
 

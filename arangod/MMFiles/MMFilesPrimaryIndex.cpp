@@ -37,6 +37,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualCollection.h"
@@ -80,7 +81,7 @@ bool MMFilesPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
     return false;
   }
   while (_iterator.valid() && limit > 0) {
-    // TODO: use version that hands in an existing mmdr
+    // TODO: use version that hands in an existing mdr
     MMFilesSimpleIndexElement result =
         _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
@@ -273,8 +274,8 @@ void MMFilesPrimaryIndex::unload() {
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice const& key) const {
-  ManagedDocumentResult mmdr;
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  ManagedDocumentResult mdr;
+  IndexLookupContext context(trx, &_collection, &mdr, 1);
   TRI_ASSERT(key.isString());
 
   return _primaryIndex->findByKey(&context, key.begin());
@@ -283,8 +284,8 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupKey(
     transaction::Methods* trx, VPackSlice const& key,
-    ManagedDocumentResult& mmdr) const {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+    ManagedDocumentResult& mdr) const {
+  IndexLookupContext context(trx, &_collection, &mdr, 1);
   TRI_ASSERT(key.isString());
 
   return _primaryIndex->findByKey(&context, key.begin());
@@ -310,8 +311,8 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
 /// @brief looks up an element given a key
 MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
     transaction::Methods* trx, VPackSlice const& key,
-    ManagedDocumentResult& mmdr) const {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+    ManagedDocumentResult& mdr) const {
+  IndexLookupContext context(trx, &_collection, &mdr, 1);
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
@@ -373,16 +374,16 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
-  ManagedDocumentResult mmdr;
-  return insertKey(trx, documentId, doc, mmdr, mode);
+  ManagedDocumentResult mdr;
+  return insertKey(trx, documentId, doc, mdr, mode);
 }
 
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
-                                      ManagedDocumentResult& mmdr,
+                                      ManagedDocumentResult& mdr,
                                       OperationMode mode) {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  IndexLookupContext context(trx, &_collection, &mdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
 // TODO: we can pass in a special IndexLookupContext which has some more on the information 
@@ -407,16 +408,16 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       OperationMode mode) {
-  ManagedDocumentResult mmdr;
-  return removeKey(trx, documentId, doc, mmdr, mode);
+  ManagedDocumentResult mdr;
+  return removeKey(trx, documentId, doc, mdr, mode);
 }
 
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       LocalDocumentId const&,
                                       VPackSlice const& doc,
-                                      ManagedDocumentResult& mmdr,
+                                      ManagedDocumentResult& mdr,
                                       OperationMode mode) {
-  IndexLookupContext context(trx, &_collection, &mmdr, 1);
+  IndexLookupContext context(trx, &_collection, &mdr, 1);
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));
   MMFilesSimpleIndexElement found =
       _primaryIndex->removeByKey(&context, keySlice.begin());
@@ -450,6 +451,7 @@ void MMFilesPrimaryIndex::invokeOnAllElementsForRemoval(
 
 /// @brief checks whether the index supports the condition
 bool MMFilesPrimaryIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {

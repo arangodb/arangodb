@@ -755,7 +755,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   auto trx = _plan->getAst()->query()->trx();
   TRI_ASSERT(trx != nullptr);
 
-  FixedVarExpressionContext ctxt;
+  FixedVarExpressionContext ctxt(_plan->getAst()->query());
   ctxt.setVariableValue(pathVar, {});
   AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());

@@ -855,6 +855,10 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "about to flush active WAL logfile. currentLogfileId: "
              << lastOpenLogfileId << ", waitForSync: " << waitForSync
              << ", waitForCollector: " << waitForCollector;
+  
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "about to flush active WAL logfile. currentLogfileId: "
+             << lastOpenLogfileId << ", waitForSync: " << waitForSync
+             << ", waitForCollector: " << waitForCollector << ", last committed tick: " << _slots->lastCommittedTick();
 
   int res = _slots->flush(waitForSync);
 
@@ -1202,7 +1206,7 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value << ", barriers: " << _barriers.size();
 
   return value;
 }
