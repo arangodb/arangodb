@@ -161,6 +161,24 @@ ExecutionBlockImpl<Executor>::traceSkipSomeEnd(ExecutionState state, size_t skip
   return {state, skipped};
 }
 
+template <class Executor>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
+                                               size_t pos) {
+  // re-initialize BlockFetcher
+  _blockFetcher = BlockFetcher(this);
+
+  // destroy and re-create the Fetcher
+  _rowFetcher.~Fetcher();
+  new (&_rowFetcher) Fetcher(_blockFetcher);
+
+  // destroy and re-create the Executor
+  _executor.~Executor();
+  new (&_executor) Executor(_rowFetcher, _infos);
+
+  return ExecutionBlock::initializeCursor(items, pos);
+}
+
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

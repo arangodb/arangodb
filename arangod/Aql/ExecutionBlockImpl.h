@@ -129,6 +129,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
    */
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock *items, size_t pos) override;
+
  private:
 
   /**
