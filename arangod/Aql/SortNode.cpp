@@ -204,7 +204,13 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
 #ifdef USE_IRESEARCH
-    sortRegs.push_back(SortRegister{id, element /* TODO add comparator ?! */});
+    sortRegs.push_back(SortRegister{
+        id, element,
+        [](irs::sort::prepared const*, arangodb::transaction::Methods* trx,
+           arangodb::aql::AqlValue const& lhs,
+           arangodb::aql::AqlValue const& rhs) -> int {
+          return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
+        }});
 #else
     sortRegs.push_back(SortRegister{id, element});
 #endif
