@@ -112,13 +112,14 @@ set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 ################################################################################
 
 if (USE_IRESEARCH)
+  # THIS SHIT MUST GO
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.68.0"
     IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
-  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.68.0") # explicitly set since suppressing Boost search
 
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
