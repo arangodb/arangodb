@@ -241,24 +241,33 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("writing rows to target") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
-    std::unique_ptr<ExecutorInfos> executorInfos{nullptr};
+    std::unordered_set<RegisterId> inputRegisters{};
+    std::unordered_set<RegisterId> outputRegisters{};
+    std::unordered_set<RegisterId> registersToClear{};
+    RegisterId nrInputRegisters = 0;
+    RegisterId nrOutputRegisters = 0;
 
     THEN("should keep all registers and add new values") {
-      executorInfos = std::make_unique<ExecutorInfos>(
-          std::unordered_set<RegisterId>{},
-          std::unordered_set<RegisterId>{3, 4}, 3, 5,
-          std::unordered_set<RegisterId>{});
+      inputRegisters = {};
+      outputRegisters = {3, 4};
+      registersToClear = {};
+      nrInputRegisters = 3;
+      nrOutputRegisters = 5;
     }
     THEN("should be able to drop registers and write new values") {
-      executorInfos = std::make_unique<ExecutorInfos>(
-          std::unordered_set<RegisterId>{},
-          std::unordered_set<RegisterId>{3, 4}, 3, 5,
-          std::unordered_set<RegisterId>{1, 2});
+      inputRegisters = {};
+      outputRegisters = {3, 4};
+      registersToClear = {1, 2};
+      nrInputRegisters = 3;
+      nrOutputRegisters = 5;
     }
+    ExecutorInfos executorInfos{inputRegisters, outputRegisters,
+                                nrInputRegisters, nrOutputRegisters,
+                                registersToClear};
     std::unordered_set<RegisterId> regsToKeep =
-        executorInfos->registersToKeep();
+        executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(outputData), *executorInfos);
+    OutputAqlItemRow testee(std::move(outputData), executorInfos);
     {
       // Make sure this data is cleared before the assertions
       auto inputData = buildBlock<3>(&monitor, {
@@ -271,7 +280,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
       for (size_t i = 0; i < 3; ++i) {
         // Iterate over source rows
         InputAqlItemRow source{inputData.get(), i, 0};
-        for(size_t j = 3; j < 5; ++j) {
+        for(RegisterId j = 3; j < 5; ++j) {
           AqlValue v{ AqlValueHintInt{(int64_t)(j + 5)} };
           testee.setValue(j, source, v);
           if (j == 3) {
