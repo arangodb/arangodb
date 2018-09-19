@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Test newlines
+    </h3>
+    <p>
+      Line 1<br/> Line 2
+    </p>
+    <blockquote>
+      <p>
+        <q>It is better to be approximately right than exactly wrong.</q><br/> <span
+        class="emphasis"><em>-- Old adage</em></span>
+      </p>
+    </blockquote>
+    <p>
+      Line 1<br/> Line 2
+    </p>
+    <blockquote>
+      <p>
+        <q>It is better to be approximately right than exactly wrong.</q><br/> <span
+        class="emphasis"><em>-- Old adage</em></span>
+      </p>
+    </blockquote>
+  </body>
+</html>

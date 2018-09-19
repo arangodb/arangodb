@@ -1,0 +1,112 @@
+
+[/ Copyright (C) 2008-2018 Lorenzo Caminiti]
+[/ Distributed under the Boost Software License, Version 1.0 (see accompanying]
+[/ file LICENSE_1_0.txt or a copy at http://www.boost.org/LICENSE_1_0.txt).]
+[/ See: http://www.boost.org/doc/libs/release/libs/contract/doc/html/index.html]
+
+[section Bibliography]
+
+This section lists all references consulted while designing and developing this library.
+
+[#Andrzej13_anchor] [Andrzej13] A. Krzemienski. [@https://akrzemi1.wordpress.com/2013/01/04/preconditions-part-i/ /Andrzej's C++ blog: Preconditions/]. 2013.
+
+[#Bright04_anchor] [Bright04] W. Bright. [@https://dlang.org/spec/contracts.html /Contract Programming for the D Programming Language/]. 2004.
+
+[#Bright04b_anchor] [Bright04b] W. Bright. [@http://www.digitalmars.com/ctg/contract.html /Contract Programming for the Digital Mars C++ Compiler/]. 2004.
+
+[#C2_anchor] [C2] Aechmea. [@http://www.programmersheaven.com/app/news/DisplayNews.aspx?NewsID=3843 /C^2 Contract Programming add-on for C++/]. 2005.
+
+[#Chrome_anchor] [Chrome] RemObjects. [@http://blogs.remobjects.com/blogs/mh/2008/05/01/p216 /Chrome: Contract Programming for Object Pascal in .NET/]. 2002.
+
+[#Clarke06_anchor] [Clarke06] L. A. Clarke and D. S. Rosenblum. [@http://discovery.ucl.ac.uk/4991/1/4991.pdf /A Historical Perspective on Runtime Assertion Checking in Software Development/]. Newsletter ACM SIGSOFT Software Engineering Notes, 2006.
+
+[#Cline90_anchor] [Cline90] M. Cline and D. Lea. /The Behaviour of C++ Classes/ and [@http://surface.syr.edu/cgi/viewcontent.cgi?article=1116&context=eecs /Using Annotated C++/]. Proc. of the Symposium on Object Oriented Programming Emphasizing Practical Applications, Maris College, 1990.
+
+[#Ellis90_anchor] [Ellis90] M. A. Ellis and B. Stroustrup. /The Annotated C++ Reference Manual/. ANSI Base Document, Addison Wesley, 1990.
+
+[#Gautron92_anchor] [Gautron92] P. Gautron. /An Assertion Mechanism Based on Exceptions/. Fourth C++ Technical Conference, 1992.
+
+[#Hoare73_anchor] [Hoare73] C. A. R. Hoare. /Hints on Programming Language Design/. Stanford University Artificial Intelligence memo AIM-224/STAN-CS-73-403, pages 193-216, 1973.
+
+[#CodeContracts_anchor] [CodeContracts] Microsoft Research. [@http://research.microsoft.com/en-us/projects/contracts/ /Code Contracts: Design-By-Contract Programming for All .NET Programming Languages/]. 2012.
+
+[#iContract_anchor] [iContract] O. Enseling. [@http://www.javaworld.com/javaworld/jw-02-2001/jw-0216-cooltools.html /iContract: Contract Programming for Java/]. 2001.
+
+[#Jcontract_anchor] [Jcontract] Parasoft. [@http://www.parasoft.com/jsp/products/article.jsp?label=product_info_Jcontract /Jcontract: Contract Programming for Java/].
+
+[#Lindrud04_anchor] [Lindrud04] J. Lindrud. [@http://www.codeproject.com/Articles/8293/Design-by-Contract-in-C /Design by Contract in C++/]. 2004.
+
+[#Maley99_anchor] [Maley99] D. Maley and I. Spence. [@http://www.computer.org/portal/web/csdl/doi/10.1109/TOOLS.1999.779000 /Emulating Design by Contract in C++/]. Proceedings of TOOLS, IEEE Computer Society, 1999.
+
+[#Meyer97_anchor] [Meyer97] B. Meyer. /Object Oriented Software Construction/. Prentice-Hall, 2nd edition, 1997.
+
+[#Mitchell02_anchor] [Mitchell02] R. Mitchell and J. McKim. /Design by Contract, by Example/. Addison-Wesley, 2002.
+
+[#N1613_anchor] [N1613] T. Ottosen. [@http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2004/n1613.pdf /Proposal to add Design by Contract to C++/]. The C++ Standards Committee, N1613, 2004.
+
+[#N1653_anchor] [N1653] C. Nelson. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2004/n1653.htm /Working draft changes for C99 preprocessor synchronization/]. C++ Standards Committee, N1653, 2004.
+
+[#N1669_anchor] [N1669] T. Ottosen. [@http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2004/n1669.html /Proposal to add Contract Programming to C++ (revision 1)/]. The C++ Standards Committee, N1669, 2004.
+
+[#N1773_anchor] [N1773] D. Abrahams, L. Crowl, T. Ottosen, and J. Widman. [@http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1773.html /Proposal to add Contract Programming to C++ (revision 2)/]. The C++ Standards Committee, N1773, 2005.
+
+[#N1866_anchor] [N1866] L. Crowl and T. Ottosen. [@http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1866.html /Proposal to add Contract Programming to C++ (revision 3)/]. The C++ Standards Committee, N1866, 2005.
+
+[#N1895_anchor] [N1895] H. Sutter and F. Glassborow. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1895.pdf /Delegating Constructors (revision 2)/]. C++ Standards Committee, N1895, 2005.
+
+[#N1962_anchor] [N1962] L. Crowl and T. Ottosen. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n1962.html /Proposal to add Contract Programming to C++ (revision 4)/]. The C++ Standards Committee, N1962, 2006.
+
+[#N2081_anchor] [N2081] D. Gregor and B. Stroustrup. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2006/n2081.pdf /Concepts (revision 1)/]. The C++ Standards Committee, N2081, 2006.
+
+[#N2887_anchor] [N2887] G. Dos Reis, B. Stroustrup, and A. Meredith. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/n2887.pdf /Axioms: Semantics Aspects of C++ Concepts/]. The C++ Standards Committee, N2887, 2009.
+
+[#N2914_anchor] [N2914] P. Becker. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/n2914.pdf /Working Draft, Standard for Programming Language C++/]. The C++ Standards Committee, N2914, 2009.
+
+[#N2906_anchor] [N2906] B. Stroustrup. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2009/n2906.pdf /Simplifying the sue of concepts/]. The C++ Standards Committee, N2906, 2009.
+
+[#N3248_anchor] [N3248] J. Lakos. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2011/n3248.pdf ['[^noexcept] Prevents Library Validation]]. The C++ Standards Committee, N3248, 2011.
+
+[#N4154_anchor] [N4154] D. Krauss. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4154.pdf ['Operator [^assert]]]. The C++ Standards Committee, N4154, 2014.
+
+[#N4160_anchor] [N4160] A. Krzemienski. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4160.html /Value constraints/]. The C++ Standards Committee, N4160, 2014.
+
+[#N4248_anchor] [N4248] A. Meredith. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4248.html /Library Preconditions are a Language Feature/]. The C++ Standards Committee, N4248, 2014.
+
+[#N4293_anchor] [N4293] J. D. Garcia. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4293.pdf /C++ language support for contract programming/]. The C++ Standards Committee, N4293, 2014.
+
+[#N4378_anchor] [N4378] J. Lakos, N. Myers, A. Zakharov, and A. Beels. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4378.pdf /Language Support for Contract Assertions (Revision 10)/]. The C++ Standards Committee, N4378, 2015.
+
+[#Nana_anchor] [Nana] P. J. Maker. [@https://github.com/pjmaker/nana /GNU Nana/]. 2014.
+
+[#N4379_anchor] [N4378] J. Lakos and N. Myers. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4379.pdf /FAQ about Contract Assertions/]. The C++ Standards Committee, N4379, 2015.
+
+[#N4435_anchor] [N4435] W. E. Brown. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4435.pdf /Proposing Contract Attributes/]. The C++ Standards Committee, N4435, 2015.
+
+[#P0147_anchor] [P0147] L. Crowl. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0147r0.html /The Use and Implementation of Contracts/]. The C++ Standards Committee, P0147R0, 2015.
+
+[#P0166_anchor] [P0166] J. D. Garcia. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/p0166r0.pdf /Three interesting questions about contracts/]. The C++ Standards Committee, P0166R0, 2015.
+
+[#P0246_anchor] [P0246] N. Myers. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0246r0.pdf /Criteria for Contract Support Merged Proposal/]. The C++ Standards Committee, P0246R0, 2016.
+
+[#P0287_anchor] [P0287] G. Dos Reis, J.D. Garcia, F. Logozzo, M. Fahndrich, S. Lahiri. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0287r0.pdf /Simple Contracts for C++ (R1)/]. The C++ Standards Committee, P0287R0, 2016.
+
+[#P0380_anchor] [P0380] G. Dos Reis, J.D. Garcia, J. Lakos, A. Meredith, N. Myers, and B. Stroustrup. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0380r1.pdf /A Contract Design/]. The C++ Standards Committee, P0380R1, 2016.
+
+[#P0542_anchor] [P0542] G. Dos Reis, J.D. Garcia, J. Lakos, A. Meredith, N. Myers, and B. Stroustrup. [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0542r0.html /Support for contract based programming in C++/]. The C++ Standards Committee, P0542R0, 2017.
+
+[#Rosenblum95_anchor] [Rosenblum95] D. S. Rosenblum. [@http://www.cs.toronto.edu/~chechik/courses06/csc410/rosenblum_assert95.pdf /A practical Approach to Programming With Assertions/]. IEEE Transactions on Software Engineering, 1995.
+
+[#SPARKAda_anchor] [SPARKAda] Praxis. [@http://www.praxis-his.com/sparkada/language.asp /SPARKAda (Ada-like Language with Contract Programming)/].
+
+[#SpecSharp_anchor] [SpecSharp] Microsoft. [@http://research.microsoft.com/en-us/projects/specsharp/ /Spec# (C# Extension)/].
+
+[#Stroustrup94_anchor] [Stroustrup94] B. Stroustrup. /The Design and Evolution of C++/. Addison Wesley, 1994.
+
+[#Stroustrup13_anchor] [Stroustrup13] B. Stroustrup. /The C++ Programming Language/. Addison Wesley, 4th Edition, 2013.
+
+[#Tandin04_anchor] [Tandin04] A. Tandin. [@http://www.codeproject.com/KB/macros/DbC_and_Doxygen.aspx /Design by Contract macros for C++ and link to Doxygen/]. 2004.
+
+[#Wilson06_anchor] [Wilson06] M. Wilson. [@http://www.artima.com/cppsource/deepspace.html /Contract Programming 101 - The Nuclear Reactor and the Deep Space Probe/]. The C++ Source, 2006.
+
+[endsect]
+

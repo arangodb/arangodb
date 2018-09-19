@@ -1,0 +1,16 @@
+#  Boost.Format Library example Jamfile
+#
+#  Copyright (c) 2003 Samuel Krempp
+#
+#  Distributed under the Boost Software License, Version 1.0. (See accompany-
+#  ing file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+test-suite "format-examples"
+   :    [ run sample_advanced.cpp ]
+        [ run sample_formats.cpp ]
+        [ run sample_new_features.cpp ]
+        [ run sample_userType.cpp ]
+   ;
+

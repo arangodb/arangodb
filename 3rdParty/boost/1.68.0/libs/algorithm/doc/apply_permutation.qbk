@@ -1,0 +1,96 @@
+[/ File apply_permutation.qbk]
+
+[section:apply_permutation apply_permutation]
+
+[/license
+Copyright (c) 2017 Alexander Zaitsev
+
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+The header file 'apply_permutation.hpp' contains two algorithms, apply_permutation and apply_reverse_permutation. Also there are range-based versions. 
+The algorithms transform the item sequence according to index sequence order.
+
+The routine `apply_permutation` takes a item sequence and a order sequence. It reshuffles item sequence according to order sequence. Every value in order sequence means where the item comes from. Order sequence needs to be exactly a permutation of the sequence [0, 1, ... , N], where N is the biggest index in the item sequence (zero-indexed).
+The routine `apply_reverse_permutation` takes a item sequence and a order sequence. It will reshuffle item sequence according to order sequence. Every value in order sequence means where the item goes to. Order sequence needs to be exactly a permutation of the sequence [0, 1, ... , N], where N is the biggest index in the item sequence (zero-indexed).
+
+Implementations are based on these articles:
+https://blogs.msdn.microsoft.com/oldnewthing/20170102-00/?p=95095
+https://blogs.msdn.microsoft.com/oldnewthing/20170103-00/?p=95105
+https://blogs.msdn.microsoft.com/oldnewthing/20170104-00/?p=95115
+https://blogs.msdn.microsoft.com/oldnewthing/20170109-00/?p=95145
+https://blogs.msdn.microsoft.com/oldnewthing/20170110-00/?p=95155
+https://blogs.msdn.microsoft.com/oldnewthing/20170111-00/?p=95165
+
+The routines come in 2 forms; the first one takes two iterators to define the item range and one iterator to define the beginning of index range. The second form takes range to define the item sequence and range to define index sequence.
+
+
+[heading interface]
+
+There are two versions of algorithms:
+1) takes four iterators.
+2) takes two ranges.
+``
+template<typename RandomAccessIterator1, typename RandomAccessIterator2>
+void apply_permutation(RandomAccessIterator1 item_begin, RandomAccessIterator1 item_end,
+                  RandomAccessIterator2 ind_begin, RandomAccessIterator2 ind_end);
+template<typename Range1, typename Range2>
+void apply_permutation(Range1& item_range, Range2& ind_range);
+template<typename RandomAccessIterator1, typename RandomAccessIterator2>
+void apply_reverse_permutation(RandomAccessIterator1 item_begin, RandomAccessIterator1 item_end,
+                  RandomAccessIterator2 ind_begin, RandomAccessIterator2 ind_end);
+template<typename Range1, typename Range2>
+void apply_reverse_permutation(Range1& item_range, Range2& ind_range);
+``
+
+
+[heading Examples]
+
+Given the containers:
+std::vector<int> emp_vec, emp_order,
+std::vector<int> one{1}, one_order{0},
+std::vector<int> two{1,2}, two_order{1,0},
+std::vector<int> vec{1, 2, 3, 4, 5},
+std::vector<int> order{4, 2, 3, 1, 0}, then
+``
+
+apply_permutation(emp_vec, emp_order))  --> no changes
+apply_reverse_permutation(emp_vec, emp_order))  --> no changes
+apply_permutation(one, one_order)  --> no changes
+apply_reverse_permutation(one, one_order)  --> no changes
+apply_permutation(two, two_order)  --> two:{2,1}
+apply_reverse_permutation(two, two_order)  --> two:{2,1}
+apply_permutation(vec, order)  --> vec:{5, 3, 4, 2, 1}
+apply_reverse_permutation(vec, order)  --> vec:{5, 4, 2, 3, 1}
+``
+
+[heading Iterator Requirements]
+
+`apply_permutation` and 'apply_reverse_permutation' work only on RandomAccess iterators. RandomAccess iterators required both for item and index sequences.
+
+[heading Complexity]
+
+All of the variants of `apply_permutation` and `apply_reverse_permutation` run in ['O(N)] (linear) time.
+More
+
+[heading Exception Safety]
+
+All of the variants of `apply_permutation` and `apply_reverse_permutation` take their parameters by iterators or reference, and do not depend upon any global state. Therefore, all the routines in this file provide the strong exception guarantee.
+
+[heading Notes]
+* If ItemSequence and IndexSequence are not equal, behavior is undefined.
+
+* `apply_permutation` and `apply_reverse_permutation` work also on empty sequences.
+
+* Order sequence must be zero-indexed.
+
+* Order sequence gets permuted.
+
+[endsect]
+
+[/ File apply_permutation.qbk
+Copyright 2017 Alexander Zaitsev
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt).
+]

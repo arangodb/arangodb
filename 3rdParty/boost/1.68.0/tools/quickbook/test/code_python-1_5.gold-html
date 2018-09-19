@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Python Code Blocks
+    </h3>
+<pre class="programlisting"><span class="comment"># No escape</span>
+<span class="comment"># Escape: <span class="bold"><strong>bold</strong></span></span>
+<span class="comment"># Escape: <span class="underline">underline</span><span class="emphasis"><em>italic</em></span></span>
+</pre>
+  </body>
+</html>

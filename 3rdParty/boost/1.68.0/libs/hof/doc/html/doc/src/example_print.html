@@ -1,0 +1,267 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Print function &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Conditional overloading" href="example_overloading.html" />
+    <link rel="prev" title="Examples" href="examples.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="examples.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="intro.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="example_overloading.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <!-- Copyright 2018 Paul Fultz II
+     Distributed under the Boost Software License, Version 1.0.
+     (http://www.boost.org/LICENSE_1_0.txt)
+--><div class="section" id="print-function">
+<h1>Print function<a class="headerlink" href="#print-function" title="Permalink to this headline">¶</a></h1>
+<p>Say, for example, we would like to write a print function. We could start by writing the function that prints using <code class="docutils literal"><span class="pre">std::cout</span></code>, like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>However, there is lot of things that don&#8217;t print directly to <code class="docutils literal"><span class="pre">std::cout</span></code> such as <code class="docutils literal"><span class="pre">std::vector</span></code> or <code class="docutils literal"><span class="pre">std::tuple</span></code>. Instead, we want to iterate over these data structures and print each element in them.</p>
+<div class="section" id="overloading">
+<h2>Overloading<a class="headerlink" href="#overloading" title="Permalink to this headline">¶</a></h2>
+<p>Boost.HigherOrderFunctions provides several ways to do overloading. One of the ways is with the <code class="docutils literal"><span class="pre">first_of</span></code> adaptor which will pick the first function that is callable. This allows ordering the functions based on which one is more important. So then the first function will print to <code class="docutils literal"><span class="pre">std::cout</span></code> if possible otherwise we will add an overload to print a range:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">range</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">x</span><span class="p">:</span><span class="n">range</span><span class="p">)</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">-&gt;</span> <span class="pre">decltype(std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">x,</span> <span class="pre">void())</span></code> is added to the function to constrain it on whether <code class="docutils literal"><span class="pre">std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">x</span></code> is a valid expression. Then the <code class="docutils literal"><span class="pre">void()</span></code> is used to return <code class="docutils literal"><span class="pre">void</span></code> from the function. So, now the function can be called with a vector:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+<span class="n">print</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>This will print each element in the vector.</p>
+<p>We can also constrain the second overload as well, which will be important to add more overloads. So a <code class="docutils literal"><span class="pre">for</span></code> range loop calls <code class="docutils literal"><span class="pre">begin</span></code> and <code class="docutils literal"><span class="pre">end</span></code> to iterated over the range, but we will need some helper function in order to call <code class="docutils literal"><span class="pre">std::begin</span></code> using ADL lookup:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">adl</span> <span class="p">{</span>
+
+<span class="k">using</span> <span class="n">std</span><span class="o">::</span><span class="n">begin</span><span class="p">;</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">R</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="n">adl_begin</span><span class="p">(</span><span class="n">R</span><span class="o">&amp;&amp;</span> <span class="n">r</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="n">begin</span><span class="p">(</span><span class="n">r</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Now we can add <code class="docutils literal"><span class="pre">-&gt;</span> <span class="pre">decltype(std::cout</span> <span class="pre">&lt;&lt;</span> <span class="pre">*adl::adl_begin(range),</span> <span class="pre">void())</span></code> to the second function to constrain it to ranges:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">range</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="o">*</span><span class="n">adl</span><span class="o">::</span><span class="n">adl_begin</span><span class="p">(</span><span class="n">range</span><span class="p">),</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">x</span><span class="p">:</span><span class="n">range</span><span class="p">)</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>So now calling this will work:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+<span class="n">print</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>And print out:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="mi">4</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="tuples">
+<h2>Tuples<a class="headerlink" href="#tuples" title="Permalink to this headline">¶</a></h2>
+<p>We could extend this to printing tuples as well. We will need to combine a couple of functions to make a <code class="docutils literal"><span class="pre">for_each_tuple</span></code>, which lets us call a function for each element. First, the <code class="docutils literal"><span class="pre">proj</span></code> adaptor will let us apply a function to each argument passed in, and the <a class="reference internal" href="../../include/boost/hof/unpack.html"><span class="doc">unpack</span></a> adaptor will unpack the elements of a tuple and apply them to the function:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">for_each_tuple</span><span class="p">)</span> <span class="o">=</span> <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">sequence</span><span class="p">,</span> <span class="k">auto</span> <span class="n">f</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">unpack</span><span class="p">(</span><span class="n">proj</span><span class="p">(</span><span class="n">f</span><span class="p">))(</span><span class="n">sequence</span><span class="p">);</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p>So now if we call:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">for_each_tuple</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="p">[](</span><span class="k">auto</span> <span class="n">i</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">i</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>This will print out:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+</pre></div>
+</div>
+<p>We can integrate this into our <code class="docutils literal"><span class="pre">print</span></code> function by adding an additional overload:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">range</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="o">*</span><span class="n">adl</span><span class="o">::</span><span class="n">adl_begin</span><span class="p">(</span><span class="n">range</span><span class="p">),</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">x</span><span class="p">:</span><span class="n">range</span><span class="p">)</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">tuple</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">for_each_tuple</span><span class="p">(</span><span class="n">tuple</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="p">});</span>
+    <span class="p">}</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>So now we can call <code class="docutils literal"><span class="pre">print</span></code> with a tuple:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">print</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">));</span>
+</pre></div>
+</div>
+<p>And it will print out:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="recursive">
+<h2>Recursive<a class="headerlink" href="#recursive" title="Permalink to this headline">¶</a></h2>
+<p>Even though this will print for ranges and tuples, if we were to nest a range into a tuple this would not work. What we need to do is make the function call itself recursively. Even though we are using lambdas, we can easily make this recursive using the <a class="reference internal" href="../../include/boost/hof/fix.html"><span class="doc">fix</span></a> adaptor. This implements a fix point combinator, which passes the function(i.e. itself) in as the first argument.</p>
+<p>So now we add an additional arguments called <code class="docutils literal"><span class="pre">self</span></code> which is the <code class="docutils literal"><span class="pre">print</span></code> function itself. This extra argument is called by the <a class="reference internal" href="../../include/boost/hof/fix.html"><span class="doc">fix</span></a> adaptor, and so the user would still call this function with a single argument:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="n">fix</span><span class="p">(</span><span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">auto</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">range</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">self</span><span class="p">(</span><span class="o">*</span><span class="n">adl</span><span class="o">::</span><span class="n">adl_begin</span><span class="p">(</span><span class="n">range</span><span class="p">)),</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">x</span><span class="p">:</span><span class="n">range</span><span class="p">)</span> <span class="n">self</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">tuple</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="n">for_each_tuple</span><span class="p">(</span><span class="n">tuple</span><span class="p">,</span> <span class="n">self</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">));</span>
+</pre></div>
+</div>
+<p>This will let us print nested structures:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+<span class="k">auto</span> <span class="n">t</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>
+<span class="k">auto</span> <span class="n">m</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_tuple</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">t</span><span class="p">);</span>
+<span class="n">print</span><span class="p">(</span><span class="n">m</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Which outputs this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="mi">3</span>
+<span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="mi">4</span>
+<span class="mi">1</span>
+<span class="mi">2</span>
+<span class="mi">3</span>
+<span class="mi">4</span> 
+</pre></div>
+</div>
+</div>
+<div class="section" id="variadic">
+<h2>Variadic<a class="headerlink" href="#variadic" title="Permalink to this headline">¶</a></h2>
+<p>We can also make this <code class="docutils literal"><span class="pre">print</span></code> function variadic, so it prints every argument passed into it. We can use the <code class="docutils literal"><span class="pre">proj</span></code> adaptor, which already calls the function on every argument passed in. First, we just rename our original <code class="docutils literal"><span class="pre">print</span></code> function to <code class="docutils literal"><span class="pre">simple_print</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">simple_print</span><span class="p">)</span> <span class="o">=</span> <span class="n">fix</span><span class="p">(</span><span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">auto</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">range</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">self</span><span class="p">(</span><span class="o">*</span><span class="n">adl</span><span class="o">::</span><span class="n">adl_begin</span><span class="p">(</span><span class="n">range</span><span class="p">)),</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">x</span><span class="p">:</span><span class="n">range</span><span class="p">)</span> <span class="n">self</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">tuple</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="n">for_each_tuple</span><span class="p">(</span><span class="n">tuple</span><span class="p">,</span> <span class="n">self</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">));</span>
+</pre></div>
+</div>
+<p>And then apply the <code class="docutils literal"><span class="pre">proj</span></code> adaptor to <code class="docutils literal"><span class="pre">simple_print</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">print</span><span class="p">)</span> <span class="o">=</span> <span class="n">proj</span><span class="p">(</span><span class="n">simple_print</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Now we can call <code class="docutils literal"><span class="pre">print</span></code> with several arguments:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">print</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s">&quot;Hello world&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Which outputs:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="mi">5</span>
+<span class="n">Hello</span> <span class="n">world</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

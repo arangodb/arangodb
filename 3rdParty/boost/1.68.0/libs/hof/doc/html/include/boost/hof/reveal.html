@@ -1,0 +1,230 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>reveal &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="reverse_fold" href="reverse_fold.html" />
+    <link rel="prev" title="result" href="result.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="result.html"><img src="../../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="../../../doc/src/reference.html"><img src="../../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../../../doc/index.html"><img src="../../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="reverse_fold.html"><img src="../../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <div class="section" id="reveal">
+<h1>reveal<a class="headerlink" href="#reveal" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="header">
+<h2>Header<a class="headerlink" href="#header" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;boost/hof/reveal.hpp&gt;</span><span class="cp"></span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal"><span class="pre">reveal</span></code> function adaptor helps shows the error messages that get
+masked on some compilers. Sometimes an error in a function that causes a
+substitution failure, will remove the function from valid overloads. On
+compilers without a backtrace for substitution failure, this will mask the
+error inside the function. The <code class="docutils literal"><span class="pre">reveal</span></code> adaptor will expose these error
+messages while still keeping the function SFINAE-friendly.</p>
+</div>
+<div class="section" id="sample">
+<h2>Sample<a class="headerlink" href="#sample" title="Permalink to this headline">¶</a></h2>
+<p>If we take the <code class="docutils literal"><span class="pre">print</span></code> example from the quick start guide like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">namespace</span> <span class="n">adl</span> <span class="p">{</span>
+
+<span class="k">using</span> <span class="n">std</span><span class="o">::</span><span class="n">begin</span><span class="p">;</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">R</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="n">adl_begin</span><span class="p">(</span><span class="n">R</span><span class="o">&amp;&amp;</span> <span class="n">r</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="n">begin</span><span class="p">(</span><span class="n">r</span><span class="p">));</span>
+<span class="p">}</span>
+
+<span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">for_each_tuple</span><span class="p">)</span> <span class="o">=</span> <span class="p">[](</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">sequence</span><span class="p">,</span> <span class="k">auto</span> <span class="n">f</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span>
+<span class="p">(</span>
+    <span class="n">boost</span><span class="o">::</span><span class="n">hof</span><span class="o">::</span><span class="n">unpack</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">hof</span><span class="o">::</span><span class="n">proj</span><span class="p">(</span><span class="n">f</span><span class="p">))(</span><span class="n">sequence</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">auto</span> <span class="n">print</span> <span class="o">=</span> <span class="n">boost</span><span class="o">::</span><span class="n">hof</span><span class="o">::</span><span class="n">fix</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">hof</span><span class="o">::</span><span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">auto</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">,</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">x</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">range</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">self</span><span class="p">(</span><span class="o">*</span><span class="n">adl</span><span class="o">::</span><span class="n">adl_begin</span><span class="p">(</span><span class="n">range</span><span class="p">)),</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="k">for</span><span class="p">(</span><span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="nl">x</span><span class="p">:</span><span class="n">range</span><span class="p">)</span> <span class="n">self</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+    <span class="p">},</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">self</span><span class="p">,</span> <span class="k">const</span> <span class="k">auto</span><span class="o">&amp;</span> <span class="n">tuple</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span><span class="n">for_each_tuple</span><span class="p">(</span><span class="n">tuple</span><span class="p">,</span> <span class="n">self</span><span class="p">),</span> <span class="kt">void</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="n">for_each_tuple</span><span class="p">(</span><span class="n">tuple</span><span class="p">,</span> <span class="n">self</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">));</span>
+</pre></div>
+</div>
+<p>Which prints numbers and vectors:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">print</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">v</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span> <span class="p">};</span>
+<span class="n">print</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>However, if we pass a type that can&#8217;t be printed, we get an error like
+this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span>print.cpp:49:5: error: no matching function for call to object of type &#39;boost::hof::fix_adaptor&lt;boost::hof::first_of_adaptor&lt;(lambda at print.cpp:29:9), (lambda at print.cpp:33:9), (lambda at print.cpp:37:9)&gt; &gt;&#39;
+    print(foo{});
+    ^~~~~
+fix.hpp:158:5: note: candidate template ignored: substitution failure [with Ts = &lt;foo&gt;]: no matching function for call to object of type &#39;const boost::hof::first_of_adaptor&lt;(lambda at
+      print.cpp:29:9), (lambda at print.cpp:33:9), (lambda at print.cpp:37:9)&gt;&#39;
+    operator()(Ts&amp;&amp;... xs) const BOOST_HOF_SFINAE_RETURNS
+</pre></div>
+</div>
+<p>Which is short and gives very little information why it can&#8217;t be called.
+It doesn&#8217;t even show the overloads that were try. However, using the
+<code class="docutils literal"><span class="pre">reveal</span></code> adaptor we can get more info about the error like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span>print.cpp:49:5: error: no matching function for call to object of type &#39;boost::hof::reveal_adaptor&lt;boost::hof::fix_adaptor&lt;boost::hof::first_of_adaptor&lt;(lambda at print.cpp:29:9), (lambda at print.cpp:33:9),
+      (lambda at print.cpp:37:9)&gt; &gt;, boost::hof::fix_adaptor&lt;boost::hof::first_of_adaptor&lt;(lambda at print.cpp:29:9), (lambda at print.cpp:33:9), (lambda at print.cpp:37:9)&gt; &gt; &gt;&#39;
+    boost::hof::reveal(print)(foo{});
+    ^~~~~~~~~~~~~~~~~~
+reveal.hpp:149:20: note: candidate template ignored: substitution failure [with Ts = &lt;foo&gt;, $1 = void]: no matching function for call to object of type &#39;(lambda at print.cpp:29:9)&#39;
+    constexpr auto operator()(Ts&amp;&amp;... xs) const
+                   ^
+reveal.hpp:149:20: note: candidate template ignored: substitution failure [with Ts = &lt;foo&gt;, $1 = void]: no matching function for call to object of type &#39;(lambda at print.cpp:33:9)&#39;
+    constexpr auto operator()(Ts&amp;&amp;... xs) const
+                   ^
+reveal.hpp:149:20: note: candidate template ignored: substitution failure [with Ts = &lt;foo&gt;, $1 = void]: no matching function for call to object of type &#39;(lambda at print.cpp:37:9)&#39;
+    constexpr auto operator()(Ts&amp;&amp;... xs) const
+                   ^
+fix.hpp:158:5: note: candidate template ignored: substitution failure [with Ts = &lt;foo&gt;]: no matching function for call to object of type &#39;const boost::hof::first_of_adaptor&lt;(lambda at
+      print.cpp:29:9), (lambda at print.cpp:33:9), (lambda at print.cpp:37:9)&gt;&#39;
+    operator()(Ts&amp;&amp;... xs) const BOOST_HOF_SFINAE_RETURNS
+</pre></div>
+</div>
+<p>So now the error has a note for each of the lambda overloads it tried. Of
+course this can be improved even further by providing custom reporting of
+failures.</p>
+</div>
+<div class="section" id="synopsis">
+<h2>Synopsis<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">F</span><span class="o">&gt;</span>
+<span class="n">reveal_adaptor</span><span class="o">&lt;</span><span class="n">F</span><span class="o">&gt;</span> <span class="n">reveal</span><span class="p">(</span><span class="n">F</span> <span class="n">f</span><span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>F must be:</p>
+<ul class="simple">
+<li><a class="reference internal" href="../../../doc/src/concepts.html#constinvocable"><span class="std std-ref">ConstInvocable</span></a></li>
+<li>MoveConstructible</li>
+</ul>
+</div>
+<div class="section" id="reporting-failures">
+<h2>Reporting Failures<a class="headerlink" href="#reporting-failures" title="Permalink to this headline">¶</a></h2>
+<p>By default, <code class="docutils literal"><span class="pre">reveal</span></code> reports the substitution failure by trying to call
+the function. However, more detail expressions can be be reported from a
+template alias by using <code class="docutils literal"><span class="pre">as_failure</span></code>. This is done by defining a nested
+<code class="docutils literal"><span class="pre">failure</span></code> struct in the function object and then inheriting from
+<code class="docutils literal"><span class="pre">as_failure</span></code>. Also multiple failures can be reported by using
+<code class="docutils literal"><span class="pre">with_failures</span></code>.</p>
+</div>
+<div class="section" id="id1">
+<h2>Synopsis<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="c1">// Report failure by instantiating the Template</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span><span class="o">&gt;</span> <span class="k">class</span> <span class="nc">Template</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">as_failure</span><span class="p">;</span>
+
+<span class="c1">// Report multiple falures</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Failures</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">with_failures</span><span class="p">;</span>
+
+<span class="c1">// Report the failure for each function</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Fs</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">failure_for</span><span class="p">;</span>
+
+<span class="c1">// Get the failure of a function</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">F</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="n">get_failure</span><span class="p">;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="cp">#include</span> <span class="cpf">&lt;boost/hof.hpp&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&lt;cassert&gt;</span><span class="cp"></span>
+
+<span class="k">struct</span> <span class="n">sum_f</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="k">class</span> <span class="nc">U</span><span class="o">&gt;</span>
+    <span class="k">using</span> <span class="n">sum_failure</span> <span class="o">=</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">declval</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">()</span><span class="o">+</span><span class="n">std</span><span class="o">::</span><span class="n">declval</span><span class="o">&lt;</span><span class="n">U</span><span class="o">&gt;</span><span class="p">());</span>
+
+    <span class="k">struct</span> <span class="nl">failure</span>
+    <span class="p">:</span> <span class="n">boost</span><span class="o">::</span><span class="n">hof</span><span class="o">::</span><span class="n">as_failure</span><span class="o">&lt;</span><span class="n">sum_failure</span><span class="o">&gt;</span>
+    <span class="p">{};</span>
+
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="p">,</span> <span class="k">class</span> <span class="nc">U</span><span class="o">&gt;</span>
+    <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">T</span> <span class="n">x</span><span class="p">,</span> <span class="n">U</span> <span class="n">y</span><span class="p">)</span> <span class="k">const</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">sum_f</span><span class="p">()(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

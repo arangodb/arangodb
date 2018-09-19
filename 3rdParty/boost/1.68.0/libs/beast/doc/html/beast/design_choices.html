@@ -1,0 +1,108 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Design Choices</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="prev" href="concepts/streams.html" title="Streams">
+<link rel="next" href="design_choices/http_message_container.html" title="HTTP Message Container">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="concepts/streams.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design_choices/http_message_container.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="beast.design_choices"></a><a class="link" href="design_choices.html" title="Design Choices">Design Choices</a>
+</h2></div></div></div>
+<p>
+      The implementations were originally driven by business needs of cryptocurrency
+      server applications (e.g. <a href="https://github.com/ripple/rippled" target="_top">rippled</a>),
+      written in C++. These needs were not met by existing solutions so Beast was
+      written from scratch as a solution. Beast's design philosophy avoids flaws
+      exhibited by other libraries:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Don't try to do too much.
+        </li>
+<li class="listitem">
+          Don't sacrifice performance.
+        </li>
+<li class="listitem">
+          Mimic <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>; familiarity
+          breeds confidence.
+        </li>
+<li class="listitem">
+          Role-symmetric interfaces; client and server the same (or close to it).
+        </li>
+<li class="listitem">
+          Leave important decisions, such as allocating memory or managing flow control,
+          to the user.
+        </li>
+</ul></div>
+<p>
+      Beast uses the <a class="link" href="concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="bold"><strong>DynamicBuffer</strong></span></a>
+      concept presented in the Networking TS (<a href="http://cplusplus.github.io/networking-ts/draft.pdf" target="_top"><span class="bold"><strong>Networking.TS</strong></span></a>), and relies heavily on the <a href="../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="bold"><strong>ConstBufferSequence</strong></span></a> and <a href="../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="bold"><strong>MutableBufferSequence</strong></span></a> concepts for passing buffers
+      to functions. The authors have found the dynamic buffer and buffer sequence
+      interfaces to be optimal for interacting with Asio, and for other tasks such
+      as incremental parsing of data in buffers (for example, parsing websocket frames
+      stored in a <a class="link" href="ref/boost__beast__static_buffer.html" title="static_buffer"><code class="computeroutput"><span class="identifier">static_buffer</span></code></a>).
+    </p>
+<p>
+      During the development of Beast the authors have studied other software packages
+      and in particular the comments left during the Boost Review process of other
+      packages offering similar functionality. In this section and the FAQs that
+      follow we attempt to answer those questions that are also applicable to Beast.
+    </p>
+<p>
+      For HTTP we model the message to maximize flexibility of implementation strategies
+      while allowing familiar verbs such as <span class="bold"><strong><code class="computeroutput"><span class="identifier">read</span></code></strong></span>
+      and <span class="bold"><strong><code class="computeroutput"><span class="identifier">write</span></code></strong></span>.
+      The HTTP interface is further driven by the needs of the WebSocket module,
+      as a WebSocket session requires a HTTP Upgrade handshake exchange at the start.
+      Other design goals:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Keep it simple.
+        </li>
+<li class="listitem">
+          Stay low level; don't invent a whole web server or client.
+        </li>
+<li class="listitem">
+          Allow for customizations, if the user needs it.
+        </li>
+</ul></div>
+<p>
+      The following video presentation was delivered at <a href="https://cppcon.org/" target="_top">CppCon</a>
+      in 2016. It provides a light introduction to some of the earliest interfaces
+      of Beast (which have since changed).
+    </p>
+<div class="mediaobject"><embed src="https://www.youtube.com/embed/uJZgRcvPFwI?rel=0" align="middle" width="560" height="315"></embed></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="concepts/streams.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design_choices/http_message_container.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

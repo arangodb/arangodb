@@ -1,0 +1,164 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Test module runner</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="prev" href="test_module_init_overview.html" title="Test module's initialization">
+<link rel="next" href="single_header_customizations.html" title="Single-header variant customizations">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_module_init_overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="single_header_customizations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.adv_scenarios.test_module_runner_overview"></a><a class="link" href="test_module_runner_overview.html" title="Test module runner">Test
+      module runner</a>
+</h3></div></div></div>
+<p>
+        A <span class="emphasis"><em>test module runner</em></span> is an <span class="emphasis"><em>orchestrator</em></span>
+        or a <span class="emphasis"><em>driver</em></span> that, given the test tree, ensures the test
+        tree is initialized, tests are executed and necessary reports generated.
+        It performs the following operations:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            initialize the test module using the supplied <a class="link" href="test_module_init_overview.html" title="Test module's initialization"><span class="emphasis"><em>initialization
+            function</em></span></a>;
+          </li>
+<li class="listitem">
+            select output media for the test log and the test results report;
+          </li>
+<li class="listitem">
+            execute test cases as specified by run-time parameters;
+          </li>
+<li class="listitem">
+            produce the test results report;
+          </li>
+<li class="listitem">
+            generate the appropriate return code.
+          </li>
+</ul></div>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> comes with the default test
+        runner. There is no need to call it explicitly. The default generated test
+        module's <a class="link" href="entry_point_overview.html" title="Test module's entry point">entry
+        point</a> invokes the default test runner. The default test runner is
+        declared with the following signature:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">unit_test</span> <span class="special">{</span>
+
+  <span class="keyword">typedef</span> <span class="keyword">bool</span> <span class="special">(*</span><span class="identifier">init_unit_test_func</span><span class="special">)();</span>
+
+  <span class="keyword">int</span> <span class="identifier">unit_test_main</span><span class="special">(</span> <span class="identifier">init_unit_test_func</span> <span class="identifier">init_func</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">argv</span><span class="special">[]</span> <span class="special">);</span>
+
+<span class="special">}</span> <span class="special">}</span>
+</pre>
+<p>
+        The test runner may return one of the following values:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Value
+                </p>
+              </th>
+<th>
+                <p>
+                  Meaning
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">exit_success</span></code>
+                </p>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      No errors occurred during testing, or
+                    </li>
+<li class="listitem">
+                      the success result was forced with command-line argument <code class="computeroutput"><span class="special">--[</span><span class="identifier">link</span>
+                      <span class="identifier">boost_test</span><span class="special">.</span><span class="identifier">utf_reference</span><span class="special">.</span><span class="identifier">rt_param_reference</span><span class="special">.</span><span class="identifier">result_code</span> </code>result_code<code class="computeroutput"><span class="special">]=</span><span class="identifier">no</span></code>.
+                    </li>
+</ul></div>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">exit_test_failure</span></code>
+                </p>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      Non-fatal errors detected and no uncaught exceptions were thrown
+                      during testing, or
+                    </li>
+<li class="listitem">
+                      the initialization of the <span class="emphasis"><em>Unit Test Framework</em></span>
+                      failed.
+                    </li>
+</ul></div>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">exit_exception_failure</span></code>
+                </p>
+              </td>
+<td>
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                      Fatal errors were detected, or
+                    </li>
+<li class="listitem">
+                      uncaught exceptions thrown during testing.
+                    </li>
+</ul></div>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        An advanced test runner may provide additional features, including interactive
+        GUI interfaces, test coverage and profiling support.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_module_init_overview.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="single_header_customizations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

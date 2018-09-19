@@ -1,0 +1,206 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Conditional overloading &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Polymorphic constructors" href="example_polymorphic_constructors.html" />
+    <link rel="prev" title="Print function" href="example_print.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="example_print.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="intro.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="example_polymorphic_constructors.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <!-- Copyright 2018 Paul Fultz II
+     Distributed under the Boost Software License, Version 1.0.
+     (http://www.boost.org/LICENSE_1_0.txt)
+--><div class="section" id="conditional-overloading">
+<h1>Conditional overloading<a class="headerlink" href="#conditional-overloading" title="Permalink to this headline">¶</a></h1>
+<p>Conditional overloading takes a set of functions and calls the first one that is callable. This is one of the ways to resolve ambiguity with overloads, but more importantly it allows an alternative function to be used when the first is not callable.</p>
+<div class="section" id="stringify">
+<h2>Stringify<a class="headerlink" href="#stringify" title="Permalink to this headline">¶</a></h2>
+<p>Take a look at this example of defining a <code class="docutils literal"><span class="pre">stringify</span></code> function from
+stackoverflow <a class="reference external" href="http://stackoverflow.com/questions/30189926/metaprograming-failure-of-function-definition-defines-a-separate-function/30515874">here</a>.</p>
+<p>The user would like to write <code class="docutils literal"><span class="pre">stringify</span></code> to call <code class="docutils literal"><span class="pre">to_string</span></code> where applicable
+and fallback on using <code class="docutils literal"><span class="pre">sstream</span></code> to convert to a string. Most of the top
+answers usually involve some amount of metaprogramming using either <code class="docutils literal"><span class="pre">void_t</span></code>
+or <code class="docutils literal"><span class="pre">is_detected</span></code>(see <a class="reference external" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4502.pdf">n4502</a>):</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="o">&gt;</span>
+<span class="k">using</span> <span class="n">to_string_t</span> <span class="o">=</span> <span class="k">decltype</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">declval</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">()));</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="o">&gt;</span>
+<span class="k">using</span> <span class="n">has_to_string</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">is_detected</span><span class="o">&lt;</span><span class="n">to_string_t</span><span class="p">,</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> 
+<span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">enable_if</span><span class="o">&lt;</span><span class="n">has_to_string</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">{},</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;::</span><span class="n">type</span> 
+<span class="n">stringify</span><span class="p">(</span><span class="n">T</span> <span class="n">t</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span> 
+<span class="k">typename</span> <span class="n">std</span><span class="o">::</span><span class="n">enable_if</span><span class="o">&lt;!</span><span class="n">has_to_string</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">{},</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;::</span><span class="n">type</span> 
+<span class="n">stringify</span><span class="p">(</span><span class="n">T</span> <span class="n">t</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">return</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">ostringstream</span><span class="o">&amp;&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostringstream</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">t</span><span class="p">).</span><span class="n">str</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>However, with Boost.HigherOrderFunctions it can simply be written like
+this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">stringify</span><span class="p">)</span> <span class="o">=</span> <span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">x</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">x</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">ostringstream</span><span class="o">&amp;&gt;</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostringstream</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">x</span><span class="p">).</span><span class="n">str</span><span class="p">())</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+<p>So, using <a class="reference internal" href="../../include/boost/hof/returns.html"><span class="doc">BOOST_HOF_RETURNS</span></a> not only deduces the return type for the function, but it also constrains the function on whether the expression is valid or not. So by writing <code class="docutils literal"><span class="pre">BOOST_HOF_RETURNS(std::to_string(x))</span></code> then the first function will try to call <code class="docutils literal"><span class="pre">std::to_string</span></code> function if possible. If not, then the second function will be called.</p>
+<p>The second function still uses <a class="reference internal" href="../../include/boost/hof/returns.html"><span class="doc">BOOST_HOF_RETURNS</span></a>, so the function will still be constrained by whether the <code class="docutils literal"><span class="pre">&lt;&lt;</span></code> stream operator can be used. Although it may seem unnecessary because there is not another function, however, this makes the function composable. So we could use this to define a <code class="docutils literal"><span class="pre">serialize</span></code> function that tries to call <code class="docutils literal"><span class="pre">stringify</span></code> first, otherwise it looks for the member <code class="docutils literal"><span class="pre">.serialize()</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">serialize</span><span class="p">)</span> <span class="o">=</span> <span class="n">first_of</span><span class="p">(</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">x</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="n">stringify</span><span class="p">(</span><span class="n">x</span><span class="p">)),</span>
+    <span class="p">[](</span><span class="k">auto</span> <span class="n">x</span><span class="p">)</span> <span class="n">BOOST_HOF_RETURNS</span><span class="p">(</span><span class="n">x</span><span class="p">.</span><span class="n">serialize</span><span class="p">())</span>
+<span class="p">);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="static-if">
+<h2>static_if<a class="headerlink" href="#static-if" title="Permalink to this headline">¶</a></h2>
+<p>In addition, this can be used with the <a class="reference internal" href="../../include/boost/hof/if.html"><span class="doc">if</span></a> decorator to create <code class="docutils literal"><span class="pre">static_if</span></code>-like
+constructs on pre-C++17 compilers. For example, Baptiste Wicht discusses how one could write <code class="docutils literal"><span class="pre">static_if</span></code> in C++ <a class="reference external" href="http://baptiste-wicht.com/posts/2015/07/simulate-static_if-with-c11c14.html">here</a>.</p>
+<p>He wants to be able to write this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">decrement_kindof</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">){</span>
+    <span class="k">if</span> <span class="k">constexpr</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">()){</span>
+        <span class="n">value</span><span class="p">.</span><span class="n">pop_back</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="o">--</span><span class="n">value</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>However, that isn&#8217;t possible before C++17. With Boost.HigherOrderFunctions one can simply write
+this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">decrement_kindof</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">eval</span><span class="p">(</span><span class="n">first_of</span><span class="p">(</span>
+        <span class="n">if_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">())([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">){</span>
+            <span class="n">id</span><span class="p">(</span><span class="n">value</span><span class="p">).</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="p">}),</span>
+        <span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">){</span>
+            <span class="o">--</span><span class="n">id</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal"><span class="pre">id</span></code> parameter passed to the lambda is the <a class="reference internal" href="../../include/boost/hof/identity.html"><span class="doc">identity</span></a> function. As explained in the article, this is used to delay the lookup of types by making it a dependent type(i.e. the type depends on a template parameter), which is necessary to avoid compile errors. The <a class="reference internal" href="../../include/boost/hof/eval.html"><span class="doc">eval</span></a> function that is called will pass this <code class="docutils literal"><span class="pre">identity</span></code> function to the lambdas.</p>
+<p>The advantage of using Boost.HigherOrderFunctions instead of the solution in Baptiste
+Wicht&#8217;s blog, is that <code class="docutils literal"><span class="pre">first_of</span></code> allows more than just two conditions. So if
+there was another trait to be checked, such as <code class="docutils literal"><span class="pre">is_stack</span></code>, it could be written
+like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="k">template</span><span class="o">&lt;</span><span class="k">typename</span> <span class="n">T</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">decrement_kindof</span><span class="p">(</span><span class="n">T</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">eval</span><span class="p">(</span><span class="n">first_of</span><span class="p">(</span>
+        <span class="n">if_</span><span class="p">(</span><span class="n">is_stack</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">())([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">){</span>
+            <span class="n">id</span><span class="p">(</span><span class="n">value</span><span class="p">).</span><span class="n">pop</span><span class="p">();</span>
+        <span class="p">}),</span>
+        <span class="n">if_</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">T</span><span class="o">&gt;</span><span class="p">())([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">){</span>
+            <span class="n">id</span><span class="p">(</span><span class="n">value</span><span class="p">).</span><span class="n">pop_back</span><span class="p">();</span>
+        <span class="p">}),</span>
+        <span class="p">[</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span> <span class="n">id</span><span class="p">){</span>
+            <span class="o">--</span><span class="n">id</span><span class="p">(</span><span class="n">value</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="type-traits">
+<h2>Type traits<a class="headerlink" href="#type-traits" title="Permalink to this headline">¶</a></h2>
+<p>Furthermore, this technique can be used to write type traits as well. Jens
+Weller was looking for a way to define a general purpose detection for pointer
+operands(such as <code class="docutils literal"><span class="pre">*</span></code> and <code class="docutils literal"><span class="pre">-&gt;</span></code>). One way to accomplish this is like
+this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span></span><span class="c1">// Check that T has member function for operator* and ope</span>
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="o">&gt;</span>
+<span class="k">auto</span> <span class="n">has_pointer_member</span><span class="p">(</span><span class="k">const</span> <span class="n">T</span><span class="o">&amp;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="k">decltype</span><span class="p">(</span>
+    <span class="o">&amp;</span><span class="n">T</span><span class="o">::</span><span class="k">operator</span><span class="o">*</span><span class="p">,</span>
+    <span class="o">&amp;</span><span class="n">T</span><span class="o">::</span><span class="k">operator</span><span class="o">-&gt;</span><span class="p">,</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">true_type</span><span class="p">{}</span>
+<span class="p">);</span>
+
+<span class="n">BOOST_HOF_STATIC_LAMBDA_FUNCTION</span><span class="p">(</span><span class="n">has_pointer_operators</span><span class="p">)</span> <span class="o">=</span> <span class="n">first_of</span><span class="p">(</span>
+    <span class="n">BOOST_HOF_LIFT</span><span class="p">(</span><span class="n">has_pointer_member</span><span class="p">),</span>
+    <span class="p">[](</span><span class="k">auto</span><span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">bool_constant</span><span class="o">&lt;</span><span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">is_void</span><span class="o">&lt;</span><span class="k">decltype</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span><span class="o">&gt;</span><span class="p">())</span><span class="o">&gt;</span> <span class="p">{</span> <span class="k">return</span> <span class="p">{};</span> <span class="p">},</span>
+    <span class="n">always</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">false_type</span><span class="p">{})</span>
+<span class="p">);</span>
+
+<span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">T</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="nl">is_dereferenceable</span>
+<span class="p">:</span> <span class="k">decltype</span><span class="p">(</span><span class="n">has_pointer_operators</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">declval</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">()))</span>
+<span class="p">{};</span>
+</pre></div>
+</div>
+<p>Which is much simpler than the other implementations that were written, which were
+about 3 times the amount of code(see <a class="reference external" href="https://gist.github.com/lefticus/6fdccb18084a1a3410d5">here</a>).</p>
+<p>The <code class="docutils literal"><span class="pre">has_pointer_operators</span></code> function works by first trying to call <code class="docutils literal"><span class="pre">has_pointer_member</span></code> which returns <code class="docutils literal"><span class="pre">true_type</span></code> if the type has member functions <code class="docutils literal"><span class="pre">operator*</span></code> and <code class="docutils literal"><span class="pre">operator-&gt;</span></code>, otherwise the function is not callable. The next function is only callable on pointers, which returns true if it is not a <code class="docutils literal"><span class="pre">void*</span></code> pointer(because <code class="docutils literal"><span class="pre">void*</span></code> pointers are not dereferenceable). Finally, if none of those functions matched then the last function will always return <code class="docutils literal"><span class="pre">false_type</span></code>.</p>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

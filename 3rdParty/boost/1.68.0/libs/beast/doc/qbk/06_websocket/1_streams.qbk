@@ -1,0 +1,85 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Creating Streams]
+
+The interface to the WebSocket implementation is a single template class
+[link beast.ref.boost__beast__websocket__stream `stream`]:
+
+[ws_snippet_26]
+
+An instance of the stream wraps an existing network transport object
+or other type of octet oriented stream. The wrapped object is called
+the "next layer" and must meet the requirements of __SyncStream__ if
+synchronous operations are performed, __AsyncStream__ if asynchronous
+operations are performed, or both. Any arguments supplied to the
+constructor of the stream wrapper are forwarded to next layer's constructor.
+
+The value of `deflateSupported` determines if the stream will support
+(but not require) the permessage-deflate extension
+([@https://tools.ietf.org/html/rfc7692 rfc7692])
+negotiation during handshaking. This extension allows messages to be
+optionally automatically compressed using the deflate algorithm prior
+to transmission. When this boolean value is `false`, the extension is
+disabled. Applications which do not intend to use the permessage-deflate
+extension may set the value to `false` to enjoy a reduction in the size
+of the compiled output, as the necessary compression code (included with
+Beast) will not be compiled in.
+
+Here we declare a websocket stream over a TCP/IP socket with ownership
+of the socket. The `io_context` argument is forwarded to the wrapped
+socket's constructor:
+
+[ws_snippet_2]
+
+[heading Using SSL]
+
+To use WebSockets over SSL, use an instance of the __ssl_stream__
+class template as the template type for the stream. The required
+__io_context__ and __ssl_context__ arguments are forwarded to the
+wrapped stream's constructor:
+
+[wss_snippet_1]
+[wss_snippet_2]
+
+[important
+    Code which declares websocket stream objects using Asio SSL types
+    must include the file [include_file boost/beast/websocket/ssl.hpp].
+]
+
+[heading Non-owning References]
+
+If a socket type supports move construction, a websocket stream may be
+constructed around the already existing socket by invoking the move
+constructor signature:
+
+[ws_snippet_3]
+
+Or, the wrapper can be constructed with a non-owning reference. In
+this case, the caller is responsible for managing the lifetime of the
+underlying socket being wrapped:
+
+[ws_snippet_4]
+
+Once the WebSocket stream wrapper is created, the wrapped object may be
+accessed by calling
+[link beast.ref.boost__beast__websocket__stream.next_layer.overload1 `stream::next_layer`]:
+
+[ws_snippet_5]
+
+[warning
+    Initiating operations on the next layer while websocket
+    operations are being performed may result in undefined behavior.
+]
+
+[heading Non-Blocking Mode]
+
+Please note that websocket streams do not support non-blocking modes.
+
+[endsect]

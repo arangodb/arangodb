@@ -1,0 +1,107 @@
+[/
+ / Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:coroutines_ts Coroutines TS Support (experimental)]
+
+(Note: "Experimental" means that this interface is provided to gather feedback
+and may change in subsequent Asio releases.)
+
+Experimental support for the Coroutines TS is provided via the [link
+boost_asio.reference.experimental__co_spawn `experimental::co_spawn()`]
+function. This `co_spawn()` function enables programs to implement asynchronous
+logic in a synchronous manner, in conjunction with the `co_await` keyword, as
+shown in the following example:
+
+  boost::asio::experimental::co_spawn(executor,
+      [socket = std::move(socket)]() mutable
+      {
+        return echo(std::move(socket));
+      },
+      boost::asio::experimental::detached);
+
+  // ...
+
+  boost::asio::experimental::awaitable<void> echo(tcp::socket socket)
+  {
+    auto token = co_await boost::asio::experimental::this_coro::token();
+
+    try
+    {
+      char data[1024];
+      for (;;)
+      {
+        std::size_t n = co_await socket.async_read_some(boost::asio::buffer(data), token);
+        co_await async_write(socket, boost::asio::buffer(data, n), token);
+      }
+    }
+    catch (std::exception& e)
+    {
+      std::printf("echo Exception: %s\n", e.what());
+    }
+  }
+
+The first argument to `co_spawn()` is an [link boost_asio.reference.Executor1
+executor] that determines the context in which the coroutine is permitted to
+execute. For example, a server's per-client object may consist of multiple
+coroutines; they should all run on the same `strand` so that no explicit
+synchronisation is required.
+
+The second argument is a nullary function object that returns a [link
+boost_asio.reference.experimental__awaitable `boost::asio::awaitable<R>`],
+where `R` is the type of return value produced by the coroutine. In the above
+example, the coroutine returns `void`.
+
+The third argument is a completion token, and this is used by `co_spawn()` to
+produce a completion handler with signature `void(std::exception_ptr, R)`. This
+completion handler is invoked with the result of the coroutine once it has
+finished. In the above example we pass a completion token type, [link
+boost_asio.reference.experimental__detached
+`boost::asio::experimental::detached`], which is used to explicitly ignore the
+result of an asynchronous operation.
+
+In this example the body of the coroutine is implemented in the `echo`
+function. This function first obtains a completion token that represents the
+current coroutine:
+
+  auto token = co_await boost::asio::experimental::this_coro::token();
+
+When this completion token is passed to an asynchronous operation, the
+operation's initiating function returns an `awaitable` that may be used with
+the `co_await` keyword:
+
+  std::size_t n = co_await socket.async_read_some(boost::asio::buffer(data), token);
+
+Where an asynchronous operation's handler signature has the form:
+
+  void handler(boost::system::error_code ec, result_type result);
+
+the resulting type of the `co_await` expression is `result_type`. In the
+`async_read_some` example above, this is `size_t`. If the asynchronous
+operation fails, the `error_code` is converted into a `system_error` exception
+and thrown.
+
+Where a handler signature has the form:
+
+  void handler(boost::system::error_code ec);
+
+the `co_await` expression produces a `void` result. As above, an error is
+passed back to the coroutine as a `system_error` exception.
+
+[heading See Also]
+
+[link boost_asio.reference.experimental__co_spawn experimental::co_spawn],
+[link boost_asio.reference.experimental__detached experimental::detached],
+[link boost_asio.reference.experimental__redirect_error experimental::redirect_error],
+[link boost_asio.reference.experimental__awaitable experimental::awaitable],
+[link boost_asio.reference.experimental__await_token experimental::await_token],
+[link boost_asio.reference.experimental__this_coro__executor experimental::this_coro::executor],
+[link boost_asio.reference.experimental__this_coro__token experimental::this_coro::token],
+[link boost_asio.examples.cpp17_examples.coroutines_ts_support Coroutines TS examples],
+[link boost_asio.overview.core.spawn Stackful Coroutines],
+[link boost_asio.overview.core.coroutine Stackless Coroutines].
+
+[endsect]

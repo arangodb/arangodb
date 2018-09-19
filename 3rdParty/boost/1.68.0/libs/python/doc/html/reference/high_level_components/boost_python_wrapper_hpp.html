@@ -1,0 +1,222 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/wrapper.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="prev" href="boost_python_stl_iterator_hpp.html" title="boost/python/stl_iterator.hpp">
+<link rel="next" href="../object_wrappers.html" title="Chapter&#160;3.&#160;Object Wrappers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_stl_iterator_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../object_wrappers.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="high_level_components.boost_python_wrapper_hpp"></a><a class="link" href="boost_python_wrapper_hpp.html" title="boost/python/wrapper.hpp">boost/python/wrapper.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_override">Class
+        <code class="computeroutput"><span class="identifier">override</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_override_observer_function">Class
+        <code class="computeroutput"><span class="identifier">override</span></code> observer functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_template_wrapper">Class
+        template <code class="computeroutput"><span class="identifier">wrapper</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_template_wrapper_observer_">Class
+        template <code class="computeroutput"><span class="identifier">wrapper</span></code> observer
+        functions</a></span></dt>
+<dt><span class="section"><a href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_wrapper_hpp.introduction"></a><a class="link" href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          To wrap a class T such that its virtual functions can be "overridden
+          in Python"&#8212;so that the corresponding method of a Python derived
+          class will be called when the virtual function is invoked from C++&#8212;you
+          must create a C++ wrapper class derived from <code class="computeroutput"><span class="identifier">T</span></code>
+          that overrides those virtual functions so that they call into Python. This
+          header contains classes that can be used to make that job easier.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_wrapper_hpp.class_override"></a><a class="link" href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_override" title="Class override">Class
+        <code class="computeroutput"><span class="identifier">override</span></code></a>
+</h3></div></div></div>
+<p>
+          Encapsulates a Python override of a C++ virtual function. An override object
+          either holds a callable Python object or <code class="computeroutput"><span class="identifier">None</span></code>.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">class</span> <span class="identifier">override</span> <span class="special">:</span> <span class="identifier">object</span>
+  <span class="special">{</span>
+   <span class="keyword">public</span><span class="special">:</span>
+      <span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+      <span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">(</span><span class="identifier">A0</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span>
+      <span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span> <span class="identifier">A1</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="special">...</span>
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="special">...</span><span class="keyword">class</span> <span class="identifier">An</span><span class="special">&gt;</span>
+      <span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span> <span class="identifier">A1</span><span class="special">,</span> <span class="special">...</span><span class="identifier">An</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="special">};</span>
+<span class="special">};</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_wrapper_hpp.class_override_observer_function"></a><a class="link" href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_override_observer_function" title="Class override observer functions">Class
+        <code class="computeroutput"><span class="identifier">override</span></code> observer functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+<span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">(</span><span class="identifier">A0</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span>
+<span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span> <span class="identifier">A1</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="special">...</span><span class="keyword">class</span> <span class="identifier">An</span><span class="special">&gt;</span>
+<span class="identifier">unspecified</span> <span class="keyword">operator</span><span class="special">(</span><span class="identifier">A0</span><span class="special">,</span> <span class="identifier">A1</span><span class="special">,</span> <span class="special">...</span><span class="identifier">An</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                If *this holds a callable Python object, it is invoked with the specified
+                arguments in the manner specified here. Otherwise, throws <a class="link" href="boost_python_errors_hpp.html#high_level_components.boost_python_errors_hpp.class_error_already_set" title="Class error_already_set">error_already_set</a>.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                An object of unspecified type that holds the Python result of the
+                invocation and, when converted to a C++ type R, attempts to convert
+                that result object to R. If that conversion fails, throws <a class="link" href="boost_python_errors_hpp.html#high_level_components.boost_python_errors_hpp.class_error_already_set" title="Class error_already_set">error_already_set</a>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_wrapper_hpp.class_template_wrapper"></a><a class="link" href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_template_wrapper" title="Class template wrapper">Class
+        template <code class="computeroutput"><span class="identifier">wrapper</span></code></a>
+</h3></div></div></div>
+<p>
+          Deriving your wrapper class from both <code class="computeroutput"><span class="identifier">T</span></code>
+          and <code class="computeroutput"><span class="identifier">wrapper</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          makes writing that derived class easier.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+  <span class="keyword">class</span> <span class="identifier">wrapper</span>
+  <span class="special">{</span>
+   <span class="keyword">protected</span><span class="special">:</span>
+      <span class="identifier">override</span> <span class="identifier">get_override</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">name</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="special">};</span>
+<span class="special">};</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_wrapper_hpp.class_template_wrapper_observer_"></a><a class="link" href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.class_template_wrapper_observer_" title="Class template wrapper observer functions">Class
+        template <code class="computeroutput"><span class="identifier">wrapper</span></code> observer
+        functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">override</span> <span class="identifier">get_override</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">name</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                name is a <a class="link" href="../glossary.html#ntbs">ntbs</a>.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                If <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                is the C++ base class subobject of a Python derived class instance
+                that overrides the named function, returns an override object that
+                delegates to the Python override. Otherwise, returns an override
+                object that holds <code class="computeroutput"><span class="identifier">None</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_wrapper_hpp.example"></a><a class="link" href="boost_python_wrapper_hpp.html#high_level_components.boost_python_wrapper_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">wrapper</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">call</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="comment">// Class with one pure virtual function</span>
+<span class="keyword">struct</span> <span class="identifier">P</span>
+<span class="special">{</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">P</span><span class="special">(){}</span>
+    <span class="keyword">virtual</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">f</span><span class="special">()</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">g</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="string">"P::g()"</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">PCallback</span> <span class="special">:</span> <span class="identifier">P</span><span class="special">,</span> <span class="identifier">wrapper</span><span class="special">&lt;</span><span class="identifier">P</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">f</span><span class="special">()</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get_override</span><span class="special">(</span><span class="string">"f"</span><span class="special">)();</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// Class with one non-pure virtual function</span>
+<span class="keyword">struct</span> <span class="identifier">A</span>
+<span class="special">{</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">A</span><span class="special">(){}</span>
+    <span class="keyword">virtual</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">f</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="string">"A::f()"</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">ACallback</span> <span class="special">:</span>  <span class="identifier">A</span><span class="special">,</span> <span class="identifier">wrapper</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">f</span><span class="special">()</span>
+    <span class="special">{</span>
+        <span class="keyword">if</span> <span class="special">(</span><span class="identifier">override</span> <span class="identifier">f</span> <span class="special">=</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get_override</span><span class="special">(</span><span class="string">"f"</span><span class="special">))</span>
+            <span class="keyword">return</span> <span class="identifier">f</span><span class="special">();</span>
+        <span class="keyword">return</span> <span class="identifier">A</span><span class="special">::</span><span class="identifier">f</span><span class="special">();</span>
+    <span class="special">}</span>
+
+    <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">default_f</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">A</span><span class="special">::</span><span class="identifier">f</span><span class="special">();</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE_INIT</span><span class="special">(</span><span class="identifier">polymorphism</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">PCallback</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">noncopyable</span><span class="special">&gt;(</span><span class="string">"P"</span><span class="special">)</span>
+        <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="identifier">pure_virtual</span><span class="special">(&amp;</span><span class="identifier">P</span><span class="special">::</span><span class="identifier">f</span><span class="special">))</span>
+        <span class="special">;</span>
+
+    <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">ACallback</span><span class="special">,</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">noncopyable</span><span class="special">&gt;(</span><span class="string">"A"</span><span class="special">)</span>
+        <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">A</span><span class="special">::</span><span class="identifier">f</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">ACallback</span><span class="special">::</span><span class="identifier">default_f</span><span class="special">)</span>
+        <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_stl_iterator_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../object_wrappers.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

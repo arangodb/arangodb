@@ -1,0 +1,1003 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Future</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../futures.html" title="Futures">
+<link rel="prev" href="../futures.html" title="Futures">
+<link rel="next" href="promise.html" title="Template promise&lt;&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../futures.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../futures.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="promise.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="fiber.synchronization.futures.future"></a><a class="link" href="future.html" title="Future">Future</a>
+</h4></div></div></div>
+<p>
+          A future provides a mechanism to access the result of an asynchronous operation.
+        </p>
+<a name="shared_state"></a><h6>
+<a name="fiber.synchronization.futures.future.h0"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.shared_state"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.shared_state">shared
+          state</a>
+        </h6>
+<p>
+          Behind a <a class="link" href="promise.html#class_promise"><code class="computeroutput">promise&lt;&gt;</code></a> and its <a class="link" href="future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a> lies
+          an unspecified object called their <span class="emphasis"><em>shared state</em></span>. The
+          shared state is what will actually hold the async result (or the exception).
+        </p>
+<p>
+          The shared state is instantiated along with the <a class="link" href="promise.html#class_promise"><code class="computeroutput">promise&lt;&gt;</code></a>.
+        </p>
+<p>
+          Aside from its originating <code class="computeroutput"><span class="identifier">promise</span><span class="special">&lt;&gt;</span></code>, a <a class="link" href="future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a> holds
+          a unique reference to a particular shared state. However, multiple <a class="link" href="future.html#class_shared_future"><code class="computeroutput">shared_future&lt;&gt;</code></a> instances
+          can reference the same underlying shared state.
+        </p>
+<p>
+          As <a class="link" href="packaged_task.html#class_packaged_task"><code class="computeroutput">packaged_task&lt;&gt;</code></a> and <a class="link" href="future.html#fibers_async"><code class="computeroutput">fibers::async()</code></a> are
+          implemented using <a class="link" href="promise.html#class_promise"><code class="computeroutput">promise&lt;&gt;</code></a>, discussions of shared state
+          apply to them as well.
+        </p>
+<a name="class_future_status"></a><h6>
+<a name="fiber.synchronization.futures.future.h1"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.enumeration__code__phrase_role__identifier__future_status__phrase___code_"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.enumeration__code__phrase_role__identifier__future_status__phrase___code_">Enumeration
+          <code class="computeroutput"><span class="identifier">future_status</span></code></a>
+        </h6>
+<p>
+          Timed wait-operations (<a class="link" href="future.html#future_wait_for"><code class="computeroutput">future::wait_for()</code></a> and <a class="link" href="future.html#future_wait_until"><code class="computeroutput">future::wait_until()</code></a>)
+          return the state of the future.
+        </p>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="keyword">class</span> <span class="identifier">future_status</span> <span class="special">{</span>
+    <span class="identifier">ready</span><span class="special">,</span>
+    <span class="identifier">timeout</span><span class="special">,</span>
+    <span class="identifier">deferred</span>  <span class="comment">// not supported yet</span>
+<span class="special">};</span>
+</pre>
+<h6>
+<a name="fiber.synchronization.futures.future.h2"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future._code__phrase_role__identifier__ready__phrase___code_"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future._code__phrase_role__identifier__ready__phrase___code_"><code class="computeroutput"><span class="identifier">ready</span></code></a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                The <a class="link" href="future.html#shared_state">shared state</a> is ready.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.futures.future.h3"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future._code__phrase_role__identifier__timeout__phrase___code_"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future._code__phrase_role__identifier__timeout__phrase___code_"><code class="computeroutput"><span class="identifier">timeout</span></code></a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                The <a class="link" href="future.html#shared_state">shared state</a> did not become
+                ready before timeout has passed.
+              </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Deferred futures are not supported.
+          </p></td></tr>
+</table></div>
+<p>
+          </p>
+<h5>
+<a name="class_future_bridgehead"></a>
+  <span class="phrase"><a name="class_future"></a></span>
+  <a class="link" href="future.html#class_future">Template <code class="computeroutput">future&lt;&gt;</code></a>
+</h5>
+<p>
+        </p>
+<p>
+          A <a class="link" href="future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a> contains a <a class="link" href="future.html#shared_state">shared
+          state</a> which is not shared with any other future.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">future</span><span class="special">/</span><span class="identifier">future</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">R</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">future</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">future</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">future</span><span class="special">(</span> <span class="identifier">future</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">future</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">future</span><span class="special">(</span> <span class="identifier">future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="special">~</span><span class="identifier">future</span><span class="special">();</span>
+
+    <span class="keyword">bool</span> <span class="identifier">valid</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">shared_future</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;</span> <span class="identifier">share</span><span class="special">();</span>
+
+    <span class="identifier">R</span> <span class="identifier">get</span><span class="special">();</span>    <span class="comment">// member only of generic future template</span>
+    <span class="identifier">R</span> <span class="special">&amp;</span> <span class="identifier">get</span><span class="special">();</span>  <span class="comment">// member only of future&lt; R &amp; &gt; template specialization</span>
+    <span class="keyword">void</span> <span class="identifier">get</span><span class="special">();</span> <span class="comment">// member only of future&lt; void &gt; template specialization</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span> <span class="identifier">get_exception_ptr</span><span class="special">();</span>
+
+    <span class="keyword">void</span> <span class="identifier">wait</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+    <span class="identifier">future_status</span> <span class="identifier">wait_for</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">future_status</span> <span class="identifier">wait_until</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}</span>
+</pre>
+<h6>
+<a name="fiber.synchronization.futures.future.h4"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.default_constructor"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.default_constructor">Default
+          constructor</a>
+        </h6>
+<pre class="programlisting"><span class="identifier">future</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Creates a future with no <a class="link" href="future.html#shared_state">shared state</a>.
+                After construction <code class="computeroutput"><span class="keyword">false</span> <span class="special">==</span> <span class="identifier">valid</span><span class="special">()</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.futures.future.h5"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.move_constructor"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.move_constructor">Move constructor</a>
+        </h6>
+<pre class="programlisting"><span class="identifier">future</span><span class="special">(</span> <span class="identifier">future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Constructs a future with the <a class="link" href="future.html#shared_state">shared
+                state</a> of other. After construction <code class="computeroutput"><span class="keyword">false</span>
+                <span class="special">==</span> <span class="identifier">other</span><span class="special">.</span><span class="identifier">valid</span><span class="special">()</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.futures.future.h6"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.destructor"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.destructor">Destructor</a>
+        </h6>
+<pre class="programlisting"><span class="special">~</span><span class="identifier">future</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Destroys the future; ownership is abandoned.
+              </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                <code class="computeroutput">~future()</code> does <span class="emphasis"><em>not</em></span> block the calling fiber.
+              </p></dd>
+</dl>
+</div>
+<p>
+          Consider a sequence such as:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              instantiate <a class="link" href="promise.html#class_promise"><code class="computeroutput">promise&lt;&gt;</code></a>
+            </li>
+<li class="listitem">
+              obtain its <code class="computeroutput"><span class="identifier">future</span><span class="special">&lt;&gt;</span></code>
+              via <a class="link" href="promise.html#promise_get_future"><code class="computeroutput">promise::get_future()</code></a>
+            </li>
+<li class="listitem">
+              launch <a class="link" href="../../fiber_mgmt/fiber.html#class_fiber"><code class="computeroutput">fiber</code></a>, capturing <code class="computeroutput"><span class="identifier">promise</span><span class="special">&lt;&gt;</span></code>
+            </li>
+<li class="listitem">
+              destroy <code class="computeroutput"><span class="identifier">future</span><span class="special">&lt;&gt;</span></code>
+            </li>
+<li class="listitem">
+              call <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a>
+            </li>
+</ol></div>
+<p>
+          The final <code class="computeroutput"><span class="identifier">set_value</span><span class="special">()</span></code>
+          call succeeds, but the value is silently discarded: no additional <code class="computeroutput"><span class="identifier">future</span><span class="special">&lt;&gt;</span></code>
+          can be obtained from that <code class="computeroutput"><span class="identifier">promise</span><span class="special">&lt;&gt;</span></code>.
+        </p>
+<p>
+          </p>
+<h5>
+<a name="future_operator_assign_bridgehead"></a>
+  <span class="phrase"><a name="future_operator_assign"></a></span>
+  <a class="link" href="future.html#future_operator_assign">Member
+          function <code class="computeroutput">operator=</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Moves the <a class="link" href="future.html#shared_state">shared state</a> of other
+                to <code class="computeroutput"><span class="keyword">this</span></code>. After the assignment,
+                <code class="computeroutput"><span class="keyword">false</span> <span class="special">==</span>
+                <span class="identifier">other</span><span class="special">.</span><span class="identifier">valid</span><span class="special">()</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_valid_bridgehead"></a>
+  <span class="phrase"><a name="future_valid"></a></span>
+  <a class="link" href="future.html#future_valid">Member function <code class="computeroutput">valid</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">valid</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Returns <code class="computeroutput"><span class="keyword">true</span></code> if future
+                contains a <a class="link" href="future.html#shared_state">shared state</a>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_share_bridgehead"></a>
+  <span class="phrase"><a name="future_share"></a></span>
+  <a class="link" href="future.html#future_share">Member function <code class="computeroutput">share</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">shared_future</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;</span> <span class="identifier">share</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Move the state to a <a class="link" href="future.html#class_shared_future"><code class="computeroutput">shared_future&lt;&gt;</code></a>.
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                a <a class="link" href="future.html#class_shared_future"><code class="computeroutput">shared_future&lt;&gt;</code></a> containing the <a class="link" href="future.html#shared_state">shared
+                state</a> formerly belonging to <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">false</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_get_bridgehead"></a>
+  <span class="phrase"><a name="future_get"></a></span>
+  <a class="link" href="future.html#future_get">Member function <code class="computeroutput">get</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">R</span> <span class="identifier">get</span><span class="special">();</span>    <span class="comment">// member only of generic future template</span>
+<span class="identifier">R</span> <span class="special">&amp;</span> <span class="identifier">get</span><span class="special">();</span>  <span class="comment">// member only of future&lt; R &amp; &gt; template specialization</span>
+<span class="keyword">void</span> <span class="identifier">get</span><span class="special">();</span> <span class="comment">// member only of future&lt; void &gt; template specialization</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">true</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called. If <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> is called, returns
+                the value. If <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is called,
+                throws the indicated exception.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">false</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>,
+                <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">broken_promise</span></code>. Any exception passed
+                to <code class="computeroutput"><span class="identifier">promise</span><span class="special">::</span><span class="identifier">set_exception</span><span class="special">()</span></code>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_get_exception_ptr_bridgehead"></a>
+  <span class="phrase"><a name="future_get_exception_ptr"></a></span>
+  <a class="link" href="future.html#future_get_exception_ptr">Member
+          function <code class="computeroutput">get_exception_ptr</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span> <span class="identifier">get_exception_ptr</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">true</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called. If <code class="computeroutput"><span class="identifier">set_value</span><span class="special">()</span></code> is called, returns a default-constructed
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span></code>. If <code class="computeroutput"><span class="identifier">set_exception</span><span class="special">()</span></code>
+                is called, returns the passed <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>.
+              </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">get_exception_ptr</span><span class="special">()</span></code> does <span class="emphasis"><em>not</em></span> invalidate
+                the <code class="computeroutput">future</code>. After calling <code class="computeroutput"><span class="identifier">get_exception_ptr</span><span class="special">()</span></code>, you may still call <a class="link" href="future.html#future_get"><code class="computeroutput">future::get()</code></a>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_wait_bridgehead"></a>
+  <span class="phrase"><a name="future_wait"></a></span>
+  <a class="link" href="future.html#future_wait">Member function <code class="computeroutput">wait</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">wait</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_wait_for_bridgehead"></a>
+  <span class="phrase"><a name="future_wait_for"></a></span>
+  <a class="link" href="future.html#future_wait_for">Templated member
+          function <code class="computeroutput">wait_for</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+<span class="identifier">future_status</span> <span class="identifier">wait_for</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called, or <code class="computeroutput"><span class="identifier">timeout_duration</span></code>
+                has passed.
+              </p></dd>
+<dt><span class="term">Result:</span></dt>
+<dd><p>
+                A <code class="computeroutput"><span class="identifier">future_status</span></code> is
+                returned indicating the reason for returning.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>
+                or timeout-related exceptions.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="future_wait_until_bridgehead"></a>
+  <span class="phrase"><a name="future_wait_until"></a></span>
+  <a class="link" href="future.html#future_wait_until">Templated
+          member function <code class="computeroutput">wait_until</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+<span class="identifier">future_status</span> <span class="identifier">wait_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called, or <code class="computeroutput"><span class="identifier">timeout_time</span></code>
+                has passed.
+              </p></dd>
+<dt><span class="term">Result:</span></dt>
+<dd><p>
+                A <code class="computeroutput"><span class="identifier">future_status</span></code> is
+                returned indicating the reason for returning.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>
+                or timeout-related exceptions.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="class_shared_future_bridgehead"></a>
+  <span class="phrase"><a name="class_shared_future"></a></span>
+  <a class="link" href="future.html#class_shared_future">Template
+          <code class="computeroutput">shared_future&lt;&gt;</code></a>
+</h5>
+<p>
+        </p>
+<p>
+          A <a class="link" href="future.html#class_shared_future"><code class="computeroutput">shared_future&lt;&gt;</code></a> contains a <a class="link" href="future.html#shared_state">shared
+          state</a> which might be shared with other <a class="link" href="future.html#class_shared_future"><code class="computeroutput">shared_future&lt;&gt;</code></a> instances.
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">future</span><span class="special">/</span><span class="identifier">future</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">R</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">shared_future</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">shared_future</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="special">~</span><span class="identifier">shared_future</span><span class="special">();</span>
+
+    <span class="identifier">shared_future</span><span class="special">(</span> <span class="identifier">shared_future</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+
+    <span class="identifier">shared_future</span><span class="special">(</span> <span class="identifier">future</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">shared_future</span><span class="special">(</span> <span class="identifier">shared_future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">shared_future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">shared_future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">shared_future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">future</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">shared_future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">shared_future</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="identifier">valid</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">get</span><span class="special">();</span> <span class="comment">// member only of generic shared_future template</span>
+    <span class="identifier">R</span> <span class="special">&amp;</span> <span class="identifier">get</span><span class="special">();</span>      <span class="comment">// member only of shared_future&lt; R &amp; &gt; template specialization</span>
+    <span class="keyword">void</span> <span class="identifier">get</span><span class="special">();</span>     <span class="comment">// member only of shared_future&lt; void &gt; template specialization</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span> <span class="identifier">get_exception_ptr</span><span class="special">();</span>
+
+    <span class="keyword">void</span> <span class="identifier">wait</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+    <span class="identifier">future_status</span> <span class="identifier">wait_for</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">future_status</span> <span class="identifier">wait_until</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}</span>
+</pre>
+<h6>
+<a name="fiber.synchronization.futures.future.h7"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.default_constructor0"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.default_constructor0">Default
+          constructor</a>
+        </h6>
+<pre class="programlisting"><span class="identifier">shared_future</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Creates a shared_future with no <a class="link" href="future.html#shared_state">shared
+                state</a>. After construction <code class="computeroutput"><span class="keyword">false</span>
+                <span class="special">==</span> <span class="identifier">valid</span><span class="special">()</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.futures.future.h8"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.move_constructor0"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.move_constructor0">Move constructor</a>
+        </h6>
+<pre class="programlisting"><span class="identifier">shared_future</span><span class="special">(</span> <span class="identifier">future</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="identifier">shared_future</span><span class="special">(</span> <span class="identifier">shared_future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Constructs a shared_future with the <a class="link" href="future.html#shared_state">shared
+                state</a> of other. After construction <code class="computeroutput"><span class="keyword">false</span>
+                <span class="special">==</span> <span class="identifier">other</span><span class="special">.</span><span class="identifier">valid</span><span class="special">()</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.futures.future.h9"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.copy_constructor"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.copy_constructor">Copy constructor</a>
+        </h6>
+<pre class="programlisting"><span class="identifier">shared_future</span><span class="special">(</span> <span class="identifier">shared_future</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Constructs a shared_future with the <a class="link" href="future.html#shared_state">shared
+                state</a> of other. After construction <code class="computeroutput"><span class="identifier">other</span><span class="special">.</span><span class="identifier">valid</span><span class="special">()</span></code> is unchanged.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="fiber.synchronization.futures.future.h10"></a>
+          <span class="phrase"><a name="fiber.synchronization.futures.future.destructor0"></a></span><a class="link" href="future.html#fiber.synchronization.futures.future.destructor0">Destructor</a>
+        </h6>
+<pre class="programlisting"><span class="special">~</span><span class="identifier">shared_future</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Destroys the shared_future; ownership is abandoned if not shared.
+              </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                <code class="computeroutput">~shared_future()</code> does <span class="emphasis"><em>not</em></span> block the calling fiber.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_operator_assign_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_operator_assign"></a></span>
+  <a class="link" href="future.html#shared_future_operator_assign">Member
+          function <code class="computeroutput">operator=</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">shared_future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">future</span><span class="special">&lt;</span> <span class="identifier">R</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="identifier">shared_future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">shared_future</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="identifier">shared_future</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">shared_future</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Moves or copies the <a class="link" href="future.html#shared_state">shared state</a>
+                of other to <code class="computeroutput"><span class="keyword">this</span></code>. After
+                the assignment, the state of <code class="computeroutput"><span class="identifier">other</span><span class="special">.</span><span class="identifier">valid</span><span class="special">()</span></code> depends on which overload was invoked:
+                unchanged for the overload accepting <code class="computeroutput"><span class="identifier">shared_future</span>
+                <span class="keyword">const</span><span class="special">&amp;</span></code>,
+                otherwise <code class="computeroutput"><span class="keyword">false</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_valid_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_valid"></a></span>
+  <a class="link" href="future.html#shared_future_valid">Member
+          function <code class="computeroutput">valid</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">valid</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Returns <code class="computeroutput"><span class="keyword">true</span></code> if shared_future
+                contains a <a class="link" href="future.html#shared_state">shared state</a>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_get_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_get"></a></span>
+  <a class="link" href="future.html#shared_future_get">Member function
+          <code class="computeroutput">get</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">R</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">get</span><span class="special">();</span> <span class="comment">// member only of generic shared_future template</span>
+<span class="identifier">R</span> <span class="special">&amp;</span> <span class="identifier">get</span><span class="special">();</span>      <span class="comment">// member only of shared_future&lt; R &amp; &gt; template specialization</span>
+<span class="keyword">void</span> <span class="identifier">get</span><span class="special">();</span>     <span class="comment">// member only of shared_future&lt; void &gt; template specialization</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">true</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called. If <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> is called, returns
+                the value. If <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is called,
+                throws the indicated exception.
+              </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">false</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>,
+                <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">broken_promise</span></code>. Any exception passed
+                to <code class="computeroutput"><span class="identifier">promise</span><span class="special">::</span><span class="identifier">set_exception</span><span class="special">()</span></code>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_get_exception_ptr_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_get_exception_ptr"></a></span>
+  <a class="link" href="future.html#shared_future_get_exception_ptr">Member
+          function <code class="computeroutput">get_exception_ptr</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span> <span class="identifier">get_exception_ptr</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">true</span> <span class="special">==</span>
+                <span class="identifier">valid</span><span class="special">()</span></code>
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called. If <code class="computeroutput"><span class="identifier">set_value</span><span class="special">()</span></code> is called, returns a default-constructed
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span></code>. If <code class="computeroutput"><span class="identifier">set_exception</span><span class="special">()</span></code>
+                is called, returns the passed <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception_ptr</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>.
+              </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">get_exception_ptr</span><span class="special">()</span></code> does <span class="emphasis"><em>not</em></span> invalidate
+                the <code class="computeroutput">shared_future</code>. After calling <code class="computeroutput"><span class="identifier">get_exception_ptr</span><span class="special">()</span></code>, you may still call <a class="link" href="future.html#shared_future_get"><code class="computeroutput">shared_future::get()</code></a>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_wait_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_wait"></a></span>
+  <a class="link" href="future.html#shared_future_wait">Member
+          function <code class="computeroutput">wait</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">wait</span><span class="special">();</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_wait_for_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_wait_for"></a></span>
+  <a class="link" href="future.html#shared_future_wait_for">Templated
+          member function <code class="computeroutput">wait_for</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+<span class="identifier">future_status</span> <span class="identifier">wait_for</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_duration</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called, or <code class="computeroutput"><span class="identifier">timeout_duration</span></code>
+                has passed.
+              </p></dd>
+<dt><span class="term">Result:</span></dt>
+<dd><p>
+                A <code class="computeroutput"><span class="identifier">future_status</span></code> is
+                returned indicating the reason for returning.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>
+                or timeout-related exceptions.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="shared_future_wait_until_bridgehead"></a>
+  <span class="phrase"><a name="shared_future_wait_until"></a></span>
+  <a class="link" href="future.html#shared_future_wait_until">Templated
+          member function <code class="computeroutput">wait_until</code>()</a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+<span class="identifier">future_status</span> <span class="identifier">wait_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">timeout_time</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Waits until <a class="link" href="promise.html#promise_set_value"><code class="computeroutput">promise::set_value()</code></a> or <a class="link" href="promise.html#promise_set_exception"><code class="computeroutput">promise::set_exception()</code></a> is
+                called, or <code class="computeroutput"><span class="identifier">timeout_time</span></code>
+                has passed.
+              </p></dd>
+<dt><span class="term">Result:</span></dt>
+<dd><p>
+                A <code class="computeroutput"><span class="identifier">future_status</span></code> is
+                returned indicating the reason for returning.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">future_error</span></code> with
+                error condition <code class="computeroutput"><span class="identifier">future_errc</span><span class="special">::</span><span class="identifier">no_state</span></code>
+                or timeout-related exceptions.
+              </p></dd>
+</dl>
+</div>
+<p>
+          </p>
+<h5>
+<a name="fibers_async_bridgehead"></a>
+  <span class="phrase"><a name="fibers_async"></a></span>
+  <a class="link" href="future.html#fibers_async">Non-member function <code class="computeroutput">fibers::async()</code></a>
+</h5>
+<p>
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">future</span><span class="special">/</span><span class="identifier">async</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Function</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="identifier">future</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">result_of_t</span><span class="special">&lt;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Function</span> <span class="special">&gt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Args</span> <span class="special">&gt;</span> <span class="special">...</span> <span class="special">)</span>
+    <span class="special">&gt;</span>
+<span class="special">&gt;</span>
+<span class="identifier">async</span><span class="special">(</span> <span class="identifier">Function</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">Function</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="identifier">future</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">result_of_t</span><span class="special">&lt;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Function</span> <span class="special">&gt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Args</span> <span class="special">&gt;</span> <span class="special">...</span> <span class="special">)</span>
+    <span class="special">&gt;</span>
+<span class="special">&gt;</span>
+<span class="identifier">async</span><span class="special">(</span> <a class="link" href="../../fiber_mgmt.html#class_launch"><code class="computeroutput"><span class="identifier">launch</span></code></a> <span class="identifier">policy</span><span class="special">,</span> <span class="identifier">Function</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <a class="link" href="../../stack.html#stack_allocator_concept"><code class="computeroutput"><span class="identifier">StackAllocator</span></code></a><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Function</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="identifier">future</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">result_of_t</span><span class="special">&lt;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Function</span> <span class="special">&gt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Args</span> <span class="special">&gt;</span> <span class="special">...</span> <span class="special">)</span>
+    <span class="special">&gt;</span>
+<span class="special">&gt;</span>
+<span class="identifier">async</span><span class="special">(</span> <a class="link" href="../../fiber_mgmt.html#class_launch"><code class="computeroutput"><span class="identifier">launch</span></code></a> <span class="identifier">policy</span><span class="special">,</span> <a href="http://en.cppreference.com/w/cpp/memory/allocator_arg_t" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span></code></a><span class="special">,</span> <a class="link" href="../../stack.html#stack_allocator_concept"><code class="computeroutput"><span class="identifier">StackAllocator</span></code></a> <span class="identifier">salloc</span><span class="special">,</span>
+       <span class="identifier">Function</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <a class="link" href="../../stack.html#stack_allocator_concept"><code class="computeroutput"><span class="identifier">StackAllocator</span></code></a><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Allocator</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Function</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span> <span class="identifier">Args</span> <span class="special">&gt;</span>
+<span class="identifier">future</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">result_of_t</span><span class="special">&lt;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Function</span> <span class="special">&gt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Args</span> <span class="special">&gt;</span> <span class="special">...</span> <span class="special">)</span>
+    <span class="special">&gt;</span>
+<span class="special">&gt;</span>
+<span class="identifier">async</span><span class="special">(</span> <a class="link" href="../../fiber_mgmt.html#class_launch"><code class="computeroutput"><span class="identifier">launch</span></code></a> <span class="identifier">policy</span><span class="special">,</span> <a href="http://en.cppreference.com/w/cpp/memory/allocator_arg_t" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span></code></a><span class="special">,</span> <a class="link" href="../../stack.html#stack_allocator_concept"><code class="computeroutput"><span class="identifier">StackAllocator</span></code></a> <span class="identifier">salloc</span><span class="special">,</span>
+       <span class="identifier">Allocator</span> <span class="identifier">alloc</span><span class="special">,</span> <span class="identifier">Function</span> <span class="special">&amp;&amp;</span> <span class="identifier">fn</span><span class="special">,</span> <span class="identifier">Args</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">args</span><span class="special">);</span>
+
+<span class="special">}}</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                Executes <code class="computeroutput"><span class="identifier">fn</span></code> in a
+                <a class="link" href="../../fiber_mgmt/fiber.html#class_fiber"><code class="computeroutput">fiber</code></a> and returns an associated <a class="link" href="future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a>.
+              </p></dd>
+<dt><span class="term">Result:</span></dt>
+<dd>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">future</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">result_of_t</span><span class="special">&lt;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Function</span> <span class="special">&gt;(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">decay_t</span><span class="special">&lt;</span> <span class="identifier">Args</span> <span class="special">&gt;</span> <span class="special">...</span> <span class="special">)</span>
+    <span class="special">&gt;</span>
+<span class="special">&gt;</span></pre>
+<p>
+                representing the <a class="link" href="future.html#shared_state">shared state</a>
+                associated with the asynchronous execution of <code class="computeroutput"><span class="identifier">fn</span></code>.
+              </p>
+</dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">fiber_error</span></code> or <code class="computeroutput"><span class="identifier">future_error</span></code> if an error occurs.
+              </p></dd>
+<dt><span class="term">Notes:</span></dt>
+<dd><p>
+                The overloads accepting <a href="http://en.cppreference.com/w/cpp/memory/allocator_arg_t" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_arg_t</span></code></a> use the
+                passed <a class="link" href="../../stack.html#stack_allocator_concept"><code class="computeroutput"><span class="identifier">StackAllocator</span></code></a>
+                when constructing the launched <code class="computeroutput"><span class="identifier">fiber</span></code>.
+                The overloads accepting <a class="link" href="../../fiber_mgmt.html#class_launch"><code class="computeroutput">launch</code></a> use the passed <code class="computeroutput"><span class="identifier">launch</span></code> when constructing the launched
+                <code class="computeroutput"><span class="identifier">fiber</span></code>. The default
+                <code class="computeroutput"><span class="identifier">launch</span></code> is <code class="computeroutput"><span class="identifier">post</span></code>, as for the <code class="computeroutput"><span class="identifier">fiber</span></code> constructor.
+              </p></dd>
+</dl>
+</div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Deferred futures are not supported.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../futures.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../futures.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="promise.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

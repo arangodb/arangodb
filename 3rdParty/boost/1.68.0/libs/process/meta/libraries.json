@@ -1,0 +1,15 @@
+{
+  "key": "process",
+  "name": "process",
+  "authors": [
+    "Merino Vidal", "Ilya Sokolov", "Felipe Tanus", 
+    "Jeff Flinn", "Thomas Jarosch", "Boris Schaeling", "Klemens D. Morgenstern"
+  ],
+  "maintainers": [
+    "Klemens D. Morgenstern <klemens.morgenstern -at- gmx.net>"
+  ],
+  "description": "Library to create processes in a portable way.",
+  "category": [
+    "System"
+  ]
+}

@@ -1,0 +1,399 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Release Notes</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="prev" href="design_choices/faq.html" title="FAQ">
+<link rel="next" href="quickref.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design_choices/faq.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="quickref.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="beast.release_notes"></a><a class="link" href="release_notes.html" title="Release Notes">Release Notes</a>
+</h2></div></div></div>
+<p>
+      This version fixes a missing executor work guard in all composed operations
+      used in the implementation. Users who are experiencing crashes related to asynchronous
+      completion handlers are encouraged to upgrade. Also included is an improved
+      mechanism for generating random numbers used to mask outgoing websocket frames
+      when operating in the client mode. This resolves a vulnerability described
+      in the Beast Hybrid Assessment Report from Bishop Fox.
+    </p>
+<h4>
+<a name="beast.release_notes.h0"></a>
+      <span class="phrase"><a name="beast.release_notes.boost_1_68"></a></span><a class="link" href="release_notes.html#beast.release_notes.boost_1_68">Boost
+      1.68</a>
+    </h4>
+<p>
+      <span class="bold"><strong>New Features</strong></span>
+    </p>
+<p>
+      The include directory <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">experimental</span><span class="special">&gt;</span></code> contains features which are not part of
+      the stable public interface but are available anyway. They may change in future
+      versions.
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1108" target="_top">#1108</a>) New <a class="link" href="ref/boost__beast__flat_stream.html" title="flat_stream"><code class="computeroutput"><span class="identifier">flat_stream</span></code></a> for working around
+          an SSL stream performance limitation
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1151" target="_top">#1151</a>, <a href="https://github.com/boostorg/beast/issues/595" target="_top">#595</a>) New <a class="link" href="ref/boost__beast__http__icy_stream.html" title="http::icy_stream"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">icy_stream</span></code></a> stream filter allows
+          parsing ICY HTTP response handshakes
+        </li>
+<li class="listitem">
+          New <a class="link" href="ref/boost__beast__ssl_stream.html" title="ssl_stream"><code class="computeroutput"><span class="identifier">ssl_stream</span></code></a>
+          for better SSL performance and move constructability
+        </li>
+<li class="listitem">
+          New <a class="link" href="ref/boost__beast__test__error.html" title="test::error"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">connect</span></code></a>,
+          <a class="link" href="ref/boost__beast__test__error.html" title="test::error"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">error</span></code></a>,
+          <a class="link" href="ref/boost__beast__test__error.html" title="test::error"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">fail_count</span></code></a>,
+          and <a class="link" href="ref/boost__beast__test__error.html" title="test::error"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">stream</span></code></a>
+          utilities for writing unit tests.
+        </li>
+<li class="listitem">
+          New <a class="link" href="ref/boost__beast__http__is_mutable_body_writer.html" title="http::is_mutable_body_writer"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">is_mutable_body_writer</span></code></a> metafunction
+        </li>
+<li class="listitem">
+          New <a class="link" href="ref/boost__beast__websocket__seed_prng.html" title="websocket::seed_prng"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">seed_prng</span></code></a> for manually providing
+          entropy to the PRNG
+        </li>
+<li class="listitem">
+          New <a class="link" href="ref/boost__beast__websocket__stream/secure_prng.html" title="websocket::stream::secure_prng"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">secure_prng</span></code></a> to control whether
+          the connection uses a secure PRNG
+        </li>
+</ul></div>
+<p>
+      <span class="bold"><strong>Improvements</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Generated WebSocket masks use a secure PRNG by default
+        </li>
+<li class="listitem">
+          Improvements to <a class="link" href="ref/boost__beast__buffers_adapter.html" title="buffers_adapter"><code class="computeroutput"><span class="identifier">buffers_adapter</span></code></a>
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1188" target="_top">#1188</a>) Set "/permissive-" for MSVC builds
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1109" target="_top">#1109</a>) Use a shared string for example HTTP server doc roots
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1079" target="_top">#1079</a>) Add <a class="link" href="ref/boost__beast__handler_ptr/has_value.html" title="handler_ptr::has_value"><code class="computeroutput"><span class="identifier">handler_ptr</span><span class="special">::</span><span class="identifier">has_value</span></code></a>
+        </li>
+</ul></div>
+<p>
+      <span class="bold"><strong>Fixes</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1073" target="_top">#1073</a>) Fix race in advanced server examples
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1076" target="_top">#1076</a>) Use executor_work_guard in composed operations
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1079" target="_top">#1079</a>) Remove spurious assert
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1113" target="_top">#1113</a>) Add <code class="computeroutput"><span class="keyword">const</span></code> and
+          non-<code class="computeroutput"><span class="keyword">const</span></code> overloads for message
+          based HTTP writes
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1119" target="_top">#1119</a>) Fix unused variable warning
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1121" target="_top">#1121</a>) Examples use the root certificate which matches the fingerprint
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1141" target="_top">#1141</a>) Tidy up composed operation doc
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1186" target="_top">#1186</a>) Check error in example set_option
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1210" target="_top">#1210</a>) Fix http_server_stackless_ssl.cpp example
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1211" target="_top">#1211</a>) Fix parse_dec algorithm
+        </li>
+<li class="listitem">
+          Tidy up websocket stream javadocs
+        </li>
+<li class="listitem">
+          Fix move-only arguments in <a class="link" href="ref/boost__beast__bind_handler.html" title="bind_handler"><code class="computeroutput"><span class="identifier">bind_handler</span></code></a>
+        </li>
+<li class="listitem">
+          Fix <a class="link" href="ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">parser</span></code></a> constructor javadoc
+        </li>
+<li class="listitem">
+          Fix <a class="link" href="ref/boost__beast__buffers_adapter.html" title="buffers_adapter"><code class="computeroutput"><span class="identifier">buffers_adapter</span></code></a> iterator value
+          type
+        </li>
+<li class="listitem">
+          Fix <a class="link" href="ref/boost__beast__buffers_adapter/max_size.html" title="buffers_adapter::max_size"><code class="computeroutput"><span class="identifier">buffers_adapter</span><span class="special">::</span><span class="identifier">max_size</span></code></a>
+        </li>
+<li class="listitem">
+          Fix <a class="link" href="ref/boost__beast__buffers_prefix.html" title="buffers_prefix"><code class="computeroutput"><span class="identifier">buffers_prefix</span></code></a> iterator decrement
+        </li>
+<li class="listitem">
+          Fix <a class="link" href="concepts/Fields.html" title="Fields"><span class="bold"><strong>Fields</strong></span></a>,
+          <a class="link" href="concepts/FieldsWriter.html" title="FieldsWriter"><span class="bold"><strong>FieldsWriter</strong></span></a>
+          concept docs
+        </li>
+<li class="listitem">
+          Fix <a class="link" href="concepts/BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a>
+          constructor requirements doc
+        </li>
+</ul></div>
+<p>
+      <span class="bold"><strong>Breaking Changes</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Remove deprecated <code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">reader_impl</span></code>
+        </li>
+<li class="listitem">
+          Remove deprecated <a class="link" href="concepts/Body.html" title="Body"><span class="bold"><strong>Body</strong></span></a>
+          <code class="computeroutput"><span class="identifier">reader</span></code> and <code class="computeroutput"><span class="identifier">writer</span></code> ctor signatures
+        </li>
+</ul></div>
+<h4>
+<a name="beast.release_notes.h1"></a>
+      <span class="phrase"><a name="beast.release_notes.boost_1_67"></a></span><a class="link" href="release_notes.html#beast.release_notes.boost_1_67">Boost
+      1.67</a>
+    </h4>
+<p>
+      This version fixes significant defects in <a class="link" href="ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code></a> which can lead to asserts or
+      undefined behavior. Users are encouraged to update to the latest Boost release.
+    </p>
+<p>
+      <span class="bold"><strong>New Features</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Move-only completion handlers are supported throughout the library
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/899" target="_top">#899</a>) Advanced server examples support idle websocket pings and timeouts
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/849" target="_top">#849</a>) WebSocket permessage-deflate support is now a compile-time feature.
+          This adds an additional <code class="computeroutput"><span class="keyword">bool</span></code>
+          template parameter to <a class="link" href="ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code></a> When <code class="computeroutput"><span class="identifier">deflateSupported</span></code>
+          is <code class="computeroutput"><span class="keyword">true</span></code>, the stream will be
+          capable of negotiating the permessage-deflate websocket extension per the
+          configured run-time settings. When <code class="computeroutput"><span class="identifier">deflateSupported</span></code>
+          is <code class="computeroutput"><span class="keyword">false</span></code>, the stream will
+          never negotiate the permessage-deflate websocket extension. Furthermore,
+          all of the code necessary for implementing the permessage-deflate extension
+          will be excluded from function instantiations. Programs which set <code class="computeroutput"><span class="identifier">deflateSupported</span></code> to <code class="computeroutput"><span class="keyword">false</span></code>
+          when instantiating streams will be smaller.
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/949" target="_top">#949</a>) WebSocket error codes are revised. New <a class="link" href="ref/boost__beast__websocket__error.html" title="websocket::error">error
+          codes</a> are added for more fine-grained failure outcomes. Messages
+          for error codes are more verbose to help pinpoint the problem. Error codes
+          are now also mapped to newly added <a class="link" href="ref/boost__beast__websocket__condition.html" title="websocket::condition">error
+          conditions</a> to simplify comparisons. The error codes <code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">failed</span></code> and <code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">handshake_failed</span></code>
+          are removed. Actions required: Code which explicitly compares <code class="computeroutput"><span class="identifier">error_code</span></code> values against the constant
+          <code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">handshake_failed</span></code> should compare against
+          <a class="link" href="ref/boost__beast__websocket__condition.html" title="websocket::condition"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">condition</span><span class="special">::</span><span class="identifier">handshake_failed</span></code></a> instead. Code
+          which explicitly compares error_code values against the constant <code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">failed</span></code> should compare against <a class="link" href="ref/boost__beast__websocket__condition.html" title="websocket::condition"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">condition</span><span class="special">::</span><span class="identifier">protocol_violation</span></code></a> instead.
+        </li>
+</ul></div>
+<p>
+      <span class="bold"><strong>Improvements</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/857" target="_top">#857</a>) <a class="link" href="ref/boost__beast__http__basic_fields.html" title="http::basic_fields"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">basic_fields</span></code></a> uses less storage
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/894" target="_top">#894</a>) <a class="link" href="ref/boost__beast__http__basic_fields.html" title="http::basic_fields"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">basic_fields</span></code></a> exception specifiers
+          are provided
+        </li>
+<li class="listitem">
+          Implementation no longer uses deprecated <code class="computeroutput"><span class="identifier">asio</span><span class="special">::</span><span class="identifier">null_buffers</span></code>
+        </li>
+<li class="listitem">
+          Add <code class="literal">&lt;<a href="../../../../../boost/beast/websocket/stream_fwd.hpp" target="_top">boost/beast/websocket/stream_fwd.hpp</a>&gt;</code>
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/955" target="_top">#955</a>) The asynchronous SSL detector example uses a stackless coroutine
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__beast__bind_handler.html" title="bind_handler"><code class="computeroutput"><span class="identifier">bind_handler</span></code></a>
+          works with boost placeholders
+        </li>
+<li class="listitem">
+          Examples set <code class="computeroutput"><span class="identifier">reuse_address</span><span class="special">(</span><span class="keyword">true</span><span class="special">)</span></code>
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1026" target="_top">#1026</a>) Advanced servers support clean shutdown via SIGINT or SIGTERM
+        </li>
+<li class="listitem">
+          Some basic_fields operations now give the strong exception guarantee
+        </li>
+</ul></div>
+<p>
+      <span class="bold"><strong>Fixes</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Fix "warning: &#8216;const&#8217; type qualifier on return type has no effect"
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/916" target="_top">#916</a>) Tidy up <code class="computeroutput"><span class="identifier">ssl_stream</span></code>
+          special members in <a href="../../../example/common/ssl_stream.hpp" target="_top">example/common/ssl_stream.hpp</a>
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/918" target="_top">#918</a>) Calls to <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">algorithm</span><span class="special">&gt;</span></code> are protected from macros
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/954" target="_top">#954</a>) The control callback is invoked on the proper executor
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/994" target="_top">#994</a>) Fix iterator version of <a class="link" href="ref/boost__beast__http__basic_fields/erase/overload1.html" title="http::basic_fields::erase (1 of 3 overloads)"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">basic_fields</span><span class="special">::</span><span class="identifier">erase</span></code></a>
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/992" target="_top">#992</a>) Fix use-after-move in example request handlers
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/988" target="_top">#988</a>) Type check completion handlers
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/985" target="_top">#985</a>) Tidy up <a class="link" href="ref/boost__beast__bind_handler.html" title="bind_handler"><code class="computeroutput"><span class="identifier">bind_handler</span></code></a> doc
+        </li>
+<li class="listitem">
+          Fix memory leak in advanced server examples
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1000" target="_top">#1000</a>) Fix soft-mutex assert in websocket stream. This resolves the
+          assert <code class="computeroutput"><span class="string">"ws_.wr_block_ == tok_"</span></code>.
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1019" target="_top">#1019</a>) Fix fallthrough warnings
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1024" target="_top">#1024</a>) Fix teardown for TIME_WAIT
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1030" target="_top">#1030</a>) Fix big-endian websocket masking
+        </li>
+<li class="listitem">
+          Safe treatment of zero-length string arguments in basic_fields
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1043" target="_top">#1043</a>) Examples clear the HTTP message before reading
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1012" target="_top">#1012</a>) Add asio_handler_invoke overloads for stream algorithms
+        </li>
+<li class="listitem">
+          Add Access-Control-Expose-Headers field constant
+        </li>
+</ul></div>
+<p>
+      <span class="bold"><strong>API Changes</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Remove unintended public members of <a class="link" href="ref/boost__beast__handler_ptr.html" title="handler_ptr"><code class="computeroutput"><span class="identifier">handler_ptr</span></code></a>. Actions required:
+          don't call non-public members.
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__beast__handler_ptr.html" title="handler_ptr"><code class="computeroutput"><span class="identifier">handler_ptr</span></code></a>
+          is a move-only type, with <code class="computeroutput"><span class="identifier">unique_ptr</span></code>
+          semantics. Actions required: user-defined composed operations using <code class="computeroutput"><span class="identifier">handler_ptr</span></code> to manage state can only
+          be moved, not copied.
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__beast__handler_ptr.html" title="handler_ptr"><code class="computeroutput"><span class="identifier">handler_ptr</span></code></a>
+          gives the strong exception guarantee. The constructor signature for managed
+          objects constructed by <code class="computeroutput"><span class="identifier">handler_ptr</span></code>
+          now receives a <code class="computeroutput"><span class="keyword">const</span></code> reference
+          to the handler. Actions required: Change the constructor signature for
+          state objects used with <code class="computeroutput"><span class="identifier">handler_ptr</span></code>
+          to receive a <code class="computeroutput"><span class="keyword">const</span></code> reference
+          to the handler.
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/896" target="_top">#896</a>) <a class="link" href="ref/boost__beast__http__basic_fields.html" title="http::basic_fields"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">basic_fields</span></code></a> does not support
+          fancy pointers
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">parser</span></code></a>
+          is no longer <span class="bold"><strong>MoveConstructible</strong></span>
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/930" target="_top">#930</a>) <code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">reader_impl</span></code> is deprecated and will be
+          removed in the next release. Actions required: Call <a class="link" href="ref/boost__beast__http__serializer/writer_impl.html" title="http::serializer::writer_impl"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">writer_impl</span></code></a> instead of <code class="computeroutput"><span class="identifier">serializer</span><span class="special">::</span><span class="identifier">reader_impl</span></code>.
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/884" target="_top">#884</a>) The <a class="link" href="concepts/BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a>
+          and <a class="link" href="concepts/BodyWriter.html" title="BodyWriter"><span class="bold"><strong>BodyWriter</strong></span></a>
+          concept constructor requirements have changed. They now require the header
+          and body elements to be passed as distinct <a class="link" href="ref/boost__beast__http__header.html" title="http::header"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">header</span></code></a> and <code class="computeroutput"><span class="identifier">value_type</span></code>
+          objects. This enables the composition of body types. The previous single-argument
+          constructors are deprecated and will be removed in the next version. Actions
+          required: Change user-defined instances of <a class="link" href="concepts/BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a> or <a class="link" href="concepts/BodyWriter.html" title="BodyWriter"><span class="bold"><strong>BodyWriter</strong></span></a> constructor signatures to the
+          two-argument form. Alternatively. define the macro <code class="computeroutput"><span class="identifier">BOOST_BEAST_ALLOW_DEPRECATED</span></code>
+          in the project (which will cause both the new and the deprecated signatures
+          to be accepted).
+        </li>
+<li class="listitem">
+          <a class="link" href="ref/boost__beast__websocket__stream/control_callback.html" title="websocket::stream::control_callback"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">control_callback</span></code></a> now copies or
+          moves the function object.
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/1014" target="_top">#1014</a>) DynamicBuffer input areas are not mutable. Actions required:
+          do not attempt to write to input areas of dynamic buffers.
+        </li>
+<li class="listitem">
+          ( <a href="https://github.com/boostorg/beast/issues/941" target="_top">#941</a>) <code class="computeroutput"><span class="identifier">get_lowest_layer</span></code>
+          is now a type alias. Actions required: Replace instances of <code class="computeroutput"><span class="keyword">typename</span> <span class="identifier">get_lowest_layer</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">type</span></code>
+          with <code class="computeroutput"><span class="identifier">get_lowest_layer</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>.
+        </li>
+</ul></div>
+<h4>
+<a name="beast.release_notes.h2"></a>
+      <span class="phrase"><a name="beast.release_notes.boost_1_66"></a></span><a class="link" href="release_notes.html#beast.release_notes.boost_1_66">Boost
+      1.66</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          Initial release
+        </li></ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="design_choices/faq.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="quickref.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="astronomical_base_units_reference"><title>Astronomical Base Units Reference</title><header name="boost/units/base_units/astronomical/astronomical_unit.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="astronomical">
+<struct name="astronomical_unit_base_unit"><inherit access="public">boost::units::base_unit&lt; astronomical_unit_base_unit, boost::units::si::meter_base_unit::dimension_type,-207 &gt;</inherit><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/astronomical/light_day.hpp">
+<namespace name="boost">
+<namespace name="units">
+<struct-specialization name="base_unit_info"><template>
+    </template><specialization><template-arg>astronomical::light_day_base_unit</template-arg></specialization><method-group name="public static functions">
+<method name="name" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+<method name="symbol" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+</method-group>
+</struct-specialization><namespace name="astronomical">
+<typedef name="light_day_base_unit"><type>scaled_base_unit&lt; <classname>boost::units::astronomical::light_second_base_unit</classname>, scale&lt; 86400, static_rational&lt; 1 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/astronomical/light_hour.hpp">
+<namespace name="boost">
+<namespace name="units">
+<struct-specialization name="base_unit_info"><template>
+    </template><specialization><template-arg>astronomical::light_hour_base_unit</template-arg></specialization><method-group name="public static functions">
+<method name="name" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+<method name="symbol" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+</method-group>
+</struct-specialization><namespace name="astronomical">
+<typedef name="light_hour_base_unit"><type>scaled_base_unit&lt; <classname>boost::units::astronomical::light_second_base_unit</classname>, scale&lt; 3600, static_rational&lt; 1 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/astronomical/light_minute.hpp">
+<namespace name="boost">
+<namespace name="units">
+<struct-specialization name="base_unit_info"><template>
+    </template><specialization><template-arg>astronomical::light_minute_base_unit</template-arg></specialization><method-group name="public static functions">
+<method name="name" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+<method name="symbol" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+</method-group>
+</struct-specialization><namespace name="astronomical">
+<typedef name="light_minute_base_unit"><type>scaled_base_unit&lt; <classname>boost::units::astronomical::light_second_base_unit</classname>, scale&lt; 60, static_rational&lt; 1 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/astronomical/light_second.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="astronomical">
+<struct name="light_second_base_unit"><inherit access="public">boost::units::base_unit&lt; light_second_base_unit, boost::units::si::meter_base_unit::dimension_type,-201 &gt;</inherit><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/astronomical/light_year.hpp">
+<namespace name="boost">
+<namespace name="units">
+<struct-specialization name="base_unit_info"><template>
+    </template><specialization><template-arg>astronomical::light_year_base_unit</template-arg></specialization><method-group name="public static functions">
+<method name="name" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+<method name="symbol" specifiers="static"><type>BOOST_CONSTEXPR const char *</type></method>
+</method-group>
+</struct-specialization><namespace name="astronomical">
+<typedef name="light_year_base_unit"><type>scaled_base_unit&lt; <classname>boost::units::astronomical::light_second_base_unit</classname>, scale&lt; 31557600, static_rational&lt; 1 &gt; &gt; &gt;</type></typedef>
+</namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/astronomical/parsec.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="astronomical">
+<struct name="parsec_base_unit"><inherit access="public">boost::units::base_unit&lt; parsec_base_unit, boost::units::si::meter_base_unit::dimension_type,-206 &gt;</inherit><method-group name="public static functions">
+<method name="name" specifiers="static"><type>const char *</type></method>
+<method name="symbol" specifiers="static"><type>const char *</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+</library-reference>

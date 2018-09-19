@@ -1,0 +1,159 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Boost Generic Image Library - Boost.GIL 1.0 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/style.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+          URL_ROOT:    './',
+          VERSION:     '1.0',
+          COLLAPSE_MODINDEX: false,
+          FILE_SUFFIX: '.html'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="Boost.GIL 1.0 documentation" href="#" />
+    <link rel="next" title="Tutorial" href="tutorial.html" /> 
+  </head>
+  <body>
+    <div class="header">
+    <table border="0" cellpadding="7" cellspacing="0" width="100%" summary=
+    "header">
+      <tr>
+        <td valign="top" width="300">
+          <h3><a href="#"><img 
+          alt="C++ Boost" src="_static/gil.png" border="0"></a></h3>
+        </td>
+
+        <td >
+          <h1 align="center"><a href="#"></a></h1>
+        </td>
+	<td>
+      <div id="searchbox" style="display: none">
+        <form class="search" action="search.html" method="get">
+          <input type="text" name="q" size="18" />
+          <input type="submit" value="Search" />
+          <input type="hidden" name="check_keywords" value="yes" />
+          <input type="hidden" name="area" value="default" />
+        </form>
+      </div>
+      <script type="text/javascript">$('#searchbox').show(0);</script>
+	</td>
+      </tr>
+    </table>
+    </div>
+    <hr/>
+    <div class="content">
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="next" title="Tutorial" href="tutorial.html"><img src="_static/next.png" alt="next"/></a>
+      
+    </div>
+      
+  <div class="section" id="boost-generic-image-library">
+<h1>Boost Generic Image Library</h1>
+<p>The Generic Image Library (GIL) is a C++ library that abstracts image
+representations from algorithms and allows writing code that can work on
+a variety of images with performance similar to hand-writing for a specific
+image type.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#video-lecture-by-lubomir-bourdev">Video Lecture by Lubomir Bourdev</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#example-computing-the-image-gradient">Example - Computing the Image Gradient</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial.html#appendix">Appendix</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="io.html">IO extensions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="io.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#supported-platforms">Supported Platforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#tutorial">Tutorial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#using-io">Using IO</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html#running-gil-io-tests">Running gil::io tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="toolbox.html">ToolBox extension</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="toolbox.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="toolbox.html#folder-structure">Folder Structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="toolbox.html#acknowledgements">Acknowledgements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="toolbox.html#id1">Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="numeric.html">Numeric extension</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="numeric.html#overview">Overview</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="design_guide.html">Design Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#about-concepts">About Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#point">Point</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#channel">Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#color-space-and-layout">Color Space and Layout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#color-base">Color Base</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#pixel">Pixel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#pixel-iterator">Pixel Iterator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#image-view">Image View</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#image">Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#run-time-specified-images-and-image-views">Run-time specified images and image views</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#useful-metafunctions-and-typedefs">Useful Metafunctions and Typedefs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#i-o-extension">I/O Extension</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#sample-code">Sample Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#extending-the-generic-image-library">Extending the Generic Image Library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#technicalities">Technicalities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="design_guide.html#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="./reference/index.html#://">API Reference</a></li>
+</ul>
+</div>
+<div class="section" id="sample-files">
+<h2>Sample files</h2>
+<ul class="simple">
+<li><a class="reference download internal" href="_downloads/x_gradient.cpp" download=""><code class="xref download docutils literal"><span class="pre">x_gradient.cpp</span></code></a>:
+Writing an algorithm that operates on generic images</li>
+<li><a class="reference download internal" href="_downloads/dynamic_image.cpp" download=""><code class="xref download docutils literal"><span class="pre">dynamic_image.cpp</span></code></a>:
+Using images whose properties (color space, channel type) are specified
+at run time</li>
+<li><a class="reference download internal" href="_downloads/histogram.cpp" download=""><code class="xref download docutils literal"><span class="pre">histogram.cpp</span></code></a>: Creating a histogram</li>
+<li><a class="reference download internal" href="_downloads/interleaved_ptr.cpp" download=""><code class="xref download docutils literal"><span class="pre">interleaved_ptr.cpp</span></code></a>,
+<a class="reference download internal" href="_downloads/interleaved_ptr.hpp" download=""><code class="xref download docutils literal"><span class="pre">interleaved_ptr.hpp</span></code></a>,
+<a class="reference download internal" href="_downloads/interleaved_ref.hpp" download=""><code class="xref download docutils literal"><span class="pre">interleaved_ref.hpp</span></code></a>:
+Creating your own pixel reference and pixel iterator</li>
+<li><a class="reference download internal" href="_downloads/mandelbrot.cpp" download=""><code class="xref download docutils literal"><span class="pre">mandelbrot.cpp</span></code></a>:
+Creating a synthetic image defined by a function</li>
+<li><a class="reference download internal" href="_downloads/packed_pixel.cpp" download=""><code class="xref download docutils literal"><span class="pre">packed_pixel.cpp</span></code></a>:
+Defining bitmasks and images whose channels or pixels are not byte-aligned</li>
+<li><a class="reference download internal" href="_downloads/resize.cpp" download=""><code class="xref download docutils literal"><span class="pre">resize.cpp</span></code></a>:
+Rescaling an image using bilinear sampling (requires the optional
+Numeric extension)</li>
+<li><a class="reference download internal" href="_downloads/affine.cpp" download=""><code class="xref download docutils literal"><span class="pre">affine.cpp</span></code></a>:
+Applying an affine transformation to an image (requires the optional
+Numeric extension)</li>
+<li><a class="reference download internal" href="_downloads/convolution.cpp" download=""><code class="xref download docutils literal"><span class="pre">convolution.cpp</span></code></a>:
+Blurring images (requires the optional Numeric extension)</li>
+</ul>
+</div>
+</div>
+
+
+    <div class="navbar" style="text-align:right;">
+      
+      
+      <a class="next" title="Tutorial" href="tutorial.html"><img src="_static/next.png" alt="next"/></a>
+      
+    </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,29 @@
+{
+   zlib_fill_window_no_init
+   Memcheck:Cond
+   fun:fill_window
+}
+{
+   beast_fill_window_no_init
+   Memcheck:Cond
+   fun:_ZN5beast4zlib6detail14deflate_stream11fill_windowIvEEvRNS0_8z_paramsE
+}
+{
+   Ignore OpenSSL malloc
+   Memcheck:Leak
+   fun:malloc
+   fun:CRYPTO_malloc
+   obj:*libcrypto*
+}
+{
+   Ignore OpenSSL realloc
+   Memcheck:Leak
+   fun:realloc
+   fun:CRYPTO_realloc
+   obj:*libcrypto*
+}
+{
+    OpenSSL Non-Purify
+    Memcheck:Cond
+    obj:*libcrypto*
+}

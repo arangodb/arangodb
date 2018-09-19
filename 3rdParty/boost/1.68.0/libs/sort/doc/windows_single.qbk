@@ -1,0 +1,157 @@
+[/===========================================================================
+ Copyright (c) 2017 Steven Ross, Francisco Tapia, Orson Peters
+
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section:windows_single 2.6.- Windows Benchmarks]
+
+[:
+This library contains a benchmark folder with programs to measure the speed of the algorithms on your machine and operating system.
+These are short benchmarks to test speed with different kinds of data ( random, sorted, sorted plus unsorted append at end ...)
+
+The benchmark runs over a VirtualBox virtual machine with 8 threads and 16 GB of RAM,
+running over a Intel(R) Core(TM) i7-5820K CPU @ 3.30GHz with 6 cores and 2 threads by core, and 15M of cache.
+
+The Operating System is Windows 10 64 bits, and the compiler is VC2017
+]
+
+[section:near_sorted Near Sorted Data]
+[:
+[h4[_Near Sorted Data With 100 000 000 64 bits Integers]]
+
+benchmark/single/benchmark_numbers.cpp : This benchmark shows the results obtained with several kind of integers numbers (random, and near
+sorted).
+
+The benchmarks with strings and objects of different sizes are not showed here, but you can obtain running the benchmark_strings.cpp ans benchmarks_objects.cpp programs.
+
+[*[teletype]
+``
+                                |           |           |           |           |           |           |
+                                |           |           |std::      |           |flat_      |           |
+                                | std::sort | pdqsort   |stable_sort| spin_sort |stable_sort|spreadsort |
+    ----------------------------+-----------+-----------+-----------+-----------+-----------+-----------+
+    random                      |  11.74    |   9.40    |  13.42    |  12.12    |  13.17    |   7.10    |
+                                |           |           |           |           |           |           |
+    sorted                      |   1.93    |   0.16    |   4.43    |   0.12    |   0.09    |   0.09    |
+    sorted + 0.1% end           |   3.54    |   2.08    |   4.39    |   0.87    |   0.48    |   5.87    |
+    sorted +   1% end           |   4.52    |   2.77    |   4.82    |   1.12    |   1.00    |   7.20    |
+    sorted +  10% end           |   9.69    |   5.99    |   7.40    |   2.21    |   2.29    |   8.59    |
+                                |           |           |           |           |           |           |
+    sorted + 0.1% middle        |   3.66    |   2.43    |   4.74    |   2.63    |   3.84    |   5.59    |
+    sorted +   1% middle        |   4.36    |   3.04    |   4.97    |   4.35    |   6.21    |   9.20    |
+    sorted +  10% middle        |   9.50    |   7.28    |   7.44    |   5.37    |   8.03    |   9.95    |
+                                |           |           |           |           |           |           |
+    reverse sorted              |   2.38    |   0.35    |   5.61    |   0.24    |   0.18    |   2.84    |
+    reverse sorted + 0.1% end   |   4.24    |   2.64    |   5.72    |   0.96    |   0.67    |   6.66    |
+    reverse sorted +   1% end   |   4.44    |   2.67    |   5.22    |   1.10    |   0.86    |   5.68    |
+    reverse sorted +  10% end   |   6.93    |   4.98    |   6.27    |   2.00    |   1.95    |   7.37    |
+                                |           |           |           |           |           |           |
+    reverse sorted + 0.1% middle|   4.63    |   3.18    |   5.76    |   3.18    |   5.22    |   7.52    |
+    reverse sorted +   1% middle|   4.38    |   3.06    |   4.94    |   3.10    |   4.54    |   6.55    |
+    reverse sorted +  10% middle|   9.20    |   7.08    |   7.56    |   5.28    |   7.40    |   9.04    |
+                                |           |           |           |           |           |           |
+
+``
+]
+]
+[endsect]
+
+[section:complex_benchmarks Complex (Several Types)]
+[:
+The next results  are obtained from more complex benchmarks, not include in the library because they use non free SW
+(If you are interested in the details, contact fjtapia@gmail.com)
+
+There are 3 types of benchmarks,
+[:
+*64 bits integers
+
+*strings
+
+*objects of several sizes.
+
+The objects are arrays of integers.  The heavy comparison sums all the elements in each, and the light comparison uses only the first number of the array.
+
+]
+[h4[_100 000 000 Numbers of 64 bits Randomly Filled]]
+
+[*[teletype]
+``
+                          |              |              |
+                          |              |   Maximum    |
+                          | Time ( secs) | Memory Used  |
+    ----------------------+--------------+--------------+
+     std::sort            |    12.381    |     783 MB   |
+     pdqsort              |     9.760    |     783 MB   |
+                          |              |              |
+     std::stable_sort     |    13.311    |    1174 MB   |
+     spinsort             |    11.541    |    1174 MB   |
+     flat_stable_sort     |    13.664    |     787 MB   |
+     spreadsort           |     8.507    |     783 MB   |
+                          |              |              |
+
+``
+]
+
+[h4[_10 000 000  Strings Randomly Filled]]
+
+[*[teletype]
+``
+                          |              |              |
+                          |              |   Maximum    |
+                          | Time ( secs) | Memory Used  |
+    ----------------------+--------------+--------------+
+     std::sort            |    9.658     |     885 MB   |
+     pdqsort              |   15.247     |    1605 MB   |
+                          |              |              |
+     std::stable_sort     |   19.753     |    1041 MB   |
+     spinsort             |   17.596     |    1041 MB   |
+     flat_stable_sort     |   19.159     |     887 MB   |
+     spreadsort           |    5.221     |     885 MB   |
+                          |              |              |
+
+``
+]
+
+[h4[_Objects Randomly Filled]]
+[:
+The objects are arrays of 64 bits numbers
+
+They are compared in two ways :
+[:
+     (H) Heavy : The comparison is the sum of all the numbers of the array.
+
+     (L) Light : The comparison is using only the first element of the array,
+                 as a key
+]
+]
+
+[*[teletype]
+``
+                     |           |           |           |           |           |           |             |
+                     | 100000000 |  50000000 |  25000000 |  12500000 |   6250000 |   1562500 |             |
+                     | objects of| objects of| objects of| objects of| objects of| objects of|   Maximum   |
+                     |  8 bytes  | 16 bytes  | 32 bytes  | 64 bytes  | 128 bytes | 512 bytes |   Memory    |
+                     |           |           |           |           |           |           |   Used      |
+                     |  H     L  |  H     L  |  H     L  |  H     L  |  H     L  |  H     L  |             |
+    -----------------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+
+    std::sort        |11.86 12.00| 6.53  6.10| 3.85  3.21| 2.79  1.97| 3.17  1.37| 2.04  1.30|    783 MB   |
+    pdqsort          |  9.80 9.39| 5.39  4.98| 3.11  2.51| 2.14  1.61| 2.50  1.10| 1.92  1.03|    783 MB   |
+                     |           |           |           |           |           |           |             |
+    std::stable_sort |12.91 13.58| 7.73  7.32| 5.16  4.52| 4.22  3.67| 4.31  3.18| 3.46  2.89|   1174 MB   |
+    spinsort         |11.58 11.37| 6.88  6.40| 4.43  3.76| 3.58  3.06| 3.84  2.41| 2.76  2.17|   1174 MB   |
+    flat_stable_sort |13.31 13.87| 8.35  7.83| 5.32  4.46| 4.16  3.14| 3.63  2.27| 2.67  2.13|    787 MB   |
+    spreadsort       | 8.37  8.37| 6.51  6.62| 3.72  3.16| 2.75  1.69| 2.56  1.20| 1.38  0.80|    783 MB   |
+                     |           |           |           |           |           |           |             |
+
+
+``
+]
+]
+[endsect]
+[endsect]
+
+

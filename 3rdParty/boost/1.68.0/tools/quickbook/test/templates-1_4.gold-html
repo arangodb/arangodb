@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Template 1.4
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#template_1_4.escaped_templates">Escaped templates</a>
+        </li>
+      </ul>
+    </div>
+    <p>
+      dynamic scoping
+    </p>
+    <p>
+      old
+    </p>
+    <p>
+      {1-2} {1-2} {1-2 3 4} {1 2-3 4} {1 2 3-4} {[1-2} {1..2-3} {1..2-3}
+    </p>
+    <p>
+      {[binary 1 2-3} 4]
+    </p>
+    <p>
+      {1-2-3} {1-2-3} {1-2-3 4} {1 2-3-4} {[1-2-3}
+    </p>
+    <div id="template_1_4.escaped_templates">
+      <h3>
+        Escaped templates
+      </h3>
+      <div id="template_1_4.escaped_templates">
+        <p>
+          Not real boostbook Also not real boostbook More fake boostbook Final fake
+          boostbook
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

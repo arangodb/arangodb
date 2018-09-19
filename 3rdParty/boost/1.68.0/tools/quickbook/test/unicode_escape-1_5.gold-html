@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      UTF-8 test
+    </h3>
+    <h2 id="utf_8_test.i__xf1_t__xeb_rn__xe2_ti__xf4_n__xe0_liz__xe6_ti__xf8_n">
+      I&#xF1;t&#xEB;rn&#xE2;ti&#xF4;n&#xE0;liz&#xE6;ti&#xF8;n
+    </h2>
+    <ul>
+      <li>
+        <div>
+          &#x391;&#x3B1; Alpha
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x392;&#x3B2; Beta
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x393;&#x3B3; Gamma
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x394;&#x3B4; Delta
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x395;&#x3B5; Epsilon
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x396;&#x3B6; Zeta
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x397;&#x3B7; Eta
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x398;&#x3B8; Theta
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x399;&#x3B9; Iota
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x39A;&#x3BA; Kappa
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x39B;&#x3BB; Lambda
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x39C;&#x3BC; Mu
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x39D;&#x3BD; Nu
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x39E;&#x3BE; Xi
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x39F;&#x3BF; Omicron
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A0;&#x3C0; Pi
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A1;&#x3C1; Rho
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A3;&#x3C3;&#x3C2; Sigma
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A4;&#x3C4; Tau
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A5;&#x3C5; Upsilon
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A6;&#x3C6; Phi
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A7;&#x3C7; Chi
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A8;&#x3C8; Psi
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x3A9;&#x3C9; Omega
+        </div>
+      </li>
+    </ul>
+    <p>
+      In the unlikely event that you've got a Mahjong font:
+    </p>
+    <ul>
+      <li>
+        <div>
+          &#x1F000; East Wind
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x1F001; South Wind
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x1F002; West Wind
+        </div>
+      </li>
+      <li>
+        <div>
+          &#x1F003; North Wind
+        </div>
+      </li>
+    </ul>
+  </body>
+</html>

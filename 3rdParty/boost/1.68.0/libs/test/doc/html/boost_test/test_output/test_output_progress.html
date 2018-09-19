@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Progress display</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../test_output.html" title="Controlling outputs">
+<link rel="prev" href="logging_api/custom_log_formatter.html" title="Custom log format support">
+<link rel="next" href="summary.html" title="Summary of the API for controlling the output">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="logging_api/custom_log_formatter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="summary.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.test_output.test_output_progress"></a><a class="link" href="test_output_progress.html" title="Progress display">Progress
+      display</a>
+</h3></div></div></div>
+<p>
+        In case if the test module involves lengthy computation split among multiple
+        test cases you may be interested in progress monitor. The test runners supplied
+        with the <span class="emphasis"><em>Unit Test Framework</em></span> support simple text progress
+        display, implemented based on
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">progress_display</span>
+</pre>
+<p>
+        <a href="#ftn.boost_test.test_output.test_output_progress.f0" class="footnote" name="boost_test.test_output.test_output_progress.f0"><sup class="footnote">[17]</sup></a>.
+      </p>
+<p>
+        The progress display output is enabled using the <span class="emphasis"><em>Unit Test Framework</em></span>
+        parameter <a class="link" href="../utf_reference/rt_param_reference/show_progress.html" title="show_progress"><code class="computeroutput"><span class="identifier">show_progress</span></code></a>.
+      </p>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> has no ability to estimate how
+        long (in time duration) the test case execution is going to take and the
+        manual test progress update is not supported at this point. The <span class="emphasis"><em>Unit
+        Test Framework</em></span> tracks the progress on test case level. If you
+        want to see more frequent progress update, you need to split the test into
+        multiple test cases.
+      </p>
+<p>
+        In default configuration both test log and test progress outputs are directed
+        into standard output stream. Any test log messages are going to interfere
+        with test progress display. To prevent this you can either set log level
+        to lower level or redirect either test log or test progress output into different
+        stream during test module initialization. Use following interface to redirect
+        test progress output:
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">progress_monitor</span><span class="special">.</span><span class="identifier">set_stream</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="special">)</span>
+</pre>
+<h6>
+<a name="boost_test.test_output.test_output_progress.h0"></a>
+        <span class="phrase"><a name="boost_test.test_output.test_output_progress.example_descr"></a></span><a class="link" href="test_output_progress.html#boost_test.test_output.test_output_progress.example_descr">Example:
+        Progress report for the test module with large amount of test cases</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example49</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">data</span><span class="special">/</span><span class="identifier">test_case</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_DATA_TEST_CASE</span><span class="special">(</span> <span class="identifier">free_test_function</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">::</span><span class="identifier">data</span><span class="special">::</span><span class="identifier">xrange</span><span class="special">(</span><span class="number">1000</span><span class="special">)</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="comment">// sleep(1);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="keyword">true</span> <span class="comment">/* test assertion */</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span> <span class="special">--</span><span class="identifier">show_progress</span><span class="special">=</span><span class="identifier">yes</span> <span class="special">--</span><span class="identifier">log_level</span><span class="special">=</span><span class="identifier">nothing</span>
+
+<span class="number">0</span><span class="special">%</span>   <span class="number">10</span>   <span class="number">20</span>   <span class="number">30</span>   <span class="number">40</span>   <span class="number">50</span>   <span class="number">60</span>   <span class="number">70</span>   <span class="number">80</span>   <span class="number">90</span>   <span class="number">100</span><span class="special">%</span>
+<span class="special">|----|----|----|----|----|----|----|----|----|----|</span>
+<span class="special">***************************************************</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_test.test_output.test_output_progress.f0" class="footnote"><p><a href="#boost_test.test_output.test_output_progress.f0" class="para"><sup class="para">[17] </sup></a>
+          The <span class="emphasis"><em>Unit Test Framework</em></span> interfaces allow implementing
+          an advanced GUI based test runner with arbitrary progress display controls
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="logging_api/custom_log_formatter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="summary.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,3 @@
+import testing ;
+
+build-project build ;

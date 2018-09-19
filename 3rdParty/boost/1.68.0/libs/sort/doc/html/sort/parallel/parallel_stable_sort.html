@@ -1,0 +1,75 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>3.3.- Parallel_stable_sort</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Sort">
+<link rel="up" href="../parallel.html" title="3.- Parallel Algorithms">
+<link rel="prev" href="sample_sort/sample_programming.html" title="Programming">
+<link rel="next" href="parallel_stable_sort/parallel_programming.html" title="Programming">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="sample_sort/sample_programming.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parallel.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parallel_stable_sort/parallel_programming.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="sort.parallel.parallel_stable_sort"></a><a class="link" href="parallel_stable_sort.html" title="3.3.- Parallel_stable_sort">3.3.- Parallel_stable_sort</a>
+</h3></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.parallel_stable_sort.parallel_description"></a><a class="link" href="parallel_stable_sort.html#sort.parallel.parallel_stable_sort.parallel_description" title="Description">Description</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+            This is an adaptation of the <span class="bold"><strong><a href="https://en.wikipedia.org/wiki/Samplesort" target="_top">Samplesort</a></strong></span>
+            algorithm, using an additional memory a half of the memory used by the
+            data (the original algorithm uses an additional memory as the used by
+            the data).
+          </p>
+<p>
+            It is a highly efficient <span class="bold"><strong>parallel stable sort</strong></span>,
+            optimized for use with many threads.
+          </p>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                      |       |                        |                              |
+Algorithm             |Stable |   Additional memory    |Best, average, and worst case |
+----------------------+-------+------------------------+------------------------------+
+parallel_stable_sort  |  yes  |        N / 2           |     N, N LogN , N LogN       |
+                      |       |                        |                              |
+</pre>
+            </strong></span>
+          </p>
+<p>
+            You can see their performance in the <span class="bold"><strong><a class="link" href="linux_parallel.html" title="3.4- Linux Benchmarks">Benchmarks</a></strong></span>
+            chapter
+          </p>
+</blockquote></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="sample_sort/sample_programming.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parallel.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parallel_stable_sort/parallel_programming.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

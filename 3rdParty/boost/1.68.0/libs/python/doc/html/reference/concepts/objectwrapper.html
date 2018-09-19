@@ -1,0 +1,132 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>ObjectWrapper</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../concepts.html" title="Chapter&#160;1.&#160;Concepts">
+<link rel="prev" href="resultconverter.html" title="ResultConverter">
+<link rel="next" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="resultconverter.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../high_level_components.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="concepts.objectwrapper"></a><a class="link" href="objectwrapper.html" title="ObjectWrapper">ObjectWrapper</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="objectwrapper.html#concepts.objectwrapper.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="objectwrapper.html#concepts.objectwrapper.objectwrapper_concept_requiremen">ObjectWrapper
+        Concept Requirements</a></span></dt>
+<dt><span class="section"><a href="objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements">TypeWrapper
+        Concept Requirements</a></span></dt>
+<dt><span class="section"><a href="objectwrapper.html#concepts.objectwrapper.caveat">Caveat</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.objectwrapper.introduction"></a><a class="link" href="objectwrapper.html#concepts.objectwrapper.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          This page defines two concepts used to describe classes which manage a
+          Python objects, and which are intended to support usage with a Python-like
+          syntax.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.objectwrapper.objectwrapper_concept_requiremen"></a><a class="link" href="objectwrapper.html#concepts.objectwrapper.objectwrapper_concept_requiremen" title="ObjectWrapper Concept Requirements">ObjectWrapper
+        Concept Requirements</a>
+</h3></div></div></div>
+<p>
+          Models of the ObjectWrapper concept have <a class="link" href="../object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object">object</a>
+          as a publicly-accessible base class, and are used to supply special construction
+          behavior and/or additional convenient functionality through (often templated)
+          member functions. Except when the return type R is itself an <a class="link" href="objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>,
+          a member function invocation of the form
+        </p>
+<pre class="programlisting"><span class="identifier">x</span><span class="special">.</span><span class="identifier">some_function</span><span class="special">(</span><span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">,...</span><span class="identifier">an</span><span class="special">)</span></pre>
+<p>
+          always has semantics equivalent to:
+        </p>
+<pre class="programlisting"><span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"some_function"</span><span class="special">)(</span><span class="identifier">object</span><span class="special">(</span><span class="identifier">a1</span><span class="special">),</span> <span class="identifier">object</span><span class="special">(</span><span class="identifier">a2</span><span class="special">),...</span><span class="identifier">object</span><span class="special">(</span><span class="identifier">an</span><span class="special">)))()</span></pre>
+<p>
+          (see <a class="link" href="objectwrapper.html#concepts.objectwrapper.caveat" title="Caveat">caveat</a> below).
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.objectwrapper.typewrapper_concept_requirements"></a><a class="link" href="objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper
+        Concept Requirements</a>
+</h3></div></div></div>
+<p>
+          TypeWrapper is a refinement of <a class="link" href="objectwrapper.html#concepts.objectwrapper.objectwrapper_concept_requiremen" title="ObjectWrapper Concept Requirements">ObjectWrapper</a>
+          which is associated with a particular Python type <code class="computeroutput"><span class="identifier">X</span></code>.
+          For a given TypeWrapper <code class="computeroutput"><span class="identifier">T</span></code>,
+          a valid constructor expression
+        </p>
+<pre class="programlisting"><span class="identifier">T</span><span class="special">(</span><span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">,...</span><span class="identifier">an</span><span class="special">)</span></pre>
+<p>
+          builds a new T object managing the result of invoking X with arguments
+          corresponding to
+        </p>
+<pre class="programlisting"><span class="identifier">object</span><span class="special">(</span><span class="identifier">a1</span><span class="special">),</span> <span class="identifier">object</span><span class="special">(</span><span class="identifier">a2</span><span class="special">),...</span><span class="identifier">object</span><span class="special">(</span><span class="identifier">an</span><span class="special">)</span></pre>
+<p>
+          . When used as arguments to wrapped C++ functions, or as the template parameter
+          to <a class="link" href="../to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract" title="Class template extract">extract&lt;&gt;</a>,
+          only instances of the associated Python type will be considered a match.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.objectwrapper.caveat"></a><a class="link" href="objectwrapper.html#concepts.objectwrapper.caveat" title="Caveat">Caveat</a>
+</h3></div></div></div>
+<p>
+          The upshot of the special member function invocation rules when the return
+          type is a TypeWrapper is that it is possible for the returned object to
+          manage a Python object of an inappropriate type. This is not usually a
+          serious problem; the worst-case result is that errors will be detected
+          at runtime a little later than they might otherwise be. For an example
+          of how this can occur, note that the <a class="link" href="../object_wrappers.html#object_wrappers.boost_python_dict_hpp.class_dict" title="Class dict">dict</a>
+          member function <code class="computeroutput"><span class="identifier">items</span></code> returns
+          an object of type <a class="link" href="../object_wrappers/boost_python_list_hpp.html#object_wrappers.boost_python_list_hpp.class_list" title="Class list">list</a>.
+          Now suppose the user defines this <code class="computeroutput"><span class="identifier">dict</span></code>
+          subclass in Python:
+        </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="keyword">class</span> <span class="identifier">mydict</span><span class="special">(</span><span class="identifier">dict</span><span class="special">):</span>
+<span class="special">...</span>     <span class="identifier">def</span> <span class="identifier">items</span><span class="special">(</span><span class="identifier">self</span><span class="special">):</span>
+<span class="special">...</span>         <span class="keyword">return</span> <span class="identifier">tuple</span><span class="special">(</span><span class="identifier">dict</span><span class="special">.</span><span class="identifier">items</span><span class="special">(</span><span class="identifier">self</span><span class="special">))</span> <span class="special">#</span> <span class="keyword">return</span> <span class="identifier">a</span> <span class="identifier">tuple</span>
+</pre>
+<p>
+          Since an instance of <code class="computeroutput"><span class="identifier">mydict</span></code>
+          is also an instance of <code class="computeroutput"><span class="identifier">dict</span></code>,
+          when used as an argument to a wrapped C++ function, <a class="link" href="../object_wrappers.html#object_wrappers.boost_python_dict_hpp.class_dict" title="Class dict">boost::python::dict</a>
+          can accept objects of Python type <code class="computeroutput"><span class="identifier">mydict</span></code>.
+          Invoking <code class="computeroutput"><span class="identifier">items</span><span class="special">()</span></code>
+          on this object can result in an instance of <a class="link" href="../object_wrappers/boost_python_list_hpp.html#object_wrappers.boost_python_list_hpp.class_list" title="Class list">boost::python::list</a>
+          which actually holds a Python <code class="computeroutput"><span class="identifier">tuple</span></code>.
+          Subsequent attempts to use <code class="computeroutput"><span class="identifier">list</span></code>
+          methods (e.g. <code class="computeroutput"><span class="identifier">append</span></code>, or
+          any other mutating operation) on this object will raise the same exception
+          that would occur if you tried to do it from Python.
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="resultconverter.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../high_level_components.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

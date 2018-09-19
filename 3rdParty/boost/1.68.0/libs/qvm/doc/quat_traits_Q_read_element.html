@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>quat_traits&lt;Q&gt;::read_element</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>quat_traits&lt;Q&gt;::read_element</h3>
+</div>
+<div class="RenoIncludeDIV"><pre>template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> <span class="RenoLink">read_element</span>( Quaternion const &amp; q );</pre>
+</div><p>This function template is expected to be static member of user-defined specializations of the <i><span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span></i> template. It returns the <i>I</i>-th element of <i>q</i>, by value or by const reference.</p>
+<div class="RenoIncludeDIV"><p><b>Note:</b> For the quaternion <i>a + bi + cj + dk</i>, the elements are assumed to be in the following order: <i>a</i>, <i>b</i>, <i>c</i>, <i>d</i>; that is, <i>I</i>=<i>0</i>/<i>1</i>/<i>2</i>/<i>3</i> would access <i>a</i>/<i>b</i>/<i>c</i>/<i>d</i>.</p>
+</div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="quat.html">quat</a>&nbsp;| <a href="quat_traits.html">quat_traits</a>&nbsp;| <a href="quat_traits_defaults.html">quat_traits_defaults</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

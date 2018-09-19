@@ -1,0 +1,76 @@
+
+[/ Copyright (C) 2008-2018 Lorenzo Caminiti]
+[/ Distributed under the Boost Software License, Version 1.0 (see accompanying]
+[/ file LICENSE_1_0.txt or a copy at http://www.boost.org/LICENSE_1_0.txt).]
+[/ See: http://www.boost.org/doc/libs/release/libs/contract/doc/html/index.html]
+
+[section Getting Started]
+
+This section presents preliminary information to start using this library.
+
+[section This Documentation]
+
+Programmers should be able to start using this library after reading the __Introduction__, __Getting_Started__, and __Tutorial__.
+Other sections of this documentation (e.g., __Advanced__ and __Extras__) can be consulted at a later point to gain a more in-depth knowledge of the library.
+__Contract_Programming_Overview__ can be skipped by programmers that are already familiar with the contract programming methodology.
+
+Some of the source code listed in this documentation contains special code comments of the form `//[...` and `//]`.
+These mark sections of the code that are automatically extracted from the source code and presented as part of this documentation.
+[footnote
+*Rationale:*
+This allows to make sure that most of the example code presented in this documentation is always up-to-date, builds and runs with the latest implementation of the library.
+]
+It should be noted that the purpose of all examples of this documentation is to illustrate how to use this library and not to represent real product code.
+
+Some footnotes are marked by the word "*Rationale*".
+These explain some of the decisions made during the design and implementation of this library.
+
+[endsect]
+
+[section Compilers and Platforms]
+
+In general, this library requires C++ compilers with a sound implementation of SFINAE and other template meta-programming techniques supported by the C++03 standard.
+It is possible to use this library without C++11 lambda functions but a large amount of boiler-plate code is required to manually program separate functor to specify preconditions, postconditions, etc. (so using this library without C++11 lambda functions is possible but not recommended, see __No_Lambda_Functions__).
+It is also possible to use this library without variadic macros by manually programming a small amount of boiler-plate code (but most if not all modern C++ compilers support variadic macros even before C++99 and C++11 so this should never be needed in practice, see __No_Macros__).
+
+Some parts of this documentation use the syntax [^['type-of](...)] to indicate an operator logically equivalent to C++11 `decltype(...)`.
+However, this library implementation does not actually use type deduction in these cases (because the library already knows the types in question) so support for C++11 `decltype` and other type-of implementations are not actually required by this library (that is why [^['type-of]] and not the real `decltype` operator is used in this documentation).
+
+This library has been developed and tested using:
+
+* Visual Studio 2015 on Windows (MSVC =cl= version 19.00.24215.1).
+* GCC version 5.4.0 on Cygwin (with C++11 features enabled =-std=c++11=).
+* Clang version 3.8.1 on Cygwin (with C++11 features enabled =-std=c++11=).
+
+For information on other compilers and platforms see the library [@http://www.boost.org/development/tests/master/developer/contract.html regression tests].
+
+[warning
+It is strongly recommended to compile and use this library as a shared library (a.k.a., Dynamically Linked Library or DLL) by defining the `BOOST_ALL_DYN_LINK` macro (or at least [macroref BOOST_CONTRACT_DYN_LINK]) when building Boost.
+
+It is possible to compile and use this library as a static library (by defining the [macroref BOOST_CONTRACT_STATIC_LINK] macro) or as a header-only library (by leaving both [macroref BOOST_CONTRACT_DYN_LINK] and [macroref BOOST_CONTRACT_STATIC_LINK] undefined, as by default).
+However, this library is not guaranteed to always work correctly in these cases.
+Specifically, this library might not correctly disable contracts while checking other contracts and call the correct user-defined contract failure handlers unless it is compiled as a shared library when it is used across different program units (different programs, different shared libraries in the same program, etc.).
+]
+
+[endsect]
+
+[section Code Organization]
+
+All headers required by this library can be included at once by:
+
+    #include <boost/contract.hpp>
+
+Or, by the following when using the library macro interface (see __Disable_Contract_Compilation__):
+
+    #include <boost/contract_macro.hpp>
+
+Alternatively, all =boost/contract/*.hpp= headers are independent from one another and they can be selectively included one-by-one based on the specific functionality of this library being used (but this was measured to not make an appreciable difference in compile-time so =boost/contract.hp= can be included directly in most cases).
+The =boost/contract/core/*.hpp= headers are not independent from other headers and they do not need to be directly included in user code when =boost/contract.hpp= or =boost/contract/*.hpp= headers are included already.
+
+All files under =boost/contract/detail/=, names in the `boost::contract::detail` namespace, macros starting with `BOOST_CONTRACT_DETAIL...`, and all names starting with `boost_contract_detail...` (in any namespace, including user-defined namespaces) are part of this library implementation and should never be used directly in user code.
+Names starting with `BOOST_CONTRACT_ERROR...` are used by this library to report some compile-time errors (so spotting these names in compiler error messages might help troubleshooting).
+
+[endsect]
+
+[endsect]
+

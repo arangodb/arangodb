@@ -1,0 +1,81 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>JUNIT log format</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../log_formats.html" title="Log formats">
+<link rel="prev" href="log_xml_format.html" title="XML log format">
+<link rel="next" href="../report_formats.html" title="Report formats">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log_xml_format.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../log_formats.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../report_formats.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.test_output.log_formats.log_junit_format"></a><a class="link" href="log_junit_format.html" title="JUNIT log format">JUNIT
+        log format</a>
+</h4></div></div></div>
+<p>
+          The <a href="http://junit.org/" target="_top">JUNIT format</a> is log format supported
+          by a wide range of Continuous Build/Integration tools.
+        </p>
+<p>
+          This format defaults its log level to <a class="link" href="test_log_output.html#test_log_output_table"><code class="computeroutput"><span class="identifier">General</span> <span class="identifier">information</span></code></a>
+          and its default stream to a file named after <a class="link" href="../../tests_organization/test_suite/master_test_suite.html" title="Master Test Suite">master
+          test suite</a>. The logger will attempt to not overwrite any existing
+          output file, which is also usually understood by Continuous Build tools.
+        </p>
+<p>
+          This format is in fact both a log and a report format: most of the Continuous
+          Build tools will summarize the content of a JUNIT file and show an overview
+          of the failing/succeeding tests of a module (report format) while letting
+          the user inspect the detailed logs (log format).
+        </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The minimal log-level for the JUnit logger is <a class="link" href="test_log_output.html#test_log_output_table"><code class="computeroutput"><span class="identifier">non</span> <span class="identifier">fatal</span>
+            <span class="identifier">error</span></code></a>. Any set-up to
+            higher log level will default to that minimal log-level.
+          </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Until Boost 1.64, the log level was previously defaulting to <code class="computeroutput"><span class="identifier">success</span></code> and was causing a heavy load
+            on the logging part in some circumstances.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="log_xml_format.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../log_formats.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../report_formats.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

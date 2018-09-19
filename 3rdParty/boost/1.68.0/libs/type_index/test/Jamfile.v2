@@ -1,0 +1,80 @@
+# Copyright (C) 2012-2014 Antony Polukhin
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import testing ;
+import feature ;
+import os ;
+
+# Variable that contains all the stuff required for linking together <rtti>on and <rtti>off
+compat = <define>BOOST_TYPE_INDEX_FORCE_NO_RTTI_COMPATIBILITY ;
+
+# Making own `nortti` that is link compatible.
+# We explicitly define BOOST_NO_RTTI because it sometimes can not be detected by build system.
+nortti = <toolset>gcc:"<cxxflags>-fno-rtti -DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>clang:"<cxxflags>-fno-rtti -DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>intel:"<cxxflags>-fno-rtti -DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>darwin:"<cxxflags>-fno-rtti -DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>msvc:<cxxflags>/GR- ;
+
+norttidefines = <toolset>gcc:"<cxxflags>-DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>clang:"<cxxflags>-DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>intel:"<cxxflags>-DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>darwin:"<cxxflags>-DBOOST_NO_RTTI -DBOOST_NO_TYPEID" <toolset>msvc:<cxxflags>-DBOOST_NO_RTTI ;
+
+
+# Making libraries that CANNOT work between rtti-on/rtti-off modules
+obj test_lib_nortti-obj : test_lib.cpp : <link>shared <rtti>off $(norttidefines) ;
+obj test_lib_anonymous_nortti-obj : test_lib_anonymous.cpp : <link>shared <rtti>off $(norttidefines) ;
+lib test_lib_nortti : test_lib_nortti-obj : <link>shared <rtti>off $(norttidefines) ;
+lib test_lib_anonymous_nortti : test_lib_anonymous_nortti-obj : <link>shared <rtti>off $(norttidefines) ;
+
+obj test_lib_rtti-obj : test_lib.cpp : <link>shared ;
+obj test_lib_anonymous_rtti-obj : test_lib_anonymous.cpp : <link>shared ;
+lib test_lib_rtti : test_lib_rtti-obj : <link>shared ;
+lib test_lib_anonymous_rtti : test_lib_anonymous_rtti-obj : <link>shared ;
+
+# Making libraries that can work between rtti-on/rtti-off modules
+obj test_lib_nortti_compat-obj : test_lib.cpp : <link>shared $(nortti) $(compat) ;
+obj test_lib_rtti_compat-obj : test_lib.cpp : <link>shared $(nortti) $(compat) ;
+lib test_lib_nortti_compat : test_lib_nortti_compat-obj : <link>shared $(nortti) $(compat) ;
+lib test_lib_rtti_compat : test_lib_rtti_compat-obj : <link>shared $(nortti) $(compat) ;
+
+exe testing_crossmodule_anonymous_no_rtti : testing_crossmodule_anonymous.cpp test_lib_anonymous_nortti : <rtti>off $(norttidefines) ;
+
+test-suite type_index
+  : 
+    [ run type_index_test.cpp ]
+    [ run type_index_runtime_cast_test.cpp ]
+    [ run type_index_constexpr_test.cpp ]
+    [ run type_index_test.cpp : : : <rtti>off $(norttidefines) : type_index_test_no_rtti ]
+    [ run ctti_print_name.cpp : : : <test-info>always_show_run_output ]
+    [ run testing_crossmodule.cpp test_lib_rtti ]
+    [ run testing_crossmodule.cpp test_lib_nortti : : : <rtti>off $(norttidefines) : testing_crossmodule_no_rtti ]
+    [ run testing_crossmodule_anonymous.cpp test_lib_anonymous_rtti : : : <test-info>always_show_run_output ]
+    [ run compare_ctti_stl.cpp ]
+
+    [ compile-fail type_index_test_ctti_copy_fail.cpp ]
+    [ compile-fail type_index_test_ctti_construct_fail.cpp ]
+    [ compile type_index_test_ctti_alignment.cpp ]
+
+    # Mixing RTTI on and off
+
+    # MSVC sometimes overrides the /GR-, without `detect_missmatch` this test may link.
+    # TODO: Disabled on MSVC. Enable again when there'll be an understanding of how to write this test correctly wor MSVC. 
+    [ link-fail testing_crossmodule.cpp test_lib_rtti : $(nortti)  <toolset>msvc:<build>no : link_fail_nortti_rtti ]
+    [ link-fail testing_crossmodule.cpp test_lib_nortti : <toolset>msvc:<build>no : link_fail_rtti_nortti ]
+
+    [ run testing_crossmodule.cpp test_lib_rtti_compat : : : $(nortti) $(compat) : testing_crossmodule_nortti_rtti_compat ]
+    [ run testing_crossmodule.cpp test_lib_nortti_compat : : : $(compat) : testing_crossmodule_rtti_nortti_compat ]
+  ;
+  
+# Assuring that examples compile and run. Adding sources from `examples` directory to the `type_index` test suite. 
+for local p in [ glob ../examples/*.cpp ]
+{
+    # RTTI on
+    type_index += [ run $(p) ] ;
+
+    # RTTI off
+    local target_name = $(p[1]:B)_no_rtti ;
+    if $(target_name) != "table_of_names_no_rtti"
+    {
+        type_index += [ run $(p) : : : <rtti>off $(norttidefines) : $(target_name) ] ;
+    }
+}
+

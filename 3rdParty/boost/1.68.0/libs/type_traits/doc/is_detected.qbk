@@ -1,0 +1,47 @@
+[/
+Copyright 2018 Glen Joseph Fernandes
+<glenjofe -at- gmail.com>
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:is_detected is_detected]
+
+    template<template<class...> class Op, class... Args>
+    using is_detected = __below;
+
+    template<template<class...> class Op, class... Args>
+    constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+
+__alias If `Op<Args...>` is a valid template-id, aliases __true_type,
+otherwise aliases __false_type.
+
+__std_paper [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4502.pdf N4502]
+
+__compat Requires C++11 variadic templates and C++11 template aliases.
+
+__header `#include <boost/type_traits/is_detected.hpp>`
+
+__examples
+
+Suppose we wish to "reset" a value of type T, if the type has a `clear()` member function then we should call
+it, otherwise we should assign a default constructed value:
+
+    template<class T>
+    using clear_t = decltype(boost::declval<T&>().clear());
+
+    template<class T>
+    void clear(T& value)
+    {
+        if constexpr (boost::is_detected_v<clear_t, T>) {
+            value.clear();
+        } else {
+            value = T();
+        }
+    }
+
+See also:  __is_detected_convertible, __is_detected_exact.
+
+[endsect]

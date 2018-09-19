@@ -1,0 +1,63 @@
+# Boost.GIL.Numeric
+#
+# Copyright (c) 2013 Christian Henning
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+
+# Quickbook
+# -----------------------------------------------------------------------------
+
+use-project boost : c:/boost ;
+
+using quickbook ;
+using doxygen ;
+using boostbook ;
+
+# taken from http://boost.2283326.n4.nabble.com/Doxygen-Running-Doxygen-from-BB-td3657608.html
+doxygen reference.html
+    : 
+        [ glob 
+            ../../../../boost/gil/extension/numeric/*.hpp 
+        ]
+    : 
+       <doxygen:param>"PROJECT_NAME=\"Boost GIL Numeric\""
+       <doxygen:param>"PROJECT_LOGO=\"$(BOOST_ROOT)/boost.png\""
+       #messages
+       <doxygen:param>QUIET=YES
+       <doxygen:param>WARN_IF_UNDOCUMENTED=YES
+       <doxygen:param>WARN_IF_DOC_ERROR=YES
+        # input 
+        <doxygen:param>JAVADOC_AUTOBRIEF=YES 
+        <doxygen:param>EXTRACT_PRIVATE=NO 
+        <doxygen:param>EXTRACT_STATIC=YES 
+        <doxygen:param>HIDE_UNDOC_MEMBERS=YES 
+        <doxygen:param>HIDE_UNDOC_CLASSES=YES 
+        # output 
+        <doxygen:param>HIDE_SCOPE_NAMES=YES 
+        <doxygen:param>INLINE_INFO=NO 
+        <doxygen:param>SORT_MEMBER_DOCS=NO 
+        <doxygen:param>SHOW_DIRECTORIES=YES 
+        <doxygen:param>SOURCE_BROWSER=YES 
+        <doxygen:param>REFERENCED_BY_RELATION=NO 
+        <doxygen:param>REFERENCES_RELATION=NO 
+        <doxygen:param>REFERENCES_LINK_SOURCE=NO 
+        <doxygen:param>VERBATIM_HEADERS=NO 
+        <doxygen:param>HIDE_UNDOC_RELATIONS=NO
+        <doxygen:param>"EXCLUDE_SYMBOLS = \"detail::*\""
+    ; 
+
+xml toolbox : numeric.qbk ;
+
+boostbook standalone
+    :
+        numeric
+	:
+        <xsl:param>boost.root=../../../../..
+        <xsl:param>boost.max.id.length=1024
+        <xsl:param>toc.max.depth=4
+        <xsl:param>toc.section.depth=4
+        <xsl:param>chunk.section.depth=2
+    ;

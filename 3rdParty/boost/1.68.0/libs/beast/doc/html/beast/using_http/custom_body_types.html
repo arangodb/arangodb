@@ -1,0 +1,692 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Custom Body Types</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_http.html" title="Using HTTP">
+<link rel="prev" href="chunked_encoding.html" title="Chunked Encoding">
+<link rel="next" href="custom_parsers.html" title="Custom Parsers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="chunked_encoding.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_parsers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.custom_body_types"></a><a class="link" href="custom_body_types.html" title="Custom Body Types">Custom Body Types</a>
+</h3></div></div></div>
+<p>
+        User-defined types are possible for the message body, where the type meets
+        the <a class="link" href="../concepts/Body.html" title="Body"><span class="bold"><strong>Body</strong></span></a>
+        requirements. This simplified class declaration shows the customization points
+        available to user-defined body types:
+      </p>
+<pre class="programlisting"><span class="comment">/// Defines a Body type</span>
+<span class="keyword">struct</span> <span class="identifier">body</span>
+<span class="special">{</span>
+    <span class="comment">/// This determines the return type of the `message::body` member function</span>
+    <span class="keyword">using</span> <span class="identifier">value_type</span> <span class="special">=</span> <span class="special">...;</span>
+
+    <span class="comment">/// An optional function, returns the body's payload size (which may be zero)</span>
+    <span class="keyword">static</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+    <span class="identifier">size</span><span class="special">(</span><span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">v</span><span class="special">);</span>
+
+    <span class="comment">/// The algorithm used for extracting buffers</span>
+    <span class="keyword">class</span> <span class="identifier">reader</span><span class="special">;</span>
+
+    <span class="comment">/// The algorithm used for inserting buffers</span>
+    <span class="keyword">class</span> <span class="identifier">writer</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The meaning of the nested types is as follows
+      </p>
+<div class="table">
+<a name="beast.using_http.custom_body_types.body_type_members"></a><p class="title"><b>Table&#160;1.23.&#160;Body Type Members</b></p>
+<div class="table-contents"><table class="table" summary="Body Type Members">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Determines the type of the <a class="link" href="../ref/boost__beast__http__message/body.html" title="http::message::body"><code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">body</span></code></a> member.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">reader</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  An optional nested type meeting the requirements of <a class="link" href="../concepts/BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a>, which provides the algorithm
+                  for storing a forward range of buffer sequences in the body representation.
+                  If present, this body type may be used with a <a class="link" href="../ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">parser</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">writer</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  An optional nested type meeting the requirements of <a class="link" href="../concepts/BodyWriter.html" title="BodyWriter"><span class="bold"><strong>BodyWriter</strong></span></a>, which provides the algorithm
+                  for converting the body representation to a forward range of buffer
+                  sequences. If present this body type may be used with a <a class="link" href="../ref/boost__beast__http__serializer.html" title="http::serializer"><code class="computeroutput"><span class="identifier">serializer</span></code></a>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="beast.using_http.custom_body_types.h0"></a>
+        <span class="phrase"><a name="beast.using_http.custom_body_types.value_type"></a></span><a class="link" href="custom_body_types.html#beast.using_http.custom_body_types.value_type">Value
+        Type</a>
+      </h5>
+<p>
+        The <code class="computeroutput"><span class="identifier">value_type</span></code> nested type
+        allows the body to define the declaration of the body type as it appears
+        in the message. This can be any type. For example, a body's value type may
+        specify <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span></code> or
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span></code>. A custom body may even set the value
+        type to something that is not a container for body octets, such as a <a href="../../../../../../libs/filesystem/doc/reference.html#class-path" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span></code></a>. Or, a more structured container
+        may be chosen. This declares a body's value type as a JSON tree structure
+        produced from a <a href="../../../../../../doc/html/property_tree/parsers.html#property_tree.parsers.json_parser" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">property_tree</span><span class="special">::</span><span class="identifier">json_parser</span></code></a>:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">property_tree</span><span class="special">/</span><span class="identifier">ptree</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">property_tree</span><span class="special">/</span><span class="identifier">json_parser</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">Body</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">value_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">property_tree</span><span class="special">::</span><span class="identifier">ptree</span><span class="special">;</span>
+
+    <span class="keyword">class</span> <span class="identifier">reader</span>
+    <span class="keyword">class</span> <span class="identifier">writer</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        As long as a suitable reader or writer is available to provide the algorithm
+        for transferring buffers in and out of the value type, those bodies may be
+        parsed or serialized.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.using_http.custom_body_types.file_body"></a><a class="link" href="custom_body_types.html#beast.using_http.custom_body_types.file_body" title="File Body">File
+        Body</a>
+</h4></div></div></div>
+<p>
+          Use of the flexible <a class="link" href="../concepts/Body.html" title="Body"><span class="bold"><strong>Body</strong></span></a>
+          concept customization point enables authors to preserve the self-contained
+          nature of the <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a> object while allowing
+          domain specific behaviors. Common operations for HTTP servers include sending
+          responses which deliver file contents, and allowing for file uploads. In
+          this example we build the <a class="link" href="../ref/boost__beast__http__basic_file_body.html" title="http::basic_file_body"><code class="computeroutput"><span class="identifier">basic_file_body</span></code></a> type which supports
+          both reading and writing to a file on the file system. The interface is
+          a class templated on the type of file used to access the file system, which
+          must meet the requirements of <a class="link" href="../concepts/File.html" title="File"><span class="bold"><strong>File</strong></span></a>.
+        </p>
+<p>
+          First we declare the type with its nested types:
+        </p>
+<pre class="programlisting"><span class="comment">/** A message body represented by a file on the filesystem.
+
+    Messages with this type have bodies represented by a
+    file on the file system. When parsing a message using
+    this body type, the data is stored in the file pointed
+    to by the path, which must be writable. When serializing,
+    the implementation will read the file and present those
+    octets as the body content. This may be used to serve
+    content from a directory as part of a web service.
+
+    @tparam File The implementation to use for accessing files.
+    This type must meet the requirements of @b File.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">basic_file_body</span>
+<span class="special">{</span>
+    <span class="comment">// Make sure the type meets the requirements</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_file</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"File requirements not met"</span><span class="special">);</span>
+
+    <span class="comment">/// The type of File this body uses</span>
+    <span class="keyword">using</span> <span class="identifier">file_type</span> <span class="special">=</span> <span class="identifier">File</span><span class="special">;</span>
+
+    <span class="comment">// Algorithm for storing buffers when parsing.</span>
+    <span class="keyword">class</span> <span class="identifier">reader</span><span class="special">;</span>
+
+    <span class="comment">// Algorithm for retrieving buffers when serializing.</span>
+    <span class="keyword">class</span> <span class="identifier">writer</span><span class="special">;</span>
+
+    <span class="comment">// The type of the @ref message::body member.</span>
+    <span class="keyword">class</span> <span class="identifier">value_type</span><span class="special">;</span>
+
+    <span class="comment">/** Returns the size of the body
+
+        @param body The file body to use
+    */</span>
+    <span class="keyword">static</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+    <span class="identifier">size</span><span class="special">(</span><span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">body</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+          We will start with the definition of the <code class="computeroutput"><span class="identifier">value_type</span></code>.
+          Our strategy will be to store the file object directly in the message container
+          through the <code class="computeroutput"><span class="identifier">value_type</span></code>
+          field. To use this body it will be necessary to call <code class="computeroutput"><span class="identifier">msg</span><span class="special">.</span><span class="identifier">body</span><span class="special">.</span><span class="identifier">file</span><span class="special">().</span><span class="identifier">open</span><span class="special">()</span></code> first with the required information such
+          as the path and open mode. This ensures that the file exists throughout
+          the operation and prevent the race condition where the file is removed
+          from the file system in between calls.
+        </p>
+<pre class="programlisting"><span class="comment">/** The type of the @ref message::body member.
+
+    Messages declared using `basic_file_body` will have this type for
+    the body member. This rich class interface allow the file to be
+    opened with the file handle maintained directly in the object,
+    which is attached to the message.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span><span class="identifier">value_type</span>
+<span class="special">{</span>
+    <span class="comment">// This body container holds a handle to the file</span>
+    <span class="comment">// when it is open, and also caches the size when set.</span>
+
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">reader</span><span class="special">;</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">writer</span><span class="special">;</span>
+    <span class="keyword">friend</span> <span class="keyword">struct</span> <span class="identifier">basic_file_body</span><span class="special">;</span>
+
+    <span class="comment">// This represents the open file</span>
+    <span class="identifier">File</span> <span class="identifier">file_</span><span class="special">;</span>
+
+    <span class="comment">// The cached file size</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">file_size_</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">/** Destructor.
+
+        If the file is open, it is closed first.
+    */</span>
+    <span class="special">~</span><span class="identifier">value_type</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="comment">/// Constructor</span>
+    <span class="identifier">value_type</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="comment">/// Constructor</span>
+    <span class="identifier">value_type</span><span class="special">(</span><span class="identifier">value_type</span><span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="comment">/// Move assignment</span>
+    <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span><span class="identifier">value_type</span><span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="comment">/// Returns `true` if the file is open</span>
+    <span class="keyword">bool</span>
+    <span class="identifier">is_open</span><span class="special">()</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">file_</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">();</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Returns the size of the file if open</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+    <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">file_size_</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Close the file if open</span>
+    <span class="keyword">void</span>
+    <span class="identifier">close</span><span class="special">();</span>
+
+    <span class="comment">/** Open a file at the given path with the specified mode
+
+        @param path The utf-8 encoded path to the file
+
+        @param mode The file mode to use
+
+        @param ec Set to the error, if any occurred
+    */</span>
+    <span class="keyword">void</span>
+    <span class="identifier">open</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">path</span><span class="special">,</span> <span class="identifier">file_mode</span> <span class="identifier">mode</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">/** Set the open file
+
+        This function is used to set the open file. Any previously
+        set file will be closed.
+
+        @param file The file to set. The file must be open or else
+        an error occurs
+
+        @param ec Set to the error, if any occurred
+    */</span>
+    <span class="keyword">void</span>
+    <span class="identifier">reset</span><span class="special">(</span><span class="identifier">File</span><span class="special">&amp;&amp;</span> <span class="identifier">file</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">value_type</span><span class="special">::</span>
+<span class="identifier">close</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">error_code</span> <span class="identifier">ignored</span><span class="special">;</span>
+    <span class="identifier">file_</span><span class="special">.</span><span class="identifier">close</span><span class="special">(</span><span class="identifier">ignored</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">value_type</span><span class="special">::</span>
+<span class="identifier">open</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">path</span><span class="special">,</span> <span class="identifier">file_mode</span> <span class="identifier">mode</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Open the file</span>
+    <span class="identifier">file_</span><span class="special">.</span><span class="identifier">open</span><span class="special">(</span><span class="identifier">path</span><span class="special">,</span> <span class="identifier">mode</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="keyword">return</span><span class="special">;</span>
+
+    <span class="comment">// Cache the size</span>
+    <span class="identifier">file_size_</span> <span class="special">=</span> <span class="identifier">file_</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">close</span><span class="special">();</span>
+        <span class="keyword">return</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">value_type</span><span class="special">::</span>
+<span class="identifier">reset</span><span class="special">(</span><span class="identifier">File</span><span class="special">&amp;&amp;</span> <span class="identifier">file</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// First close the file if open</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">file_</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">())</span>
+    <span class="special">{</span>
+        <span class="identifier">error_code</span> <span class="identifier">ignored</span><span class="special">;</span>
+        <span class="identifier">file_</span><span class="special">.</span><span class="identifier">close</span><span class="special">(</span><span class="identifier">ignored</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Take ownership of the new file</span>
+    <span class="identifier">file_</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">file</span><span class="special">);</span>
+
+    <span class="comment">// Cache the size</span>
+    <span class="identifier">file_size_</span> <span class="special">=</span> <span class="identifier">file_</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="comment">// This is called from message::payload_size</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">size</span><span class="special">(</span><span class="identifier">value_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">body</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Forward the call to the body</span>
+    <span class="keyword">return</span> <span class="identifier">body</span><span class="special">.</span><span class="identifier">size</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Our implementation of <a class="link" href="../concepts/BodyWriter.html" title="BodyWriter"><span class="bold"><strong>BodyWriter</strong></span></a> will contain a small buffer from
+          which the file contents are read. The buffer is provided to the implementation
+          on each call until everything has been read in.
+        </p>
+<pre class="programlisting"><span class="comment">/** Algorithm for retrieving buffers when serializing.
+
+    Objects of this type are created during serialization
+    to extract the buffers representing the body.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span><span class="identifier">writer</span>
+<span class="special">{</span>
+    <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="identifier">body_</span><span class="special">;</span>      <span class="comment">// The body we are reading from</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">remain_</span><span class="special">;</span>  <span class="comment">// The number of unread bytes</span>
+    <span class="keyword">char</span> <span class="identifier">buf_</span><span class="special">[</span><span class="number">4096</span><span class="special">];</span>        <span class="comment">// Small buffer for reading</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">// The type of buffer sequence returned by `get`.</span>
+    <span class="comment">//</span>
+    <span class="keyword">using</span> <span class="identifier">const_buffers_type</span> <span class="special">=</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">const_buffer</span><span class="special">;</span>
+
+    <span class="comment">// Constructor.</span>
+    <span class="comment">//</span>
+    <span class="comment">// `h` holds the headers of the message we are</span>
+    <span class="comment">// serializing, while `b` holds the body.</span>
+    <span class="comment">//</span>
+    <span class="comment">// Note that the message is passed by non-const reference.</span>
+    <span class="comment">// This is intentional, because reading from the file</span>
+    <span class="comment">// changes its "current position" which counts makes the</span>
+    <span class="comment">// operation logically not-const (although it is bitwise</span>
+    <span class="comment">// const).</span>
+    <span class="comment">//</span>
+    <span class="comment">// The BodyWriter concept allows the writer to choose</span>
+    <span class="comment">// whether to take the message by const reference or</span>
+    <span class="comment">// non-const reference. Depending on the choice, a</span>
+    <span class="comment">// serializer constructed using that body type will</span>
+    <span class="comment">// require the same const or non-const reference to</span>
+    <span class="comment">// construct.</span>
+    <span class="comment">//</span>
+    <span class="comment">// Readers which accept const messages usually allow</span>
+    <span class="comment">// the same body to be serialized by multiple threads</span>
+    <span class="comment">// concurrently, while readers accepting non-const</span>
+    <span class="comment">// messages may only be serialized by one thread at</span>
+    <span class="comment">// a time.</span>
+    <span class="comment">//</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+    <span class="identifier">writer</span><span class="special">(</span><span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;</span> <span class="identifier">h</span><span class="special">,</span> <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="identifier">b</span><span class="special">);</span>
+
+    <span class="comment">// Initializer</span>
+    <span class="comment">//</span>
+    <span class="comment">// This is called before the body is serialized and</span>
+    <span class="comment">// gives the writer a chance to do something that might</span>
+    <span class="comment">// need to return an error code.</span>
+    <span class="comment">//</span>
+    <span class="keyword">void</span>
+    <span class="identifier">init</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">// This function is called zero or more times to</span>
+    <span class="comment">// retrieve buffers. A return value of `boost::none`</span>
+    <span class="comment">// means there are no more buffers. Otherwise,</span>
+    <span class="comment">// the contained pair will have the next buffer</span>
+    <span class="comment">// to serialize, and a `bool` indicating whether</span>
+    <span class="comment">// or not there may be additional buffers.</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">const_buffers_type</span><span class="special">,</span> <span class="keyword">bool</span><span class="special">&gt;&gt;</span>
+    <span class="identifier">get</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+          And here are the definitions for the functions we have declared:
+        </p>
+<pre class="programlisting"><span class="comment">// Here we just stash a reference to the path for later.</span>
+<span class="comment">// Rather than dealing with messy constructor exceptions,</span>
+<span class="comment">// we save the things that might fail for the call to `init`.</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">writer</span><span class="special">::</span>
+<span class="identifier">writer</span><span class="special">(</span><span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;</span> <span class="identifier">h</span><span class="special">,</span> <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="identifier">b</span><span class="special">)</span>
+    <span class="special">:</span> <span class="identifier">body_</span><span class="special">(</span><span class="identifier">b</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ignore_unused</span><span class="special">(</span><span class="identifier">h</span><span class="special">);</span>
+
+    <span class="comment">// The file must already be open</span>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span><span class="identifier">body_</span><span class="special">.</span><span class="identifier">file_</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">());</span>
+
+    <span class="comment">// Get the size of the file</span>
+    <span class="identifier">remain_</span> <span class="special">=</span> <span class="identifier">body_</span><span class="special">.</span><span class="identifier">file_size_</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="comment">// Initializer</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">writer</span><span class="special">::</span>
+<span class="identifier">init</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// The error_code specification requires that we</span>
+    <span class="comment">// either set the error to some value, or set it</span>
+    <span class="comment">// to indicate no error.</span>
+    <span class="comment">//</span>
+    <span class="comment">// We don't do anything fancy so set "no error"</span>
+    <span class="identifier">ec</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">category</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="comment">// This function is called repeatedly by the serializer to</span>
+<span class="comment">// retrieve the buffers representing the body. Our strategy</span>
+<span class="comment">// is to read into our buffer and return it until we have</span>
+<span class="comment">// read through the whole file.</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">auto</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">writer</span><span class="special">::</span>
+<span class="identifier">get</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">-&gt;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">const_buffers_type</span><span class="special">,</span> <span class="keyword">bool</span><span class="special">&gt;&gt;</span>
+<span class="special">{</span>
+    <span class="comment">// Calculate the smaller of our buffer size,</span>
+    <span class="comment">// or the amount of unread data in the file.</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">amount</span> <span class="special">=</span>  <span class="identifier">remain_</span> <span class="special">&gt;</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">buf_</span><span class="special">)</span> <span class="special">?</span>
+        <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">buf_</span><span class="special">)</span> <span class="special">:</span> <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;(</span><span class="identifier">remain_</span><span class="special">);</span>
+
+    <span class="comment">// Handle the case where the file is zero length</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">amount</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// Modify the error code to indicate success</span>
+        <span class="comment">// This is required by the error_code specification.</span>
+        <span class="comment">//</span>
+        <span class="comment">// NOTE We use the existing category instead of calling</span>
+        <span class="comment">//      into the library to get the generic category because</span>
+        <span class="comment">//      that saves us a possibly expensive atomic operation.</span>
+        <span class="comment">//</span>
+        <span class="identifier">ec</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">category</span><span class="special">());</span>
+        <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Now read the next buffer</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">nread</span> <span class="special">=</span> <span class="identifier">body_</span><span class="special">.</span><span class="identifier">file_</span><span class="special">.</span><span class="identifier">read</span><span class="special">(</span><span class="identifier">buf_</span><span class="special">,</span> <span class="identifier">amount</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span><span class="special">;</span>
+
+    <span class="comment">// Make sure there is forward progress</span>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span><span class="identifier">nread</span> <span class="special">!=</span> <span class="number">0</span><span class="special">);</span>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span><span class="identifier">nread</span> <span class="special">&lt;=</span> <span class="identifier">remain_</span><span class="special">);</span>
+
+    <span class="comment">// Update the amount remaining based on what we got</span>
+    <span class="identifier">remain_</span> <span class="special">-=</span> <span class="identifier">nread</span><span class="special">;</span>
+
+    <span class="comment">// Return the buffer to the caller.</span>
+    <span class="comment">//</span>
+    <span class="comment">// The second element of the pair indicates whether or</span>
+    <span class="comment">// not there is more data. As long as there is some</span>
+    <span class="comment">// unread bytes, there will be more data. Otherwise,</span>
+    <span class="comment">// we set this bool to `false` so we will not be called</span>
+    <span class="comment">// again.</span>
+    <span class="comment">//</span>
+    <span class="identifier">ec</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">category</span><span class="special">());</span>
+    <span class="keyword">return</span> <span class="special">{{</span>
+        <span class="identifier">const_buffers_type</span><span class="special">{</span><span class="identifier">buf_</span><span class="special">,</span> <span class="identifier">nread</span><span class="special">},</span>    <span class="comment">// buffer to return.</span>
+        <span class="identifier">remain_</span> <span class="special">&gt;</span> <span class="number">0</span>                         <span class="comment">// `true` if there are more buffers.</span>
+        <span class="special">}};</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Files can be read now, and the next step is to allow writing to files by
+          implementing the <a class="link" href="../concepts/BodyReader.html" title="BodyReader"><span class="bold"><strong>BodyReader</strong></span></a>.
+          The style is similar to the writer, except that buffers are incoming instead
+          of outgoing. Here's the declaration:
+        </p>
+<pre class="programlisting"><span class="comment">/** Algorithm for storing buffers when parsing.
+
+    Objects of this type are created during parsing
+    to store incoming buffers representing the body.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span><span class="identifier">reader</span>
+<span class="special">{</span>
+    <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="identifier">body_</span><span class="special">;</span>  <span class="comment">// The body we are writing to</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">// Constructor.</span>
+    <span class="comment">//</span>
+    <span class="comment">// This is called after the header is parsed and</span>
+    <span class="comment">// indicates that a non-zero sized body may be present.</span>
+    <span class="comment">// `h` holds the received message headers.</span>
+    <span class="comment">// `b` is an instance of `basic_file_body`.</span>
+    <span class="comment">//</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+    <span class="keyword">explicit</span>
+    <span class="identifier">reader</span><span class="special">(</span><span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;</span><span class="identifier">h</span><span class="special">,</span> <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="identifier">b</span><span class="special">);</span>
+
+    <span class="comment">// Initializer</span>
+    <span class="comment">//</span>
+    <span class="comment">// This is called before the body is parsed and</span>
+    <span class="comment">// gives the reader a chance to do something that might</span>
+    <span class="comment">// need to return an error code. It informs us of</span>
+    <span class="comment">// the payload size (`content_length`) which we can</span>
+    <span class="comment">// optionally use for optimization.</span>
+    <span class="comment">//</span>
+    <span class="keyword">void</span>
+    <span class="identifier">init</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">// This function is called one or more times to store</span>
+    <span class="comment">// buffer sequences corresponding to the incoming body.</span>
+    <span class="comment">//</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">put</span><span class="special">(</span><span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">// This function is called when writing is complete.</span>
+    <span class="comment">// It is an opportunity to perform any final actions</span>
+    <span class="comment">// which might fail, in order to return an error code.</span>
+    <span class="comment">// Operations that might fail should not be attemped in</span>
+    <span class="comment">// destructors, since an exception thrown from there</span>
+    <span class="comment">// would terminate the program.</span>
+    <span class="comment">//</span>
+    <span class="keyword">void</span>
+    <span class="identifier">finish</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+          Finally, here is the implementation of the reader member functions:
+        </p>
+<pre class="programlisting"><span class="comment">// We don't do much in the reader constructor since the</span>
+<span class="comment">// file is already open.</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">reader</span><span class="special">::</span>
+<span class="identifier">reader</span><span class="special">(</span><span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;</span> <span class="identifier">h</span><span class="special">,</span> <span class="identifier">value_type</span><span class="special">&amp;</span> <span class="identifier">body</span><span class="special">)</span>
+    <span class="special">:</span> <span class="identifier">body_</span><span class="special">(</span><span class="identifier">body</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ignore_unused</span><span class="special">(</span><span class="identifier">h</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">reader</span><span class="special">::</span>
+<span class="identifier">init</span><span class="special">(</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">content_length</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// The file must already be open for writing</span>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span><span class="identifier">body_</span><span class="special">.</span><span class="identifier">file_</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">());</span>
+
+    <span class="comment">// We don't do anything with this but a sophisticated</span>
+    <span class="comment">// application might check available space on the device</span>
+    <span class="comment">// to see if there is enough room to store the body.</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ignore_unused</span><span class="special">(</span><span class="identifier">content_length</span><span class="special">);</span>
+
+    <span class="comment">// The error_code specification requires that we</span>
+    <span class="comment">// either set the error to some value, or set it</span>
+    <span class="comment">// to indicate no error.</span>
+    <span class="comment">//</span>
+    <span class="comment">// We don't do anything fancy so set "no error"</span>
+    <span class="identifier">ec</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">category</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="comment">// This will get called one or more times with body buffers</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ConstBufferSequence</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">reader</span><span class="special">::</span>
+<span class="identifier">put</span><span class="special">(</span><span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// This function must return the total number of</span>
+    <span class="comment">// bytes transferred from the input buffers.</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">nwritten</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="comment">// Loop over all the buffers in the sequence,</span>
+    <span class="comment">// and write each one to the file.</span>
+    <span class="keyword">for</span><span class="special">(</span><span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer_sequence_begin</span><span class="special">(</span><span class="identifier">buffers</span><span class="special">);</span>
+        <span class="identifier">it</span> <span class="special">!=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">buffer_sequence_end</span><span class="special">(</span><span class="identifier">buffers</span><span class="special">);</span> <span class="special">++</span><span class="identifier">it</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// Write this buffer to the file</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">const_buffer</span> <span class="identifier">buffer</span> <span class="special">=</span> <span class="special">*</span><span class="identifier">it</span><span class="special">;</span>
+        <span class="identifier">nwritten</span> <span class="special">+=</span> <span class="identifier">body_</span><span class="special">.</span><span class="identifier">file_</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span>
+            <span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">buffer</span><span class="special">.</span><span class="identifier">size</span><span class="special">(),</span> <span class="identifier">ec</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+            <span class="keyword">return</span> <span class="identifier">nwritten</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Indicate success</span>
+    <span class="comment">// This is required by the error_code specification</span>
+    <span class="identifier">ec</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">category</span><span class="special">());</span>
+
+    <span class="keyword">return</span> <span class="identifier">nwritten</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="comment">// Called after writing is done when there's no error.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">File</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">basic_file_body</span><span class="special">&lt;</span><span class="identifier">File</span><span class="special">&gt;::</span>
+<span class="identifier">reader</span><span class="special">::</span>
+<span class="identifier">finish</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// This has to be cleared before returning, to</span>
+    <span class="comment">// indicate no error. The specification requires it.</span>
+    <span class="identifier">ec</span><span class="special">.</span><span class="identifier">assign</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">category</span><span class="special">());</span>
+<span class="special">}</span>
+</pre>
+<p>
+          We have created a full featured body type capable of reading and writing
+          files on the filesystem, integrating seamlessly with the HTTP algorithms
+          and message container. The body type works with any file implementation
+          meeting the requirements of <a class="link" href="../concepts/File.html" title="File"><span class="bold"><strong>File</strong></span></a> so it may be transparently used with
+          solutions optimized for particular platforms. Example HTTP servers which
+          use file bodies are available in the example directory.
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="chunked_encoding.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_parsers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Utilities</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="prev" href="specialized/zip.html" title="Zip Iterator">
+<link rel="next" href="utilities/concept_checking.html" title="Concept Checking">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="specialized/zip.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="utilities/concept_checking.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="iterator.utilities"></a><a class="link" href="utilities.html" title="Utilities">Utilities</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="utilities.html#iterator.utilities.archetypes">Iterator Archetypes</a></span></dt>
+<dt><span class="section"><a href="utilities/concept_checking.html">Concept Checking</a></span></dt>
+<dt><span class="section"><a href="utilities/iterator_traits.html">Iterator Traits</a></span></dt>
+<dt><span class="section"><a href="utilities/traits.html">Type Traits</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.utilities.archetypes"></a><a class="link" href="utilities.html#iterator.utilities.archetypes" title="Iterator Archetypes">Iterator Archetypes</a>
+</h3></div></div></div>
+<p>
+        The <code class="computeroutput"><span class="identifier">iterator_archetype</span></code> class
+        constructs a minimal implementation of one of the iterator access concepts
+        and one of the iterator traversal concepts. This is used for doing a compile-time
+        check to see if a the type requirements of a template are really enough to
+        cover the implementation of the template. For further information see the
+        documentation for the |concepts|_ library.
+      </p>
+<h3>
+<a name="iterator.utilities.archetypes.h0"></a>
+        <span class="phrase"><a name="iterator.utilities.archetypes.synopsis"></a></span><a class="link" href="utilities.html#iterator.utilities.archetypes.synopsis">Synopsis</a>
+      </h3>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">iterator_archetypes</span>
+<span class="special">{</span>
+    <span class="comment">// Access categories</span>
+
+    <span class="keyword">typedef</span> <span class="comment">/*implementation  defined*/</span> <span class="identifier">readable_iterator_t</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/*implementation  defined*/</span> <span class="identifier">writable_iterator_t</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/*implementation  defined*/</span> <span class="identifier">readable_writable_iterator_t</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/*implementation  defined*/</span> <span class="identifier">readable_lvalue_iterator_t</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/*implementation  defined*/</span> <span class="identifier">writable_lvalue_iterator_t</span><span class="special">;</span>
+
+<span class="special">}</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Value</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">AccessCategory</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">TraversalCategory</span>
+<span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">iterator_archetype</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">difference_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<h4>
+<a name="iterator.utilities.archetypes.h1"></a>
+        <span class="phrase"><a name="iterator.utilities.archetypes.access_category_tags"></a></span><a class="link" href="utilities.html#iterator.utilities.archetypes.access_category_tags">Access
+        Category Tags</a>
+      </h4>
+<p>
+        The access category types provided correspond to the following standard iterator
+        access concept combinations:
+      </p>
+<pre class="programlisting"><span class="identifier">readable_iterator_t</span> <span class="special">:=</span>
+
+  <span class="identifier">Readable</span> <span class="identifier">Iterator</span>
+
+<span class="identifier">writable_iterator_t</span> <span class="special">:=</span>
+
+  <span class="identifier">Writeable</span> <span class="identifier">Iterator</span>
+
+<span class="identifier">readable_writable_iterator_t</span> <span class="special">:=</span>
+
+  <span class="identifier">Readable</span> <span class="identifier">Iterator</span> <span class="special">&amp;</span> <span class="identifier">Writeable</span> <span class="identifier">Iterator</span> <span class="special">&amp;</span> <span class="identifier">Swappable</span> <span class="identifier">Iterator</span>
+
+<span class="identifier">readable_lvalue_iterator_t</span> <span class="special">:=</span>
+
+  <span class="identifier">Readable</span> <span class="identifier">Iterator</span> <span class="special">&amp;</span> <span class="identifier">Lvalue</span> <span class="identifier">Iterator</span>
+
+<span class="identifier">writeable_lvalue_iterator_t</span> <span class="special">:=</span>
+
+  <span class="identifier">Readable</span> <span class="identifier">Iterator</span> <span class="special">&amp;</span> <span class="identifier">Writeable</span> <span class="identifier">Iterator</span> <span class="special">&amp;</span> <span class="identifier">Swappable</span> <span class="identifier">Iterator</span> <span class="special">&amp;</span> <span class="identifier">Lvalue</span> <span class="identifier">Iterator</span>
+</pre>
+<h4>
+<a name="iterator.utilities.archetypes.h2"></a>
+        <span class="phrase"><a name="iterator.utilities.archetypes.traits"></a></span><a class="link" href="utilities.html#iterator.utilities.archetypes.traits">Traits</a>
+      </h4>
+<p>
+        The nested trait types are defined as follows:
+      </p>
+<pre class="programlisting"><span class="keyword">if</span> <span class="special">(</span><span class="identifier">AccessCategory</span> <span class="special">==</span> <span class="identifier">readable_iterator_t</span><span class="special">)</span>
+
+  <span class="identifier">value_type</span> <span class="special">=</span> <span class="identifier">Value</span>
+  <span class="identifier">reference</span>  <span class="special">=</span> <span class="identifier">Value</span>
+  <span class="identifier">pointer</span>    <span class="special">=</span> <span class="identifier">Value</span><span class="special">*</span>
+
+<span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">AccessCategory</span> <span class="special">==</span> <span class="identifier">writable_iterator_t</span><span class="special">)</span>
+
+  <span class="identifier">value_type</span> <span class="special">=</span> <span class="keyword">void</span>
+  <span class="identifier">reference</span>  <span class="special">=</span> <span class="keyword">void</span>
+  <span class="identifier">pointer</span>    <span class="special">=</span> <span class="keyword">void</span>
+
+<span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">AccessCategory</span> <span class="special">==</span> <span class="identifier">readable_writable_iterator_t</span><span class="special">)</span>
+
+  <span class="identifier">value_type</span> <span class="special">=</span> <span class="identifier">Value</span>
+
+  <span class="identifier">reference</span> <span class="special">:=</span>
+
+    <span class="identifier">A</span> <span class="identifier">type</span> <span class="identifier">X</span> <span class="identifier">that</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">Value</span> <span class="keyword">for</span> <span class="identifier">which</span> <span class="identifier">the</span> <span class="identifier">following</span>
+    <span class="identifier">expression</span> <span class="identifier">is</span> <span class="identifier">valid</span><span class="special">.</span> <span class="identifier">Given</span> <span class="identifier">an</span> <span class="identifier">object</span> <span class="identifier">x</span> <span class="identifier">of</span> <span class="identifier">type</span> <span class="identifier">X</span> <span class="keyword">and</span> <span class="identifier">v</span> <span class="identifier">of</span> <span class="identifier">type</span>
+    <span class="identifier">Value</span><span class="special">.</span>
+
+    <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">v</span>
+
+  <span class="identifier">pointer</span>    <span class="special">=</span> <span class="identifier">Value</span><span class="special">*</span>
+
+<span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">AccessCategory</span> <span class="special">==</span> <span class="identifier">readable_lvalue_iterator_t</span><span class="special">)</span>
+
+  <span class="identifier">value_type</span> <span class="special">=</span> <span class="identifier">Value</span>
+  <span class="identifier">reference</span>  <span class="special">=</span> <span class="identifier">Value</span> <span class="keyword">const</span><span class="special">&amp;</span>
+  <span class="identifier">pointer</span>    <span class="special">=</span> <span class="identifier">Value</span> <span class="keyword">const</span><span class="special">*</span>
+
+<span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">AccessCategory</span> <span class="special">==</span> <span class="identifier">writable_lvalue_iterator_t</span><span class="special">)</span>
+
+  <span class="identifier">value_type</span> <span class="special">=</span> <span class="identifier">Value</span>
+  <span class="identifier">reference</span>  <span class="special">=</span> <span class="identifier">Value</span><span class="special">&amp;</span>
+  <span class="identifier">pointer</span>    <span class="special">=</span> <span class="identifier">Value</span><span class="special">*</span>
+
+<span class="keyword">if</span> <span class="special">(</span> <span class="identifier">TraversalCategory</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">forward_traversal_tag</span> <span class="special">)</span>
+
+  <span class="identifier">difference_type</span> <span class="special">:=</span> <span class="identifier">ptrdiff_t</span>
+
+<span class="keyword">else</span>
+
+  <span class="identifier">difference_type</span> <span class="special">:=</span> <span class="identifier">unspecified</span> <span class="identifier">type</span>
+
+
+<span class="identifier">iterator_category</span> <span class="special">:=</span>
+
+  <span class="identifier">A</span> <span class="identifier">type</span> <span class="identifier">X</span> <span class="identifier">satisfying</span> <span class="identifier">the</span> <span class="identifier">following</span> <span class="identifier">two</span> <span class="identifier">constraints</span><span class="special">:</span>
+
+     <span class="number">1.</span> <span class="identifier">X</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">X1</span><span class="special">,</span> <span class="keyword">and</span> <span class="keyword">not</span> <span class="identifier">to</span> <span class="identifier">any</span> <span class="identifier">more</span><span class="special">-</span><span class="identifier">derived</span>
+        <span class="identifier">type</span><span class="special">,</span> <span class="identifier">where</span> <span class="identifier">X1</span> <span class="identifier">is</span> <span class="identifier">defined</span> <span class="identifier">by</span><span class="special">:</span>
+
+          <span class="keyword">if</span> <span class="special">(</span><span class="identifier">reference</span> <span class="identifier">is</span> <span class="identifier">a</span> <span class="identifier">reference</span> <span class="identifier">type</span>
+              <span class="special">&amp;&amp;</span> <span class="identifier">TraversalCategory</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">forward_traversal_tag</span><span class="special">)</span>
+          <span class="special">{</span>
+              <span class="keyword">if</span> <span class="special">(</span><span class="identifier">TraversalCategory</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">random_access_traversal_tag</span><span class="special">)</span>
+                  <span class="identifier">X1</span> <span class="special">=</span> <span class="identifier">random_access_iterator_tag</span>
+              <span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">TraversalCategory</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">bidirectional_traversal_tag</span><span class="special">)</span>
+                  <span class="identifier">X1</span> <span class="special">=</span> <span class="identifier">bidirectional_iterator_tag</span>
+              <span class="keyword">else</span>
+                  <span class="identifier">X1</span> <span class="special">=</span> <span class="identifier">forward_iterator_tag</span>
+          <span class="special">}</span>
+          <span class="keyword">else</span>
+          <span class="special">{</span>
+              <span class="keyword">if</span> <span class="special">(</span><span class="identifier">TraversalCategory</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">single_pass_traversal_tag</span>
+                  <span class="special">&amp;&amp;</span> <span class="identifier">reference</span> <span class="special">!=</span> <span class="keyword">void</span><span class="special">)</span>
+                  <span class="identifier">X1</span> <span class="special">=</span> <span class="identifier">input_iterator_tag</span>
+              <span class="keyword">else</span>
+                  <span class="identifier">X1</span> <span class="special">=</span> <span class="identifier">output_iterator_tag</span>
+          <span class="special">}</span>
+
+     <span class="number">2.</span> <span class="identifier">X</span> <span class="identifier">is</span> <span class="identifier">convertible</span> <span class="identifier">to</span> <span class="identifier">TraversalCategory</span>
+</pre>
+<h3>
+<a name="iterator.utilities.archetypes.h3"></a>
+        <span class="phrase"><a name="iterator.utilities.archetypes.requirements"></a></span><a class="link" href="utilities.html#iterator.utilities.archetypes.requirements">Requirements</a>
+      </h3>
+<p>
+        The <code class="computeroutput"><span class="identifier">AccessCategory</span></code> argument
+        must be one of the predefined access category tags. The <code class="computeroutput"><span class="identifier">TraversalCategory</span></code>
+        must be one of the standard traversal tags. The <code class="computeroutput"><span class="identifier">Value</span></code>
+        type must satisfy the requirements of the iterator concept specified by
+        <code class="computeroutput"><span class="identifier">AccessCategory</span></code> and <code class="computeroutput"><span class="identifier">TraversalCategory</span></code> as implied by the nested
+        traits types.
+      </p>
+<h3>
+<a name="iterator.utilities.archetypes.h4"></a>
+        <span class="phrase"><a name="iterator.utilities.archetypes.concepts"></a></span><a class="link" href="utilities.html#iterator.utilities.archetypes.concepts">Concepts</a>
+      </h3>
+<p>
+        <code class="computeroutput"><span class="identifier">iterator_archetype</span></code> models
+        the iterator concepts specified by the <code class="computeroutput"><span class="identifier">AccessCategory</span></code>
+        and <code class="computeroutput"><span class="identifier">TraversalCategory</span></code> arguments.
+        <code class="computeroutput"><span class="identifier">iterator_archetype</span></code> does not
+        model any other access concepts or any more derived traversal concepts.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="specialized/zip.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="utilities/concept_checking.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

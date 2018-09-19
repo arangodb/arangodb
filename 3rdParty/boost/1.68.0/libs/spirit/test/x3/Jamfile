@@ -1,0 +1,124 @@
+#==============================================================================
+#   Copyright (c) 2001-2013 Joel de Guzman
+#   Copyright (c) 2001-2012 Hartmut Kaiser
+#   Copyright (c)      2011 Bryce Lelbach
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+
+import config : requires ;
+import modules ;
+import feature ;
+import testing ;
+
+###############################################################################
+
+project spirit-x3
+    : requirements
+        <include>.
+        <c++-template-depth>512
+        [ requires
+            # Assume all the cxx11 checks succeed if any of cxx14 does.
+            #cxx14_binary_literals               # grep -Er "[0-9]+b[0-9]+" *
+            #cxx14_constexpr
+            cxx14_decltype_auto                 # grep -r "decltype(auto)" *
+            #cxx14_digit_separators              # grep -Er "[0-9]+'[0-9]+" *
+            cxx14_generic_lambdas               # grep -Er "]\s*\\([^\\)]*auto" *
+            #cxx14_hdr_shared_mutex              # grep -r "shared_mutex" *
+            #cxx14_initialized_lambda_captures   # grep -Er "\\[[^=\\]]+=" *
+            #cxx14_aggregate_nsdmi
+            cxx14_return_type_deduction         # grep -Er "auto[^\\(=\\)]+\(" *
+            #cxx14_std_exchange                  # grep -r "exchange" *
+            #cxx14_variable_templates
+        ]
+    ;
+
+###############################################################################
+
+local subproject-name = x3 ;
+
+rule run ( sources + : args * : input-files *
+         : requirements * : target-name ? : default-build * )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.run $(sources) : $(args) : $(input-files)
+           : $(requirements) : $(target-name) : $(default-build) ] ;
+}
+
+rule compile ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile $(sources)
+           : $(requirements) : $(target-name) ] ;
+}
+
+rule compile-fail ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile-fail $(sources)
+           : $(requirements) : $(target-name) ] ;
+}
+
+###############################################################################
+
+run actions.cpp ;
+run alternative.cpp ;
+run and_predicate.cpp ;
+run any_parser.cpp ;
+run attr.cpp ;
+run binary.cpp ;
+run bool.cpp ;
+run char1.cpp ;
+run char_class.cpp ;
+run container_support.cpp ;
+run debug.cpp ;
+run difference.cpp ;
+run eoi.cpp ;
+run eol.cpp ;
+run eps.cpp ;
+run expect.cpp ;
+run int1.cpp ;
+run kleene.cpp ;
+run lexeme.cpp ;
+run lit1.cpp ;
+run lit2.cpp ;
+run list.cpp ;
+run matches.cpp ;
+run no_case.cpp ;
+run no_skip.cpp ;
+run not_predicate.cpp ;
+run omit.cpp ;
+run optional.cpp ;
+run plus.cpp ;
+run with.cpp ;
+
+run raw.cpp ;
+run real1.cpp ;
+run real2.cpp ;
+run real3.cpp ;
+run real4.cpp ;
+run rule1.cpp ;
+run rule2.cpp ;
+run rule3.cpp ;
+run rule4.cpp ;
+run sequence.cpp ;
+run skip.cpp ;
+run symbols1.cpp ;
+run symbols2.cpp ;
+run symbols3.cpp ;
+run tst.cpp /boost//system ;
+
+run uint1.cpp ;
+run uint_radix.cpp ;
+
+run confix.cpp ;
+run repeat.cpp ;
+run seek.cpp ;
+
+run attribute_type_check.cpp ;
+run fusion_map.cpp ;
+run x3_variant.cpp ;
+run error_handler.cpp /boost//system /boost//filesystem ;
+run iterator_check.cpp ;

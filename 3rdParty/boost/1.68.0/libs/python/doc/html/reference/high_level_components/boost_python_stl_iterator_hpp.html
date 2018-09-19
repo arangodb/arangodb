@@ -1,0 +1,311 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/stl_iterator.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="prev" href="boost_python_scope_hpp.html" title="boost/python/scope.hpp">
+<link rel="next" href="boost_python_wrapper_hpp.html" title="boost/python/wrapper.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_scope_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_wrapper_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="high_level_components.boost_python_stl_iterator_hpp"></a><a class="link" href="boost_python_stl_iterator_hpp.html" title="boost/python/stl_iterator.hpp">boost/python/stl_iterator.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterato">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat0">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code>
+        constructors</a></span></dt>
+<dt><span class="section"><a href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat1">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code>
+        modifiers</a></span></dt>
+<dt><span class="section"><a href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat2">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code>
+        observers</a></span></dt>
+<dt><span class="section"><a href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_stl_iterator_hpp.introduction"></a><a class="link" href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          &lt;boost/python/stl_iterator.hpp&gt; provides types for creating C++ Iterators
+          from <a href="http://www.python.org/doc/current/lib/typeiter.html" target="_top">Python
+          iterables</a>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterato"></a><a class="link" href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterato" title="Class template stl_input_iterator">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code></a>
+</h3></div></div></div>
+<p>
+          Instances of <code class="computeroutput"><span class="identifier">stl_input_iterator</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> hold a Python iterator and adapt it
+          for use with STL algorithms. <code class="computeroutput"><span class="identifier">stl_input_iterator</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> satisfies the requirements for an Input
+          Iterator.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Template Parameter
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Requirements
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Semantics
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Default
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    ValueType
+                  </p>
+                </td>
+<td>
+                  <p>
+                    ValueType must be CopyConstructible.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Dereferencing an instance of <code class="computeroutput"><span class="identifier">stl_input_iterator</span><span class="special">&lt;</span><span class="identifier">ValueType</span><span class="special">&gt;</span></code> will return an rvalue of
+                    type ValueType.
+                  </p>
+                </td>
+<td>
+                  <p>
+                    None
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ValueType</span><span class="special">&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">stl_input_iterator</span>
+  <span class="special">{</span>
+      <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ptrdiff_t</span> <span class="identifier">difference_type</span><span class="special">;</span>
+      <span class="keyword">typedef</span> <span class="identifier">ValueType</span> <span class="identifier">value_type</span><span class="special">;</span>
+      <span class="keyword">typedef</span> <span class="identifier">ValueType</span><span class="special">*</span> <span class="identifier">pointer</span><span class="special">;</span>
+      <span class="keyword">typedef</span> <span class="identifier">ValueType</span> <span class="identifier">reference</span><span class="special">;</span>
+      <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">input_iterator_tag</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+
+      <span class="identifier">stl_input_iterator</span><span class="special">();</span>
+      <span class="identifier">stl_input_iterator</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">ob</span><span class="special">);</span>
+
+      <span class="identifier">stl_input_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+      <span class="identifier">stl_input_iterator</span> <span class="keyword">operator</span><span class="special">++(</span><span class="keyword">int</span><span class="special">);</span>
+
+      <span class="identifier">ValueType</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">==(</span><span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+      <span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!=(</span><span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+  <span class="keyword">private</span><span class="special">:</span>
+      <span class="identifier">object</span> <span class="identifier">it</span><span class="special">;</span> <span class="comment">// For exposition only</span>
+      <span class="identifier">object</span> <span class="identifier">ob</span><span class="special">;</span> <span class="comment">// For exposition only</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat0"></a><a class="link" href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat0" title="Class template stl_input_iterator constructors">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code>
+        constructors</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">stl_input_iterator</span><span class="special">()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Creates a past-the-end input iterator, useful for signifying the
+                end of a sequence.
+              </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="keyword">this</span></code> is past-the-end
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="identifier">stl_input_iterator</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">ob</span><span class="special">)</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Calls ob.attr("__iter__")() and stores the resulting Python
+                iterator object in this-&gt;it. Then, calls this-&gt;it.attr("next")()
+                and stores the result in this-&gt;ob. If the sequence is exhausted,
+                sets this-&gt;ob to object().
+              </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                this is a dereferenceable or past-the-end.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat1"></a><a class="link" href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat1" title="Class template stl_input_iterator modifiers">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code>
+        modifiers</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">stl_input_iterator</span> <span class="special">&amp;</span><span class="keyword">operator</span><span class="special">++()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Calls this-&gt;it.attr("next")() and stores the result
+                in this-&gt;ob. If the sequence is exhausted, sets this-&gt;ob to
+                object().
+              </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                this is a dereferenceable or past-the-end.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="identifier">stl_input_iterator</span> <span class="special">&amp;</span><span class="keyword">operator</span><span class="special">++(</span><span class="keyword">int</span><span class="special">)</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">stl_input_iterator</span> <span class="identifier">tmp</span> <span class="special">=</span>
+                <span class="special">*</span><span class="keyword">this</span><span class="special">;</span> <span class="special">++*</span><span class="keyword">this</span><span class="special">;</span> <span class="keyword">return</span> <span class="identifier">tmp</span><span class="special">;</span></code>
+              </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                this is a dereferenceable or past-the-end.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat2"></a><a class="link" href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.class_template_stl_input_iterat2" title="Class template stl_input_iterator observers">Class
+        template <code class="computeroutput"><span class="identifier">stl_input_iterator</span></code>
+        observers</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">ValueType</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Returns the current element in the sequence.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">ValueType</span><span class="special">&gt;(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">ob</span><span class="special">);</span></code>
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">==(</span><span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Returns true if both iterators are dereferenceable or if both iterators
+                are past-the-end, false otherwise.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">(</span><span class="identifier">lhs</span><span class="special">.</span><span class="identifier">ob</span> <span class="special">==</span> <span class="identifier">object</span><span class="special">())</span> <span class="special">==</span> <span class="special">(</span><span class="identifier">rhs</span><span class="special">.</span><span class="identifier">ob</span> <span class="special">==</span> <span class="identifier">object</span><span class="special">())</span></code>
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">friend</span> <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!=(</span><span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="identifier">stl_input_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Returns false if both iterators are dereferenceable or if both iterators
+                are past-the-end, true otherwise.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">!(</span><span class="identifier">lhs</span>
+                <span class="special">==</span> <span class="identifier">rhs</span><span class="special">)</span></code>
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_stl_iterator_hpp.example"></a><a class="link" href="boost_python_stl_iterator_hpp.html#high_level_components.boost_python_stl_iterator_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">object</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">stl_iterator</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">list</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">sequence_to_int_list</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">ob</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">stl_input_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">begin</span><span class="special">(</span><span class="identifier">ob</span><span class="special">),</span> <span class="identifier">end</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_scope_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_wrapper_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

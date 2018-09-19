@@ -1,0 +1,49 @@
+[/==============================================================================
+    Copyright (C) 2001-2015 Joel de Guzman
+    Copyright (C) 2001-2011 Hartmut Kaiser
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[section Changelog]
+
+[/////////////////////////////////////////////////////////////////////////////]
+[section:spirit_3_0_2 Spirit V3.0.2 (Boost V1.68.0)]
+
+* Small list parser optimization PR#368.
+* Pass container attributes through sequence parser or unary
+  ending down to a sequence parser PR#370 #12085.
+* More fine grained sequence attribute check message PR#371.
+* Removed redundant check in `skip_over` PR#373.
+* Workaround constexpr in noexcept VS2015 bug in entire x3::variant PR#379.
+* Fixed calc4b example compilation PR#384.
+* Minor code improvements: PR#374.
+
+[endsect]
+
+[/////////////////////////////////////////////////////////////////////////////]
+[section:spirit_3_0_1 Spirit V3.0.1 (Boost V1.67.0)]
+
+There was no version bump and changelog for Boost V1.56.0-1.66.0 releases.
+
+* Removed `with_context` PR#239.
+* Added noexcept to `x3::variant` and `forward_ast` PR#241.
+* CR+LF lines wrongly counted in `error_handler::position()` PR#248.
+* Fixed `unused_type` attribute case in `parse_into_container` PR#266.
+* Fixed parsing into associative containers PR#289.
+* Fixed overflow problem in `uint_parser<signed T>` PR#297.
+* Added VS2015 Update 3 support by using workarounds PR#308.
+* Fixed include guard names collision with Qi PR#313.
+* Added parsing into range PR#316 #12928.
+* Changed iterator concept static assert from `ForwardIterator` to
+  `ReadableIteratorConcept` && `ForwardTraversalConcept` PR#320.
+* Reenabled `fusion::map` support PR#330.
+* Fixed `string("...")` and `attr("...")` to single item sequence PR#337.
+* Dereference a single item view instead of unwrapping sequence PR#340.
+* Prevent `parse_nan` from dereferencing out of range iterator PR#351.
+* Use traits to test if container is empty PR#355.
+
+[endsect]
+
+[endsect]

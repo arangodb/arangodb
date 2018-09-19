@@ -1,0 +1,79 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Benchmark</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Sort">
+<link rel="up" href="../spinsort.html" title="2.3.- spinsort">
+<link rel="prev" href="../spinsort.html" title="2.3.- spinsort">
+<link rel="next" href="spinsort_programming.html" title="Programming">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../spinsort.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../spinsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="spinsort_programming.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.single_thread.spinsort.spinsort_benchmark"></a><a class="link" href="spinsort_benchmark.html" title="Benchmark">Benchmark</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+            The benchmark with 100000000 64 bits integers, comparing with the std::stable_sort
+            of the GCC 6.3 compiler shows the mentioned characteristics, running
+            on a Intel i7-5820K CPU @ 3.30GH .
+          </p>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">Data                           |std::stable_sort |   spin_sort  |
+-------------------------------+-----------------+--------------+
+random                         |     8.62        |     9.73     |
+                               |                 |              |
+sorted                         |     4.88        |     0.06     |
+sorted + 0.1% end              |     4.92        |     0.41     |
+sorted +   1% end              |     4.97        |     0.55     |
+sorted +  10% end              |     5.73        |     1.32     |
+                               |                 |              |
+sorted + 0.1% middle           |     6.58        |     1.89     |
+sorted +   1% middle           |     7.06        |     2.12     |
+sorted +  10% middle           |     9.56        |     4.02     |
+                               |                 |              |
+reverse sorted                 |     0.13        |     0.14     |
+reverse sorted + 0.1% end      |     5.22        |     0.52     |
+reverse sorted +   1% end      |     5.29        |     0.66     |
+reverse sorted +  10% end      |     6.03        |     1.45     |
+                               |                 |              |
+reverse sorted + 0.1% middle   |     6.52        |     1.89     |
+reverse sorted +   1% middle   |     7.09        |     2.12     |
+reverse sorted +  10% middle   |     9.46        |     4.02     |
+                               |                 |              |
+-------------------------------+-----------------+--------------+
+</pre>
+            </strong></span>
+          </p>
+</blockquote></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../spinsort.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../spinsort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="spinsort_programming.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

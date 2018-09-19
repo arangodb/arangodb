@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Header
+    </h3>
+    <h2 id="header.header_test">
+      Header Test
+    </h2>
+    <p>
+      Testing headers without sections.
+    </p>
+    <h2 id="header._not_an_id">
+      :Not an Id
+    </h2>
+    <p>
+      Paragraph.
+    </p>
+    <h3 id="header._not_an_id_again">
+      :Not an Id again
+    </h3>
+    <p>
+      Paragraph.
+    </p>
+  </body>
+</html>

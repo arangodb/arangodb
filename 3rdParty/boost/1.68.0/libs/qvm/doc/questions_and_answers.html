@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>questions and answers</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Questions and Answers</h3>
+</div>
+<p><b>Q:</b> What is the motivation behind Boost QVM? Why not just use uBLAS/Eigen/CML/GLM/etc?</p>
+<blockquote><p><b>A:</b> The primary domain of Boost QVM is realtime graphics and simulation applications, so it is not a complete linear algebra library. While (naturally) there is some overlap with such libraries, QVM puts the emphasis on 2, 3 and 4 dimensional zero-overhead operations (hence domain-specific features like <span class="RenoLink"><a href="Swizzling.html">Swizzling</a></span>).</p></blockquote>
+<p><b>Q:</b> How does the <i>qvm::<span class="RenoLink"><a href="vec.html">vec</a></span></i> (or <i>qvm::<span class="RenoLink"><a href="mat.html">mat</a></span></i>, or <i>qvm::<span class="RenoLink"><a href="quat.html">quat</a></span></i>) template compare to vector types from other libraries?</p>
+<blockquote><p><b>A:</b> The <i>qvm::<span class="RenoLink"><a href="vec.html">vec</a></span></i> template is not in any way central to the vector operations defined by QVM. The operations are designed to work with any user-defined vector type or with 3rd-party vector types (e.g. <i><span class="RenoLink"><a href="https://msdn.microsoft.com/en-us/library/windows/desktop/bb172627%28v=vs.85%29.aspx">D3DVECTOR</a></span></i>), while the <i>qvm::<span class="RenoLink"><a href="vec.html">vec</a></span></i> template is simply a default return type for expressions that use arguments of different types that would be incompatible outside of QVM. For example, if the <i><span class="RenoLink"><a href="deduce_mat2.html">deduce_mat2</a></span></i> hasn't been specialized, calling <i><span class="RenoLink"><a href="cross.html">cross</a></span></i> with a user-defined type <i>vec3</i> and a user-defined type <i>float3</i> returns a <i>qvm::<span class="RenoLink"><a href="vec.html">vec</a></span></i>.</p></blockquote>
+<p><b>Q:</b> Why doesn't QVM use [] or () to access vector and matrix elements?</p>
+<blockquote><p><b>A:</b> Because it's designed to work with user-defined types, and the C++ standard requires these operators to be members. Of course if a user-defined type defines <i>operator[]</i> or <i>operator()</i> they are available for use with other QVM functions, but QVM defines its own mechanism for <span class="RenoLink"><a href="accessing_vector_elements.html">accessing vector elements</a></span>, as well as <span class="RenoLink"><a href="Swizzling.html">Swizzling</a></span> support.</p></blockquote>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

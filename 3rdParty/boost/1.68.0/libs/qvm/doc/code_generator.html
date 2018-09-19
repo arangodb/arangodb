@@ -1,0 +1,64 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>code generator</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Code Generator</h3>
+</div>
+<p>While Boost QVM defines generic functions that operate on matrix and vector types of arbitrary static dimensions, it also provides a code generator that can be used to create compatible header files that define much simpler specializations of these functions for specific dimensions. This is useful during debugging since the generated code is much easier to read than the template metaprogramming-heavy generic implementations. It is also potentially friendlier to the optimizer.</p>
+<p>The code generator is a command-line utility program. Its source code can be found in the <i>libs/qvm/gen</i> directory. It was used to generate the following headers:</p>
+<div><ul><li> 2D, 3D and 4D matrix operations:<div><ul><li> <i>boost/qvm/gen/mat_operations2.hpp</i> (matrices of size 2x2, 2x1 and 1x2, included by <i><span class="RenoLink"><a href="boost_qvm_mat_operations2_hpp.html">boost/qvm/mat_operations2.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/mat_operations3.hpp</i> (matrices of size 3x3, 3x1 and 1x3, included by <i><span class="RenoLink"><a href="boost_qvm_mat_operations3_hpp.html">boost/qvm/mat_operations3.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/mat_operations4.hpp</i> (matrices of size 4x4, 4x1 and 1x4, included by <i><span class="RenoLink"><a href="boost_qvm_mat_operations4_hpp.html">boost/qvm/mat_operations4.hpp</a></span></i>)</li>
+</ul></div>
+</li>
+<li> 2D, 3D and 4D vector operations:<div><ul><li> <i>boost/qvm/gen/v2.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_vec_operations2_hpp.html">boost/qvm/vec_operations2.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/v3.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_vec_operations3_hpp.html">boost/qvm/vec_operations3.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/v4.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_vec_operations4_hpp.html">boost/qvm/vec_operations4.hpp</a></span></i>)</li>
+</ul></div>
+</li>
+<li> 2D, 3D and 4D vector-matrix operations:<div><ul><li> <i>boost/qvm/gen/vm2.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_vec_mat_operations2_hpp.html">boost/qvm/vec_mat_operations2.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/vm3.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_vec_mat_operations3_hpp.html">boost/qvm/vec_mat_operations3.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/vm4.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_vec_mat_operations4_hpp.html">boost/qvm/vec_mat_operations4.hpp</a></span></i>)</li>
+</ul></div>
+</li>
+<li> 2D, 3D and 4D vector swizzling operations:<div><ul><li> <i>boost/qvm/gen/sw2.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_swizzle2_hpp.html">boost/qvm/swizzle2.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/sw3.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_swizzle3_hpp.html">boost/qvm/swizzle3.hpp</a></span></i>)</li>
+<li> <i>boost/qvm/gen/sw4.hpp</i> (included by <i><span class="RenoLink"><a href="boost_qvm_swizzle4_hpp.html">boost/qvm/swizzle4.hpp</a></span></i>)</li>
+</ul></div>
+</li>
+</ul></div>
+<p>Any such generated headers must be included before the corresponding generic header file is included. For example, if one creates a header <i>boost/qvm/gen/m5.hpp</i>, it must be included before <i><span class="RenoLink"><a href="boost_qvm_mat_operations_hpp.html">boost/qvm/mat_operations.hpp</a></span></i>. However, the generic headers (<i><span class="RenoLink"><a href="boost_qvm_mat_operations_hpp.html">boost/qvm/mat_operations.hpp</a></span></i>, <i><span class="RenoLink"><a href="boost_qvm_vec_operations_hpp.html">boost/qvm/vec_operations.hpp</a></span></i>, <i><span class="RenoLink"><a href="boost_qvm_vec_mat_operations_hpp.html">boost/qvm/vec_mat_operations.hpp</a></span></i> and <i><span class="RenoLink"><a href="boost_qvm_swizzle_hpp.html">boost/qvm/swizzle.hpp</a></span></i>) already include the generated headers from the list above, so the generated headers don't need to be included manually.</p>
+<p>Note: that headers under <i>boost/qvm/gen</i> are not part of the public interface of Boost QVM. For example, <i>boost/qvm/gen/mat_operations2.hpp</i> should not be included directly; <i>#include &lt;<span class="RenoLink"><a href="boost_qvm_mat_operations2_hpp.html">boost/qvm/mat_operations2.hpp</a></span>&gt;</i> instead.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

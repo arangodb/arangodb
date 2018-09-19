@@ -1,0 +1,83 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Send and Receive Messages]
+
+Interfaces for transacting messages are structured into layers. The
+highest layer provides ease of use, while lower layers provide
+additional control and flexibility. The layers are arranged thusly:
+
+[table
+[[Level][Read/Write What][Description]]
+[
+    [[*2]]
+    [
+        message
+    ][
+        At the top layer, these functions allow for an entire
+        message to be sent or received. They are designed for
+        ease of use:
+        [link beast.ref.boost__beast__websocket__stream.read.overload2 `read`],
+        [link beast.ref.boost__beast__websocket__stream.write.overload2 `write`],
+        [link beast.ref.boost__beast__websocket__stream.async_read `async_read`], and
+        [link beast.ref.boost__beast__websocket__stream.async_write `async_write`].
+    ]
+][
+    [[*1]]
+    [
+        ['partial]
+    ][
+        These read functions enable partial message data to be
+        received into a __DynamicBuffer__. They can be configured
+        to perform bounded work:
+        [link beast.ref.boost__beast__websocket__stream.read_some.overload2 `read_some`], and
+        [link beast.ref.boost__beast__websocket__stream.async_read_some.overload1 `async_read_some`].
+    ]
+][
+    [[*0]]
+    [
+        ['partial]
+    ][
+        At the lowest level these read and write functions enable
+        partial message data to be transacted using a constant or
+        mutable buffer sequence:
+        [link beast.ref.boost__beast__websocket__stream.read_some.overload4 `read_some`],
+        [link beast.ref.boost__beast__websocket__stream.write_some.overload2 `write_some`],
+        [link beast.ref.boost__beast__websocket__stream.async_read_some.overload2 `async_read_some`], and
+        [link beast.ref.boost__beast__websocket__stream.async_write_some `async_write_some`].
+    ]
+]]
+
+After the WebSocket handshake is accomplished, callers may send and receive
+messages using the message oriented interface. This interface requires that
+all of the buffers representing the message are known ahead of time:
+
+[ws_snippet_15]
+
+[important
+    [link beast.ref.boost__beast__websocket__stream `websocket::stream`]
+    is not thread-safe. Calls to stream member functions must
+    all be made from the same implicit or explicit strand.
+]
+
+[heading Frames]
+
+Some use-cases make it impractical or impossible to buffer the entire
+message ahead of time:
+
+* Streaming multimedia to an endpoint.
+* Sending a message that does not fit in memory at once.
+* Providing incremental results as they become available.
+
+For these cases, the partial data oriented interface may be used. This
+example reads and echoes a complete message using this interface:
+
+[ws_snippet_16]
+
+[endsect]

@@ -1,0 +1,264 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Chunked Encoding]
+
+For message payloads whose size is not known ahead of time, HTTP
+version 1.1 defines the
+[@https://tools.ietf.org/html/rfc7230#section-4.1 ['chunked]]
+transfer coding. This coding consists of zero or more
+[@https://tools.ietf.org/html/rfc7230#section-4.1 ['chunked bodies]],
+followed by a
+[@https://tools.ietf.org/html/rfc7230#section-4.1 ['last chunk]].
+Each chunked body may contain optional application-defined, connection-specific
+[@https://tools.ietf.org/html/rfc7230#section-4.1.1 ['chunk-extensions]].
+The last chunk may contain additional HTTP field values in a section
+of the last chunk called a
+[@https://tools.ietf.org/html/rfc7230#section-4.1.2 ['chunk-trailer]].
+The field values are "promised" in the header as a comma delimited list
+of field names in the
+[@https://tools.ietf.org/html/rfc7230#section-4.4 [*Trailer]]
+field value. Clients indicate their willingness to accept trailers
+by including the "trailers" token in the
+[@https://tools.ietf.org/html/rfc7230#section-4.3 [*TE]]
+field value.
+
+[heading Serializing Chunks]
+
+The __serializer__ automatically applies the chunked transfer encoding
+when a message returns `true` from
+[link beast.ref.boost__beast__http__message.chunked.overload1 `message::chunked`].
+The boundaries between chunks emitted by the serializer are implementation
+defined. Chunk extensions and trailers are omitted. Applications which
+need precise control over the chunk boundaries, extensions, and trailers
+may use a set of helper classes which enable manual emission of message
+payloads using chunk encoding.
+
+To use these helper classes, first serialize the header portion of the
+message using the standard interface. Then prepare the buffers, chunk
+extensions, and desired trailers, and use them with these helpers:
+
+[table Chunking Helpers
+[[Name][Description]]
+[
+    [[link beast.ref.boost__beast__http__chunk_body `chunk_body`]]
+    [
+        A buffer sequence representing a complete chunk body.
+    ]
+][
+    [[link beast.ref.boost__beast__http__chunk_crlf `chunk_crlf`]]
+    [
+        A buffer sequence representing the CRLF (`"\r\n"`) delimiter.
+        This class is used when the caller desires to emit the
+        chunk body in two or more individual stream operations.
+    ]
+][
+    [
+        [link beast.ref.boost__beast__http__chunk_extensions `chunk_extensions`]
+
+
+        [link beast.ref.boost__beast__http__basic_chunk_extensions `basic_chunk_extensions`]
+    ]
+    [
+        This is a simple, allocating container which lets callers
+        easily build up a set of chunk extensions.
+    ]
+][
+    [[link beast.ref.boost__beast__http__chunk_header `chunk_header`]]
+    [
+        A buffer sequence representing a hex-encoded chunk size,
+        followed by an optional set of chunk extensions, including
+        the terminating CRLF (`"\r\n"`) delimiter which precedes
+        the chunk body. This class is used when the caller desires
+        to emit the chunk body in two or more individual stream
+        operations.
+    ]
+][
+    [[link beast.ref.boost__beast__http__chunk_last `chunk_last`]]
+    [
+        A buffer sequence representing a last chunk. The last chunk
+        indicates the end of the chunked message payload, and may
+        contain optional trailer fields.
+    ]
+][
+    [
+        [link beast.ref.boost__beast__http__make_chunk `make_chunk`]
+
+        [link beast.ref.boost__beast__http__make_chunk_last `make_chunk_last`]
+    ]
+    [
+        These helper functions are used to construct a chunk
+        or last chunk directly at call sites.
+    ]
+]]
+
+We demonstrate the use of these objects first by declaring a function
+which returns the next buffer sequence to use as a chunk body:
+
+[http_snippet_17]
+
+This example demonstrates sending a complete chunked message payload
+manually. No chunk extensions or trailers are emitted:
+
+[http_snippet_18]
+
+The following code sends additional chunks, and sets chunk extensions
+using the helper container. The container automatically quotes values
+in the serialized output when necessary:
+
+[http_snippet_19]
+
+Callers can take over the generation and management of the extensions
+buffer by passing a non-owning string. Note that this requires the
+string contents to adhere to the correct syntax for chunk extensions,
+including the needed double quotes for values which contain spaces:
+
+[http_snippet_20]
+
+The next code sample emits a chunked response which promises two
+trailer fields and delivers them in the last chunk. The implementation
+allocates memory using the default or a passed-in allocator to hold
+the state information required to serialize the trailer:
+
+[http_snippet_21]
+
+Using a custom allocator to serialize the last chunk:
+
+[http_snippet_22]
+
+Alternatively, callers can take over the generation and lifetime
+management of the serialized trailer fields by passing in a non-owning
+string:
+
+[http_snippet_23]
+
+For the ultimate level of control, a caller can manually compose the
+chunk itself by first emitting a header with the correct chunk body
+size, and then by emitting the chunk body in multiple calls to the
+stream write function. In this case the caller is responsible for
+also emitting the terminating CRLF (`"\r\n"`):
+
+[http_snippet_24]
+
+[heading Parsing Chunks]
+
+The __parser__ automatically removes the chunked transfer coding when
+it is the last encoding in the list. However, it also discards the
+chunk extensions and does not provide a way to determine the boundaries
+between chunks. Advanced applications which need to access the chunk
+extensions or read complete individual chunks may use a callback
+interface provided by __parser__:
+
+[table Chunking Parse Callbacks
+[[Name][Description]]
+[
+    [[link beast.ref.boost__beast__http__parser.on_chunk_header `on_chunk_header`]]
+    [
+        Set a callback to be invoked on each chunk header.
+
+        The callback will be invoked once for every chunk in the message
+        payload, as well as once for the last chunk. The invocation 
+        happens after the chunk header is available but before any body
+        octets have been parsed.
+
+        The extensions are provided in raw, validated form, use
+        [link beast.ref.boost__beast__http__basic_chunk_extensions.parse `chunk_extensions::parse`]
+        to parse the extensions into a structured container for easier access.
+        The implementation type-erases the callback without requiring
+        a dynamic allocation. For this reason, the callback object is
+        passed by a non-constant reference.
+
+        The function object will be called with this equivalent signature:
+        ```
+        void
+        callback(
+            std::uint64_t size,         // Size of the chunk, zero for the last chunk
+            string_view extensions,     // The chunk-extensions in raw form
+            error_code& ec);            // May be set by the callback to indicate an error
+        ```
+    ]
+][
+    [[link beast.ref.boost__beast__http__parser.on_chunk_body `on_chunk_body`]]
+    [
+        Set a callback to be invoked on chunk body data.
+
+        The callback will be invoked one or more times to provide
+        buffers corresponding to the chunk body for the current chunk.
+        The callback receives the number of octets remaining in this
+        chunk body including the octets in the buffer provided.
+
+        The callback must return the number of octets actually consumed.
+        Any octets not consumed will be presented again in a subsequent
+        invocation of the callback.
+        The implementation type-erases the callback without requiring
+        a dynamic allocation. For this reason, the callback object is
+        passed by a non-constant reference.
+
+        The function object will be called with this equivalent signature:
+        ```
+        std::size_t
+        callback(
+            std::uint64_t remain,       // Octets remaining in this chunk, includes `body`
+            string_view body,           // A buffer holding some or all of the remainder of the chunk body
+            error_code& ec);            // May be set by the callback to indicate an error
+        ```
+    ]
+]]
+
+This example will read a message header from the stream, and then manually
+read each chunk. It recognizes the chunk boundaries and outputs the contents
+of each chunk as it comes in. Any chunk extensions are printed, each extension
+on its own line. Finally, any trailers promised in the header are printed.
+
+[example_chunk_parsing]
+
+Given the HTTP response as input on the left, the output of the function shown
+above is shown on the right:
+
+[table Chunk Parsing Example Output
+[[Input][Output]]
+[
+    [
+    ```
+    HTTP/1.1 200 OK\r\n
+    Server: test\r\n
+    Trailer: Expires, Content-MD5\r\n
+    Transfer-Encoding: chunked\r\n
+    \r\n
+    5\r\n
+    First\r\n
+    d;quality=1.0\r\n
+    Hello, world!\r\n
+    e;file=abc.txt;quality=0.7\r\n
+    The Next Chunk\r\n
+    8;last\r\n
+    Last one\r\n
+    0\r\n
+    Expires: never\r\n
+    Content-MD5: f4a5c16584f03d90\r\n
+    \r\n
+    ```
+    ]
+    [
+    ```
+    Chunk Body: First
+    Extension: quality = 1.0
+    Chunk Body: Hello, world!
+    Extension: file = abc.txt
+    Extension: quality = 0.7
+    Chunk Body: The Next Chunk
+    Extension: last
+    Chunk Body: Last one
+    Expires: never
+    Content-MD5: f4a5c16584f03d90
+    ```
+    ]
+]]
+
+[endsect]

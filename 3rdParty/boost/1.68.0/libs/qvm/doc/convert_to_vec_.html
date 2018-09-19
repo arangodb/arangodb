@@ -1,0 +1,55 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>convert_to(vec)</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>convert_to(vec)</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_vec_operations_hpp.html">boost/qvm/vec_operations.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        //Only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;R&gt;::value &amp;&amp; <span class="RenoLink"><a href="is_vec.html">is_vec</a></span>&lt;A&gt;::value &amp;&amp;
+        //  <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;R&gt;::<span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span>==<span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;A&gt;::<span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span>
+        template &lt;class R,class A&gt;
+        R <span class="RenoLink">convert_to</span>( A const &amp; a );</span>
+    }
+}</pre>
+</div><h4>Requirements:</h4>
+<p><i>R</i> must be copyable.</p>
+<h4>Effects:</h4>
+<p>As if: <i>R r; <span class="RenoLink"><a href="assign_vec_vec_.html">assign</a></span>(r,a); return r;</i></p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_vec_operations_hpp.html">boost/qvm/vec_operations.hpp</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

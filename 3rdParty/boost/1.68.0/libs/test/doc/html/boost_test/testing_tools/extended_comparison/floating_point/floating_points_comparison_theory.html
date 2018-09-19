@@ -1,0 +1,261 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Theory behind floating point comparisons</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../floating_point.html" title="Floating point comparison">
+<link rel="prev" href="floating_points_comparison_impl.html" title="Tolerance-based comparisons">
+<link rel="next" href="../strings.html" title="Strings and C-strings comparison">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="floating_points_comparison_impl.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../floating_point.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../strings.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory"></a><a class="link" href="floating_points_comparison_theory.html" title="Theory behind floating point comparisons">Theory
+          behind floating point comparisons</a>
+</h5></div></div></div>
+<p>
+            The following is the most obvious way to compare two floating-point values
+            <code class="computeroutput"><span class="identifier">u</span></code> and <code class="computeroutput"><span class="identifier">v</span></code>
+            for being close at a given absolute tolerance <code class="computeroutput"><span class="identifier">epsilon</span></code>:
+          </p>
+<a name="equ1"></a><pre class="programlisting"><span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span><span class="special">;</span> <span class="comment">// (1)</span>
+</pre>
+<p>
+            However, in many circumstances, this is not what we want. The same absolute
+            tolerance value <code class="computeroutput"><span class="number">0.01</span></code> may
+            be too small to meaningfully compare two values of magnitude <code class="computeroutput"><span class="number">10e12</span></code> and at the same time too little to
+            meaningfully compare values of magnitude <code class="computeroutput"><span class="number">10e-12</span></code>.
+            For examples, see <a class="link" href="floating_points_comparison_theory.html#Squassabia">Squassabia</a>.
+          </p>
+<p>
+            We do not want to apply the same absolute tolerance for huge and tiny
+            numbers. Instead, we would like to scale the <code class="computeroutput"><span class="identifier">epsilon</span></code>
+            with <code class="computeroutput"><span class="identifier">u</span></code> and <code class="computeroutput"><span class="identifier">v</span></code>. The <span class="emphasis"><em>Unit Test Framework</em></span>
+            implements floating-point comparison algorithm that is based on the solution
+            presented in <a class="link" href="floating_points_comparison_theory.html#KnuthII">Knuth</a>:
+          </p>
+<a name="equ2"></a><pre class="programlisting">   <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span> <span class="special">*</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span><span class="special">)</span>
+<span class="special">&amp;&amp;</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span> <span class="special">*</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">v</span><span class="special">));</span> <span class="comment">// (2)</span>
+</pre>
+<p>
+            defines a <span class="emphasis"><em>very close with tolerance <code class="computeroutput"><span class="identifier">epsilon</span></code></em></span>
+            relationship between <code class="computeroutput"><span class="identifier">u</span></code>
+            and <code class="computeroutput"><span class="identifier">v</span></code>, while
+          </p>
+<a name="equ3"></a><pre class="programlisting">   <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span> <span class="special">*</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span><span class="special">)</span>
+<span class="special">||</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span> <span class="special">*</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">v</span><span class="special">);</span> <span class="comment">// (3)</span>
+</pre>
+<p>
+            defines a <span class="emphasis"><em>close enough with tolerance <code class="computeroutput"><span class="identifier">epsilon</span></code></em></span>
+            relationship between <code class="computeroutput"><span class="identifier">u</span></code>
+            and <code class="computeroutput"><span class="identifier">v</span></code>.
+          </p>
+<p>
+            Both relationships are commutative but are not transitive. The relationship
+            defined in <a class="link" href="floating_points_comparison_theory.html#equ2">(2)</a> is stronger that the relationship
+            defined in <a class="link" href="floating_points_comparison_theory.html#equ3">(3)</a> since <a class="link" href="floating_points_comparison_theory.html#equ2">(2)</a>
+            necessarily implies <a class="link" href="floating_points_comparison_theory.html#equ3">(3)</a>.
+          </p>
+<p>
+            The multiplication in the right side of inequations may cause an unwanted
+            underflow condition. To prevent this, the implementation is using modified
+            version of <a class="link" href="floating_points_comparison_theory.html#equ2">(2)</a> and <a class="link" href="floating_points_comparison_theory.html#equ3">(3)</a>,
+            which scales the checked difference rather than <code class="computeroutput"><span class="identifier">epsilon</span></code>:
+          </p>
+<a name="equ4"></a><pre class="programlisting">   <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span>
+<span class="special">&amp;&amp;</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span><span class="special">;</span> <span class="comment">// (4)</span>
+</pre>
+<a name="equ5"></a><pre class="programlisting">   <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span>
+<span class="special">||</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">epsilon</span><span class="special">;</span> <span class="comment">// (5)</span>
+</pre>
+<p>
+            This way all underflow and overflow conditions can be guarded safely.
+            The above however, will not work when <code class="computeroutput"><span class="identifier">v</span></code>
+            or <code class="computeroutput"><span class="identifier">u</span></code> is zero. In such
+            cases the solution is to resort to a different algorithm, e.g. <a class="link" href="floating_points_comparison_theory.html#equ1">(1)</a>.
+          </p>
+<h4>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.h0"></a>
+            <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.tolerance_selection_consideratio"></a></span><a class="link" href="floating_points_comparison_theory.html#boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.tolerance_selection_consideratio">Tolerance
+            selection considerations</a>
+          </h4>
+<p>
+            In case of absence of domain specific requirements the value of tolerance
+            can be chosen as a sum of the predicted upper limits for "relative
+            rounding errors" of compared values. The "rounding" is
+            the operation by which a real value 'x' is represented in a floating-point
+            format with 'p' binary digits (bits) as the floating-point value <span class="bold"><strong>X</strong></span>. The "relative rounding error" is
+            the difference between the real and the floating point values in relation
+            to real value: <code class="computeroutput"><span class="identifier">abs</span><span class="special">(</span><span class="identifier">x</span><span class="special">-</span><span class="identifier">X</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>.
+            The discrepancy between real and floating point value may be caused by
+            several reasons:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                Type promotion
+              </li>
+<li class="listitem">
+                Arithmetic operations
+              </li>
+<li class="listitem">
+                Conversion from a decimal presentation to a binary presentation
+              </li>
+<li class="listitem">
+                Non-arithmetic operation
+              </li>
+</ul></div>
+<p>
+            The first two operations proved to have a relative rounding error that
+            does not exceed
+          </p>
+<pre class="programlisting"><span class="identifier">half_epsilon</span> <span class="special">=</span> <span class="identifier">half</span> <span class="identifier">of</span> <span class="identifier">the</span> <span class="char">'machine epsilon value'</span>
+</pre>
+<p>
+            for the appropriate floating point type <code class="computeroutput"><span class="identifier">FPT</span></code>
+            <a href="#ftn.boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.f0" class="footnote" name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.f0"><sup class="footnote">[9]</sup></a>. Conversion to binary presentation, sadly, does not have
+            such requirement. So we can't assume that <code class="computeroutput"><span class="keyword">float</span><span class="special">(</span><span class="number">1.1</span><span class="special">)</span></code>
+            is close to the real number <code class="computeroutput"><span class="number">1.1</span></code>
+            with tolerance <code class="computeroutput"><span class="identifier">half_epsilon</span></code>
+            for float (though for 11./10 we can). Non-arithmetic operations either
+            do not have a predicted upper limit relative rounding errors.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              Note that both arithmetic and non-arithmetic operations might also
+              produce others "non-rounding" errors, such as underflow/overflow,
+              division-by-zero or "operation errors".
+            </p></td></tr>
+</table></div>
+<p>
+            All theorems about the upper limit of a rounding error, including that
+            of <code class="computeroutput"><span class="identifier">half_epsilon</span></code>, refer
+            only to the 'rounding' operation, nothing more. This means that the 'operation
+            error', that is, the error incurred by the operation itself, besides
+            rounding, isn't considered. In order for numerical software to be able
+            to actually predict error bounds, the <span class="bold"><strong>IEEE754</strong></span>
+            standard requires arithmetic operations to be 'correctly or exactly rounded'.
+            That is, it is required that the internal computation of a given operation
+            be such that the floating point result is the exact result rounded to
+            the number of working bits. In other words, it is required that the computation
+            used by the operation itself doesn't introduce any additional errors.
+            The <span class="bold"><strong>IEEE754</strong></span> standard does not require
+            same behavior from most non-arithmetic operation. The underflow/overflow
+            and division-by-zero errors may cause rounding errors with unpredictable
+            upper limits.
+          </p>
+<p>
+            At last be aware that <code class="computeroutput"><span class="identifier">half_epsilon</span></code>
+            rules are not transitive. In other words combination of two arithmetic
+            operations may produce rounding error that significantly exceeds <code class="computeroutput"><span class="number">2</span><span class="special">*</span><span class="identifier">half_epsilon</span></code>.
+            All in all there are no generic rules on how to select the tolerance
+            and users need to apply common sense and domain/ problem specific knowledge
+            to decide on tolerance value.
+          </p>
+<p>
+            To simplify things in most usage cases latest version of algorithm below
+            opted to use percentage values for tolerance specification (instead of
+            fractions of related values). In other words now you use it to check
+            that difference between two values does not exceed x percent.
+          </p>
+<p>
+            For more reading about floating-point comparison see references below.
+          </p>
+<h5>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.h1"></a>
+            <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.bibliographic_references"></a></span><a class="link" href="floating_points_comparison_theory.html#boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.bibliographic_references">Bibliographic
+            references</a>
+          </h5>
+<div class="variablelist">
+<p class="title"><b>Books</b></p>
+<dl class="variablelist">
+<dt><span class="term"><a name="KnuthII"></a>The art of computer programming (vol II)</span></dt>
+<dd><p>
+                  Donald. E. Knuth, 1998, Addison-Wesley Longman, Inc., ISBN 0-201-89684-2,
+                  Addison-Wesley Professional; 3rd edition. (The relevant equations
+                  are in &#167;4.2.2, Eq. 36 and 37.)
+                </p></dd>
+<dt><span class="term">Rounding near zero, in <a href="http://www.amazon.com/Advanced-Arithmetic-Digital-Computer-Kulisch/dp/3211838708" target="_top">Advanced
+              Arithmetic for the Digital Computer</a></span></dt>
+<dd><p>
+                  Ulrich W. Kulisch, 2002, Springer, Inc., ISBN 0-201-89684-2, Springer;
+                  1st edition
+                </p></dd>
+</dl>
+</div>
+<div class="variablelist">
+<p class="title"><b>Periodicals</b></p>
+<dl class="variablelist">
+<dt><span class="term"><a name="Squassabia"></a><a href="https://adtmag.com/articles/2000/03/16/comparing-floats-how-to-determine-if-floating-quantities-are-close-enough-once-a-tolerance-has-been.aspx" target="_top">Comparing
+              Floats: How To Determine if Floating Quantities Are Close Enough Once
+              a Tolerance Has Been Reached</a></span></dt>
+<dd><p>
+                  Alberto Squassabia, in C++ Report (March 2000)
+                </p></dd>
+<dt><span class="term">The Journeyman's Shop: Trap Handlers, Sticky Bits, and Floating-Point
+              Comparisons</span></dt>
+<dd><p>
+                  Pete Becker, in C/C++ Users Journal (December 2000)
+                </p></dd>
+</dl>
+</div>
+<div class="variablelist">
+<p class="title"><b>Publications</b></p>
+<dl class="variablelist">
+<dt><span class="term"><a href="http://dl.acm.org/citation.cfm?id=103163" target="_top">What Every
+              Computer Scientist Should Know About Floating-Point Arithmetic</a></span></dt>
+<dd><p>
+                  David Goldberg, pages 150-230, in Computing Surveys (March 1991),
+                  Association for Computing Machinery, Inc.
+                </p></dd>
+<dt><span class="term"><a href="http://hal.archives-ouvertes.fr/docs/00/07/26/81/PDF/RR-3967.pdf" target="_top">From
+              Rounding Error Estimation to Automatic Correction with Automatic Differentiation</a></span></dt>
+<dd><p>
+                  Philippe Langlois, Technical report, INRIA
+                </p></dd>
+<dt><span class="term"><a href="http://www.cs.berkeley.edu/~wkahan/" target="_top">William Kahan
+              home page</a></span></dt>
+<dd><p>
+                  Lots of information on floating point arithmetics.
+                </p></dd>
+</dl>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.f0" class="footnote"><p><a href="#boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory.f0" class="para"><sup class="para">[9] </sup></a>
+              <span class="bold"><strong>machine epsilon value</strong></span> is represented
+              by <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">FPT</span><span class="special">&gt;::</span><span class="identifier">epsilon</span><span class="special">()</span></code>
+            </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="floating_points_comparison_impl.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../floating_point.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../strings.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

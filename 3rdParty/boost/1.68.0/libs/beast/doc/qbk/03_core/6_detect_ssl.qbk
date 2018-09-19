@@ -1,0 +1,69 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Example: Detect SSL]
+
+In this example we will build a simple function to detect the presence
+of the SSL handshake given an input buffer sequence. Then we build on
+the example by adding a synchronous stream algorithm. Finally, we 
+implemement an asynchronous detection function using a composed operation.
+This SSL detector may be used to allow a server to accept both SSL/TLS and
+unencrypted connections at the same port.
+
+Here is the declaration for a function to detect the SSL client handshake.
+The input to the function is simply a buffer sequence, no stream. This
+allows the detection algorithm to be used elsewhere.
+
+[example_core_detect_ssl_1]
+
+The implementation checks the buffer for the presence of the SSL
+Handshake message octet sequence and returns an apporopriate value:
+
+[example_core_detect_ssl_2]
+
+Now we define a stream operation. We start with the simple,
+synchronous version which takes the stream and buffer as input:
+
+[example_core_detect_ssl_3]
+
+The synchronous algorithm is the model for building the asynchronous
+operation which has more boilerplate. First, we declare the asynchronous
+initiating function:
+
+[example_core_detect_ssl_4]
+
+The implementation of the initiating function is straightforward
+and contains mostly boilerplate. It is to construct the return
+type customization helper to obtain the actual handler, and
+then create the composed operation and launch it. The actual
+code for interacting with the stream is in the composed operation,
+which is written as a separate class.
+
+[example_core_detect_ssl_5]
+
+Now we will declare our composed operation. There is a considerable
+amount of necessary boilerplate to get this right, but the result
+is worth the effort.
+
+[example_core_detect_ssl_6]
+
+The boilerplate is all done, and now we need to implement the function
+call operator that turns this composed operation a completion handler
+with the signature `void(error_code, std::size_t)` which is exactly
+the signature needed when performing asynchronous reads. This function
+is a transformation of the synchronous version of `detect_ssl` above,
+but with the inversion of flow that characterizes code written in the
+callback style:
+
+[example_core_detect_ssl_7]
+
+This SSL detector is used by the server framework in the example
+directory.
+
+[endsect]

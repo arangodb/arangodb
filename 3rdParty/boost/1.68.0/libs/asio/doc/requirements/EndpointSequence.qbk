@@ -1,0 +1,30 @@
+[/
+ / Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:EndpointSequence Endpoint sequence requirements]
+
+A type `X` meets the `EndpointSequence` requirements if it satisfies the
+requirements of `Destructible` (C++Std [destructible]) and `CopyConstructible`
+(C++Std [copyconstructible]), as well as the additional requirements listed
+below.
+
+In the table below, `x` denotes a (possibly const) value of type `X`.
+
+[table EndpointSequence requirements
+  [[expression] [return type] [assertion/note\npre/post-condition]]
+  [
+    [`x.begin()`\n
+     `x.end()`]
+    [A type meeting the requirements for forward iterators
+     (C++Std \[forward.iterators\]) whose value type is convertible to
+     a type satisfying the [link boost_asio.reference.Endpoint `Endpoint`]
+     requirements.]
+    [[half_open_range `x.begin()`,`x.end()`] is a valid range.]
+  ]
+]
+
+[endsect]

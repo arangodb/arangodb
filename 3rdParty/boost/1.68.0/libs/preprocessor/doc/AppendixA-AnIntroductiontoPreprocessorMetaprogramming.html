@@ -1,0 +1,2494 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html
+
+  lang="en" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=UTF-8" />
+    <meta name="generator" content="Docutils 0.3.8: http://docutils.sourceforge.net/" />
+    <title>Appendix A - An Introduction to Preprocessor Metaprogramming</title>
+    <meta name="copyright" content="From &quot;C++ Template Metaprogramming,&quot; by David Abrahams and Aleksey Gurtovoy.  Copyright (c) 2005 by Pearson Education, Inc. Reprinted with permission." />
+    <style type="text/css">
+
+/*
+:Author: David Goodger
+:Contact: goodger@users.sourceforge.net
+:date: $Date: 2004/06/23 13:31:26 $
+:version: $Revision: 1.37 $
+:copyright: This stylesheet has been placed in the public domain.
+
+Default cascading style sheet for the HTML output of Docutils.
+*/
+
+.first {
+  margin-top: 0 }
+
+.last {
+  margin-bottom: 0 }
+
+a.toc-backref {
+  text-decoration: none ;
+  color: black }
+
+blockquote.epigraph {
+  margin: 2em 5em ; }
+
+dd {
+  margin-bottom: 0.5em }
+
+/* Uncomment (& remove this text!) to get bold-faced definition list terms
+dt {
+  font-weight: bold }
+*/
+
+div.abstract {
+  margin: 2em 5em }
+
+div.abstract p.topic-title {
+  font-weight: bold ;
+  text-align: center }
+
+div.attention, div.caution, div.danger, div.error, div.hint,
+div.important, div.note, div.tip, div.warning, div.admonition {
+  margin: 2em ;
+  border: medium outset ;
+  padding: 1em }
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title {
+  color: red ;
+  font-weight: bold ;
+  font-family: sans-serif }
+
+div.hint p.admonition-title, div.important p.admonition-title,
+div.note p.admonition-title, div.tip p.admonition-title,
+div.admonition p.admonition-title {
+  font-weight: bold ;
+  font-family: sans-serif }
+
+div.dedication {
+  margin: 2em 5em ;
+  text-align: center ;
+  font-style: italic }
+
+div.dedication p.topic-title {
+  font-weight: bold ;
+  font-style: normal }
+
+div.figure {
+  margin-left: 2em }
+
+div.footer, div.header {
+  font-size: smaller }
+
+div.sidebar {
+  margin-left: 1em ;
+  border: medium outset ;
+  padding: 0em 1em ;
+  background-color: #ffffee ;
+  width: 40% ;
+  float: right ;
+  clear: right }
+
+div.sidebar p.rubric {
+  font-family: sans-serif ;
+  font-size: medium }
+
+div.system-messages {
+  margin: 5em }
+
+div.system-messages h1 {
+  color: red }
+
+div.system-message {
+  border: medium outset ;
+  padding: 1em }
+
+div.system-message p.system-message-title {
+  color: red ;
+  font-weight: bold }
+
+div.topic {
+  margin: 2em }
+
+h1.title {
+  text-align: center }
+
+h2.subtitle {
+  text-align: center }
+
+hr {
+  width: 75% }
+
+ol.simple, ul.simple {
+  margin-bottom: 1em }
+
+ol.arabic {
+  list-style: decimal }
+
+ol.loweralpha {
+  list-style: lower-alpha }
+
+ol.upperalpha {
+  list-style: upper-alpha }
+
+ol.lowerroman {
+  list-style: lower-roman }
+
+ol.upperroman {
+  list-style: upper-roman }
+
+p.attribution {
+  text-align: right ;
+  margin-left: 50% }
+
+p.caption {
+  font-style: italic }
+
+p.credits {
+  font-style: italic ;
+  font-size: smaller }
+
+p.label {
+  white-space: nowrap }
+
+p.rubric {
+  font-weight: bold ;
+  font-size: larger ;
+  color: maroon ;
+  text-align: center }
+
+p.sidebar-title {
+  font-family: sans-serif ;
+  font-weight: bold ;
+  font-size: larger }
+
+p.sidebar-subtitle {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+p.topic-title {
+  font-weight: bold }
+
+pre.address {
+  margin-bottom: 0 ;
+  margin-top: 0 ;
+  font-family: serif ;
+  font-size: 100% }
+
+pre.line-block {
+  font-family: serif ;
+  font-size: 100% }
+
+pre.literal-block, pre.doctest-block {
+  margin-left: 2em ;
+  margin-right: 2em ;
+  background-color: #eeeeee }
+
+span.classifier {
+  font-family: sans-serif ;
+  font-style: oblique }
+
+span.classifier-delimiter {
+  font-family: sans-serif ;
+  font-weight: bold }
+
+span.interpreted {
+  font-family: sans-serif }
+
+span.option {
+  white-space: nowrap }
+
+span.option-argument {
+  font-style: italic }
+
+span.pre {
+  white-space: pre }
+
+span.problematic {
+  color: red }
+
+table {
+  margin-top: 0.5em ;
+  margin-bottom: 0.5em }
+
+table.citation {
+  border-left: solid thin gray ;
+  padding-left: 0.5ex }
+
+table.docinfo {
+  margin: 2em 4em }
+
+table.footnote {
+  border-left: solid thin black ;
+  padding-left: 0.5ex }
+
+dt {
+  font-weight: bold }
+
+td, th {
+  padding-left: 0.5em ;
+  padding-right: 0.5em ;
+  vertical-align: top }
+
+th.docinfo-name, th.field-name {
+  font-weight: bold ;
+  text-align: left ;
+  white-space: nowrap }
+
+h1 tt, h2 tt, h3 tt, h4 tt, h5 tt, h6 tt {
+  font-size: 100% }
+
+tt {
+  background-color: #eeeeee }
+
+ul.auto-toc {
+  list-style-type: none }
+
+</style> </head>
+  <body><br />
+    <div class="document" id="preprocessor-title">
+      <h1 class="title">Appendix A - An Introduction to Preprocessor
+        Metaprogramming</h1>
+      <table class="docinfo" frame="void" rules="none">
+        <colgroup><col class="docinfo-name" /> <col class="docinfo-content" />
+        </colgroup>
+        <tbody valign="top">
+          <tr>
+            <th class="docinfo-name">Copyright:</th>
+            <td>From "C++ Template Metaprogramming," by David Abrahams and
+              Aleksey Gurtovoy. Copyright (c) 2005 by Pearson Education, Inc.
+              Reprinted with permission.</td>
+          </tr>
+          <tr class="field">
+            <th class="docinfo-name">ISBN:</th>
+            <td class="field-body">0321227255</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="section" id="motivation">
+        <h1><a name="motivation">A.1   Motivation</a></h1>
+        <p>Even with the full power of template metaprogramming and the <a class="reference"
+
+            href="http://www.boost.org/libs/mpl">Boost Metaprogramming library</a>
+          at our disposal, some C++ coding jobs still require a great deal of
+          boilerplate code repetition. We saw one example in Chapter 5, when we
+          implemented <tt class="docutils literal"><span class="pre">tiny_size</span></tt>:</p>
+        <pre class="literal-block">template &lt;class T0, class T1, class T2&gt;
+struct tiny_size
+  : mpl::int_&lt;3&gt; {};
+</pre>
+        <!-- : rst-mode hack -->
+        <!-- @prefix.append('struct none {};') -->
+        <p>Aside from the repeated pattern in the parameter list of the primary
+          template above, there are three partial specializations below, which
+          also follow a predictable pattern:</p>
+        <pre class="literal-block">template &lt;class T0, class T1&gt;
+struct tiny_size&lt;T0,T1,none&gt;
+  : mpl::int_&lt;2&gt; {};
+
+template &lt;class T0&gt;
+struct tiny_size&lt;T0,none,none&gt;
+  : mpl::int_&lt;1&gt; {};
+
+template &lt;&gt;
+struct tiny_size&lt;none,none,none&gt;
+  : mpl::int_&lt;0&gt; {};
+</pre>
+        <!-- : rst-mode hack -->
+        <!-- @compile('all') -->
+        <p>In this case there is only a small amount of code with such a
+          "mechanical" flavor, but had we been implementing <tt class="docutils literal"><span
+
+              class="pre">large</span></tt> instead of <tt class="docutils literal"><span
+
+              class="pre">tiny</span></tt>, there might easily have been a great
+          deal more. When the number of instances of a pattern grows beyond two
+          or three, writing them by hand tends to become error-prone. Perhaps
+          more importantly, the code gets hard to read, because the important
+          abstraction in the code is really the pattern, not the individual
+          instances.</p>
+        <div class="section" id="code-generation">
+          <h2><a name="code-generation">A.1.1   Code Generation</a></h2>
+          <p>Rather than being written out by hand, mechanical-looking code
+            should really be generated mechanically. Having written a program to
+            spit out instances of the code pattern, a library author has two
+            choices: She can either ship pre-generated source code files, or she
+            can ship the generator itself. Either approach has drawbacks. If
+            clients only get the generated source, they are stuck with whatever
+            the library author generated—and experience shows that if they are
+            happy with three instances of a pattern today, someone will need
+            four tomorrow. If clients get the generator program, on the other
+            hand, they also need the resources to execute it (e.g.,
+            interpreters), and they must integrate the generator into their
+            build processes...</p>
+        </div>
+        <div class="section" id="enter-the-preprocessor">
+          <h2><a name="enter-the-preprocessor">A.1.2   Enter the Preprocessor</a></h2>
+          <p>...unless the generator is a preprocessor metaprogram. Though not
+            designed for that purpose, the C and C++ preprocessors can be made
+            to execute sophisticated programs during the preprocessing phase of
+            compilation. Users can control the code generation process with
+            preprocessor <tt class="docutils literal"><span class="pre">#define</span></tt>s
+            in code or <tt class="docutils literal"><span class="pre">-D</span></tt>
+            options on the compiler's command line, making build integration
+            trivial. For example, we might parameterize the primary <tt class="docutils literal"><span
+
+                class="pre">tiny_size</span></tt> template above as follows:</p>
+          <pre class="literal-block">#include &lt;<strong>boost/preprocessor/repetition/enum_params</strong>.hpp&gt;
+
+#ifndef TINY_MAX_SIZE
+#  define TINY_MAX_SIZE 3  // default maximum size is 3
+#endif
+
+template &lt;<strong>BOOST_PP_ENUM_PARAMS(TINY_MAX_SIZE, class T)</strong>&gt;
+struct tiny_size
+  : mpl::int_&lt;TINY_MAX_SIZE&gt;
+{};
+</pre>
+          <!-- : rst-mode hack -->
+          <!-- @compile(pop = None) -->
+          <p>To test the metaprogram, run your compiler in its "preprocessing"
+            mode (usually the <tt class="docutils literal"><span class="pre">-E</span></tt>
+            option), with the Boost root directory in your <tt class="docutils literal"><span
+
+                class="pre">#include</span></tt> path. For instance:<a class="footnote-reference"
+
+              href="#minusp" id="id2" name="id2">[1]</a></p>
+          <pre class="literal-block">g++ -P -E -Ipath/to/boost_1_32_0 -I. test.cpp
+</pre>
+          <!-- @ignore() -->
+          <table class="docutils footnote" frame="void" id="minusp" rules="none">
+            <colgroup><col class="label" /><col /></colgroup>
+            <tbody valign="top">
+              <tr>
+                <td class="label"><a class="fn-backref" href="#id2" name="minusp">[1]</a></td>
+                <td>GCC's <tt class="docutils literal"><span class="pre">-P</span></tt>
+                  option inhibits the generation of source file and line number
+                  markers in preprocessed output.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Given the appropriate metaprograms, users would be able to adjust
+            not only the number of parameters to <tt class="docutils literal"><span
+
+                class="pre">tiny_size</span></tt>, but the maximum size of the
+            entire <tt class="docutils literal"><span class="pre">tiny</span></tt>
+            implementation just by <tt class="docutils literal"><span class="pre">#define</span></tt>-ing
+            <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>.</p>
+          <p>The Boost Preprocessor library <a class="citation-reference" href="#mk04"
+
+              id="id3" name="id3">[MK04]</a> plays a role in preprocessor
+            metaprogramming similar to the one played by the MPL in template
+            metaprogramming: It supplies a framework of high-level components
+            (like <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM_PARAMS</span></tt>)
+            that make otherwise-painful metaprogramming jobs approachable. In
+            this appendix we won't attempt to cover nitty-gritty details of how
+            the preprocessor works, nor principles of preprocessor
+            metaprogramming in general, nor even many details of how the
+            Preprocessor <em>library</em> works. We <em>will</em> show you
+            enough at a high level that you'll be able to use the library
+            productively and learn the rest on your own.</p>
+          <table class="docutils citation" frame="void" id="mk04" rules="none">
+            <colgroup><col class="label" /><col /></colgroup>
+            <tbody valign="top">
+              <tr>
+                <td class="label"><a class="fn-backref" href="#id3" name="mk04">[MK04]</a></td>
+                <td>Paul Mensonides and Vesa Karvonen. "The Boost Preprocessor
+                  Library." <a class="reference" href="http://www.boost.org/libs/preprocessor">http://www.boost.org/libs/preprocessor</a>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="fundamental-abstractions-of-the-preprocessor">
+        <h1><a name="fundamental-abstractions-of-the-preprocessor">A.2   Fundamental
+            Abstractions of the Preprocessor</a></h1>
+        <p>We began our discussion of template metaprogramming in Chapter 2 by
+          describing its metadata (potential template arguments) and
+          metafunctions (class templates). On the basis of those two fundamental
+          abstractions, we built up the entire picture of compile-time
+          computation covered in the rest of this book. In this section we'll
+          lay a similar foundation for the preprocessor metaprogrammer. Some of
+          what we cover here may be a review for you, but it's important to
+          identify the basic concepts going into detail.</p>
+        <div class="section" id="preprocessing-tokens">
+          <h2><a name="preprocessing-tokens">A.2.1   Preprocessing Tokens</a></h2>
+          <p>The fundamental unit of data in the preprocessor is the <strong>preprocessing
+              token</strong>. Preprocessing tokens correspond roughly to the
+            tokens you're used to working with in C++, such as identifiers,
+            operator symbols, and literals. Technically, there are some
+            differences between <em>preprocessing tokens</em> and regular <em>tokens</em>
+            (see section 2 of the C++ standard for details), but they can be
+            ignored for the purposes of this discussion. In fact, we'll be using
+            the terms interchangeably here.</p>
+        </div>
+        <div class="section" id="macros">
+          <h2><a name="macros">A.2.2   Macros</a></h2>
+          <p>Preprocessor macros come in two flavors. <strong>Object-like
+              macros</strong> can be defined this way:</p>
+          <blockquote>
+            <div class="line-block">
+              <div class="line"><tt class="docutils literal"><span class="pre">#define</span></tt>
+                <em>identifier</em> <em>replacement-list</em></div>
+            </div>
+          </blockquote>
+          <!-- @litre_translator.line_offset -= 7 -->
+          <p>where the <em>identifier</em> names the macro being defined, and <em>replacement-list</em>
+            is a sequence of zero or more tokens. Where the <em>identifier</em>
+            appears in subsequent program text, it is <strong>expanded</strong>
+            by the preprocessor into its <em>replacement-list</em>.</p>
+          <p><strong>Function-like macros</strong>, which act as the
+            "metafunctions of the preprocessing phase," are defined as follows:</p>
+          <blockquote>
+            <div class="line-block">
+              <div class="line"><tt class="docutils literal"><span class="pre">#define</span></tt>
+                <em>identifier</em>(<em>a</em><sub>1</sub>, <em>a</em><sub>2</sub>,
+                ... <em>a</em><sub>n</sub>) <em>replacement-list</em></div>
+            </div>
+          </blockquote>
+          <!-- @litre_translator.line_offset -= 7 -->
+          <p>where each <em>a</em><sub>i</sub> is an identifier naming a <strong>macro
+              parameter</strong>. When the macro name appears in subsequent
+            program text followed by a suitable argument list, it is expanded
+            into its <em>replacement-list</em>, except that each argument is
+            substituted for the corresponding parameter where it appears in the
+            <em>replacement-list</em>.<a class="footnote-reference" href="#expansion"
+
+              id="id4" name="id4">[2]</a></p>
+          <table class="docutils footnote" frame="void" id="expansion" rules="none">
+            <colgroup><col class="label" /><col /></colgroup>
+            <tbody valign="top">
+              <tr>
+                <td class="label"><a class="fn-backref" href="#id4" name="expansion">[2]</a></td>
+                <td>We have omitted many details of how macro expansion works.
+                  We encourage you to take a few minutes to study section 16.3
+                  of the C++ standard, which describes that process in
+                  straightforward terms.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section" id="macro-arguments">
+          <h2><a name="macro-arguments">A.2.3   Macro Arguments</a></h2>
+          <div class="admonition-definition admonition">
+            <p class="first admonition-title">Definition</p>
+            <p>A <strong>macro argument</strong> is a nonempty sequence of:</p>
+            <ul class="last simple">
+              <li>Preprocessing tokens other than commas or parentheses, <em>and/or</em></li>
+              <li>Preprocessing tokens surrounded by matched pairs of
+                parentheses.</li>
+            </ul>
+          </div>
+          <p>This definition has consequences for preprocessor metaprogramming
+            that must not be underestimated. Note, first of all, that the
+            following tokens have special status:</p>
+          <blockquote>
+            <pre class="literal-block">,  (  )
+</pre> </blockquote>
+          <!-- @ignore() -->
+          <p>As a result, a macro argument can never contain an unmatched
+            parenthesis, or a comma that is not surrounded by matched
+            parentheses. For example, both lines following the definition of FOO
+            below are ill-formed:</p>
+          <pre class="literal-block">#define FOO(X) X // Unary identity macro
+FOO(,)           // un-parenthesized comma or two empty arguments
+FOO())           // unmatched parenthesis or missing argument
+</pre>
+          <!-- @def pp_failure(options = ['-E'], **kw):
+    compile(        expect_error = not 'mwcc' in config.compiler      , options = options, **kw)pp_failure() -->
+          <p>Note also that the following tokens do <em>not</em> have special
+            status; the preprocessor knows nothing about matched pairs of
+            braces, brackets, or angle brackets:</p>
+          <blockquote>
+            <pre class="literal-block">{  }  [  ]  &lt;  &gt;
+</pre> </blockquote>
+          <!-- @ignore() -->
+          <p>As a result, these lines are also ill-formed:</p>
+          <pre class="literal-block">FOO(std::pair&lt;int<strong>,</strong> long&gt;)                // two arguments
+FOO({ int x = 1<strong>,</strong> y = 2; return x+y; })   // two arguments
+</pre>
+          <!-- @example.prepend('#define FOO(X) X')
+pp_failure() -->
+          <p>It <em>is</em> possible to pass either string of tokens above as
+            part of a single macro argument, provided it is parenthesized:</p>
+          <pre class="literal-block">FOO(<strong>(</strong>std::pair&lt;int,int&gt;<strong>)</strong>)                 // one argument
+FOO(<strong>(</strong>{ int x = 1, y = 2; return x+y; }<strong>)</strong>)  // one argument
+</pre>
+          <!-- @example.prepend('#define FOO(X) X')
+compile(options = ['-E']) -->
+          <p>However, because of the special status of commas, it is impossible
+            to strip parentheses from a macro argument without knowing the
+            number of comma-separated token sequences it contains.<a class="footnote-reference"
+
+              href="#c99" id="id5" name="id5">[3]</a> If you are writing a macro
+            that needs to be able to accept an argument containing a variable
+            number of commas, your users will either have to parenthesize that
+            argument <em>and</em> pass you the number of comma-separated token
+            sequences as an additional argument, or they will have to encode the
+            same information in one of the preprocessor data structures covered
+            later in this appendix.</p>
+          <table class="docutils footnote" frame="void" id="c99" rules="none">
+            <colgroup><col class="label" /><col /></colgroup>
+            <tbody valign="top">
+              <tr>
+                <td class="label"><a name="c99">[3]</a></td>
+                <td><em>(<a class="fn-backref" href="#id5">1</a>, <a class="fn-backref"
+
+                      href="#id12">2</a>)</em> The C99 preprocessor, by virtue
+                  of its variadic macros, can do that and more. The C++
+                  standardization committee is likely to adopt C99's
+                  preprocessor extensions for the next version of the C++
+                  standard.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="section" id="preprocessor-library-structure">
+        <h1><a name="preprocessor-library-structure">A.3   Preprocessor Library
+            Structure</a></h1>
+        <p>Since in-depth coverage of the Boost Preprocessor library is beyond
+          the scope of this book, we'll try to give you the <em>tools</em> to
+          gain an in-depth understanding of the library here. To do that, you'll
+          need to use the electronic Preprocessor library documentation, which
+          begins with the index.html file in the <tt class="docutils literal"><span
+
+              class="pre">libs/preprocessor/</span></tt> subdirectory of your
+          Boost installation.</p>
+        <p>On the left of your browser window you'll see an index, and if you
+          follow the "Headers" link, it will reveal the structure of the <tt class="docutils literal"><span
+
+              class="pre">boost/preprocessor/</span></tt> directory. Most of the
+          library's headers are grouped into subdirectories according to related
+          functionality. The top-level directory contains only a few headers
+          that provide general-purpose macros, along with a header for each
+          subdirectory that simply <tt class="docutils literal"><span class="pre">#include</span></tt>s
+          all the headers in that subdirectory. For example, <tt class="docutils literal"><span
+
+              class="pre">boost/preprocessor/selection.hpp</span></tt> does
+          nothing more than to <tt class="docutils literal"><span class="pre">#include</span></tt>
+          the <tt class="docutils literal"><span class="pre">min.hpp</span></tt>
+          and <tt class="docutils literal"><span class="pre">max.hpp</span></tt>
+          headers that comprise the contents of <tt class="docutils literal"><span
+
+              class="pre">boost/preprocessor/selection/</span></tt>. The headers
+          whose names <em>don't</em> correspond to subdirectories generally
+          declare a macro whose name is the same as the name of the header,
+          without the extension, and with a <tt class="docutils literal"><span
+
+              class="pre">BOOST_PP_</span></tt> prefix. For example, <tt class="docutils literal"><span
+
+              class="pre">boost/preprocessor/selection/max.hpp</span></tt>
+          declares <tt class="docutils literal"><span class="pre">BOOST_PP_MAX</span></tt>.</p>
+        <p>You'll also notice that often a header will declare an additional
+          macro with a <tt class="docutils literal"><span class="pre">_D</span></tt>,
+          <tt class="docutils literal"><span class="pre">_R</span></tt>, or <tt
+
+            class="docutils literal"><span class="pre">_Z</span></tt> suffix.<a
+
+            class="footnote-reference" href="#suffix" id="id6" name="id6">[4]</a>
+          For instance, <tt class="docutils literal"><span class="pre">boost/preprocessor/selection/max.hpp</span></tt>
+          also declares <tt class="docutils literal"><span class="pre">BOOST_PP_MAX_D</span></tt>.
+          For the purposes of this appendix, you should ignore those macros.
+          Eventually you will want to understand how they can be used to
+          optimize preprocessing speed; consult the Topics section of the
+          library documentation under the subheading "reentrancy" for that
+          information.</p>
+        <table class="docutils footnote" frame="void" id="suffix" rules="none">
+          <colgroup><col class="label" /><col /></colgroup>
+          <tbody valign="top">
+            <tr>
+              <td class="label"><a class="fn-backref" href="#id6" name="suffix">[4]</a></td>
+              <td>Macros with <tt class="docutils literal"><span class="pre">_1ST</span></tt>,
+                <tt class="docutils literal"><span class="pre">_2ND</span></tt>,
+                or <tt class="docutils literal"><span class="pre">_3RD</span></tt>
+                suffixes, if they appear, should be ignored for a different
+                reason: They are deprecated and will be removed from the library
+                soon.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section" id="preprocessor-library-abstractions">
+        <h1><a name="preprocessor-library-abstractions">A.4   Preprocessor
+            Library Abstractions</a></h1>
+        <p>In this section we'll discuss the basic abstractions of the
+          Preprocessor library, and give some simple examples of each.</p>
+        <div class="section" id="repetition">
+          <h2><a name="repetition">A.4.1   Repetition</a></h2>
+          <p>The repeated generation of <tt class="docutils literal"><span class="pre">class</span>
+              <span class="pre">T0</span></tt>, <tt class="docutils literal"><span
+
+                class="pre">class</span> <span class="pre">T1</span></tt>... <tt
+
+              class="docutils literal"><span class="pre">class</span> <span class="pre">T</span></tt><em>n</em>
+            that we achieved using <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM_PARAMS</span></tt>
+            was a specific case of the general concept of <strong>horizontal
+              repetition</strong>. The library also has a concept of vertical
+            repetition, which we'll get to in a moment. Horizontal repetition
+            macros are all found in the library's <tt class="docutils literal"><span
+
+                class="pre">repetition/</span></tt> subdirectory.</p>
+          <div class="section" id="horizontal-repetition">
+            <h3><a name="horizontal-repetition">A.4.1.1   Horizontal Repetition</a></h3>
+            <p>To generate the <tt class="docutils literal"><span class="pre">tiny_size</span></tt>
+              specializations using horizontal repetition, we might write the
+              following:</p>
+            <pre class="literal-block">#include &lt;boost/preprocessor/repetition.hpp&gt;
+#include &lt;boost/preprocessor/arithmetic/sub.hpp&gt;
+#include &lt;boost/preprocessor/punctuation/comma_if.hpp&gt;
+
+#define TINY_print(z, n, data) data
+
+#define TINY_size(z, n, unused)                                 \
+  template &lt;BOOST_PP_ENUM_PARAMS(n, class T)&gt;                   \
+  struct tiny_size&lt;                                             \
+      BOOST_PP_ENUM_PARAMS(n,T)                                 \
+      BOOST_PP_COMMA_IF(n)                                      \
+      BOOST_PP_ENUM(                                            \
+          BOOST_PP_SUB(TINY_MAX_SIZE,n), TINY_print, none)      \
+  &gt;                                                             \
+    : mpl::int_&lt;n&gt; {};
+
+BOOST_PP_REPEAT(TINY_MAX_SIZE, TINY_size, ~)
+
+#undef TINY_size
+#undef TINY_print
+</pre>
+            <!-- @import re
+compile('all', pop = None)example.sub('BOOST_PP_REPEAT.*', '', flags = re.DOTALL) -->
+            <p>The code generation process is kicked off by calling <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_REPEAT</span></tt>, a <strong>higher-order
+                macro</strong> that repeatedly invokes the macro named by its
+              second argument (<tt class="docutils literal"><span class="pre">TINY_size</span></tt>).
+              The first argument specifies the number of repeated invocations,
+              and the third one can be any data; it is passed on unchanged to
+              the macro being invoked. In this case, <tt class="docutils literal"><span
+
+                  class="pre">TINY_size</span></tt> doesn't use that data, so
+              the choice to pass <tt class="docutils literal"><span class="pre">~</span></tt>
+              was arbitrary.<a class="footnote-reference" href="#markers" id="id7"
+
+                name="id7">[5]</a></p>
+            <table class="docutils footnote" frame="void" id="markers" rules="none">
+              <colgroup><col class="label" /><col /></colgroup>
+              <tbody valign="top">
+                <tr>
+                  <td class="label"><a class="fn-backref" href="#id7" name="markers">[5]</a></td>
+                  <td><tt class="docutils literal"><span class="pre">~</span></tt>
+                    is not an <em>entirely</em> arbitrary choice. Both <tt class="docutils literal"><span
+
+                        class="pre">@</span></tt> and <tt class="docutils literal"><span
+
+                        class="pre">$</span></tt> might have been good choices,
+                    except that they are technically not part of the basic
+                    character set that C++ implementations are required to
+                    support. An identifier like <tt class="docutils literal"><span
+
+                        class="pre">ignored</span></tt> might be subject to
+                    macro expansion, leading to unexpected results.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Each time the <tt class="docutils literal"><span class="pre">TINY_size</span></tt>
+              macro is invoked by <tt class="docutils literal"><span class="pre">BOOST_PP_REPEAT</span></tt>,
+              it generates a different specialization of <tt class="docutils literal"><span
+
+                  class="pre">tiny_size</span></tt>. The macro accepts three
+              parameters.</p>
+            <ul class="simple">
+              <li><tt class="docutils literal"><span class="pre">z</span></tt>
+                is related to the <tt class="docutils literal"><span class="pre">_Z</span></tt>
+                macro suffix we mentioned earlier. You'll never need to use it
+                except for optimization purposes, and can safely ignore it for
+                now.</li>
+              <li><tt class="docutils literal"><span class="pre">n</span></tt>
+                is the repetition index. In repeated invocations of <tt class="docutils literal"><span
+
+                    class="pre">TINY_size</span></tt>, <tt class="docutils literal"><span
+
+                    class="pre">n</span></tt> will be <tt class="docutils literal"><span
+
+                    class="pre">0</span></tt>, then <tt class="docutils literal"><span
+
+                    class="pre">1</span></tt>, then <tt class="docutils literal"><span
+
+                    class="pre">2</span></tt>, and so on.</li>
+              <li><tt class="docutils literal"><span class="pre">unused</span></tt>,
+                in this case, will be <tt class="docutils literal"><span class="pre">~</span></tt>
+                on each repetition. In general, the final argument to a macro
+                invoked by <tt class="docutils literal"><span class="pre">BOOST_PP_REPEAT</span></tt>
+                is always the same as its invoker's final argument.</li>
+            </ul>
+            <p>Because its <em>replacement-list</em> covers several lines, all
+              but the last line of <tt class="docutils literal"><span class="pre">TINY_size</span></tt>
+              is continued with a trailing backslash. The first few of those
+              lines just invoke <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM_PARAMS</span></tt>
+              (which we already used in the primary template) to generate
+              comma-separated lists, so each invocation of <tt class="docutils literal"><span
+
+                  class="pre">TINY_size</span></tt> produces something
+              equivalent to:<a class="footnote-reference" href="#cont" id="id8"
+
+                name="id8">[6]</a></p>
+            <pre class="literal-block">template &lt;<strong>class T0, class T1, ... class T</strong><em>n-1</em>&gt;
+struct tiny_size&lt;
+    <strong>T0, T1, ... T</strong><em>n-1</em>
+    <em>...more...</em> 
+&gt; 
+  : mpl::int_&lt;n&gt; {};
+</pre>
+            <table class="docutils footnote" frame="void" id="cont" rules="none">
+              <colgroup><col class="label" /><col /></colgroup>
+              <tbody valign="top">
+                <tr>
+                  <td class="label"><a class="fn-backref" href="#id8" name="cont">[6]</a></td>
+                  <td>Note that the line continuation characters <em>and</em>
+                    the newlines following them are removed by the preprocessor,
+                    so the resulting code actually appears on a single line in
+                    the preprocessed output.</td>
+                </tr>
+              </tbody>
+            </table>
+            <!-- @ignore() -->
+            <p><tt class="docutils literal"><span class="pre">BOOST_PP_COMMA_IF</span></tt>
+              generates a comma if its numeric argument is not <tt class="docutils literal"><span
+
+                  class="pre">0</span></tt>. When <tt class="docutils literal"><span
+
+                  class="pre">n</span></tt> is <tt class="docutils literal"><span
+
+                  class="pre">0</span></tt>, the list generated by the preceding
+              line will be empty, and a leading comma directly following the <tt
+
+                class="docutils literal"><span class="pre">&lt;</span></tt>
+              character would be ill-formed.</p>
+            <p>The next line uses <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM</span></tt>
+              to generate <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE-n</span></tt>
+              comma-separated copies of <tt class="docutils literal"><span class="pre">none</span></tt>.
+              <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM</span></tt>
+              is just like <tt class="docutils literal"><span class="pre">BOOST_PP_REPEAT</span></tt>
+              except that it generates commas between repetitions, so its second
+              argument (<tt class="docutils literal"><span class="pre">TINY_print</span></tt>,
+              here) must have the same signature as <tt class="docutils literal"><span
+
+                  class="pre">TINY_size</span></tt>. In this case, <tt class="docutils literal"><span
+
+                  class="pre">TINY_print</span></tt> ignores its repetition
+              index <tt class="docutils literal"><span class="pre">n</span></tt>,
+              and simply yields its third argument, <tt class="docutils literal"><span
+
+                  class="pre">none</span></tt>.</p>
+            <p><tt class="docutils literal"><span class="pre">BOOST_PP_SUB</span></tt>
+              implements token subtraction. It's crucial to understand that
+              although the preprocessor <em>itself</em> can evaluate ordinary
+              arithmetic expressions:</p>
+            <pre class="literal-block">#define X 3
+...
+#if <strong>X - 1 &gt; 0</strong>  // OK
+  <em>whatever</em>
+#endif
+</pre>
+            <!-- @compile() -->
+            <!-- @litre_translator.line_offset -= 7 -->
+            <p>preprocessor <em>metaprograms</em> can only operate on tokens.
+              Normally, when a macro in the Preprocessor library expects a
+              numeric argument, it must be passed as a single token. If we had
+              written <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE-n</span></tt>
+              instead of <tt class="docutils literal"><span class="pre">BOOST_PP_SUB(TINY_MAX_SIZE,n)</span></tt>
+              above, the first argument to <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM</span></tt>
+              would have contained three tokens at each invocation: first <tt class="docutils literal"><span
+
+                  class="pre">3-0</span></tt>, then <tt class="docutils literal"><span
+
+                  class="pre">3-1</span></tt>, and finally <tt class="docutils literal"><span
+
+                  class="pre">3-2</span></tt>. <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_SUB</span></tt>, though, generates
+              single-token results: first <tt class="docutils literal"><span class="pre">3</span></tt>,
+              then <tt class="docutils literal"><span class="pre">2</span></tt>,
+              and finally <tt class="docutils literal"><span class="pre">1</span></tt>,
+              in successive repetitions.</p>
+            <div class="sidebar">
+              <p class="first sidebar-title">Naming Conventions</p>
+              <p class="last">Note that <tt class="docutils literal"><span class="pre">TINY_print</span></tt>
+                and <tt class="docutils literal"><span class="pre">TINY_size</span></tt>
+                are <tt class="docutils literal"><span class="pre">#undef</span></tt>'d
+immediately
+                after they're used, with no intervening <tt class="docutils literal"><span
+
+                    class="pre">#include</span></tt>s. They can therefore be
+                thought of as "local" macro definitions. Because the
+                preprocessor doesn't respect scope boundaries, it's important to
+                choose names carefully to prevent clashes. We recommend <tt class="docutils literal"><span
+
+                    class="pre">PREFIXED_lower_case</span></tt> names for local
+                macros and <tt class="docutils literal"><span class="pre">PREFIXED_UPPER_CASE</span></tt>
+                names for global ones. The only exceptions are one-letter
+                lowercase names, which are safe to use for local macros: No
+                other header is likely to <tt class="docutils literal"><span class="pre">#define</span></tt>
+                a global single-letter lowercase macro—that would be <em>very</em>
+                bad manners.</p>
+            </div>
+          </div>
+          <div class="section" id="vertical-repetition">
+            <h3><a name="vertical-repetition">A.4.1.2   Vertical Repetition</a></h3>
+            <p>If you send the previous example through your preprocessor,
+              you'll see one long line containing something like this:</p>
+            <pre class="literal-block">template &lt;&gt; struct tiny_size&lt; none , none , none &gt; : mpl::int_&lt;0&gt;
+ {}; template &lt; class T0&gt; struct tiny_size&lt; T0 , none , none &gt; :
+mpl::int_&lt;1&gt; {}; template &lt; class T0 , class T1&gt; struct tiny_size
+&lt; T0 , T1 , none &gt; : mpl::int_&lt;2&gt; {};
+</pre>
+            <!-- @compile('all', pop = 1) -->
+            <p>The distinguishing feature of horizontal repetition is that all
+              instances of the repeated pattern are generated on the same line
+              of preprocessed output. For some jobs, like generating the primary
+              <tt class="docutils literal"><span class="pre">tiny_size</span></tt>
+              template, that's perfectly appropriate. In this case, however,
+              there are at least two disadvantages.</p>
+            <ol class="arabic simple">
+              <li>It's hard to verify that our metaprogram is doing the right
+                thing without reformatting the resulting code by hand.</li>
+              <li>The efficiency of nested horizontal repetitions varies widely
+                across preprocessors. Each specialization generated by means of
+                horizontal repetition contains three other horizontal
+                repetitions: two invocations of <tt class="docutils literal"><span
+
+                    class="pre">BOOST_PP_ENUM_PARAMS</span></tt> and one
+                invocation of <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM</span></tt>.
+                When <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>
+                is <tt class="docutils literal"><span class="pre">3</span></tt>,
+                you'll probably never care, but on at least one preprocessor
+                still in use today, compilation begins to slow noticeably when <tt
+
+                  class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>
+                reaches <tt class="docutils literal"><span class="pre">8</span></tt>.<a
+
+                  class="footnote-reference" href="#nest" id="id9" name="id9">[7]</a></li>
+            </ol>
+            <blockquote>
+              <table class="docutils footnote" frame="void" id="nest" rules="none">
+                <colgroup><col class="label" /><col /></colgroup>
+                <tbody valign="top">
+                  <tr>
+                    <td class="label"><a class="fn-backref" href="#id9" name="nest">[7]</a></td>
+                    <td>That said, other preprocessors can handle 256 * 256
+                      nested repetitions without any speed problems whatsoever.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </blockquote>
+            <p>The solution to these problems, naturally, is <strong>vertical
+                repetition</strong>, which generates instances of a pattern
+              across multiple lines. The Preprocessor library provides two means
+              of vertical repetition: <strong>local iteration</strong> and <strong>file
+                iteration</strong>.</p>
+            <div class="section" id="local-iteration">
+              <h4><a name="local-iteration">Local Iteration</a></h4>
+              <p>The most expedient way to demonstrate local iteration in our
+                example is to replace the invocation of <tt class="docutils literal"><span
+
+                    class="pre">BOOST_PP_REPEAT</span></tt> with the following:</p>
+              <pre class="literal-block">#include &lt;boost/preprocessor/<strong>iteration/local.hpp</strong>&gt;
+
+#define BOOST_PP_LOCAL_MACRO(n)   TINY_size(~, n, ~)
+#define BOOST_PP_LOCAL_LIMITS     (0, <strong>TINY_MAX_SIZE - 1</strong>)
+<strong>#include</strong> BOOST_PP_LOCAL_ITERATE()
+</pre>
+              <!-- @compile('all', pop = 1) -->
+              <p>Local iteration repeatedly invokes the user-defined macro with
+                the special name <tt class="docutils literal"><span class="pre">BOOST_PP_LOCAL_MACRO</span></tt>,
+                whose argument will be an iteration index. Since we already had
+                <tt class="docutils literal"><span class="pre">TINY_size</span></tt>
+                lying around, we've just defined <tt class="docutils literal"><span
+
+                    class="pre">BOOST_PP_LOCAL_MACRO</span></tt> to invoke it.
+                The range of iteration indices are given by another user-defined
+                macro, <tt class="docutils literal"><span class="pre">BOOST_PP_LOCAL_LIMITS</span></tt>,
+                which must expand to a parenthesized pair of integer values
+                representing the <em>inclusive</em> range of index values
+                passed to <tt class="docutils literal"><span class="pre">BOOST_PP_LOCAL_MACRO</span></tt>.
+                Note that this is one of the rare places where the library
+                expects a numeric argument that can be an expression consisting
+                of multiple tokens.</p>
+              <p>Finally, the repetition is initiated by <tt class="docutils literal"><span
+
+                    class="pre">#include</span></tt>-ing the result of invoking
+                <tt class="docutils literal"><span class="pre">BOOST_PP_LOCAL_ITERATE</span></tt>,
+                which will ultimately be a file in the Preprocessor library
+                itself. You may find it surprising that many preprocessors can
+                handle repeated file inclusion more quickly than nested
+                horizontal repetition, but that is in fact the case.</p>
+              <p>If we throw the new example at our preprocessor, we'll see the
+                following, on three separate lines in the output:</p>
+              <pre class="literal-block">template &lt;&gt; struct tiny_size&lt; none , none , none &gt; : mpl::int_&lt;0&gt;
+ {};
+
+template &lt; class T0&gt; struct tiny_size&lt; T0 , none , none &gt; : mpl::
+int_&lt;1&gt; {};
+
+template &lt; class T0 , class T1&gt; struct tiny_size&lt; T0 , T1 , none
+&gt; : mpl::int_&lt;2&gt; {};
+</pre>
+              <!-- @compile('all', pop = 1) -->
+              <p>That represents a great improvement in verifiability, but it's
+                still not ideal. As <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>
+                grows, it gets harder and harder to see that the pattern is
+                generating what we'd like. If we could get some more line breaks
+                into the output it would retain a more recognizable form.</p>
+              <p>Both repetition methods we've used so far have another
+                drawback, though it doesn't show up in this example. Consider
+                what would happen if <tt class="docutils literal"><span class="pre">tiny_size</span></tt>
+                had a member function that we wanted to debug. If you've ever
+                tried to use a debugger to step through a function generated by
+                a preprocessor macro, you know that it's a frustrating
+                experience at best: The debugger shows you the line from which
+                the macro was ultimately invoked, which usually looks nothing at
+                all like the code that was generated. Worse, as far as the
+                debugger is concerned, <em>every</em> statement in that
+                generated function occupies that same line.</p>
+            </div>
+            <div class="section" id="file-iteration">
+              <h4><a name="file-iteration">File Iteration</a></h4>
+              <p>Clearly, debuggability depends on preserving the association
+                between generated code and the lines in the source file that
+                describe the code pattern. File iteration generates pattern
+                instances by repeatedly <tt class="docutils literal"><span class="pre">#include</span></tt>-ing
+                the same source file. The effect of file iteration on
+                debuggability is similar to that of templates: Although separate
+                instances appear to occupy the same source lines in the
+                debugger, we do have the experience of stepping through the
+                function's source code.</p>
+              <p>To apply file iteration in our example, we can replace our
+                earlier local iteration code and the definition of <tt class="docutils literal"><span
+
+                    class="pre">TINY_size</span></tt>, with:</p>
+              <pre class="literal-block">#include &lt;boost/preprocessor/iteration/iterate.hpp&gt;
+#define BOOST_PP_ITERATION_LIMITS (0, TINY_MAX_SIZE - 1)
+#define BOOST_PP_FILENAME_1       "tiny_size_spec.hpp"
+#include BOOST_PP_ITERATE()
+</pre>
+              <p><tt class="docutils literal"><span class="pre">BOOST_PP_ITERATION_LIMITS</span></tt>
+                follows the same pattern as <tt class="docutils literal"><span
+
+                    class="pre">BOOST_PP_LOCAL_LIMITS</span></tt> did, allowing
+                us to specify an inclusive range of iteration indices. <tt class="docutils literal"><span
+
+                    class="pre">BOOST_PP_FILENAME_1</span></tt> specifies the
+                name of the file to repeatedly <tt class="docutils literal"><span
+
+                    class="pre">#include</span></tt> (we'll show you that file
+                in a moment). The trailing <tt class="docutils literal"><span class="pre">1</span></tt>
+                indicates that this is the first nesting level of file
+                iteration—should we need to invoke file iteration again from
+                within <tt class="docutils literal"><span class="pre">tiny_size_spec.hpp</span></tt>,
+                we'd need to use <tt class="docutils literal"><span class="pre">BOOST_PP_FILENAME_2</span></tt>
+                instead.</p>
+              <p>The contents of <tt class="docutils literal"><span class="pre">tiny_size_spec.hpp</span></tt>
+                should look familiar to you; most of it is the same as <tt class="docutils literal"><span
+
+                    class="pre">TINY_size</span></tt>'s <em>replacement-list</em>,
+                without the backslashes:</p>
+              <pre class="literal-block">#define n BOOST_PP_ITERATION()
+
+template &lt;BOOST_PP_ENUM_PARAMS(n, class T)&gt;
+struct tiny_size&lt;
+    BOOST_PP_ENUM_PARAMS(n,T)
+    BOOST_PP_COMMA_IF(n)
+    BOOST_PP_ENUM(BOOST_PP_SUB(TINY_MAX_SIZE,n), TINY_print, none)
+&gt;
+  : mpl::int_&lt;n&gt; {};
+
+#undef n
+</pre>
+              <!-- @import tempfile, os
+open(os.path.join(tempfile.gettempdir(),'tiny_size_spec.hpp'), 'w'   ).write(str(example))ignore()vertical_options = ['-I'+tempfile.gettempdir(), '-c']
+compile('all', options = vertical_options, pop = 1) -->
+              <p>The Library transmits the iteration index to us in the result
+                of <tt class="docutils literal"><span class="pre">BOOST_PP_ITERATION()</span></tt>;
+                <tt class="docutils literal"><span class="pre">n</span></tt> is
+                nothing more than a convenient local macro used to reduce
+                syntactic noise. Note that we didn't use <tt class="docutils literal"><span
+
+                    class="pre">#include</span></tt> guards because we need <tt
+
+                  class="docutils literal"><span class="pre">tiny_size_spec.hpp</span></tt>
+                to be processed multiple times.</p>
+              <p>The preprocessed result should now preserve the line structure
+                of the pattern and be more verifiable for larger values of <tt
+
+                  class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>.
+                For instance, when <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>
+                is <tt class="docutils literal"><span class="pre">8</span></tt>,
+                the following excerpt appears in the output of GCC's
+                preprocessing phase:</p>
+              <pre class="literal-block"><em>...</em>
+template &lt; class T0 , class T1 , class T2 , class T3&gt;
+struct tiny_size&lt;
+    T0 , T1 , T2 , T3
+    ,
+    none , none , none , none
+&gt;
+  : mpl::int_&lt;4&gt; {};
+
+template &lt; class T0 , class T1 , class T2 , class T3 , class T4&gt;
+struct tiny_size&lt;
+    T0 , T1 , T2 , T3 , T4
+    ,
+    none , none , none
+&gt;
+  : mpl::int_&lt;5&gt; {};
+<em>...etc.</em>
+</pre>
+              <!-- @compile('all', options = vertical_options + ['-DTINY_MAX_SIZE=8']) -->
+            </div>
+            <div class="section" id="self-iteration">
+              <h4><a name="self-iteration">Self-Iteration</a></h4>
+              <p>Creating an entirely new file like <tt class="docutils literal"><span
+
+                    class="pre">tiny_size_spec.hpp</span></tt> each time we want
+                to express a trivial code pattern for file repetition can be
+                inconvenient. Fortunately, the library provides a macro that
+                allows us to place the pattern right in the file that invokes
+                the iteration. <tt class="docutils literal"><span class="pre">BOOST_PP_IS_ITERATING</span></tt>
+                is defined to a nonzero value whenever we're inside an
+                iteration. We can use that value to select between the part of a
+                file that invokes the iteration and the part that provides the
+                repeated pattern. Here's a complete <tt class="docutils literal"><span
+
+                    class="pre">tiny_size.hpp</span></tt> file that demonstrates
+                self-iteration. Note in particular the placement and use of the
+                <tt class="docutils literal"><span class="pre">#include</span></tt>
+                guard <tt class="docutils literal"><span class="pre">TINY_SIZE_HPP_INCLUDED</span></tt>:</p>
+              <pre class="literal-block">#ifndef <strong>BOOST_PP_IS_ITERATING</strong>
+
+#  ifndef TINY_SIZE_HPP_INCLUDED
+#    define TINY_SIZE_HPP_INCLUDED
+
+#    include &lt;boost/preprocessor/repetition.hpp&gt;
+#    include &lt;boost/preprocessor/arithmetic/sub.hpp&gt;
+#    include &lt;boost/preprocessor/punctuation/comma_if.hpp&gt;
+#    include &lt;boost/preprocessor/iteration/iterate.hpp&gt;
+
+#    ifndef TINY_MAX_SIZE
+#      define TINY_MAX_SIZE 3  // default maximum size is 3
+#    endif
+
+// primary template
+template &lt;BOOST_PP_ENUM_PARAMS(TINY_MAX_SIZE, class T)&gt;
+struct tiny_size
+  : mpl::int_&lt;TINY_MAX_SIZE&gt;
+{};
+
+// generate specializations
+#    define BOOST_PP_ITERATION_LIMITS (0, TINY_MAX_SIZE - 1)
+#    define BOOST_PP_FILENAME_1       "tiny_size.hpp" // this file
+#    include BOOST_PP_ITERATE()
+
+#  endif // TINY_SIZE_HPP_INCLUDED
+
+#else // <strong>BOOST_PP_IS_ITERATING</strong>
+
+#  define n BOOST_PP_ITERATION()
+
+#  define TINY_print(z, n, data) data
+
+// specialization pattern
+template &lt;BOOST_PP_ENUM_PARAMS(n, class T)&gt;
+struct tiny_size&lt;
+    BOOST_PP_ENUM_PARAMS(n,T)
+    BOOST_PP_COMMA_IF(n)
+    BOOST_PP_ENUM(BOOST_PP_SUB(TINY_MAX_SIZE,n), TINY_print, none)
+&gt;
+  : mpl::int_&lt;n&gt; {};
+
+#  undef TINY_print
+#  undef n
+
+#endif // <strong>BOOST_PP_IS_ITERATING</strong>
+</pre>
+              <!-- @compile(source_file = 'tiny_size.hpp') --> </div>
+            <div class="section" id="more">
+              <h4><a name="more">More</a></h4>
+              <p>There's a good deal more to file iteration than what we've been
+                able to show you here. For more details, we encourage you to
+                delve into the library's electronic documentation of <tt class="docutils literal"><span
+
+                    class="pre">BOOST_PP_ITERATE</span></tt> and friends. Also,
+                it's important to note that no single technique for repetition
+                is superior to any other: Your choice may depend on convenience,
+                verifiability, debuggability, compilation speed, and your own
+                sense of "logical coherence."</p>
+            </div>
+          </div>
+        </div>
+        <div class="section" id="arithmetic-logical-and-comparison-operations">
+          <h2><a name="arithmetic-logical-and-comparison-operations">A.4.2   Arithmetic,
+              Logical, and Comparison Operations</a></h2>
+          <p>As we mentioned earlier, many of the Preprocessor library
+            interfaces require single-token numeric arguments, and when those
+            numbers need to be computed arithmetically, straightforward
+            arithmetic expressions are inappropriate. We used <tt class="docutils literal"><span
+
+                class="pre">BOOST_PP_SUB</span></tt> to subtract two numeric
+            tokens in our <tt class="docutils literal"><span class="pre">tiny_size</span></tt>
+            examples. The library contains a suite of operations for
+            non-negative integral token arithmetic in its <tt class="docutils literal"><span
+
+                class="pre">arithmetic/</span></tt> subdirectory, as shown in
+            Table A.1</p>
+          <table border="1" class="docutils">
+            <caption>Preprocessor Library Arithmetic Operations</caption> <colgroup>
+              <col width="44%" /> <col width="56%" /> </colgroup>
+            <thead valign="bottom">
+              <tr>
+                <th>Expression</th>
+                <th>Value of Single Token Result</th>
+              </tr>
+            </thead>
+            <tbody valign="top">
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_ADD(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">+</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_DEC(x)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">-</span> <span class="pre">1</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_DIV(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">/</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_INC(x)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">+</span> <span class="pre">1</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_MOD(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">%</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_MUL(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">*</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_SUB(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">-</span> <span class="pre">y</span></tt></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>The <tt class="docutils literal"><span class="pre">logical/</span></tt>
+            subdirectory contains the convenient Boolean token operations shown
+            in Table A.2 and the more efficient operations shown in Table A.3,
+            which require that their operands are either <tt class="docutils literal"><span
+
+                class="pre">0</span></tt> or <tt class="docutils literal"><span
+
+                class="pre">1</span></tt> (a single bit).</p>
+          <table border="1" class="docutils">
+            <caption>Preprocessor Library Integer Logical Operations</caption> <colgroup>
+              <col width="44%" /> <col width="56%" /> </colgroup>
+            <thead valign="bottom">
+              <tr>
+                <th>Expression</th>
+                <th>Value of Single Token Result</th>
+              </tr>
+            </thead>
+            <tbody valign="top">
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_AND(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">&amp;&amp;</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_NOR(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">!(x</span> <span
+
+                      class="pre">||</span> <span class="pre">y)</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_OR(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">||</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_XOR(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">(bool)x</span>
+                    <span class="pre">!=</span> <span class="pre">(bool)y</span>  
+                    <span class="pre">?</span> <span class="pre">1</span> <span
+
+                      class="pre">:</span> <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_NOT(x)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">?</span> <span class="pre">0</span> <span class="pre">:</span>
+                    <span class="pre">1</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_BOOL(x)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+            </tbody>
+          </table>
+          <table border="1" class="docutils">
+            <caption>Preprocessor Library Bit Logical Operations</caption> <colgroup>
+              <col width="44%" /> <col width="56%" /> </colgroup>
+            <thead valign="bottom">
+              <tr>
+                <th>Expression</th>
+                <th>Value of Single Token Result</th>
+              </tr>
+            </thead>
+            <tbody valign="top">
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_BITAND(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">&amp;&amp;</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_BITNOR(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">!(x</span> <span
+
+                      class="pre">||</span> <span class="pre">y)</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_BITOR(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">||</span> <span class="pre">y</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_BITXOR(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">(bool)x</span>
+                    <span class="pre">!=</span> <span class="pre">(bool)y</span>  
+                    <span class="pre">?</span> <span class="pre">1</span> <span
+
+                      class="pre">:</span> <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_COMPL(x)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">?</span> <span class="pre">0</span> <span class="pre">:</span>
+                    <span class="pre">1</span></tt></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Finally, the <tt class="docutils literal"><span class="pre">comparison/</span></tt>
+            subdirectory provides the token integral comparison operations shown
+            in Table A.4.</p>
+          <table border="1" class="docutils">
+            <caption>Preprocessor Library Comparison Operations</caption> <colgroup>
+              <col width="46%" /> <col width="54%" /> </colgroup>
+            <thead valign="bottom">
+              <tr>
+                <th>Expression</th>
+                <th>Value of Single Token Result</th>
+              </tr>
+            </thead>
+            <tbody valign="top">
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_EQUAL(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">==</span> <span class="pre">y</span>   <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_NOT_EQUAL(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">!=</span> <span class="pre">y</span>   <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_LESS(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">&lt;</span> <span class="pre">y</span>    <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_LESS_EQUAL(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">&lt;=</span> <span class="pre">y</span>   <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_GREATER(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">&gt;</span> <span class="pre">y</span>    <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+              <tr>
+                <td><tt class="docutils literal"><span class="pre">BOOST_PP_GREATER_EQUAL(x,y)</span></tt></td>
+                <td><tt class="docutils literal"><span class="pre">x</span> <span
+
+                      class="pre">&gt;=</span> <span class="pre">y</span>   <span
+
+                      class="pre">?</span> <span class="pre">1</span> <span class="pre">:</span>
+                    <span class="pre">0</span></tt></td>
+              </tr>
+            </tbody>
+          </table>
+          <p>Because it's common to have a choice among several workable
+            comparison operators, it may be useful to know that <tt class="docutils literal"><span
+
+                class="pre">BOOST_PP_EQUAL</span></tt> and <tt class="docutils literal"><span
+
+                class="pre">BOOST_PP_NOT_EQUAL</span></tt> are likely to be O(1)
+            while the other comparison operators are generally slower.</p>
+        </div>
+        <div class="section" id="control-structures">
+          <h2><a name="control-structures">A.4.3   Control Structures</a></h2>
+          <p>In its <tt class="docutils literal"><span class="pre">control/</span></tt>
+            directory, the Preprocessor Library supplies a macro <tt class="docutils literal"><span
+
+                class="pre">BOOST_PP_IF(c,t,f)</span></tt> that fulfills a
+            similar role to the one filled by <tt class="docutils literal"><span
+
+                class="pre">mpl::if_</span></tt>. To explore the "control"
+            group, we'll generate code for a framework of generic function
+            objects: the Boost Function Library.<a class="footnote-reference" href="#function"
+
+              id="id10" name="id10">[8]</a> <tt class="docutils literal"><span
+
+                class="pre">boost::function</span></tt> is partially specialized
+            to match function type arguments of each arity up to the maximum
+            supported by the library:</p>
+          <pre class="literal-block">template &lt;class Signature&gt; struct function;   // primary template
+
+template &lt;class R&gt;                                   // arity = 0
+struct function&lt;R()&gt;
+  <em>definition not shown...</em>
+
+template &lt;class R, class A0&gt;                         // arity = 1
+struct function&lt;R(A0)&gt;
+  <em>definition not shown...</em>
+
+template &lt;class R, class A0, class A1&gt;               // arity = 2
+struct function&lt;R(A0,A1)&gt;
+  <em>definition not shown...</em>
+
+template &lt;class R, class A0, class A1, class A2&gt;     // arity = 3
+struct function&lt;R(A0,A1,A2)&gt;
+  <em>definition not shown...</em>
+
+<em>etc.</em>
+</pre>
+          <!-- @example.replace(')>', ')>;')
+compile() -->
+          <table class="docutils footnote" frame="void" id="function" rules="none">
+            <colgroup><col class="label" /><col /></colgroup>
+            <tbody valign="top">
+              <tr>
+                <td class="label"><a class="fn-backref" href="#id10" name="function">[8]</a></td>
+                <td>We touched briefly on the design of Boost Function when we
+                  discussed type erasure in Chapter 9. See the Function library
+                  documentation at <tt class="docutils literal"><span class="pre">boost_1_32_0/libs/function/index.html</span></tt>
+                  on the CD that accompanies this book for more information.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>We've already covered a few strategies that can be used to generate
+            the pattern above, so we won't belabor that part of the problem; the
+            file iteration approach we used for <tt class="docutils literal"><span
+
+                class="pre">tiny_size</span></tt> would be fine:</p>
+          <pre class="literal-block">#ifndef BOOST_PP_IS_ITERATING
+
+#  ifndef BOOST_FUNCTION_HPP_INCLUDED
+#    define BOOST_FUNCTION_HPP_INCLUDED
+
+#    include &lt;boost/preprocessor/repetition.hpp&gt;
+#    include &lt;boost/preprocessor/iteration/iterate.hpp&gt;
+
+#    ifndef FUNCTION_MAX_ARITY
+#      define FUNCTION_MAX_ARITY 15
+#    endif
+
+<strong>template &lt;class Signature&gt; struct function;</strong>   // primary template
+
+// generate specializations
+#    define BOOST_PP_ITERATION_LIMITS (0, FUNCTION_MAX_ARITY)
+#    define BOOST_PP_FILENAME_1    "boost/function.hpp" // this file
+#    include BOOST_PP_ITERATE()
+
+#  endif // BOOST_FUNCTION_HPP_INCLUDED
+
+#else // BOOST_PP_IS_ITERATING
+
+#  define n BOOST_PP_ITERATION()
+
+// specialization pattern
+<strong>template &lt;class R BOOST_PP_ENUM_TRAILING_PARAMS(n, class A)&gt;</strong>
+<strong>struct function&lt;R ( BOOST_PP_ENUM_PARAMS(n,A) )&gt;</strong>
+  <em>definition not shown...</em>
+
+#  undef n
+
+#endif // BOOST_PP_IS_ITERATING
+</pre>
+          <p><tt class="docutils literal"><span class="pre">BOOST_PP_ENUM_TRAILING_PARAMS</span></tt>,
+            used above, is just like <tt class="docutils literal"><span class="pre">BOOST_PP_ENUM_PARAMS</span></tt>
+            except that when its first argument is not <tt class="docutils literal"><span
+
+                class="pre">0</span></tt>, it generates a leading comma.</p>
+          <!-- @example.replace_emphasis(';//')
+tmpdir = tempfile.gettempdir()tmpboost = os.path.join(tmpdir,'boost')try: os.mkdir(tmpboost)except: pass
+tmp_boost_function = os.path.join(tmpdir, 'boost/function.hpp')compile(    options = vertical_options  , source_file = tmp_boost_function
+  , pop = None) -->
+          <div class="section" id="argument-selection">
+            <h3><a name="argument-selection">A.4.3.1   Argument Selection</a></h3>
+            <p>For the sake of interoperability with C++ standard library
+              algorithms, it might be nice if <tt class="docutils literal"><span
+
+                  class="pre">function</span></tt>s of one or two arguments were
+              derived from appropriate specializations of <tt class="docutils literal"><span
+
+                  class="pre">std::unary_function</span></tt> or <tt class="docutils literal"><span
+
+                  class="pre">std::binary_function</span></tt>, respectively.<a
+
+                class="footnote-reference" href="#ebo" id="id11" name="id11">[9]</a>
+              <tt class="docutils literal"><span class="pre">BOOST_PP_IF</span></tt>
+              is a great tool for dealing with special cases:</p>
+            <pre class="literal-block">#  include &lt;boost/preprocessor/control/if.hpp&gt;
+#  include &lt;boost/preprocessor/comparison/equal.hpp&gt;
+
+// specialization pattern
+template &lt;class R BOOST_PP_ENUM_TRAILING_PARAMS(n, class A)&gt;
+struct function&lt;R ( BOOST_PP_ENUM_PARAMS(n,A) )&gt;
+  BOOST_PP_IF(
+      BOOST_PP_EQUAL(n,2), <strong>: std::binary_function&lt;A0, A1, R&gt;</strong>
+    , BOOST_PP_IF(
+          BOOST_PP_EQUAL(n,1), <strong>: std::unary_function&lt;A0, R&gt;</strong>
+        , <em>...empty argument...</em>
+      )
+  )
+{ <em>...class body omitted...</em> };
+</pre>
+            <!-- @pp_failure() -->
+            <table class="docutils footnote" frame="void" id="ebo" rules="none">
+              <colgroup><col class="label" /><col /></colgroup>
+              <tbody valign="top">
+                <tr>
+                  <td class="label"><a class="fn-backref" href="#id11" name="ebo">[9]</a></td>
+                  <td>While derivation from <tt class="docutils literal"><span
+
+                        class="pre">std::unary_function</span></tt> or <tt class="docutils literal"><span
+
+                        class="pre">std::binary_function</span></tt> might be
+                    necessary for interoperability with some older library
+                    implementations, it may inhibit the Empty Base Optimization
+                    (EBO) from taking effect when two such derived classes are
+                    part of the same object. For more information, see section
+                    9.4. In general, it's better to expose <tt class="docutils literal"><span
+
+                        class="pre">first_argument_type</span></tt>, <tt class="docutils literal"><span
+
+                        class="pre">second_argument_type</span></tt>, and <tt class="docutils literal"><span
+
+                        class="pre">result_type</span></tt> <tt class="docutils literal"><span
+
+                        class="pre">typedef</span></tt>s directly.</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>Well, our first attempt has run into several problems. First off,
+              you're not allowed to pass an empty argument to the preprocessor.<a
+
+                class="footnote-reference" href="#c99" id="id12" name="id12">[3]</a>
+              Secondly, because angle brackets don't get special treatment, the
+              commas in the <tt class="docutils literal"><span class="pre">std::unary_function</span></tt>
+              and <tt class="docutils literal"><span class="pre">std::binary_function</span></tt>
+              specializations above are treated as macro argument separators,
+              and the preprocessor will complain that we've passed the wrong
+              number of arguments to <tt class="docutils literal"><span class="pre">BOOST_PP_IF</span></tt>
+              in two places.</p>
+            <p>Because it captures all of the issues, let's focus on the inner <tt
+
+                class="docutils literal"><span class="pre">BOOST_PP_IF</span></tt>
+              invocation for a moment. The strategy that <tt class="docutils literal"><span
+
+                  class="pre">mpl::eval_if</span></tt> uses, of selecting a
+              nullary function to invoke, could work nicely here. The
+              preprocessor doesn't have a direct analogue for <tt class="docutils literal"><span
+
+                  class="pre">mpl::eval_if</span></tt>, but it doesn't really
+              need one: We can get the right effect by adding a second set of
+              parentheses to <tt class="docutils literal"><span class="pre">BOOST_PP_IF</span></tt>.</p>
+            <pre class="literal-block">#define BOOST_FUNCTION_unary()    : std::unary_function&lt;A0,R&gt;
+#define BOOST_FUNCTION_empty()    // nothing
+
+...
+
+    , BOOST_PP_IF(
+          BOOST_PP_EQUAL(n,1), BOOST_FUNCTION_unary
+        , BOOST_FUNCTION_empty
+      )<strong>()</strong>
+
+#undef BOOST_FUNCTION_empty
+#undef BOOST_FUNCTION_unary
+</pre>
+            <!-- @ignore() -->
+            <p>A nullary macro that generates nothing is so commonly needed that
+              the library's "facilities" group provides one: <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_EMPTY</span></tt>. To complete the
+              example we'll need to delay evaluation all the way to the outer <tt
+
+                class="docutils literal"><span class="pre">BOOST_PP_IF</span></tt>
+              invocation, because <tt class="docutils literal"><span class="pre">std::binary_function&lt;A0,A1,R&gt;</span></tt>
+              also has a "comma problem":</p>
+            <pre class="literal-block">#  include &lt;boost/preprocessor/<strong>facilities/empty.hpp</strong>&gt;
+
+#  define BOOST_FUNCTION_binary() : std::binary_function&lt;A0,A1,R&gt;
+#  define BOOST_FUNCTION_unary()  : std::unary_function&lt;A0,R&gt;
+
+// specialization pattern
+template &lt;class R BOOST_PP_ENUM_TRAILING_PARAMS(n, class A)&gt;
+struct function&lt;R ( BOOST_PP_ENUM_PARAMS(n,A) )&gt;
+  BOOST_PP_IF(
+      BOOST_PP_EQUAL(n,2), BOOST_FUNCTION_binary
+    , BOOST_PP_IF(
+          BOOST_PP_EQUAL(n,1), BOOST_FUNCTION_unary
+        , <strong>BOOST_PP_EMPTY</strong>
+      )
+  )<strong>()</strong>
+{ 
+    <em>...class body omitted...</em>
+};
+
+#  undef BOOST_FUNCTION_unary
+#  undef BOOST_FUNCTION_binary
+#  undef n
+</pre>
+            <!-- @stack.pop()
+stack[-1].replace('// specialization pattern', '////\n%s\n////' % str(example))compile(source_file = tmp_boost_function, pop = None) -->
+            <p>Note that because we happened to be using file iteration, we
+              could have also used <tt class="docutils literal"><span class="pre">#if</span></tt>
+              on <tt class="docutils literal"><span class="pre">n</span></tt>'s
+              value directly:</p>
+            <pre class="literal-block">  template &lt;class R BOOST_PP_ENUM_TRAILING_PARAMS(n, class A)&gt;
+  struct function&lt;R ( BOOST_PP_ENUM_PARAMS(n,A) )&gt;
+<strong>#if n == 2</strong>
+    : std::binary_function&lt;A0, A1, R&gt;
+<strong>#elif n == 1</strong>
+    : std::unary_function&lt;A0, R&gt;
+<strong>#endif</strong>
+</pre>
+            <!-- @stack.pop()
+stack[-1].sub(    r'////.*////', '////\n%s\n////' % str(example), flags = re.DOTALL)compile(source_file = tmp_boost_function, pop = None) -->
+            <p><tt class="docutils literal"><span class="pre">BOOST_PP_IF</span></tt>
+              has the advantage of enabling us to encapsulate the logic in a
+              reusable macro, parameterized on <tt class="docutils literal"><span
+
+                  class="pre">n</span></tt>, that is compatible with all
+              repetition constructs:</p>
+            <pre class="literal-block">#define BOOST_FUNCTION_BASE(n)                                \
+    BOOST_PP_IF(BOOST_PP_EQUAL(n,2), BOOST_FUNCTION_binary    \
+      , BOOST_PP_IF(BOOST_PP_EQUAL(n,1), BOOST_FUNCTION_unary \
+           , BOOST_PP_EMPTY                                   \
+        )                                                     \
+    )()
+</pre>
+            <!-- @compile(options = ['-E']) --> </div>
+          <div class="section" id="other-selection-constructs">
+            <h3><a name="other-selection-constructs">A.4.3.2   Other Selection
+                Constructs</a></h3>
+            <p><tt class="docutils literal"><span class="pre">BOOST_PP_IDENTITY</span></tt>,
+              also in the "facilities" group, is an interesting cousin of <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_EMPTY</span></tt>:</p>
+            <pre class="literal-block">#define BOOST_PP_IDENTITY(tokens) tokens BOOST_PP_EMPTY
+</pre>
+            <!-- @ignore() -->
+            <p>You can think of it as creating a nullary macro that returns <tt
+
+                class="docutils literal"><span class="pre">tokens</span></tt>:
+              When empty parentheses are appended, the trailing <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_EMPTY</span></tt> is expanded leaving
+              just <tt class="docutils literal"><span class="pre">tokens</span></tt>
+              behind. If we had wanted inheritance from <tt class="docutils literal"><span
+
+                  class="pre">mpl::empty_base</span></tt> when <tt class="docutils literal"><span
+
+                  class="pre">function</span></tt>'s arity is not one or two, we
+              could have used <tt class="docutils literal"><span class="pre">BOOST_PP_IDENTITY</span></tt>:</p>
+            <pre class="literal-block">// specialization pattern
+template &lt;class R BOOST_PP_ENUM_TRAILING_PARAMS(n, class A)&gt;
+struct function&lt;R ( BOOST_PP_ENUM_PARAMS(n,A) )&gt;
+  BOOST_PP_IF(
+      BOOST_PP_EQUAL(n,2), BOOST_FUNCTION_binary
+    , BOOST_PP_IF(
+          BOOST_PP_EQUAL(n,1), BOOST_FUNCTION_unary
+        , <strong>BOOST_PP_IDENTITY(: mpl::empty_base)</strong>
+      )
+  )<strong>()</strong>
+{ 
+    <em>...class body omitted...</em>
+};
+</pre>
+            <!-- @stack.pop()
+stack[-1].sub(    r'////.*////', '////\n%s\n////' % str(example), flags = re.DOTALL)compile(source_file = tmp_boost_function, pop = None) -->
+            <p>It's also worth knowing about <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_EXPR_IF</span></tt>, which generates its
+              second argument or nothing, depending on the Boolean value of its
+              first:</p>
+            <pre class="literal-block">#define BOOST_PP_EXPR_IF(c,tokens)                           \
+   BOOST_PP_IF(c,BOOST_PP_IDENTITY(tokens),BOOST_PP_EMPTY)()
+</pre>
+            <!-- @example.append(
+  'int BOOST_PP_EXPR_IF(1,main) BOOST_PP_EXPR_IF(0,quack) () {}')compile() -->
+            <p>So <tt class="docutils literal"><span class="pre">BOOST_PP_EXPR_IF(1,foo)</span></tt>
+              expands to <tt class="docutils literal"><span class="pre">foo</span></tt>,
+              while <tt class="docutils literal"><span class="pre">BOOST_PP_EXPR_IF(0,foo)</span></tt>
+              expands to nothing.</p>
+          </div>
+        </div>
+        <div class="section" id="token-pasting">
+          <h2><a name="token-pasting">A.4.4   Token Pasting</a></h2>
+          <p>It would be nice if there were a generic way to access the return
+            and parameter types of <em>all</em> function objects, rather than
+            just the unary and binary ones. A metafunction returning the
+            signature as an MPL sequence would do the trick. We could just
+            specialize <tt class="docutils literal"><span class="pre">signature</span></tt>
+            for each <tt class="docutils literal"><span class="pre">function</span></tt>
+            arity:</p>
+          <pre class="literal-block">template &lt;class F&gt; struct signature; // primary template
+
+// partial specializations for boost::function
+template &lt;class R&gt;
+struct signature&lt;function&lt;R()&gt; &gt; 
+  : mpl::vector1&lt;R&gt; {};
+
+template &lt;class R, class A0&gt;
+struct signature&lt;function&lt;R(A0)&gt; &gt; 
+  : mpl::vector2&lt;R,A0&gt; {};
+
+template &lt;class R, class A0, class A1&gt;
+struct signature&lt;function&lt;R(A0,A1)&gt; &gt; 
+  : mpl::vector3&lt;R,A0,A1&gt; {};
+
+...
+</pre>
+          <!-- @example.prepend('template <class T> struct function;')
+compile() -->
+          <p>To generate these specializations, we might add the following to
+            our pattern:</p>
+          <pre class="literal-block">template &lt;class R BOOST_PP_ENUM_TRAILING_PARAMS(n, class A)&gt;
+struct signature&lt;function&lt;R( BOOST_PP_ENUM_PARAMS(n,A) )&gt; &gt;
+  : mpl::<strong>BOOST_PP_CAT</strong>(vector,n)&lt;
+      R BOOST_PP_ENUM_TRAILING_PARAMS(n,A)
+    &gt; {};
+</pre>
+          <!-- @stack.pop()
+stack[-1].replace(    ';//', ''';//    template <class T> struct signature;    %s''' % example)
+compile(source_file = tmp_boost_function) -->
+          <p><tt class="docutils literal"><span class="pre">BOOST_PP_CAT</span></tt>
+            implements <strong>token pasting</strong>; its two arguments are
+            "glued" together into a single token. Since this is a
+            general-purpose macro, it sits in <tt class="docutils literal"><span
+
+                class="pre">cat.hpp</span></tt> at the top level of the
+            library's directory tree.</p>
+          <p>Although the preprocessor has a built-in token-pasting operator, <tt
+
+              class="docutils literal"><span class="pre">##</span></tt>, it only
+            works within a macro definition. If we'd used it here, it wouldn't
+            have taken effect at all:</p>
+          <pre class="literal-block">template &lt;class R&gt;
+struct signature&lt;function&lt;R()&gt; &gt; 
+  : mpl::<strong>vector##1</strong>&lt;R&gt; {};
+
+template &lt;class R, class A0&gt;
+struct signature&lt;function&lt;R(A0)&gt; &gt; 
+  : mpl::<strong>vector##2</strong>&lt;R,A0&gt; {};
+
+template &lt;class R, class A0, class A1&gt;
+struct signature&lt;function&lt;R(A0,A1)&gt; &gt; 
+  : mpl::<strong>vector##3</strong>&lt;R,A0,A1&gt; {};
+
+...
+</pre>
+          <!-- @example.replace('##','')
+example.prepend('''    template <class T> struct function;    template <class T> struct signature;''')
+compile() -->
+          <p>Also, <tt class="docutils literal"><span class="pre">##</span></tt>
+            often yields surprising results by taking effect before its
+            arguments have been expanded:</p>
+          <pre class="literal-block">#define N           10
+#define VEC(i)      vector##i
+
+VEC(N)           // vectorN
+</pre>
+          <!-- @example.wrap('typedef int vectorN;', 'x;')
+compile() -->
+          <p>By contrast, <tt class="docutils literal"><span class="pre">BOOST_PP_CAT</span></tt>
+            delays concatenation until after its arguments have been fully
+            evaluated:</p>
+          <pre class="literal-block">#define N           10
+#define VEC(i)      BOOST_PP_CAT(vector,i)
+
+VEC(N)           // vector10
+</pre>
+          <!-- @example.wrap('''
+  #include <boost/preprocessor/cat.hpp>  typedef int vector10;  ''', 'x;')compile() -->
+        </div>
+        <div class="section" id="data-types">
+          <h2><a name="data-types">A.4.5   Data Types</a></h2>
+          <p>The Preprocessor library also provides <strong>data types</strong>,
+            which you can think of as being analogous to the MPL's type
+            sequences. Preprocessor data types store <em>macro arguments</em>
+            instead of C++ types.</p>
+          <div class="section" id="sequences">
+            <h3><a name="sequences">A.4.5.1   Sequences</a></h3>
+            <p>A <strong>sequence</strong> (or <strong>seq</strong> for short)
+              is any string of nonempty parenthesized <em>macro arguments</em>.
+              For instance, here's a three-element sequence:</p>
+            <pre class="literal-block">#define MY_SEQ   (f(12))(a + 1)(foo)
+</pre>
+            <!-- @ignore() -->
+            <p>Here's how we might use a sequence to generate specializations of
+              the <tt class="docutils literal"><span class="pre">is_integral</span></tt>
+              template from the Boost Type Traits library (see Chapter 2):</p>
+            <pre class="literal-block">#include &lt;boost/preprocessor/seq.hpp&gt;
+
+template &lt;class T&gt;
+struct is_integral : mpl::false_ {}; 
+
+// a seq of integral types with unsigned counterparts
+#define BOOST_TT_basic_ints            (char)(short)(int)(long)
+
+// generate a seq containing "signed t" and "unsigned t"
+#define BOOST_TT_int_pair(r,data,t)      (signed t)(unsigned t)
+
+// a seq of all the integral types
+#define BOOST_TT_ints                                           \
+    (bool)(char)                                                \
+    BOOST_PP_SEQ_FOR_EACH(BOOST_TT_int_pair, ~, BOOST_TT_basic_ints)
+
+// generate an is_integral specialization for type t
+#define BOOST_TT_is_integral_spec(r,data,t) \
+   template &lt;&gt;                              \
+   struct is_integral&lt;t&gt; : mpl::true_ {}; 
+
+BOOST_PP_SEQ_FOR_EACH(BOOST_TT_is_integral_spec, ~, BOOST_TT_ints)
+
+#undef BOOST_TT_is_integral_spec
+#undef BOOST_TT_ints
+#undef BOOST_TT_int_pair
+#undef BOOST_TT_basic_ints
+</pre>
+            <!-- @compile() -->
+            <p><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FOR_EACH</span></tt>
+              is a higher-order macro, similar to <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_REPEAT</span></tt>, that invokes its
+              first argument on each element of its third argument.</p>
+            <p>Sequences are the most efficient, most flexible, and
+              easiest-to-use of the library's data structures, provided that you
+              never need to make an empty one: An empty sequence would contain
+              no tokens, and so couldn't be passed as a macro argument. The
+              other data structures covered here all have an empty
+              representation.</p>
+            <p>The facilities for manipulating sequences are all in the
+              library's <tt class="docutils literal"><span class="pre">seq/</span></tt>
+              subdirectory. They are summarized in Table A.5, where <tt class="docutils literal"><span
+
+                  class="pre">t</span></tt> is the sequence <tt class="docutils literal"><span
+
+                  class="pre">(</span></tt><em>t</em><sub>0</sub><tt class="docutils literal"><span
+
+                  class="pre">)(</span></tt><em>t</em><sub>1</sub><tt class="docutils literal"><span
+
+                  class="pre">)...(</span></tt><em>t</em><sub>k</sub><tt class="docutils literal"><span
+
+                  class="pre">)</span></tt>. Where <em>s</em>, <em>r</em>, and
+              <em>d</em> appear, they have a similar purpose to the <tt class="docutils literal"><span
+
+                  class="pre">z</span></tt> parameters we discussed earlier (and
+              suggested you ignore for now).</p>
+            <table border="1" class="docutils">
+              <caption>Preprocessor Sequence Operations</caption> <colgroup> <col
+
+                  width="51%" /> <col width="49%" /> </colgroup>
+              <thead valign="bottom">
+                <tr>
+                  <th>Expression</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody valign="top">
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_CAT(t)</span></tt></td>
+                  <td><em>t</em><sub>0</sub><em>t</em><sub>1</sub>...<em>t</em><sub>k</sub></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_ELEM(n,t)</span></tt></td>
+                  <td><em>t</em><sub>n</sub></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_ENUM(t)</span></tt></td>
+                  <td><em>t</em><sub>0</sub>, <em>t</em><sub>1</sub>, ...<em>t</em><sub>k</sub></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FILTER(pred,data,t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">t</span></tt>
+                    without the elements that don't satisfy <tt class="docutils literal"><span
+
+                        class="pre">pred</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FIRST_N(n,t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>n-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FOLD_LEFT(op,</span>
+                      <span class="pre">x,</span> <span class="pre">t)</span></tt></td>
+                  <td>...<tt class="docutils literal"><span class="pre">op(</span></tt><em>s</em><tt
+
+                      class="docutils literal"><span class="pre">,op(</span></tt><em>s</em><tt
+
+                      class="docutils literal"><span class="pre">,op(</span></tt><em>s</em><tt
+
+                      class="docutils literal"><span class="pre">,x</span></tt>,<em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">),</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">),</span></tt><em>t</em><sub>2</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...</td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FOLD_RIGHT(op,</span>
+                      <span class="pre">x,</span> <span class="pre">t)</span></tt></td>
+                  <td>...<tt class="docutils literal"><span class="pre">op(</span></tt><em>s</em><tt
+
+                      class="docutils literal"><span class="pre">,op(</span></tt><em>s</em><tt
+
+                      class="docutils literal"><span class="pre">,op(</span></tt><em>s</em><tt
+
+                      class="docutils literal"><span class="pre">,x</span></tt>,<em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">),</span></tt><em>t</em><sub>k-1</sub><tt
+
+                      class="docutils literal"><span class="pre">),</span></tt>
+                    <em>t</em><sub>k-2</sub><tt class="docutils literal"><span class="pre">)</span></tt>...</td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FOR_EACH(f,</span>
+                      <span class="pre">x,</span> <span class="pre">t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">f(</span></tt><em>r</em><tt
+
+                      class="docutils literal"><span class="pre">,</span> <span
+
+                        class="pre">x,</span></tt><em>t</em><sub>0</sub><tt class="docutils literal"><span
+
+                        class="pre">)</span> <span class="pre">f(</span></tt><em>r</em><tt
+
+                      class="docutils literal"><span class="pre">,</span> <span
+
+                        class="pre">x,</span></tt><em>t</em><sub>1</sub><tt class="docutils literal"><span
+
+                        class="pre">)</span></tt>...<tt class="docutils literal"><span
+
+                        class="pre">f(</span></tt><em>r</em><tt class="docutils literal"><span
+
+                        class="pre">,</span> <span class="pre">x,</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FOR_EACH_I(g,</span>
+                      <span class="pre">x,</span> <span class="pre">t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">g(</span></tt><em>r</em><tt
+
+                      class="docutils literal"><span class="pre">,</span> <span
+
+                        class="pre">x,</span> <span class="pre">0,</span></tt>
+                    <em>t</em><sub>0</sub><tt class="docutils literal"><span class="pre">)</span>
+                      <span class="pre">g(</span></tt><em>r</em><tt class="docutils literal"><span
+
+                        class="pre">,</span> <span class="pre">x,</span> <span
+
+                        class="pre">1,</span></tt> <em>t</em><sub>1</sub><tt class="docutils literal"><span
+
+                        class="pre">)</span></tt>... <tt class="docutils literal"><span
+
+                        class="pre">g(</span></tt><em>r</em><tt class="docutils literal"><span
+
+                        class="pre">,</span> <span class="pre">x,</span> <span
+
+                        class="pre">k,</span></tt> <em>t</em><sub>k</sub><tt class="docutils literal"><span
+
+                        class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_FOR_EACH_PRODUCT(h,</span>
+                      <span class="pre">x,</span> <span class="pre">t)</span></tt></td>
+                  <td>
+                    <dl class="first last docutils">
+                      <dt>Cartesian product—</dt>
+                      <dd>see online docs</dd>
+                    </dl>
+                  </td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_INSERT(t,i,tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>i-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)(tokens)</span>
+                      <span class="pre">(</span></tt><em>t</em><sub>i</sub><tt class="docutils literal"><span
+
+                        class="pre">)(</span></tt><em>t</em><sub>i+1</sub><tt class="docutils literal"><span
+
+                        class="pre">)</span></tt>...<tt class="docutils literal"><span
+
+                        class="pre">(</span></tt><em>t</em><sub>k</sub><tt class="docutils literal"><span
+
+                        class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_POP_BACK(t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_POP_FRONT(t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>2</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_PUSH_BACK(t,tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)(tokens)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_PUSH_FRONT(t,tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(tokens)(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_REMOVE(t,i)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>i-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>i+1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_REPLACE(t,i,tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>i-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)(tokens)(</span></tt><em>t</em><sub>i+1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_REST_N(n,t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>n</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>n+1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_REVERSE(t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>k-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_HEAD(t)</span></tt></td>
+                  <td><em>t</em><sub>0</sub></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_TAIL(t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>2</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_SIZE(t)</span></tt></td>
+                  <td><em>k+1</em></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_SUBSEQ(t,i,m)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>i</sub><tt
+
+                      class="docutils literal"><span class="pre">)(</span></tt><em>t</em><sub>i+1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt>...<tt
+
+                      class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>i+m-1</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_TO_ARRAY(t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k+1</em>
+                    <tt class="docutils literal"><span class="pre">,(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...<em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_TO_TUPLE(t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt> <em>t</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...<em>t</em><sub>k</sub><tt
+
+                      class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_TRANSFORM(f,</span>
+                      <span class="pre">x,</span> <span class="pre">t)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(f(</span></tt><em>r</em><tt
+
+                      class="docutils literal"><span class="pre">,x,</span></tt><em>t</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">))</span> <span
+
+                        class="pre">(f(</span></tt><em>r</em><tt class="docutils literal"><span
+
+                        class="pre">,x,</span></tt><em>t</em><sub>1</sub><tt class="docutils literal"><span
+
+                        class="pre">))</span></tt>...<tt class="docutils literal"><span
+
+                        class="pre">(f(</span></tt><em>r</em><tt class="docutils literal"><span
+
+                        class="pre">,x,</span></tt><em>t</em><sub>k</sub><tt class="docutils literal"><span
+
+                        class="pre">))</span></tt></td>
+                </tr>
+              </tbody>
+            </table>
+            <p>It's worth noting that while there is no upper limit on the
+              length of a sequence, operations such as <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_SEQ_ELEM</span></tt> that take numeric
+              arguments will only work with values up to 256.</p>
+          </div>
+          <div class="section" id="tuples">
+            <h3><a name="tuples">A.4.5.2   Tuples</a></h3>
+            <p>A <strong>tuple</strong> is a very simple data structure for
+              which the library provides random access and a few other basic
+              operations. A tuple takes the form of a parenthesized,
+              comma-separated list of <em>macro arguments</em>. For example,
+              this is a three-element tuple:</p>
+            <pre class="literal-block">#define TUPLE3     (f(12), a + 1, foo)
+</pre>
+            <p>The operations in the library's <tt class="docutils literal"><span
+
+                  class="pre">tuple/</span></tt> subdirectory can handle tuples
+              of up to 25 elements. For example, a tuple's <tt class="docutils literal"><span
+
+                  class="pre">N</span></tt>th element can be accessed via <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_TUPLE_ELEM</span></tt>, as follows:</p>
+            <pre class="literal-block">                 // length  index  tuple 
+BOOST_PP_TUPLE_ELEM(   3   ,  1  , TUPLE3)   // a + 1
+</pre>
+            <!-- @def gen_id(id = 'a', hdr = 'tuple'):
+    example.wrap('''        #include <boost/preprocessor/%s.hpp>        int const %s = 0;        int const x =''' % (hdr,id), ';')
+    compile('all', pop = 1)gen_id() -->
+            <p>Notice that we had to pass the tuple's length as the second
+              argument to <tt class="docutils literal"><span class="pre">BOOST_PP_TUPLE_ELEM</span></tt>;
+              in fact, <em>all</em> tuple operations require explicit
+              specification of the tuple's length. We're not going to summarize
+              the other four operations in the "tuple" group here—you can
+              consult the Preprocessor library's electronic documentation for
+              more details. We note, however, that sequences can be transformed
+              into tuples with <tt class="docutils literal"><span class="pre">BOOST_PP_SEQ_TO_TUPLE</span></tt>,
+              and nonempty tuples can be transformed back into sequences with <tt
+
+                class="docutils literal"><span class="pre">BOOST_PP_TUPLE_TO_SEQ</span></tt>.</p>
+            <p>The greatest strength of tuples is that they conveniently take
+              the same representation as a macro argument list:</p>
+            <pre class="literal-block">#define FIRST_OF_THREE(a1,a2,a3)    a1
+#define SECOND_OF_THREE(a1,a2,a3)   a2
+#define THIRD_OF_THREE(a1,a2,a3)    a3
+
+// uses tuple as an argument list
+# define SELECT(selector, tuple)    <strong>selector tuple</strong>
+
+SELECT(THIRD_OF_THREE, TUPLE3)   // foo
+</pre>
+            <!-- @gen_id('foo') --> </div>
+          <div class="section" id="arrays">
+            <h3><a name="arrays">A.4.5.3   Arrays</a></h3>
+            <p>An <strong>array</strong> is just a tuple containing a
+              non-negative integer and a tuple of that length:</p>
+            <pre class="literal-block">#define ARRAY3     ( 3, TUPLE3 )
+</pre>
+            <p>Because an array carries its length around with it, the library's
+              interface for operating on arrays is much more convenient than the
+              one used for tuples:</p>
+            <pre class="literal-block">BOOST_PP_ARRAY_ELEM(1, ARRAY3)     // a + 1
+</pre>
+            <!-- @gen_id(hdr = 'array')
+del stack[-2:] -->
+            <p>The facilities for manipulating arrays of up to 25 elements are
+              all in the library's <tt class="docutils literal"><span class="pre">array/</span></tt>
+              subdirectory. They are summarized in Table A.6, where <tt class="docutils literal"><span
+
+                  class="pre">a</span></tt> is the array <tt class="docutils literal"><span
+
+                  class="pre">(</span></tt><em>k</em><tt class="docutils literal"><span
+
+                  class="pre">,</span> <span class="pre">(</span></tt><em>a</em><sub>0</sub><tt
+
+                class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                class="docutils literal"><span class="pre">,...</span></tt><em>a</em><sub>k-1</sub><tt
+
+                class="docutils literal"><span class="pre">))</span></tt>.</p>
+            <table border="1" class="docutils">
+              <caption>Preprocessor Array Operations</caption> <colgroup> <col
+
+                  width="52%" /> <col width="48%" /> </colgroup>
+              <thead valign="bottom">
+                <tr>
+                  <th>Expression</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody valign="top">
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_DATA(a)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">)</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_ELEM(i,a)</span></tt></td>
+                  <td><em>a</em><sub>i</sub></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_INSERT(a,</span>
+                      <span class="pre">i,</span> <span class="pre">tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k+1</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...<em>a</em><sub>i-1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span> <span
+
+                        class="pre">tokens,</span></tt> <em>a</em><sub>i</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>i+1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_POP_BACK(a)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k-1</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-2</sub><tt class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_POP_FRONT(a)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k-1</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>2</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_PUSH_BACK(a,</span>
+                      <span class="pre">tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k+1</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">,</span>
+                      <span class="pre">tokens))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_PUSH_FRONT(a,</span>
+                      <span class="pre">tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k+1</em><tt
+
+                      class="docutils literal"><span class="pre">,(tokens,</span></tt>
+                    <em>a</em><sub>1</sub><tt class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>2</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_REMOVE(a,</span>
+                      <span class="pre">i)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k-1</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>i-1</sub><tt class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>i+1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_REPLACE(a,</span>
+                      <span class="pre">i,</span> <span class="pre">tokens)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>i-1</sub><tt class="docutils literal"><span class="pre">,</span>
+                      <span class="pre">tokens,</span></tt> <em>a</em><sub>i+1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>k-1</sub><tt class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_REVERSE(a)</span></tt></td>
+                  <td><tt class="docutils literal"><span class="pre">(</span></tt><em>k</em><tt
+
+                      class="docutils literal"><span class="pre">,(</span></tt><em>a</em><sub>k-1</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>k-2</sub><tt
+
+                      class="docutils literal"><span class="pre">,</span></tt>...
+                    <em>a</em><sub>1</sub><tt class="docutils literal"><span class="pre">,</span></tt><em>a</em><sub>0</sub><tt
+
+                      class="docutils literal"><span class="pre">))</span></tt></td>
+                </tr>
+                <tr>
+                  <td><tt class="docutils literal"><span class="pre">BOOST_PP_ARRAY_SIZE(a)</span></tt></td>
+                  <td><em>k</em></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="section" id="lists">
+            <h3><a name="lists">A.4.5.4   Lists</a></h3>
+            <p>A <strong>list</strong> is a two-element tuple whose first
+              element is the first element of the list, and whose second element
+              is a list of the remaining elements, or <tt class="docutils literal"><span
+
+                  class="pre">BOOST_PP_NIL</span></tt> if there are no remaining
+              elements. Lists have access characteristics similar to those of a
+              runtime linked list. Here is a three-element list:</p>
+            <pre class="literal-block">#define LIST3     (<strong>f(12)</strong>, (<strong>a + 1</strong>, (<strong>foo</strong>, BOOST_PP_NIL)))
+</pre>
+            <!-- @ignore() -->
+            <p>The facilities for manipulating lists are all in the library's <tt
+
+                class="docutils literal"><span class="pre">list/</span></tt>
+              subdirectory. Because the operations are a subset of those
+              provided for sequences, we're not going to summarize them here—it
+              should be easy to understand the list operations by reading the
+              documentation on the basis of our coverage of sequences.</p>
+            <p>Like sequences, lists have no fixed upper length bound. Unlike
+              sequences, lists can also be empty. It's rare to need more than 25
+              elements in a preprocessor data structure, and lists tend to be
+              slower to manipulate and harder to read than any of the other
+              structures, so they should normally be used only as a last resort.</p>
+          </div>
+        </div>
+      </div>
+      <div class="section" id="exercise">
+        <h1><a name="exercise">A.5   Exercise</a></h1>
+        <dl class="docutils">
+          <dt>A-0</dt>
+          <dd>Fully preprocessor-ize the <tt class="docutils literal"><span class="pre">tiny</span></tt>
+            type sequence implemented in Chapter 5 so that all boilerplate code
+            is eliminated and the maximum size of a <tt class="docutils literal"><span
+
+                class="pre">tiny</span></tt> sequence can be adjusted by
+            changing <tt class="docutils literal"><span class="pre">TINY_MAX_SIZE</span></tt>.</dd>
+        </dl>
+        <!-- on hold:
+It isn't uncommon to need token-wise arithmetic operations forpurposes other than invoking Preprocessor Library repetitionmacros.  For example, let's write a metafunction to generate
+function types from "signature" type sequences that specify thefunction's return and parameter types::  template <unsigned Size, class Signature>
+  struct to_function_impl;  template <class Signature>  struct to_function
+    : to_function_impl<mpl::size<Signature>::type, Signature>  {};The challenge now is to implement ``to_function_impl``.  For
+``Size == 3``, an appropriate specialization might look like this::  template <class Signature>  struct to_function_impl<3,Signature>
+  {      typedef mpl::begin<Signature>::type i0;      typedef mpl::deref<i0>::type        t0;
+      typedef mpl::next<i0>::type         i1;      typedef mpl::deref<i1>::type        t1;      typedef mpl::next<i1>::type         i2;
+      typedef mpl::deref<i2>::type        t2;      typedef t0 type(t1,t2);  };
+A local macro to generate a single ``to_function_impl``specialization would look something like this:
+.. parsed-literal::  #define to_function_impl_spec(size)                         \\    template <class Signature>                                    \\
+    struct to_function_impl<3,Signature>                          \\    {                                                             \\        typedef mpl::begin<Signature>::type i0;                   \\        typedef mpl::deref<i0>::type        t0;                   \\
+                                                                  \\        BOOST_PP_REPEAT_FROM_TO(1, size, to_function_t, ~)    \\                                                                  \\        typedef t0 type(BOOST_PP_ENUM_SHIFTED_PARAMS(size,t));    \\
+    };  #define to_function_t(z, n, unused)                         \\    typedef mpl::next<BOOST_PP_CAT(i,\ **BOOST_PP_DEC(n)**)>::type      \\
+        BOOST_PP_CAT(i,n);                                        \\                                                                  \\    typedef mpl::deref<BOOST_PP_CAT(i,n)>::type BOOST_PP_CAT(t,n);
+We've used some new library macros above; here is a brief rundown:* ``BOOST_PP_REPEAT_FROM_TO`` is just like ``BOOST_PP_REPEAT``,  except that it accepts an initial repetition index.  Since every
+  function has a return type, we don't need to worry about the case  where ``Size == 0``.* ``BOOST_PP_ENUM_SHIFTED_PARAMS`` is just like
+  ``BOOST_PP_ENUM_PARAMS``, except that repetition indices start  at ``1`` instead of ``0``.* ``BOOST_PP_CAT`` implements token pasting; its two arguments are
+  "glued" together into a single token.  Since this is a  general-purpose macro, it sits in ``cat.hpp`` at the top level of  the library's directory tree. [#paste]_
+.. [#paste] The preprocessor's built-in token-pasting operator,   ``##``, often yields surprising results by taking effect before   its arguments have been expanded.  By contrast, ``BOOST_PP_CAT``   delays concatenation until after its arguments have been fully
+   evaluated.* Finally, though it only performs trivial arithmetic,  ``BOOST_PP_DEC`` plays a crucial role in generating an
+  appropriate prior iterator identifier for our own code in  ``to_function_t``.If we didn't have ``BOOST_PP_REPEAT_FROM_TO`` at our disposal in
+the previous example, we might've had to use ``BOOST_PP_REPEAT``,which always starts iterating at ``0``.  Consequently``to_function_t`` would've been responsible for producing thedeclarations of ``i0`` and ``t0`` as well as those of the other
+nested types.  To manage that, it would need a way to selectdifferent expansions depending on the value of ``n``.In its ``control/`` directory, the Preprocessor Library supplies a
+macro ``BOOST_PP_IF(c,t,f)`` that fulfills a similar role to theone filled by ``mpl::if_``.  Rewriting the example accordingly, weget:
+.. parsed-literal::  #define to_function_impl_spec(size)                         \\    template <class Signature>                                    \\
+    struct to_function_impl<3,Signature>                          \\    {                                                             \\        BOOST_PP_REPEAT_FROM_TO(1, size, to_function_t, ~)    \\                                                                  \\
+        typedef t0 type(BOOST_PP_ENUM_SHIFTED_PARAMS(size,t));    \\    };  #define to_function_t(z, n, unused)                         \\
+    typedef BOOST_PP_IF(                                          \\                n,                                                \\                mpl::next<BOOST_PP_CAT(i,BOOST_PP_DEC(n))>::type, \\                typedef mpl::begin<Signature>::type i0;           \\
+            )                                                     \\        BOOST_PP_CAT(i,n);                                        \\                                                                  \\    typedef mpl::deref<BOOST_PP_CAT(i,n)>::type BOOST_PP_CAT(t,n);
+Although the formulation above will work, it does unnecessary workwhen ``n == 0``, evaluating the "true" branch of the conditionalonly to discard it. -->
+      </div>
+    </div>
+    <hr class="docutils footer" />
+    <div class="footer"> Generated on: 2005-10-17 19:34 UTC. Generated by <a class="reference"
+
+        href="http://docutils.sourceforge.net/">Docutils</a> from <a class="reference"
+
+        href="http://docutils.sourceforge.net/rst.html">reStructuredText</a>
+      source. </div>
+  </body>
+</html>
+<!--
+     FILE ARCHIVED ON 19:59:10 Mar 30, 2013 AND RETRIEVED FROM THE     INTERNET ARCHIVE ON 21:06:19 May 19, 2015.     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.     SECTION 108(a)(3)).-->

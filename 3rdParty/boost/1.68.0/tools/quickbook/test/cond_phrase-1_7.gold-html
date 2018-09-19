@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Coniditional Phrase Test
+    </h3>
+    <p>
+      This should show
+    </p>
+    <p>
+      But this should show
+    </p>
+    <p>
+      Weird macro is defined
+    </p>
+    <p>
+      The should be no space inserted.
+    </p>
+    <p>
+      <span class="bold"><strong>Bold text</strong></span>
+    </p>
+  </body>
+</html>

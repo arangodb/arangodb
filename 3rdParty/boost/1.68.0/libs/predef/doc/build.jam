@@ -1,0 +1,100 @@
+# Copyright Rene Rivera 2011-2016
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+using quickbook ;
+using boostbook ;
+import path ;
+
+if ! $(BOOST_ROOT)
+{
+    BOOST_ROOT = [ modules.peek : BOOST_ROOT ] ;
+}
+
+if $(BOOST_PREDEF_ROOT)
+{
+    path-constant BOOST_PREDEF_INCLUDE_ROOT : $(BOOST_PREDEF_ROOT)/include ;
+}
+else
+{
+    path-constant BOOST_PREDEF_INCLUDE_ROOT : $(BOOST_ROOT) ;
+}
+
+local BOOST_PREDEF_HEADERS = [ path.glob-tree $(BOOST_PREDEF_INCLUDE_ROOT)/boost/predef : *.h ] ;
+
+# Intermediate targets..
+
+# Quickbok to boostbook target.
+xml predef
+    :
+        predef.qbk
+    :
+        <dependency>$(BOOST_PREDEF_INCLUDE_ROOT)/boost/predef.h
+        <dependency>$(BOOST_PREDEF_HEADERS)
+    ;
+explicit predef ;
+
+# HTML dependencies for standalone docs.
+install images : [ glob $(BOOST_ROOT)/doc/src/images/*.png ] : <location>html/images ;
+explicit images ;
+install callouts : [ glob $(BOOST_ROOT)/doc/src/images/callouts/*.png ] : <location>html/images/callouts ;
+explicit callouts ;
+install css : [ glob $(BOOST_ROOT)/doc/src/*.css ] : <location>html ;
+explicit css ;
+
+# Default target builds standalone docs.
+boostbook standalone
+    :
+        predef
+    :
+        <xsl:param>boost.root=../../../..
+        #<xsl:param>generate.section.toc.level=3
+        <xsl:param>chunk.section.depth=2
+        <xsl:param>chunk.first.sections=1
+    
+        <dependency>images
+        <dependency>callouts
+        <dependency>css
+    ;
+
+###############################################################################
+### Targets for Boost release integration.
+###############################################################################
+
+# Target for Boost global documentation integration.
+#
+# For documentation that will be integrated into the global documentation
+# this should be an alias similar to:
+#
+#   alias boostdoc : my_lib : : : <implicit-dependency>my_lib_boostbook_xml ;
+#   explicit boostdoc ;
+#
+# For documentation that is not part of the global documentation, i.e.
+# it has stadalone documentation, it should be an empty alias:
+#
+#   alias boostdoc ;
+#   explicit boostdoc ;
+#
+alias boostdoc : predef ;
+explicit boostdoc ;
+
+# Target for Boost standalone release documentation building.
+#
+# For documentation that is not part of the global Boost documentation
+# this should be an alias to building the "standalone" documentation.
+# Usual this is just an alias to a "stadalone" target:
+#
+#   alias boostrelease : stadalone ;
+#   explicit boostrelease ;
+#
+# For documentation that is part of the global Boost documentation this
+# should be an empty alias:
+#
+#   alias boostrelease ;
+#   explicit boostrelease ;
+#
+alias boostrelease ;
+explicit boostrelease ;
+
+###############################################################################

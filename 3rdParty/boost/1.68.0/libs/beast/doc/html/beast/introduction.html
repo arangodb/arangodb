@@ -1,0 +1,174 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Introduction</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="prev" href="../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="next" href="reports.html" title="Reports">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reports.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="beast.introduction"></a><a class="link" href="introduction.html" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      Beast is a C++ header-only library serving as a foundation for writing interoperable
+      networking libraries by providing <span class="bold"><strong>low-level HTTP/1, WebSocket,
+      and networking protocol</strong></span> vocabulary types and algorithms using the
+      consistent asynchronous model of <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>.
+    </p>
+<p>
+      This library is designed for:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <span class="bold"><strong>Symmetry:</strong></span> Algorithms are role-agnostic;
+          build clients, servers, or both.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Ease of Use:</strong></span> <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+          users will immediately understand Beast.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Flexibility:</strong></span> Users make the important
+          decisions such as buffer or thread management.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Performance:</strong></span> Build applications handling
+          thousands of connections or more.
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Basis for Further Abstraction.</strong></span> Components
+          are well-suited for building upon.
+        </li>
+</ul></div>
+<p>
+      This library is not a client or server, but it can be used to build those things.
+      Many examples are provided, including clients and servers, which may be used
+      as a starting point for writing your own program.
+    </p>
+<h4>
+<a name="beast.introduction.h0"></a>
+      <span class="phrase"><a name="beast.introduction.motivation"></a></span><a class="link" href="introduction.html#beast.introduction.motivation">Motivation</a>
+    </h4>
+<p>
+      Beast empowers users to create their own libraries, clients, and servers using
+      HTTP/1 and WebSocket. Code will be easier and faster to implement, understand,
+      and maintain, because Beast takes care of the low-level protocol details. The
+      HTTP and WebSocket protocols drive most of the World Wide Web. Every web browser
+      implements these protocols to load webpages and to enable client side programs
+      (often written in JavaScript) to communicate interactively. C++ benefits greatly
+      from having a standardized implementation of these protocols.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.introduction.requirements"></a><a class="link" href="introduction.html#beast.introduction.requirements" title="Requirements">Requirements</a>
+</h3></div></div></div>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          This library is for programmers familiar with <a href="../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>.
+          Users who wish to use asynchronous interfaces should already know how to
+          create concurrent network programs using callbacks or coroutines.
+        </p></td></tr>
+</table></div>
+<p>
+        Beast requires:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>C++11:</strong></span> Robust support for most language
+            features.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>Boost:</strong></span> Beast only works with Boost,
+            not stand-alone Asio
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>OpenSSL:</strong></span> Optional, for using TLS/Secure
+            sockets.
+          </li>
+</ul></div>
+<p>
+        Supported compilers: msvc-14+, gcc 4.8+, clang 3.6+
+      </p>
+<p>
+        Sources are <span class="bold"><strong>header-only</strong></span>. To link a program
+        using Beast successfully, add the <a href="../../../../../libs/system/index.html" target="_top">Boost.System</a>
+        library to your build scripts. If you use coroutines you'll also need the
+        <a href="../../../../../libs/coroutine/index.html" target="_top">Boost.Coroutine</a> library.
+        Please visit the <a href="../../../../../more/getting_started.html" target="_top">Boost documentation</a>
+        for instructions on how to do this for your particular build system.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.introduction.reporting_bugs"></a><a class="link" href="introduction.html#beast.introduction.reporting_bugs" title="Reporting Bugs">Reporting Bugs</a>
+</h3></div></div></div>
+<p>
+        To report bugs or get help using Beast, GitHub issues are preferred. Please
+        visit <a href="https://github.com/boostorg/beast/issues" target="_top">https://github.com/boostorg/beast/issues</a>
+        to ask a question, report a defect, or request a feature. If you prefer to
+        keep your issue or question confidential please email the author at <a href="mailto:vinnie.falco%40gmail.com" target="_top">vinnie.falco@gmail.com</a>.
+      </p>
+</div>
+<h4>
+<a name="beast.introduction.h1"></a>
+      <span class="phrase"><a name="beast.introduction.credits"></a></span><a class="link" href="introduction.html#beast.introduction.credits">Credits</a>
+    </h4>
+<p>
+      Boost.Asio is the inspiration behind which all of the interfaces and implementation
+      strategies are built. Some parts of the documentation are written to closely
+      resemble the wording and presentation of Boost.Asio documentation. Credit goes
+      to <a href="https://github.com/chriskohlhoff" target="_top">Christopher Kohlhoff</a>
+      for his wonderful Asio library and the ideas in <a href="http://cplusplus.github.io/networking-ts/draft.pdf" target="_top"><span class="bold"><strong>C++ Extensions for Networking</strong></span></a> which power Beast.
+    </p>
+<p>
+      Beast would not be possible without the support of <a href="https://www.ripple.com" target="_top">Ripple</a>
+      during the library's early development, or the ideas, time and patience contributed
+      by <a href="https://github.com/JoelKatz" target="_top">David Schwartz</a>, <a href="https://github.com/ximinez" target="_top">Edward Hennis</a>, <a href="https://github.com/howardhinnant" target="_top">Howard
+      Hinnant</a>, <a href="https://github.com/miguelportilla" target="_top">Miguel Portilla</a>,
+      <a href="https://github.com/nbougalis" target="_top">Nik Bougalis</a>, <a href="https://github.com/seelabs" target="_top">Scott
+      Determan</a> and <a href="https://github.com/scottschurr" target="_top">Scott Schurr</a>.
+      Many thanks to <a href="https://github.com/K-ballo" target="_top">Agust&#237;n Berg&#233;</a>,
+      <a href="http://www.boost.org/users/people/glen_fernandes.html" target="_top">Glen Fernandes</a>,
+      and <a href="https://github.com/pdimov" target="_top">Peter Dimov</a> for tirelessly
+      answering questions on <a href="https://cpplang.slack.com/" target="_top">Cpplang-Slack</a>.
+    </p>
+<p>
+      Thanks to <a href="https://github.com/djarek" target="_top">Damian Jarek</a> for his
+      generous participation and source code contributions.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reports.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

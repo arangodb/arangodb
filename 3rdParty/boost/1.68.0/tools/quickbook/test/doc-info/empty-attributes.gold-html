@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Empty Attributes
+    </h3>
+    <div class="authorgroup">
+      <h3 class="author">
+      </h3>
+    </div>
+    <p class="copyright">
+      2011
+    </p>
+    <p>
+      <tt>biblioid</tt> and <tt>source-mode</tt> can't be empty.
+    </p>
+  </body>
+</html>

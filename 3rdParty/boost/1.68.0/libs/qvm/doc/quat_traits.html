@@ -1,0 +1,110 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>quat_traits</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>quat_traits</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_quat_traits_hpp.html">boost/qvm/quat_traits.hpp</a></span>&gt;</p>
+<pre>namespace
+boost
+{
+    namespace
+    <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;class Q&gt;
+        struct <span class="RenoLink">quat_traits</span>
+        {
+            /*main template members unspecified*/
+        };
+        
+        /*
+        User-defined (possibly partial) specializations:
+        
+        template &lt;&gt;
+        struct <span class="RenoLink">quat_traits</span>&lt;Q&gt;
+        {
+        <span class="RenoIncludeSPAN">    typedef /*user-defined*/ <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span>;</span>        
+        
+        <span class="RenoIncludeSPAN">    template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span>( Quaternion const &amp; q );</span>        
+        <span class="RenoIncludeSPAN">    template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>( Quaternion &amp; q );</span>        
+        };
+        */</span>
+    }
+}</pre>
+</div><p>The <i><span class="RenoLink">quat_traits</span></i> template must be specialized for (user-defined) quaternion types in order to enable quaternion operations defined in Boost QVM headers for objects of those types.</p>
+<p><i>Note: quaternion types are not required to be copyable.</i></p>
+<p>The main <i><span class="RenoLink">quat_traits</span></i> template members are not specified. Valid specializations are required to define the following members:</p>
+<div><ul><li> <i><span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span></i>: the expression <i><span class="RenoLink">quat_traits</span>&lt;Quaternion&gt;::<span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span></i> must be a value type which satisfies the <span class="RenoLink"><a href="scalar_requirements.html">scalar requirements</a></span>.</li>
+</ul></div>
+<p>In addition, valid specializations of the <i><span class="RenoLink">quat_traits</span></i> template must define at least one of the following access functions as static members, where <i>q</i> is an object of type Quaternion, and <i>I</i> is compile-time integer constant:</p>
+<div><ul><li> <i><span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span></i>: the expression <i><span class="RenoLink">quat_traits</span>&lt;Quaternion&gt;::<span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span>&lt;I&gt;(q)</i> returns either a copy of or a const reference to the <i>I</i>-th element of <i>q</i>.</li>
+<li> <i><span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span></i>: the expression <i><span class="RenoLink">quat_traits</span>&lt;Quaternion&gt;::<span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>&lt;I&gt;(q)</i> returns mutable reference to the <i>I</i>-th element of <i>q</i>.</li>
+</ul></div>
+<div class="RenoIncludeDIV"><p><b>Note:</b> For the quaternion <i>a + bi + cj + dk</i>, the elements are assumed to be in the following order: <i>a</i>, <i>b</i>, <i>c</i>, <i>d</i>; that is, <i>I</i>=<i>0</i>/<i>1</i>/<i>2</i>/<i>3</i> would access <i>a</i>/<i>b</i>/<i>c</i>/<i>d</i>.</p>
+</div><p>It is illegal to call any of the above functions unless <i><span class="RenoLink"><a href="is_quat.html">is_quat</a></span>&lt;Quaternion&gt;::value</i>' is true. Even then, quaternion types are allowed to define only a subset of the access functions.</p>
+<p>Below is an example of a user-defined quaternion type, and its corresponding specialization of the <i><span class="RenoLink">quat_traits</span></i> template:</p>
+<div class="RenoIncludeDIV"><pre>#include &lt;<span class="RenoLink"><a href="boost_qvm_quat_traits_hpp.html">boost/qvm/quat_traits.hpp</a></span>&gt;
+
+struct fquat { float a[4]; };
+
+namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+        template &lt;&gt;
+        struct
+        <span class="RenoLink">quat_traits</span>&lt;fquat&gt;
+        {
+            typedef float <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span>;
+
+            template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>( fquat &amp; q ) { return q.a[I]; }
+            template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span>( fquat const &amp; q ) { return q.a[I]; }
+        };
+    }
+}</pre>
+<p>Equivalently, using the <i><span class="RenoLink"><a href="quat_traits_defaults.html">quat_traits_defaults</a></span></i> template the above can be shortened to:</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+        template &lt;&gt;
+        struct
+        <span class="RenoLink">quat_traits</span>&lt;fquat&gt;: <span class="RenoLink"><a href="quat_traits_defaults.html">quat_traits_defaults</a></span>&lt;fquat,float&gt;
+        {
+            template &lt;int I&gt; static inline <span class="RenoLink"><a href="quat_traits_Q_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>( fquat &amp; q ) { return q.a[I]; }
+        };
+    }
+}</pre>
+</div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_quat_traits_hpp.html">boost/qvm/quat_traits.hpp</a>&nbsp;| <a href="boost_qvm_quat_traits_array_hpp.html">boost/qvm/quat_traits_array.hpp</a>&nbsp;| <a href="is_quat.html">is_quat</a>&nbsp;| <a href="mag_quat_.html">mag(quat)</a>&nbsp;| <a href="mag_sqr_quat_.html">mag_sqr(quat)</a>&nbsp;| <a href="normalize_quat_.html">normalize(quat)</a>&nbsp;| <a href="quat.html">quat</a>&nbsp;| <a href="quat_traits_Q_read_element.html">quat_traits&lt;Q&gt;::read_element</a>&nbsp;| <a href="quat_traits_Q_scalar_type.html">quat_traits&lt;Q&gt;::scalar_type</a>&nbsp;| <a href="quat_traits_Q_write_element.html">quat_traits&lt;Q&gt;::write_element</a>&nbsp;| <a href="quat_traits_defaults.html">quat_traits_defaults</a>&nbsp;| <a href="rotate_quat_vec_scalar_.html">rotate(quat,vec,scalar)</a>&nbsp;| <a href="rotate_x_quat_scalar_.html">rotate_x(quat,scalar)</a>&nbsp;| <a href="rotate_y_quat_scalar_.html">rotate_y(quat,scalar)</a>&nbsp;| <a href="rotate_z_quat_scalar_.html">rotate_z(quat,scalar)</a>&nbsp;| <a href="scalar.html">scalar</a>&nbsp;| <a href="set_identity_quat_.html">set_identity(quat)</a>&nbsp;| <a href="set_rotx_quat_scalar_.html">set_rotx(quat,scalar)</a>&nbsp;| <a href="set_roty_quat_scalar_.html">set_roty(quat,scalar)</a>&nbsp;| <a href="set_rotz_quat_scalar_.html">set_rotz(quat,scalar)</a>&nbsp;| <a href="set_zero_quat_.html">set_zero(quat)</a>&nbsp;| <a href="view_proxy.html">View Proxy</a></span>
+</div>
+<!-- Copyright (c) 2008-2018 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2018 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
