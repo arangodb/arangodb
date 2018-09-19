@@ -2155,8 +2155,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
                   "'checksum' is wrong. Expected: "
                   + referenceChecksum
-                  + ". Actual: " + checksum
-);
+                  + ". Actual: " + checksum);
     return;
   }
   
