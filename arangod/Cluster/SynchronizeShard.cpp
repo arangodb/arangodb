@@ -167,7 +167,7 @@ arangodb::Result getReadLockId (
 }
 
 
-arangodb::Result count(
+arangodb::Result collectionCount(
   std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
 
   std::string collectionName(col->name());
@@ -227,16 +227,22 @@ arangodb::Result addShardFollower (
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
-    uint64_t c;
-    count(collection, c);
+    uint64_t docCount = 0;
+    Result res = collectionCount(collection, docCount);
+    if (res.fail()) {
+      return res;
+    }
     VPackBuilder body;
     { VPackObjectBuilder b(&body);
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
       body.add(SHARD, VPackValue(shard));
-      body.add("checksum", VPackValue(std::to_string(c)));
+      body.add("checksum", VPackValue(std::to_string(docCount)));
       if (lockJobId != 0) {
-        body.add("readLockId", VPackValue(lockJobId));
-      }}
+        body.add("readLockId", VPackValue(std::to_string(lockJobId)));
+      } else {
+        TRI_ASSERT(docCount == 0);
+      }
+    }
 
     auto comres = cc->syncRequest(
       clientId, 1, endpoint, rest::RequestType::PUT,
@@ -723,8 +729,8 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo->getServerEndpoint(leader);
-    uint64_t c;
-    if (!count(collection, c).ok()) {
+    uint64_t docCount;
+    if (!collectionCount(collection, docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << shard;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
@@ -732,7 +738,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    if (c == 0) {
+    if (docCount == 0) {
       // We have a short cut:
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
         "synchronizeOneShard: trying short cut to synchronize local shard '" <<

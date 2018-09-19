@@ -2736,8 +2736,8 @@ int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TransactionState co
   return TRI_ERROR_NO_ERROR;
 }
 
-void MMFilesCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result MMFilesCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
   auto primaryIdx = primaryIndex();
 
   options.ignoreRevs = true;
@@ -2766,7 +2766,15 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
 
     return true;
   };
-  primaryIdx->invokeOnAllElementsForRemoval(callback);
+  try {
+    primaryIdx->invokeOnAllElementsForRemoval(callback);
+  } catch(basics::Exception const& e) {
+    return Result(e.code(), e.message());
+  } catch(std::exception const& e) {
+    return Result(TRI_ERROR_INTERNAL, e.what());
+  } catch(...) {
+    return Result(TRI_ERROR_INTERNAL, "unknown error during truncate");
+  }
 
   READ_LOCKER(guard, _indexesLock);
   auto indexes = _indexes;
@@ -2777,6 +2785,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
     idx->afterTruncate();
   }
+  return Result();
 }
 
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
