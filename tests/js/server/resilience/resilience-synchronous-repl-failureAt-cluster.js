@@ -49,8 +49,7 @@ function SynchronousReplicationSuite() {
   var ccinfo;
   var shards;
 
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+  if (!require('internal').debugSetFailAt) {
     console.info("Failure Tests disabled, Skipping...");
     return {};
   }
