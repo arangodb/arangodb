@@ -87,7 +87,7 @@ Node createNodeFromBuilder(VPackBuilder const& builder) {
   VPackBuilder opBuilder;
   { VPackObjectBuilder a(&opBuilder);
     opBuilder.add("new", builder.slice()); }
-  
+
   Node node("");
   node.handle<SET>(opBuilder.slice());
   return node;
@@ -100,11 +100,11 @@ Builder createBuilder(char const* c) {
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
   parser.parse(c);
-  
+
   VPackBuilder builder;
   builder.add(parser.steal()->slice());
   return builder;
-  
+
 }
 
 Node createNode(char const* c) {
@@ -121,13 +121,13 @@ TEST_CASE("FailedFollower", "[agency][supervision]") {
   auto transBuilder = std::make_shared<Builder>();
   { VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1)); }
-  
-  
-  
+
+
+
   auto baseStructure = createRootNode();
   write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
   trans_ret_t fakeTransResult {true, "", 1, 0, transBuilder};
-  
+
 SECTION("creating a job should create a job in todo") {
   Mock<AgentInterface> mockAgent;
 
@@ -396,7 +396,7 @@ SECTION("if there is no healthy free server when trying to start just wait") {
   REQUIRE(builder);
   INFO("Agency: " << builder->toJson());
   Node agency = createNodeFromBuilder(*builder);
-  
+
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   AgentInterface &agent = mockAgent.get();
@@ -429,7 +429,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
   AgentInterface &moveShardAgent = moveShardMockAgent.get();
   auto moveShard = MoveShard(
     baseStructure(PREFIX), &moveShardAgent, "2", "strunz", DATABASE,
-    COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true);
+    COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
 
   std::string jobId = "1";
