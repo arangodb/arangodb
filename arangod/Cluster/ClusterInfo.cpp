@@ -3313,15 +3313,12 @@ void ClusterInfo::loadCurrentMappings() {
         auto mapObject = mapping.value;
         if (mapObject.isObject()) {
           ServerShortName shortName = mapObject.get("ShortName").copyString();
-          newNameMap.emplace(shortName, fullId);
 
           ServerShortID shortId = mapObject.get("TransactionID").getNumericValue<ServerShortID>();
           static std::string const expectedPrefix{"Coordinator"};
           if (shortName.size() > expectedPrefix.size() &&
               shortName.substr(0, expectedPrefix.size()) == expectedPrefix) {
             newCoordinatorIdMap.emplace(shortId, fullId);
-          } else {
-            newDBServerIdMap.emplace(shortId, fullId);
           }
         }
       }
