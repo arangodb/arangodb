@@ -118,10 +118,10 @@ IResearchViewBlockBase::IResearchViewBlockBase(
     _reader(reader),
     _filter(irs::filter::prepared::empty()),
     _execCtx(*_trx, _ctx),
+    _inflight(0),
     _hasMore(true), // has more data initially
     _volatileSort(true),
-    _volatileFilter(true),
-    _inflight(0) {
+    _volatileFilter(true) {
   TRI_ASSERT(_trx);
 
   // add expression execution context
@@ -199,7 +199,8 @@ void IResearchViewBlockBase::reset() {
 
 bool IResearchViewBlockBase::readDocument(
     size_t subReaderId,
-    irs::doc_id_t const docId
+    irs::doc_id_t const docId,
+    IndexIterator::DocumentCallback const& callback
 ) {
   const auto& pkValues = _reader.pkColumn(subReaderId);
   arangodb::iresearch::DocumentPrimaryKey docPk;
@@ -227,8 +228,8 @@ bool IResearchViewBlockBase::readDocument(
 
   TRI_ASSERT(collection->collection());
 
-  return collection->collection()->readDocument(
-    _trx, arangodb::LocalDocumentId(docPk.rid()), _mmdr
+  return collection->collection()->readDocumentWithCallback(
+    _trx, arangodb::LocalDocumentId(docPk.rid()), callback
   );
 }
 
@@ -427,6 +428,12 @@ bool IResearchViewBlock::next(
   auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto const numSorts = viewNode.sortCondition().size();
 
+  IndexIterator::DocumentCallback const copyDocument = [&res, &pos, curRegs](
+      LocalDocumentId /*id*/, VPackSlice doc
+  ) {
+    res.setValue(pos, curRegs, AqlValue(doc));
+  };
+
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     bool done = false;
 
@@ -435,18 +442,11 @@ bool IResearchViewBlock::next(
     }
 
     while (limit && _itr->next()) {
-      if (readDocument(_readerOffset, _itr->value())) {
+      if (readDocument(_readerOffset, _itr->value(), copyDocument)) {
         // The result is in the first variable of this depth,
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
-        uint8_t const* vpack = _mmdr.vpack();
-
-        if (_mmdr.canUseInExternal()) {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-        } else {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintCopy(vpack)));
-        }
 
         // evaluate scores
         TRI_ASSERT(!viewNode.sortCondition().empty());
@@ -532,6 +532,12 @@ bool IResearchViewUnorderedBlock::next(
     size_t limit) {
   TRI_ASSERT(_filter);
 
+  IndexIterator::DocumentCallback const copyDocument = [&res, &pos, curRegs](
+      LocalDocumentId /*id*/, VPackSlice doc
+  ) {
+    res.setValue(pos, curRegs, AqlValue(doc));
+  };
+
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     bool done = false;
 
@@ -544,19 +550,11 @@ bool IResearchViewUnorderedBlock::next(
     }
 
     while (limit && _itr->next()) {
-      if (readDocument(_readerOffset, _itr->value())) {
-        // The result is in the first variable of this depth,
-        // we do not need to do a lookup in
-        // getPlanNode()->_registerPlan->varInfo,
-        // but can just take cur->getNrRegs() as registerId:
-        uint8_t const* vpack = _mmdr.vpack();
-
-        if (_mmdr.canUseInExternal()) {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-        } else {
-          res.setValue(pos, curRegs, AqlValue(AqlValueHintCopy(vpack)));
-        }
-      }
+      readDocument(_readerOffset, _itr->value(), copyDocument);
+      // The result is in the first variable of this depth,
+      // we do not need to do a lookup in
+      // getPlanNode()->_registerPlan->varInfo,
+      // but can just take cur->getNrRegs() as registerId:
 
       // FIXME why?
       if (pos > 0) {
@@ -688,23 +686,23 @@ bool IResearchViewOrderedBlock::next(
     }
   }
 
+
+
+  IndexIterator::DocumentCallback const copyDocument = [&res, &pos, curRegs](
+      LocalDocumentId /*id*/, VPackSlice doc
+  ) {
+    res.setValue(pos, curRegs, AqlValue(doc));
+  };
+
   // iterate through documents
   while (limit && tokenItr != tokenEnd) {
     auto& token = tokenItr->second;
 
-    if (readDocument(token.first, token.second)) {
-      // The result is in the first variable of this depth,
-      // we do not need to do a lookup in
-      // getPlanNode()->_registerPlan->varInfo,
-      // but can just take cur->getNrRegs() as registerId:
-      uint8_t const* vpack = _mmdr.vpack();
-
-      if (_mmdr.canUseInExternal()) {
-        res.setValue(pos, curRegs, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-      } else {
-        res.setValue(pos, curRegs, AqlValue(AqlValueHintCopy(vpack)));
-      }
-    }
+    readDocument(token.first, token.second, copyDocument);
+    // The result is in the first variable of this depth,
+    // we do not need to do a lookup in
+    // getPlanNode()->_registerPlan->varInfo,
+    // but can just take cur->getNrRegs() as registerId:
 
     // FIXME why?
     if (pos > 0) {
@@ -741,14 +739,6 @@ size_t IResearchViewOrderedBlock::skip(size_t limit) {
     while (limit > skipped && itr->next()) {
       ++skipped;
     }
-
-//    while (limit > skipped && itr->next()) {
-//      if (skip) {
-//        --skip;
-//      } else {
-//        ++skipped;
-//      }
-//    }
   }
 
   _skip += skipped;
