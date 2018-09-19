@@ -64,7 +64,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _pos(0),
       _done(false),
-      _profile(engine->getQuery()->queryOptions().profile),
+      _profile(engine->getQuery()->queryOptions().getProfileLevel()),
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _skipped(0),

@@ -74,13 +74,19 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   // Mock of the QueryOptions
   fakeit::Mock<QueryOptions> mockQueryOptions;
   QueryOptions& lqueryOptions = mockQueryOptions.get();
+  ProfileLevel profile = ProfileLevel(PROFILE_LEVEL_NONE);
 
   fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(blockManager);
+  fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
   fakeit::When(
       ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
       .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
+  fakeit::When(
+      OverloadedMethod(mockQuery, queryOptions, QueryOptions&()))
+      .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
   fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
-  fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
+
+  fakeit::When(Method(mockQueryOptions, getProfileLevel)).AlwaysReturn(profile);
 
   // This is not used thus far in Base-Clase
   ExecutionNode const* node = nullptr;
