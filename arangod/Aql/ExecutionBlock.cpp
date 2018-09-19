@@ -628,6 +628,9 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 RegisterId ExecutionBlock::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
+  if (previousNode == nullptr) {
+    return 0;
+  }
   TRI_ASSERT(previousNode != nullptr);
   RegisterId const inputNrRegs =
     previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];

@@ -30,6 +30,7 @@
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -92,10 +93,14 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     WHEN("the producer does not wait") {
       AllRowsFetcherHelper fetcher(input.steal(), false);
       SortExecutor testee(fetcher, infos);
+      // Use this instead of std::ignore, so the tests will be noticed and
+      // updated when someone changes the stats type in the return value of
+      // EnumerateListExecutor::produceRow().
+      NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
         OutputAqlItemRow result(std::move(block), infos);
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
       }
@@ -104,15 +109,19 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
     WHEN("the producer waits") {
       AllRowsFetcherHelper fetcher(input.steal(), true);
       SortExecutor testee(fetcher, infos);
+      // Use this instead of std::ignore, so the tests will be noticed and
+      // updated when someone changes the stats type in the return value of
+      // EnumerateListExecutor::produceRow().
+      NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
         OutputAqlItemRow result(std::move(block), infos);
-        state = testee.produceRow(result);
+        std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
 
         AND_THEN("the executor should return DONE with nullptr") {
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(!result.produced());
         }
@@ -128,42 +137,46 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       input = VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
       AllRowsFetcherHelper fetcher(input->steal(), true);
       SortExecutor testee(fetcher, infos);
+      // Use this instead of std::ignore, so the tests will be noticed and
+      // updated when someone changes the stats type in the return value of
+      // EnumerateListExecutor::produceRow().
+      NoStats stats{};
 
       THEN("we will hit waiting 5 times") {
         OutputAqlItemRow result(std::move(block), infos);
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::WAITING);
           REQUIRE(!result.produced());
         }
 
         AND_THEN("we produce the rows in order") {
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::HASMORE);
           REQUIRE(result.produced());
 
           result.advanceRow();
 
-          state = testee.produceRow(result);
+          std::tie(state, stats) = testee.produceRow(result);
           REQUIRE(state == ExecutionState::DONE);
           REQUIRE(result.produced());
 
