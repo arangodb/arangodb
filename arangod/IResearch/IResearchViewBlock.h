@@ -102,6 +102,16 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
+  struct ReadContext {
+    explicit ReadContext(aql::RegisterId curRegs)
+      : curRegs(curRegs) {
+    }
+
+    std::unique_ptr<aql::AqlItemBlock> res;
+    size_t pos{};
+    const aql::RegisterId curRegs;
+  }; // ReadContext
+
   bool readDocument(
     size_t segmentId,
     irs::doc_id_t docId,
@@ -111,9 +121,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   virtual void reset();
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) = 0;
 
@@ -152,9 +160,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
@@ -177,9 +183,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
 
  protected:
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
@@ -210,9 +214,7 @@ class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 

@@ -245,10 +245,9 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 
   bool needMore;
   AqlItemBlock* cur = nullptr;
-  size_t send = 0;
-  std::unique_ptr<AqlItemBlock> res;
 
-  RegisterId const nrInRegs = getNrInputRegisters();
+  ReadContext ctx(getNrInputRegisters());
+
   RegisterId const nrOutRegs = getNrOutputRegisters();
 
   do {
@@ -292,14 +291,14 @@ IResearchViewBlockBase::getSome(size_t atMost) {
     } while (needMore);
 
     TRI_ASSERT(cur);
-    TRI_ASSERT(nrInRegs == cur->getNrRegs());
+    TRI_ASSERT(ctx.curRegs == cur->getNrRegs());
 
-    res.reset(requestBlock(atMost, nrOutRegs));
+    ctx.res.reset(requestBlock(atMost, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(nrInRegs <= res->getNrRegs());
+    TRI_ASSERT(ctx.curRegs <= ctx.res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos);
+    inheritRegisters(cur, ctx.res.get(), _pos);
 
     throwIfKilled();  // check if we were aborted
 
@@ -307,26 +306,26 @@ IResearchViewBlockBase::getSome(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasMore = next(*res, nrInRegs, send, atMost);
+    _hasMore = next(ctx, atMost);
 
     // If the collection is actually empty we cannot forward an empty block
-  } while (send == 0);
+  } while (ctx.pos == 0);
 
-  TRI_ASSERT(res);
+  TRI_ASSERT(ctx.res);
 
   // aggregate stats
-   _engine->_stats.scannedIndex += static_cast<int64_t>(send);
+   _engine->_stats.scannedIndex += static_cast<int64_t>(ctx.pos);
 
-  if (send < atMost) {
+  if (ctx.pos < atMost) {
     // The collection did not have enough results
-    res->shrink(send);
+    ctx.res->shrink(ctx.pos);
   }
 
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
+  clearRegisters(ctx.res.get());
 
-  traceGetSomeEnd(res.get(), getHasMoreState());
-  return {getHasMoreState(), std::move(res)};
+  traceGetSomeEnd(ctx.res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(ctx.res)};
 }
 
 std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
@@ -420,18 +419,18 @@ void IResearchViewBlock::resetIterator() {
 }
 
 bool IResearchViewBlock::next(
-    AqlItemBlock& res,
-    aql::RegisterId curRegs,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit) {
   TRI_ASSERT(_filter);
   auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto const numSorts = viewNode.sortCondition().size();
 
-  IndexIterator::DocumentCallback const copyDocument = [&res, &pos, curRegs](
+  // capture only one reference
+  // to potentially avoid heap allocation
+  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
       LocalDocumentId /*id*/, VPackSlice doc
   ) {
-    res.setValue(pos, curRegs, AqlValue(doc));
+    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
   };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
@@ -453,11 +452,11 @@ bool IResearchViewBlock::next(
         _scr->evaluate();
 
         // copy scores, registerId's are sequential
-        auto scoreRegs = curRegs;
+        auto scoreRegs = ctx.curRegs;
 
         for (size_t i = 0; i < numSorts; ++i) {
-          res.setValue(
-            pos,
+          ctx.res->setValue(
+            ctx.pos,
             ++scoreRegs,
             _order.to_string<AqlValue, std::char_traits<char>>(_scrVal.c_str(), i)
           );
@@ -465,11 +464,11 @@ bool IResearchViewBlock::next(
       }
 
       // FIXME why?
-      if (pos > 0) {
+      if (ctx.pos > 0) {
         // re-use already copied AQLValues
-        res.copyValuesFromFirstRow(pos, static_cast<RegisterId>(curRegs));
+        ctx.res->copyValuesFromFirstRow(ctx.pos, static_cast<RegisterId>(ctx.curRegs));
       }
-      ++pos;
+      ++ctx.pos;
 
       done = (0 == --limit);
     }
@@ -526,16 +525,16 @@ IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
 }
 
 bool IResearchViewUnorderedBlock::next(
-    AqlItemBlock& res,
-    aql::RegisterId curRegs,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit) {
   TRI_ASSERT(_filter);
 
-  IndexIterator::DocumentCallback const copyDocument = [&res, &pos, curRegs](
+  // capture only one reference
+  // to potentially avoid heap allocation
+  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
       LocalDocumentId /*id*/, VPackSlice doc
   ) {
-    res.setValue(pos, curRegs, AqlValue(doc));
+    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
   };
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
@@ -557,11 +556,11 @@ bool IResearchViewUnorderedBlock::next(
       // but can just take cur->getNrRegs() as registerId:
 
       // FIXME why?
-      if (pos > 0) {
+      if (ctx.pos > 0) {
         // re-use already copied AQLValues
-        res.copyValuesFromFirstRow(pos, curRegs);
+        ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
       }
-      ++pos;
+      ++ctx.pos;
 
       done = (0 == --limit);
     }
@@ -621,9 +620,7 @@ IResearchViewOrderedBlock::IResearchViewOrderedBlock(
 }
 
 bool IResearchViewOrderedBlock::next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curRegs,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
 ) {
   TRI_ASSERT(_filter);
@@ -686,12 +683,12 @@ bool IResearchViewOrderedBlock::next(
     }
   }
 
-
-
-  IndexIterator::DocumentCallback const copyDocument = [&res, &pos, curRegs](
+  // capture only one reference
+  // to potentially avoid heap allocation
+  IndexIterator::DocumentCallback const copyDocument = [&ctx] (
       LocalDocumentId /*id*/, VPackSlice doc
   ) {
-    res.setValue(pos, curRegs, AqlValue(doc));
+    ctx.res->setValue(ctx.pos, ctx.curRegs, AqlValue(doc));
   };
 
   // iterate through documents
@@ -705,11 +702,11 @@ bool IResearchViewOrderedBlock::next(
     // but can just take cur->getNrRegs() as registerId:
 
     // FIXME why?
-    if (pos > 0) {
+    if (ctx.pos > 0) {
       // re-use already copied AQLValues
-      res.copyValuesFromFirstRow(pos, curRegs);
+      ctx.res->copyValuesFromFirstRow(ctx.pos, ctx.curRegs);
     }
-    ++pos;
+    ++ctx.pos;
 
     ++tokenItr;
     ++_skip;
