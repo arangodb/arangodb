@@ -379,43 +379,49 @@ void SocketTask::asyncReadSome() {
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->runningInThisThread());
 
-  try {
-    size_t const MAX_DIRECT_TRIES = 2;
-    size_t n = 0;
+  if (this->canUseMixedIO()) {
+    // try some direct read only for non-SSL mode
+    // in SSL mode it will fall apart when mixing direct reads and async
+    // reads later
+    try {
+      size_t const MAX_DIRECT_TRIES = 2;
+      size_t n = 0;
 
-    while (++n <= MAX_DIRECT_TRIES &&
-           !_abandoned.load(std::memory_order_acquire)) {
-      if (!trySyncRead()) {
-        if (n < MAX_DIRECT_TRIES) {
-          std::this_thread::yield();
+      while (++n <= MAX_DIRECT_TRIES &&
+            !_abandoned.load(std::memory_order_acquire)) {
+        if (!trySyncRead()) {
+          if (n < MAX_DIRECT_TRIES) {
+            std::this_thread::yield();
+          }
+          continue;
         }
-        continue;
-      }
 
-      if (_abandoned.load(std::memory_order_acquire)) {
-        return;
-      }
+        if (_abandoned.load(std::memory_order_acquire)) {
+          return;
+        }
 
-      // ignore the result of processAll, try to read more bytes down below
-      processAll();
-      compactify();
+        // ignore the result of processAll, try to read more bytes down below
+        processAll();
+        compactify();
+      }
+    } catch (asio_ns::system_error const& err) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
+                                              << err.what();
+      closeStreamNoLock();
+      return;
+    } catch (...) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
+
+      closeStreamNoLock();
+      return;
     }
-  } catch (asio_ns::system_error const& err) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
-                                            << err.what();
-    closeStreamNoLock();
-    return;
-  } catch (...) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
-
-    closeStreamNoLock();
-    return;
   }
   
   // try to read more bytes
   if (_abandoned.load(std::memory_order_acquire)) {
     return;
-  } else if (!reserveMemory()) {
+  } 
+  if (!reserveMemory()) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
     return;
   }
