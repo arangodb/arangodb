@@ -469,7 +469,7 @@ void SocketTask::asyncWriteSome() {
 
   asio_ns::error_code err;
   
-  if (!_peer->isEncrypted()) {
+  if (this->canUseMixedIO()) {
     // try some direct writes only for non-SSL mode
     // in SSL mode it will fall apart when mixing direct writes and async
     // writes later
