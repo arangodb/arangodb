@@ -61,6 +61,9 @@ struct config_t {
   std::string _startup;
   size_t _maxAppendSize;
 
+  mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
+
+public:
   static std::string const idStr;
   static std::string const agencySizeStr;
   static std::string const poolSizeStr;
@@ -82,9 +85,6 @@ struct config_t {
   static std::string const versionStr;
   static std::string const startupStr;
 
-  mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
-
- public:
   /// @brief default ctor
   config_t();
 

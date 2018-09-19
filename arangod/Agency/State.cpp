@@ -244,7 +244,7 @@ std::vector<index_t> State::logLeaderMulti(
         "Transaction syntax is [{<operations>}, <preconditions>}, \"clientId\"]");
     }
 
-    if (applicable[j] == 0) {
+    if (applicable[j] == APPLIED) {
       std::string clientId((i.length() == 3) ? i[2].copyString() : "");
 
       auto transaction = i[0];
@@ -411,7 +411,7 @@ index_t State::logFollower(query_t const& transactions) {
       auto index = slice.get("index").getUInt();
       
       bool reconfiguration =
-        query.keyAt(0).copyString().compare(0, RECONFIGURE.size(), RECONFIGURE) == 0;
+        query.keyAt(0).isEqualString(RECONFIGURE) == 0;
       
       // first to disk
       if (logNonBlocking(index, query, term, clientId, false, reconfiguration)==0) {

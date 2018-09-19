@@ -1334,11 +1334,11 @@ void Agent::persistConfiguration(term_t t) {
           agency->add(VPackValue("new"));
           { VPackObjectBuilder aa(agency.get());
             agency->add("term", VPackValue(t));
-            agency->add("id", VPackValue(id()));
-            agency->add("active", _config.activeToBuilder()->slice());
-            agency->add("pool", _config.poolToBuilder()->slice());
+            agency->add(config_t::idStr, VPackValue(id()));
+            agency->add(config_t::activeStr, _config.activeToBuilder()->slice());
+            agency->add(config_t::poolStr, _config.poolToBuilder()->slice());
             agency->add("size", VPackValue(size()));
-            agency->add("timeoutMult", VPackValue(_config.timeoutMult()));
+            agency->add(config_t::timeoutMultStr, VPackValue(_config.timeoutMult()));
           }}}}}
 
   // In case we've lost leadership, no harm will arise as the failed write
