@@ -61,6 +61,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
@@ -883,7 +884,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   if (res.ok()) {
     trackWaitForSync(trx, options);
     if (options.silent) {
-      mdr.reset();
+      mdr.clear();
     } else { 
       mdr.setManaged(newSlice.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
@@ -950,8 +951,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   if (newSlice.length() <= 1) {
     // shortcut. no need to do anything
-    previous.clone(mdr);
-
+    mdr = previous;
     TRI_ASSERT(!mdr.empty());
 
     trackWaitForSync(trx, options);
@@ -997,7 +997,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     trackWaitForSync(trx, options);
 
     if (options.silent) {
-      mdr.reset();
+      mdr.clear();
     } else {
       mdr.setManaged(newDoc.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
@@ -1107,7 +1107,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     trackWaitForSync(trx, options);
 
     if (options.silent) {
-      mdr.reset();
+      mdr.clear();
     } else {
       mdr.setManaged(newDoc.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
@@ -1532,7 +1532,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      std::string* value = mdr.prepareStringUsage();
+      std::string* value = mdr.string();
       value->append(reinterpret_cast<char const*>(f.value()->value()),
                     f.value()->valueSize());
       mdr.setManagedAfterStringUsage(documentId);
@@ -1545,7 +1545,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  std::string* value = mdr.prepareStringUsage();
+  std::string* value = mdr.string();
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
 
   if (res.ok()) {
@@ -1577,7 +1577,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->sequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection.name();
-    mdr.reset();
+    mdr.clear();
   }
 
   return res;

@@ -708,8 +708,7 @@ void HeartbeatThread::runSingleServer() {
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
         // on this server may prevent us from being a proper follower. We wait for
-        // all ongoing ops to stop, and make sure nothing is committed:
-        // setting server mode to REDIRECT stops DDL ops and write transactions
+        // all ongoing ops to stop, and make sure nothing is committed
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
         TRI_ASSERT(!applier->isActive());
         applier->forget(); // make sure applier is doing a resync
@@ -758,7 +757,10 @@ void HeartbeatThread::runSingleServer() {
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
+          } else if (error.isNot(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_MASTER_CHANGE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_LOOP) &&
+                     error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
             VPackBuilder debug;
