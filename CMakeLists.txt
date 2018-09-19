@@ -411,6 +411,8 @@ if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
   add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
+  add_definitions(-D_HAS_AUTO_PTR_ETC=1) #autopointer
+  add_definitions(-D_HAS_TR1_NAMESPACE=1) #tr1
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
