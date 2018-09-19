@@ -48,9 +48,12 @@ OutputAqlItemRow::OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
 void OutputAqlItemRow::setValue(RegisterId registerId,
                                 InputAqlItemRow const& sourceRow,
                                 AqlValue const& value) {
+  if (!isOutputRegister(registerId)) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
+  }
+  // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId < getNrRegisters());
-  TRI_ASSERT(executorInfos().numberOfInputRegisters() <= registerId &&
-             registerId < executorInfos().numberOfOutputRegisters());
   if (_numValuesWritten >= numRegistersToWrite()) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);

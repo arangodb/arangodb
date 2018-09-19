@@ -74,14 +74,6 @@ namespace aql {
 // -- SECTION --                                                    SortRegister
 // -----------------------------------------------------------------------------
 
-SortRegister::SortRegister(
-    RegisterId reg,
-    SortElement const& element) noexcept
-  : attributePath(element.attributePath),
-    reg(reg),
-    asc(element.ascending) {
-}
-
 #ifdef USE_IRESEARCH
 
 void SortRegister::fill(

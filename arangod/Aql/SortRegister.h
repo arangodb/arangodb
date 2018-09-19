@@ -55,19 +55,19 @@ struct SortRegister {
   RegisterId reg;
   bool asc;
 
-  SortRegister(
-    RegisterId reg,
-    SortElement const& element
-  ) noexcept;
-
 #ifdef USE_IRESEARCH
-  SortRegister(
-      RegisterId reg,
-      SortElement const& element,
-      CompareFunc comparator) noexcept
-    : SortRegister(reg, element) {
-    this->comparator = comparator;
-  }
+  SortRegister(RegisterId reg, SortElement const& element,
+               CompareFunc comparator_) noexcept
+      : comparator(comparator_),
+        attributePath(element.attributePath),
+        reg(reg),
+        asc(element.ascending) {}
+#else
+  SortRegister::SortRegister(RegisterId reg,
+                             SortElement const& element) noexcept
+      : attributePath(element.attributePath),
+        reg(reg),
+        asc(element.ascending) {}
 #endif
 
   static void fill(

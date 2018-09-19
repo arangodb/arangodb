@@ -301,6 +301,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
   REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");
   REG_ERROR(ERROR_WROTE_OUTPUT_REGISTER_TWICE, "An AQL block wrote an output register twice");
+  REG_ERROR(ERROR_WROTE_IN_WRONG_REGISTER, "An AQL block wrote in a register that is not its output");
   REG_ERROR(ERROR_INPUT_REGISTERS_NOT_COPIED, "An AQL block did not copy its input registers");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "failed to parse manifest file");
   REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
