@@ -49,6 +49,12 @@ function SynchronousReplicationSuite() {
   var ccinfo;
   var shards;
 
+  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
+      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+    console.info("Failure Tests disabled, Skipping...");
+    return {};
+  }
+
   function baseUrl(endpoint) { // arango.getEndpoint()
     return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
@@ -538,6 +544,125 @@ function SynchronousReplicationSuite() {
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief follower fail in place 5 until 4, leader fails in 4 after in-sync
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsCombinedFail5_6: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations((place) => {
+        if (place === 5) {
+          failFollower("LogicalCollection::replace"); // replication fails
+        } else if (place === 6) {
+          healFollower("LogicalCollection::replace");
+          assertTrue(waitForSynchronousReplication("_system"));
+          failLeader();
+        } else if (place === 19) {
+          healLeader();
+        }
+      });
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief follower fail in place 7 until 8, leader fails in 8 after in-sync
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsCombinedFail7_8: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations((place) => {
+        if (place === 7) {
+          failFollower("LogicalCollection::replace"); // replication fails
+        } else if (place === 8) {
+          healFollower("LogicalCollection::replace");
+          assertTrue(waitForSynchronousReplication("_system"));
+          failLeader();
+        } else if (place === 19) {
+          healLeader();
+        }
+      });
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief follower fail in place 9 until 10, leader fails in 10 after in-sync
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsCombinedFail9_10: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations((place) => {
+        if (place === 9) {
+          failFollower("LogicalCollection::update"); // replication fails
+        } else if (place === 10) {
+          healFollower("LogicalCollection::update");
+          assertTrue(waitForSynchronousReplication("_system"));
+          failLeader();
+        } else if (place === 19) {
+          healLeader();
+        }
+      });
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief follower fail in place 11 until 12, leader fails in 12 after in-sync
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsCombinedFail11_12: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations((place) => {
+        if (place === 11) {
+          failFollower("LogicalCollection::update"); // replication fails
+        } else if (place === 12) {
+          healFollower("LogicalCollection::update");
+          assertTrue(waitForSynchronousReplication("_system"));
+          failLeader();
+        } else if (place === 19) {
+          healLeader();
+        }
+      });
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief follower fail in place 14 until 15, leader fails in 18 after in-sync
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsCombinedFail14_15: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations((place) => {
+        if (place === 14) {
+          failFollower("LogicalCollection::remove"); // replication fails
+        } else if (place === 15) {
+          healFollower("LogicalCollection::remove");
+          assertTrue(waitForSynchronousReplication("_system"));
+          failLeader();
+        } else if (place === 19) {
+          healLeader();
+        }
+      });
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief follower fail in place 17 until 18, leader fails in 18 after in-sync
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsCombinedFail17_18: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations((place) => {
+        if (place === 17) {
+          failFollower("LogicalCollection::remove"); // replication fails
+        } else if (place === 18) {
+          healFollower("LogicalCollection::remove");
+          assertTrue(waitForSynchronousReplication("_system"));
+          failLeader();
+        } else if (place === 19) {
+          healLeader();
+        }
+      });
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief just to allow a trailing comma at the end of the last test

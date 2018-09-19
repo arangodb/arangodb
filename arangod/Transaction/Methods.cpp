@@ -3259,11 +3259,7 @@ Result Methods::replicateOperations(LogicalCollection* collection,
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
-
-  if (nrGood == followers->size()) {
-    return Result();
-  }
+  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
 
   // If any would-be-follower refused to follow there must be a
   // new leader in the meantime, in this case we must not allow
