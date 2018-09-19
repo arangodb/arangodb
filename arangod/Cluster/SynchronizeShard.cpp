@@ -232,7 +232,10 @@ arangodb::Result addShardFollower (
     }
 
     uint64_t docCount;
-    collectionCount(collection, docCount);
+    Result res = collectionCount(collection, docCount);
+    if (res.fail()) {
+      return res;
+    }
     VPackBuilder body;
     { VPackObjectBuilder b(&body);
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
