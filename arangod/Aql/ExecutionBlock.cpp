@@ -68,7 +68,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _skipped(0),
-      _collector(&engine->_itemBlockManager) {
+      _collector(&engine->itemBlockManager()) {
   TRI_ASSERT(_trx != nullptr);
    
   // already insert ourselves into the statistics results 

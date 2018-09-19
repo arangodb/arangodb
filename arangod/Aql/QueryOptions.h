@@ -50,6 +50,7 @@ enum ProfileLevel : uint32_t {
 
 struct QueryOptions {
   QueryOptions();
+  TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;

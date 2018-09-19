@@ -27,18 +27,17 @@
 
 #include "catch.hpp"
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/AllRowsFetcher.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortExecutor.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -47,7 +46,8 @@ using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
 namespace {
-static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
+static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs,
+                                AqlItemBlock& block) {
   // coordinates in the matrix rowNr, entryNr
   size_t rowIndex = 0;
   RegisterId entry = 0;
@@ -64,7 +64,7 @@ static void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& 
     entry = 0;
   }
 }
-}
+}  // namespace
 
 // -----------------------------------------
 // - SECTION SINGLEROWFETCHER              -
@@ -103,18 +103,19 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
 
 SingleRowFetcherHelper::~SingleRowFetcherHelper() = default;
 
-std::pair<ExecutionState, InputAqlItemRow>
-SingleRowFetcherHelper::fetchRow() {
+std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper::fetchRow() {
   // If this REQUIRE fails, the Executor has fetched more rows after DONE.
   REQUIRE(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
-    if(!_didWait) {
+    if (!_didWait) {
       _didWait = true;
       // if once DONE is returned, always return DONE
       if (_returnedDone) {
-        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+        return {ExecutionState::DONE,
+                InputAqlItemRow{CreateInvalidInputRowHint{}}};
       }
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+      return {ExecutionState::WAITING,
+              InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     _didWait = false;
   }
@@ -126,7 +127,7 @@ SingleRowFetcherHelper::fetchRow() {
   TRI_ASSERT(_itemBlock);
   // Note that the blockId is hard coded to 42. If this class ever should get
   // multiple blocks, this has to be changed.
-  _lastReturnedRow = InputAqlItemRow{_itemBlock.get(), _nrCalled -1, 42};
+  _lastReturnedRow = InputAqlItemRow{_itemBlock.get(), _nrCalled - 1, 42};
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;

@@ -23,14 +23,14 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
+#include "AqlItemBlockHelper.h"
+#include "BlockFetcherHelper.h"
+#include "BlockFetcherMock.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
 
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionBlockImpl.cpp"
-
+// #include "Aql/ExecutionBlockImpl.cpp"
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
@@ -39,39 +39,78 @@
 
 #include "Transaction/Methods.h"
 
-
 using namespace arangodb;
 using namespace arangodb::aql;
-
 
 namespace arangodb {
 namespace tests {
 namespace aql {
 
- // ExecutionState state;
- // std::unique_ptr<AqlItemBlock> result;
- //
- // // Mock of the ExecutionEngine
- // fakeit::Mock<ExecutionEngine> mockEngine;
- // ExecutionEngine& engine = mockEngine.get();
- //
- // // Mock of the Query
- // fakeit::Mock<Query> mockQuery;
- // Query& query = mockQuery.get();
- //
- // // Mock of the Transaction
- // fakeit::Mock<transaction::Methods> mockTrx;
- // transaction::Methods& trx = mockTrx.get();
- //
- // // This is not used thus far in Base-Clase
- // ExecutionNode const* node = nullptr;
- //
- // // This test is supposed to only test getSome return values,
- // // it is not supposed to test the fetch logic!
- //
- // ExecutionBlockImpl<FilterExecutor> testee(&engine, node);
+// This test is supposed to only test getSome return values,
+// it is not supposed to test the fetch logic!
 
+SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
+  // ExecutionState state
+  std::unique_ptr<AqlItemBlock> result;
 
-} // aql
-} // tests
-} // arangodb
+  ResourceMonitor monitor;
+
+  // Mock of the ExecutionEngine
+  fakeit::Mock<ExecutionEngine> mockEngine;
+  ExecutionEngine& engine = mockEngine.get();
+
+  // Mock of the AqlItemBlockManager
+  fakeit::Mock<AqlItemBlockManager> mockBlockManager;
+  AqlItemBlockManager& blockManager = mockBlockManager.get();
+
+  // Mock of the transaction
+  fakeit::Mock<transaction::Methods> mockTrx;
+  transaction::Methods& trx = mockTrx.get();
+
+  // Mock of the Query
+  fakeit::Mock<Query> mockQuery;
+  Query& query = mockQuery.get();
+
+  // Mock of the QueryOptions
+  fakeit::Mock<QueryOptions> mockQueryOptions;
+  QueryOptions& lqueryOptions = mockQueryOptions.get();
+
+  fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(blockManager);
+  fakeit::When(
+      ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
+      .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
+  fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
+  fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
+
+  // This is not used thus far in Base-Clase
+  ExecutionNode const* node = nullptr;
+
+  // Executor Infos
+  // ExecutorInfos infos(0, 0, 1, 1, {});
+  FilterExecutorInfos infos(0, 1, 1, {});
+
+  ExecutionState state;
+
+  GIVEN("there are no blocks upstream") {
+    VPackBuilder input;
+    BlockFetcherMock blockFetcherMock{0};
+
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+
+    WHEN("the producer does not wait") {
+      LOG_DEVEL << 1;
+      ExecutionBlockImpl<FilterExecutor> testee(&engine, node,
+                                                std::move(infos));
+
+      LOG_DEVEL << 2;
+      size_t atMost = 1000;
+      LOG_DEVEL << 3;
+      std::tie(state, block) = testee.getSome(atMost);
+      LOG_DEVEL << state;
+    }
+  }
+}
+
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb
