@@ -1,13 +1,10 @@
-v3.3.17 (XXXX-XX-XX)
+v3.3.16 (2018-09-19)
 --------------------
+
+* fix undefined behavior in AQL query result cache
 
 * the query editor within the web ui is now catching http 501 responses
-  propertly.
-
-
-v3.3.16 (2018-09-17)
---------------------
-
+  properly
 
 * fixed issue #6495 (Document not found when removing records)
 
