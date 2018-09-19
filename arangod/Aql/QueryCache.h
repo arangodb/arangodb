@@ -48,15 +48,6 @@ struct QueryCacheResultEntry {
 
   ~QueryCacheResultEntry() = default;
 
-  /// @brief check whether the element can be destroyed, and delete it if yes
-  void tryDelete();
-
-  /// @brief use the element, so it cannot be deleted meanwhile
-  void use();
-
-  /// @brief unuse the element, so it can be deleted if required
-  void unuse();
-
   uint64_t const _hash;
   std::string const _queryString;
   std::shared_ptr<arangodb::velocypack::Builder> _queryResult;
@@ -65,28 +56,6 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry* _next;
   std::atomic<uint32_t> _refCount;
   std::atomic<uint32_t> _deletionRequested;
-};
-
-class QueryCacheResultEntryGuard {
-  QueryCacheResultEntryGuard(QueryCacheResultEntryGuard const&) = delete;
-  QueryCacheResultEntryGuard& operator=(QueryCacheResultEntryGuard const&) =
-      delete;
-  QueryCacheResultEntryGuard() = delete;
-
- public:
-  explicit QueryCacheResultEntryGuard(QueryCacheResultEntry* entry)
-      : _entry(entry) {}
-
-  ~QueryCacheResultEntryGuard() {
-    if (_entry != nullptr) {
-      _entry->unuse();
-    }
-  }
-
-  QueryCacheResultEntry* get() { return _entry; }
-
- private:
-  QueryCacheResultEntry* _entry;
 };
 
 struct QueryCacheDatabaseEntry {
@@ -100,10 +69,10 @@ struct QueryCacheDatabaseEntry {
   ~QueryCacheDatabaseEntry();
 
   /// @brief lookup a query result in the database-specific cache
-  QueryCacheResultEntry* lookup(uint64_t, QueryString const&);
+  std::shared_ptr<QueryCacheResultEntry> lookup(uint64_t, QueryString const&);
 
   /// @brief store a query result in the database-specific cache
-  void store(uint64_t, QueryCacheResultEntry*);
+  void store(uint64_t, std::shared_ptr<QueryCacheResultEntry>);
 
   /// @brief invalidate all entries for the given collections in the
   /// database-specific cache
@@ -116,9 +85,6 @@ struct QueryCacheDatabaseEntry {
   /// @brief enforce maximum number of results
   void enforceMaxResults(size_t);
 
-  /// @brief check whether the element can be destroyed, and delete it if yes
-  void tryDelete(QueryCacheResultEntry*);
-
   /// @brief unlink the result entry from the list
   void unlink(QueryCacheResultEntry*);
 
@@ -126,7 +92,7 @@ struct QueryCacheDatabaseEntry {
   void link(QueryCacheResultEntry*);
 
   /// @brief hash table that maps query hashes to query results
-  std::unordered_map<uint64_t, QueryCacheResultEntry*> _entriesByHash;
+  std::unordered_map<uint64_t, std::shared_ptr<QueryCacheResultEntry>> _entriesByHash;
 
   /// @brief hash table that contains all collection-specific query results
   /// maps from collection names to a set of query results as defined in
@@ -177,12 +143,12 @@ class QueryCache {
   static std::string modeString(QueryCacheMode);
 
   /// @brief lookup a query result in the cache
-  QueryCacheResultEntry* lookup(TRI_vocbase_t*, uint64_t, QueryString const&);
+  std::shared_ptr<QueryCacheResultEntry> lookup(TRI_vocbase_t*, uint64_t, QueryString const&);
 
   /// @brief store a query in the cache
   /// if the call is successful, the cache has taken over ownership for the
   /// query result!
-  QueryCacheResultEntry* store(TRI_vocbase_t*, uint64_t, QueryString const&,
+  std::shared_ptr<QueryCacheResultEntry> store(TRI_vocbase_t*, uint64_t, QueryString const&,
                                std::shared_ptr<arangodb::velocypack::Builder>,
                                std::vector<std::string> const&);
 
@@ -211,9 +177,6 @@ class QueryCache {
   /// note that the caller of this method must hold the write lock
   void invalidate(unsigned int);
 
-  /// @brief sets the maximum number of elements in the cache
-  void setMaxResults(size_t);
-
   /// @brief enable or disable the query cache
   void setMode(QueryCacheMode);
 
@@ -221,6 +184,9 @@ class QueryCache {
   void setMode(std::string const&);
 
  private:
+  /// @brief sets the maximum number of elements in the cache
+  void setMaxResults(size_t);
+
   /// @brief number of R/W locks for the query cache
   static uint64_t const NumberOfParts = 8;
 
