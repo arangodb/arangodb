@@ -82,7 +82,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("only copying from source to target") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    ExecutorInfos executorInfos{0, 0, 3, 3, {}};
+    ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
     std::unordered_set<RegisterId> const& regsToKeep =
         executorInfos.registersToKeep();
 
@@ -155,7 +155,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("only copying from source to target but multiplying rows") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
-    ExecutorInfos executorInfos{0, 0, 3, 3, {}};
+    ExecutorInfos executorInfos{{}, {}, 3, 3, {}};
     std::unordered_set<RegisterId> const& regsToKeep =
       executorInfos.registersToKeep();
 
@@ -202,7 +202,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
   WHEN("dropping a register from source while writing to target") {
     auto outputData = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    ExecutorInfos executorInfos{0, 0, 3, 3, {1}};
+    ExecutorInfos executorInfos{{}, {}, 3, 3, {1}};
     std::unordered_set<RegisterId> const& regsToKeep =
       executorInfos.registersToKeep();
 
@@ -245,11 +245,15 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
     THEN("should keep all registers and add new values") {
       executorInfos = std::make_unique<ExecutorInfos>(
-          0, 3, 3, 5, std::unordered_set<RegisterId>{});
+          std::unordered_set<RegisterId>{},
+          std::unordered_set<RegisterId>{3, 4}, 3, 5,
+          std::unordered_set<RegisterId>{});
     }
     THEN("should be able to drop registers and write new values") {
       executorInfos = std::make_unique<ExecutorInfos>(
-          0, 3, 3, 5, std::unordered_set<RegisterId>{1, 2});
+          std::unordered_set<RegisterId>{},
+          std::unordered_set<RegisterId>{3, 4}, 3, 5,
+          std::unordered_set<RegisterId>{1, 2});
     }
     std::unordered_set<RegisterId> regsToKeep =
         executorInfos->registersToKeep();

@@ -49,16 +49,15 @@ struct SortRegister;
 
 class SortExecutorInfos : public ExecutorInfos {
  public:
-  SortExecutorInfos(
-      RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear, transaction::Methods *trx,
-      std::vector<SortRegister>&& sortRegisters, bool stable
-    );
+  SortExecutorInfos(std::vector<SortRegister> sortRegisters,
+                    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                    std::unordered_set<RegisterId> registersToClear,
+                    transaction::Methods* trx, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos &&) = default;
   SortExecutorInfos(SortExecutorInfos const&) = delete;
-  ~SortExecutorInfos();
+  ~SortExecutorInfos() = default;
 
   arangodb::transaction::Methods* trx() const;
 

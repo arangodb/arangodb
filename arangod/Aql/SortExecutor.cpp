@@ -31,6 +31,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
 
+#include <algorithm>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -81,21 +83,28 @@ class OurLessThan {
 
 }
 
+static std::unordered_set<RegisterId> mapSortRegistersToRegisterIds(
+    std::vector<SortRegister> const& sortRegisters) {
+  std::unordered_set<RegisterId> set{};
+  std::transform(sortRegisters.begin(), sortRegisters.end(),
+                 std::inserter(set, set.begin()),
+                 [](SortRegister const& sortReg) { return sortReg.reg; });
+  return set;
+}
+
 SortExecutorInfos::SortExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::vector<SortRegister> sortRegisters, RegisterId nrInputRegisters,
+    RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
-    std::vector<SortRegister>&& sortRegisters, bool stable)
-    : ExecutorInfos(inputRegister, outputRegister, nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+    bool stable)
+    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), {},
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear)),
       _trx(trx),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(!_sortRegisters.empty());
-}
-
-SortExecutorInfos::~SortExecutorInfos() {
 }
 
 transaction::Methods* SortExecutorInfos::trx() const {

@@ -40,19 +40,38 @@ class InputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
+class FilterExecutorInfos : public ExecutorInfos {
+ public:
+  FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
+                      RegisterId nrOutputRegisters,
+                      std::unordered_set<RegisterId> registersToClear);
+
+  FilterExecutorInfos() = delete;
+  FilterExecutorInfos(FilterExecutorInfos &&) = default;
+  FilterExecutorInfos(FilterExecutorInfos const&) = delete;
+  ~FilterExecutorInfos() = default;
+
+  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+
+ private:
+  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
+  // respectively getInputRegisters().
+  RegisterId _inputRegister;
+};
+
 /**
  * @brief Implementation of Filter Node
  */
 class FilterExecutor {
  public:
   using Fetcher = SingleRowFetcher;
-  using Infos = ExecutorInfos;
+  using Infos = FilterExecutorInfos;
   using Stats = FilterStats;
 
   FilterExecutor() = delete;
   FilterExecutor(FilterExecutor&&) = default;
   FilterExecutor(FilterExecutor const&) = delete;
-  FilterExecutor(Fetcher& fetcher, ExecutorInfos&);
+  FilterExecutor(Fetcher& fetcher, Infos&);
   ~FilterExecutor();
 
   /**
@@ -63,7 +82,7 @@ class FilterExecutor {
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
  public:
-  ExecutorInfos& _infos;
+  Infos& _infos;
  private:
   Fetcher& _fetcher;
 };

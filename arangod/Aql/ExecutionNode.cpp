@@ -1815,9 +1815,13 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId inputRegister = it->second.registerId;
 
-  ExecutorInfos infos(inputRegister, 0,
-                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+  // TODO Find regs set here via getVariablesSetHere()
+  // translate like above
+  // TODO Use only variables in Executor, not registers
+
+  FilterExecutorInfos infos(
+      inputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this, std::move(infos));
   //return std::make_unique<FilterBlock>(&engine, this, false);
 }

@@ -42,17 +42,32 @@ class ExecutorInfos {
   // inputRegister and outputRegister do not generally apply for all blocks.
   // TODO Thus they should not be part of this class, but only of its
   // descendants.
-  ExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
+  /**
+   * @brief Input for Executors. Derived classes exist where additional
+   *        input is needed.
+   * @param inputRegisters Registers the Executor may use as input
+   * @param outputRegisters Registers the Executor writes into
+   * @param nrInputRegisters Width of input AqlItemBlocks
+   * @param nrOutputRegisters Width of output AqlItemBlocks
+   * @param registersToClear Registers that are not used after this block, so
+   *                         their values can be deleted
+   */
+  ExecutorInfos(std::unordered_set<RegisterId> inputRegisters,
+                std::unordered_set<RegisterId> outputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear)
-      : _inReg(inputRegister),
-        _outReg(outputRegister),
+      : _inRegs(std::move(inputRegisters)),
+        _outRegs(std::move(outputRegisters)),
         _numInRegs(nrInputRegisters),
         _numOutRegs(nrOutputRegisters),
         _registersToKeep(),
         _registersToClear(std::move(registersToClear)) {
-    TRI_ASSERT(_inReg < nrInputRegisters);
-    TRI_ASSERT(_outReg < nrOutputRegisters);
+    for (RegisterId const inReg : inputRegisters) {
+      TRI_ASSERT(inReg < nrInputRegisters);
+    }
+    for (RegisterId const outReg : outputRegisters) {
+      TRI_ASSERT(outReg < nrOutputRegisters);
+    }
     TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
     for (RegisterId i = 0; i < nrInputRegisters; i++) {
       if (_registersToClear.find(i) == _registersToClear.end()) {
@@ -63,28 +78,45 @@ class ExecutorInfos {
                nrInputRegisters);
   }
 
-  ExecutorInfos() = default;
   ExecutorInfos(ExecutorInfos &&) = default;
   ExecutorInfos(ExecutorInfos const&) = delete;
   ~ExecutorInfos() = default;
 
   /**
-   * @brief Get the input register the Executor is allowed to read.
+   * @brief Get the input registers the Executor is allowed to read. This has
+   *        little to do with numberOfInputRegisters(), except that each input
+   *        register index returned here is smaller than
+   *        numberOfInputRegisters().
    *
-   * @return The index of the input register.
+   * @return The indices of the input registers.
    */
-  RegisterId getInput() const { return _inReg; }
+  std::unordered_set<RegisterId> getInputRegisters() const { return _inRegs; }
 
   /**
-   * @brief Get the output register the Executor is allowed to write to.
+   * @brief Get the output registers the Executor is allowed to write. This has
+   *        little to do with numberOfOutputRegisters(), except that each output
+   *        register index returned here is smaller than
+   *        numberOfOutputRegisters(). They may or may not be smaller than the
+   *        numberOfInputRegisters(), i.e. they may already be allocated in the
+   *        input blocks.
    *
-   * @return The index of the output register.
+   * @return The indices of the output registers.
    */
-  RegisterId getOutput() const { return _outReg; }
+  std::unordered_set<RegisterId> getOutputRegisters() const { return _outRegs; }
 
-  size_t numberOfInputRegisters() const { return _numInRegs; }
+  /**
+  * @brief Total number of registers in input AqlItemBlocks. Not to be confused
+  *        with the input registers the current Executor actually reads. See
+  *        getInputRegisters() for that.
+  */
+  RegisterId numberOfInputRegisters() const { return _numInRegs; }
 
-  size_t numberOfOutputRegisters() const { return _numOutRegs; }
+  /**
+  * @brief Total number of registers in output AqlItemBlocks. Not to be confused
+  *        with the output registers the current Executor actually writes. See
+  *        getOutputRegisters() for that.
+  */
+  RegisterId numberOfOutputRegisters() const { return _numOutRegs; }
 
   std::unordered_set<RegisterId> const& registersToKeep() const {
     return _registersToKeep;
@@ -96,13 +128,13 @@ class ExecutorInfos {
 
  private:
 
-  RegisterId _inReg;
+  std::unordered_set<RegisterId> _inRegs;
 
-  RegisterId _outReg;
+  std::unordered_set<RegisterId> _outRegs;
 
-  size_t _numInRegs;
+  RegisterId _numInRegs;
 
-  size_t _numOutRegs;
+  RegisterId _numOutRegs;
 
   std::unordered_set<RegisterId> _registersToKeep;
 

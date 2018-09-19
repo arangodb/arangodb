@@ -49,7 +49,7 @@ SCENARIO("FilterExecutor", "[AQL][EXECUTOR]") {
   ResourceMonitor monitor;
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
-  ExecutorInfos infos(0, 0, 1, 1, {});
+  FilterExecutorInfos infos(0, 1, 1, {});
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

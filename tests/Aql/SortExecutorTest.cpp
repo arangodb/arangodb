@@ -85,7 +85,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   SortRegister sortReg(0, sl, &compareAqlValues);
   sortRegisters.emplace_back(std::move(sortReg));
 
-  SortExecutorInfos infos(0, 0, 1, 1, {}, &trx, std::move(sortRegisters), false);
+  SortExecutorInfos infos(std::move(sortRegisters), 1, 1, {}, &trx, false);
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;

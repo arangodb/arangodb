@@ -39,12 +39,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister,
+    RegisterId inputRegister_, RegisterId outputRegister_,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx)
-    : ExecutorInfos(inputRegister, outputRegister, nrInputRegisters,
+    : ExecutorInfos({inputRegister_}, {outputRegister_}, nrInputRegisters,
                     nrOutputRegisters, std::move(registersToClear)),
-      _trx(trx) {
+      _trx(trx),
+      _inputRegister(inputRegister_),
+      _outputRegister(outputRegister_) {
   TRI_ASSERT(trx != nullptr);
 }
 
@@ -78,7 +80,7 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
       return {_rowState, NoStats{}};
     }
 
-    AqlValue const& value = _currentRow.getValue(_infos.getInput());
+    AqlValue const& value = _currentRow.getValue(_infos.getInputRegister());
 
     if (_inputArrayPosition == 0) {
       // store the length into a local variable
@@ -108,7 +110,7 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
           getAqlValue(value, _inputArrayPosition, mustDestroy);
       AqlValueGuard guard(innerValue, mustDestroy);
 
-      output.setValue(_infos.getOutput(), _currentRow, innerValue);
+      output.setValue(_infos.getOutputRegister(), _currentRow, innerValue);
       // TODO: clarify if we need to release the guard
 
       // set position to +1 for next iteration after new fetchRow

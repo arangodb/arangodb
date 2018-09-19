@@ -49,11 +49,12 @@ class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
  public:
-  EnumerateListExecutorInfos(
-      RegisterId inputRegister, RegisterId outputRegister,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      transaction::Methods* trx);
+  EnumerateListExecutorInfos(RegisterId inputRegister,
+                             RegisterId outputRegister,
+                             RegisterId nrInputRegisters,
+                             RegisterId nrOutputRegisters,
+                             std::unordered_set<RegisterId> registersToClear,
+                             transaction::Methods* trx);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos &&) = default;
@@ -62,8 +63,17 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
 
   arangodb::transaction::Methods* trx() const;
 
+  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  RegisterId getOutputRegister() const noexcept { return _outputRegister; };
+
  private:
   arangodb::transaction::Methods* _trx;
+
+  // These two are exactly the values in the parent members
+  // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
+  // getInputRegisters() and getOutputRegisters().
+  RegisterId _inputRegister;
+  RegisterId _outputRegister;
 };
 
 /**
