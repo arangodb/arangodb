@@ -411,6 +411,7 @@ if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
   add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
+  add_definitions(-D_HAS_AUTO_PTR_ETC=1) #allow autopointer even when using c++17 / required for boost and other projects
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
