@@ -482,6 +482,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
 
     uint64_t returned = static_cast<uint64_t>(_returned);
     _cursor->skip(atMost - returned, returned);
+    _engine->_stats.scannedIndex += returned;
     _returned = static_cast<size_t>(returned);
 
     return true;
