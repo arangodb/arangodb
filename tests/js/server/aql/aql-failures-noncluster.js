@@ -224,44 +224,48 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortBlock2 : function () {
-      internal.debugSetFailAt("SortBlock::doSortingInner");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-    
-    testSortBlock3 : function () {
-      internal.debugSetFailAt("SortBlock::doSortingCache");
-      c.ensureSkiplist("value");
-      assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
-    },
+    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
+    // testSortBlock2 : function () {
+    //   internal.debugSetFailAt("SortBlock::doSortingInner");
+    //   assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
+    //   assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT key RETURN key");
+    //   assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
+    // },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortBlock4 : function () {
-      internal.debugSetFailAt("SortBlock::doSortingNext1");
-      c.ensureSkiplist("value");
-      assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
-    },
+    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
+    // testSortBlock3 : function () {
+    //   internal.debugSetFailAt("SortBlock::doSortingCache");
+    //   c.ensureSkiplist("value");
+    //   assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
+    // },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortBlock5 : function () {
-      internal.debugSetFailAt("SortBlock::doSortingNext2");
-      // we need values that are >= 16 bytes long
-      assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i._key SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
-      assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
-      assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value2 SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
-    },
+    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
+    // testSortBlock4 : function () {
+    //   internal.debugSetFailAt("SortBlock::doSortingNext1");
+    //   c.ensureSkiplist("value");
+    //   assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
+    // },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test failure
+////////////////////////////////////////////////////////////////////////////////
+
+    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
+    // testSortBlock5 : function () {
+    //   internal.debugSetFailAt("SortBlock::doSortingNext2");
+    //   // we need values that are >= 16 bytes long
+    //   assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i._key SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
+    //   assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
+    //   assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value2 SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
+    // },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
