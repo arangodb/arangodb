@@ -1070,24 +1070,3 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   return ChecksumResult(std::move(b));
 }
 
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
-  if (!checksumSlice.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
-    );
-  }
-
-  auto checksum = checksumSlice.copyString();
-
-  if (checksum != referenceChecksum) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "'checksum' is wrong. Expected: "
-        + referenceChecksum
-        + ". Actual: " + checksum
-    );
-  }
-
-  return Result();
-}

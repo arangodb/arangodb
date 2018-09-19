@@ -660,11 +660,6 @@ constexpr int TRI_ERROR_REPLICATION_NO_START_TICK                               
 /// tick, but that start tick is not present on the logger server anymore.
 constexpr int TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      = 1414;
 
-/// 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
-/// "the checksum format is wrong"
-///  "Will be raised when the format of the checksum is wrong")
-constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       = 1415;
-
 /// 1416: ERROR_REPLICATION_WRONG_CHECKSUM
 /// "wrong checksum"
 /// Will be raised when a new born follower submits a wrong checksum
