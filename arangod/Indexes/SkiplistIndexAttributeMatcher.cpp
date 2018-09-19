@@ -160,11 +160,16 @@ void SkiplistIndexAttributeMatcher::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(idx, op->getMember(0), op->getMember(1), op, reference,
                             found, nonNullAttributes, isExecution)) {
-          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
-          if (av > 1) {
-            // attr IN [ a, b, c ]  =>  this will produce multiple items, so
-            // count them!
-            values += av - 1;
+          if (op->getMember(1)->isAttributeAccessForVariable(reference, false)) {
+            // 'abc' IN doc.attr[*]
+            ++values;
+          } else {
+            size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
+            if (av > 1) {
+              // attr IN [ a, b, c ]  =>  this will produce multiple items, so
+              // count them!
+              values += av - 1;
+            }
           }
         }
         break;
@@ -176,6 +181,7 @@ void SkiplistIndexAttributeMatcher::matchAttributes(
 }
 
 bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
@@ -254,12 +260,10 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
       return true;
     }
     
-    if (estimatedItems >= values) {
-      TRI_ASSERT(itemsInIndex > 0);
-      
-      estimatedItems = values;
-      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
-    }
+    estimatedItems = values;
+    // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
+    estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+    
     // cost is already low... now slightly prioritize unique indexes
     estimatedCost *= 0.995 - 0.05 * (idx->fields().size() - 1);
     return true;
@@ -272,11 +276,66 @@ bool SkiplistIndexAttributeMatcher::supportsFilterCondition(
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
     estimatedItems = static_cast<size_t>((std::max)(
-                                                    static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+        static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+    
+    // check if the index has a selectivity estimate ready
+    if (idx->hasSelectivityEstimate() &&
+        attributesCoveredByEquality == idx->fields().size()) {
+      double estimate = idx->selectivityEstimate();
+      if (estimate > 0.0) {
+        estimatedItems = static_cast<size_t>(1.0 / estimate);
+      }
+    } else if (attributesCoveredByEquality > 0) {
+      TRI_ASSERT(attributesCovered > 0);
+      // the index either does not have a selectivity estimate, or not all
+      // of its attributes are covered by the condition using an equality lookup
+      // however, if the search condition uses equality lookups on the prefix
+      // of the index, then we can check if there is another index which is just
+      // indexing the prefix, and "steal" the selectivity estimate from that index
+      // for example, if the condition is "doc.a == 1 && doc.b > 2", and the current
+      // index is created on ["a", "b"], then we will not use the selectivity
+      // estimate of the current index (due to the range condition used for the second
+      // index attribute). however, if there is another index on just "a", we know
+      // that the current index is at least as selective as the index on the single
+      // attribute. and that the extra condition we have will make it even more
+      // selectivity. so in this case we will re-use the selectivity estimate from
+      // the other index, and are happy.
+      for (auto const& otherIdx : allIndexes) {
+        auto const* other = otherIdx.get();
+        if (other == idx || !other->hasSelectivityEstimate()) {
+          continue;
+        }
+        auto const& otherFields = other->fields();
+        if (otherFields.size() >= attributesCovered) {
+          // other index has more fields than we have, or the same amount.
+          // then it will not be helpful
+          continue;
+        }
+        size_t matches = 0;
+        for (size_t i = 0; i < otherFields.size(); ++i) {
+          if (otherFields[i] != idx->fields()[i]) {
+            break;
+          }
+          ++matches;
+        }
+        if (matches == otherFields.size()) {
+          double estimate = other->selectivityEstimate();
+          if (estimate > 0.0) {
+            // reuse the estimate from the other index
+            estimatedItems = static_cast<size_t>(1.0 / estimate);
+            break;
+          }
+        }
+      }
+    }
+
     if (itemsInIndex == 0) {
       estimatedCost = 0.0;
     } else {
+      // lookup cost is O(log(n))
       estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+      // slightly prefer indexes that cover more attributes
+      estimatedCost -= (idx->fields().size() - 1) * 0.01;
     }
     return true;
   }

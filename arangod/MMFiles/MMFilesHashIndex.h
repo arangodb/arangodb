@@ -253,7 +253,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
   size_t memory() const override;
 
@@ -280,7 +280,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool hasBatchInsert() const override { return true; }
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
