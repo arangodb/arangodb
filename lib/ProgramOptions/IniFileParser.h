@@ -25,10 +25,11 @@
 
 #include "Basics/FileUtils.h"
 
-#include <fstream>
 #include <regex>
+#include <sstream>
 
 #include "ProgramOptions/ProgramOptions.h"
+#include <unicode/unistr.h>
 
 namespace arangodb {
 namespace options {
@@ -68,23 +69,15 @@ class IniFileParser {
           "unable to open configuration file: no configuration file specified");
     }
 
-    std::ifstream ifs(filename, std::ifstream::in);
-
-    if (!ifs.is_open()) {
-      return _options->fail("unable to open configuration file '" + filename +
-                            "'");
-    }
-
+    auto buf = arangodb::basics::FileUtils::slurp(filename);
     bool isCommunity = false;
     bool isEnterprise = false;
     std::string currentSection;
     size_t lineNumber = 0;
-
-    while (ifs.good()) {
-      std::string line;
+    
+    std::istringstream iss(buf);
+    for (std::string line; std::getline(iss, line); ) {
       ++lineNumber;
-
-      std::getline(ifs, line);
 
       if (std::regex_match(line, _matchers.comment)) {
         // skip over comments

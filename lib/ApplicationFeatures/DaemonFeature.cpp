@@ -148,13 +148,13 @@ void DaemonFeature::checkPidFile() {
       LOG_TOPIC(INFO, Logger::STARTUP) << "pid-file '" << _pidFile
                                        << "' already exists, verifying pid";
 
-      std::ifstream f(_pidFile.c_str());
+      auto oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
 
       // file can be opened
-      if (f) {
+      if (oldPidS.length() > 0) {
         TRI_pid_t oldPid;
 
-        f >> oldPid;
+        oldPid = std::stol(oldPidS);
 
         if (oldPid == 0) {
           LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
@@ -316,15 +316,15 @@ void DaemonFeature::remapStandardFileDescriptors() {
 }
 
 void DaemonFeature::writePidFile(int pid) {
-  std::ofstream out(_pidFile.c_str(), std::ios::trunc);
-
-  if (!out) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
-                                              << _pidFile << "'";
-    FATAL_ERROR_EXIT();
+  try {
+    arangodb::basics::FileUtils::spit(_pidFile, std::to_string(pid), true);
   }
-
-  out << pid;
+  catch (arangodb::basics::Exception const& ex) {
+      int res = ex.code();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
+                                                << _pidFile << "' - "
+                                                << TRI_errno_string(res);
+  }
 }
 
 int DaemonFeature::waitForChildProcess(int pid) {

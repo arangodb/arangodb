@@ -364,7 +364,7 @@ void ConsoleFeature::print(std::string const& message) {
 
 void ConsoleFeature::openLog() {
   if (!_auditFile.empty()) {
-    _toAuditFile = fopen(_auditFile.c_str(), "w");
+    _toAuditFile = TRI_FOPEN(_auditFile.c_str(), "w");
 
     std::ostringstream s;
 

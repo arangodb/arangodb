@@ -455,10 +455,11 @@ std::string ServerState::getPersistedId() {
     std::string uuidFilename = getUuidFilename();
     std::ifstream ifs(uuidFilename);
 
-    std::string id;
-    if (ifs.is_open()) {
-      std::getline(ifs, id);
-      ifs.close();
+    auto uuidBuf = arangodb::basics::FileUtils::slurp(uuidFilename);
+    if (uuidBuf.length() > 0) {
+      std::istringstream iss(uuidBuf);
+      std::string id;
+      std::getline(iss, id);
       return id;
     }
   }
