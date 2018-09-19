@@ -80,15 +80,15 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
       return {_rowState, NoStats{}};
     }
 
-    AqlValue const& value = _currentRow.getValue(_infos.getInputRegister());
+    AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
 
     if (_inputArrayPosition == 0) {
       // store the length into a local variable
       // so we don't need to calculate length every time
-      if (value.isDocvec()) {
-        _inputArrayLength = value.docvecSize();
+      if (inputList.isDocvec()) {
+        _inputArrayLength = inputList.docvecSize();
       } else {
-        _inputArrayLength = value.length();
+        _inputArrayLength = inputList.length();
       }
     }
 
@@ -104,14 +104,14 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
         return {_rowState, NoStats{}};
       }
     } else {
-      bool mustDestroy = false;
-
-      AqlValue innerValue =
-          getAqlValue(value, _inputArrayPosition, mustDestroy);
+      bool mustDestroy;
+      AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
       AqlValueGuard guard(innerValue, mustDestroy);
 
       output.setValue(_infos.getOutputRegister(), _currentRow, innerValue);
-      // TODO: clarify if we need to release the guard
+      // The output row (respectively the AqlItemBlock underneath) is now
+      // responsible for the memory.
+      guard.steal();
 
       // set position to +1 for next iteration after new fetchRow
       _inputArrayPosition++;
