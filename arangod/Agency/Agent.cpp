@@ -1756,15 +1756,15 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         auto tmp = _config;
         tmp.upsertPool(pslice, id);
         auto query = std::make_shared<VPackBuilder>();
-        { VPackArrayBuilder trs(query.get()); //[
-          { VPackArrayBuilder tr(query.get()); //[
-            { VPackObjectBuilder o(query.get()); //{
-              query->add(VPackValue(RECONFIGURE)); //.agency :
-              { VPackObjectBuilder o(query.get()); // { op:set 
-                query->add("op", VPackValue("set")); // new: 
-                query->add(VPackValue("new"));       // {
-                { VPackObjectBuilder c(query.get()); // }
-                  tmp.toBuilder(*query); }}}}} // ]]
+        { VPackArrayBuilder trs(query.get());
+          { VPackArrayBuilder tr(query.get());
+            { VPackObjectBuilder o(query.get());
+              query->add(VPackValue(RECONFIGURE));
+              { VPackObjectBuilder o(query.get());
+                query->add("op", VPackValue("set"));
+                query->add(VPackValue("new"));
+                { VPackObjectBuilder c(query.get());
+                  tmp.toBuilder(*query); }}}}}
         
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "persisting new agency configuration via RAFT: " << query->toJson();
@@ -1773,16 +1773,11 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
         write_ret_t ret;
         try {
           ret = write(query, WriteMode(false,true));
-        } catch (std::exception const& e) {
-          err = std::string("failed to write new agency to RAFT") + e.what();
-          LOG_TOPIC(ERR, Logger::AGENCY) << err;
-        }
-      
-        // Single write in transaction:
-        arangodb::consensus::index_t max_index = 0;
-        try {
-          max_index =
-            *std::max_element(ret.indices.begin(), ret.indices.end());
+          arangodb::consensus::index_t max_index = 0;
+          if (ret.indices.size() > 0) {
+            max_index =
+              *std::max_element(ret.indices.begin(), ret.indices.end());
+          }
           if (max_index > 0) { // We have a RAFT index. Wait for the RAFT commit.
             auto result = waitFor(max_index);
             if (result != Agent::raft_commit_t::OK) {
@@ -1792,13 +1787,12 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
             err = "failed to retrieve RAFT index for updated agency endpoints";
           }
         } catch (std::exception const& e) {
-          err = std::string(
-            "failed to retrieve RAFT index for updated agency endpoints") + e.what();
-          LOG_TOPIC(WARN, Logger::AGENCY) << err;
+          err = std::string("failed to write new agency to RAFT") + e.what();
+          LOG_TOPIC(ERR, Logger::AGENCY) << err;
         }
-        
+      
       } else {
-        
+        err = std::string("lost leadership in the meantime, please try again");
       }
       
     } else {
