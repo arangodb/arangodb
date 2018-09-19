@@ -51,6 +51,12 @@ class ExecutorInfos {
    * @param nrOutputRegisters Width of output AqlItemBlocks
    * @param registersToClear Registers that are not used after this block, so
    *                         their values can be deleted
+   *
+   * Note that the output registers can be found in the ExecutionNode via
+   * getVariablesSetHere() and translated as follows:
+   *   auto it = getRegisterPlan()->varInfo.find(varSetHere->id);
+   *   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+   *   RegisterId register = it->second.registerId;
    */
   ExecutorInfos(std::unordered_set<RegisterId> inputRegisters,
                 std::unordered_set<RegisterId> outputRegisters,
