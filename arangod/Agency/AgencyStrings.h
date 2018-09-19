@@ -37,7 +37,7 @@ constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
 constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 
 constexpr char const* PLAN = "Plan"; 
-constexpr char const* PLAN_VERSION = "Plan/Version"
+constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
