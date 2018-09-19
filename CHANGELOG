@@ -1,6 +1,9 @@
 devel
 -----
 
+* the query editor within the web ui is now catching http 501 responses
+  propertly.
+
 * upgraded JEMalloc version to 5.1.0
 
 * use `-std=c++14` for ArangoDB compilation

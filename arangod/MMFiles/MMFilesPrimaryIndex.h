@@ -184,7 +184,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const& = StringRef()) const override {
     return 1.0;
   }
 
@@ -261,7 +261,8 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   void invokeOnAllElementsForRemoval(
       std::function<bool(MMFilesSimpleIndexElement const&)>);
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

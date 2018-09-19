@@ -502,7 +502,7 @@ void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
 
 MMFilesSkiplistIterator::MMFilesSkiplistIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::MMFilesSkiplistIndex const* index,
+    ManagedDocumentResult* mdr, arangodb::MMFilesSkiplistIndex const* index,
     TRI_Skiplist const* skiplist, size_t numPaths,
     std::function<int(void*, MMFilesSkiplistIndexElement const*,
                       MMFilesSkiplistIndexElement const*,
@@ -510,7 +510,7 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
     : IndexIterator(collection, trx),
       _skiplistIndex(skiplist),
-      _context(trx, collection, mmdr, index->fields().size()),
+      _context(trx, collection, mdr, index->fields().size()),
       _numPaths(numPaths),
       _reverse(reverse),
       _cursor(nullptr),
@@ -1176,7 +1176,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 }
 
 IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult* mdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -1207,7 +1207,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
     return new MMFilesSkiplistIterator(
       &_collection,
       trx,
-      mmdr,
+      mdr,
       this,
       _skiplistIndex,
       numPaths(),
@@ -1223,7 +1223,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   return new MMFilesSkiplistIterator(
     &_collection,
     trx,
-    mmdr,
+    mdr,
     this,
     _skiplistIndex,
     numPaths(),
@@ -1234,10 +1234,11 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
 }
 
 bool MMFilesSkiplistIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return SkiplistIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                 estimatedItems, estimatedCost);
 }
 
