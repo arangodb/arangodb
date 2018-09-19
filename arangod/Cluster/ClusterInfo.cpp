@@ -3307,8 +3307,6 @@ void ClusterInfo::loadCurrentMappings() {
 
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
-      decltype(_dbserverIdMap) newDBServerIdMap;
-      decltype(_nameMap) newNameMap;
 
       for (auto const& mapping : VPackObjectIterator(mappings)) {
         ServerID fullId = mapping.key.copyString();
@@ -3331,9 +3329,7 @@ void ClusterInfo::loadCurrentMappings() {
       // Now set the new value:
       {
         WRITE_LOCKER(writeLocker, _mappingsProt.lock);
-        _nameMap.swap(newNameMap);
         _coordinatorIdMap.swap(newCoordinatorIdMap);
-        _dbserverIdMap.swap(newDBServerIdMap);
         _mappingsProt.doneVersion = storedVersion;
         _mappingsProt.isValid = true;
       }

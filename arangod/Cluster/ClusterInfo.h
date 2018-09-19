@@ -703,8 +703,6 @@ class ClusterInfo {
 
   // Mappings between short names/IDs and full server IDs
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
-  std::unordered_map<ServerShortID, ServerID> _dbserverIdMap;
-  std::unordered_map<ServerShortName, ServerID> _nameMap;
   ProtectionData _mappingsProt;
 
   std::shared_ptr<VPackBuilder> _plan;
