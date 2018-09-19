@@ -1593,10 +1593,15 @@ constexpr int TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS                         
 /// An AQL block wrote an output register twice
 constexpr int TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE                             = 2203;
 
-/// 2204: ERROR_INPUT_REGISTERS_NOT_COPIED
+/// 2204: ERROR_WROTE_IN_WRONG_REGISTER
+/// "An AQL block wrote in a register that is not its output"
+/// An AQL block wrote in a register that is not its output
+constexpr int TRI_ERROR_WROTE_IN_WRONG_REGISTER                                 = 2204;
+
+/// 2205: ERROR_INPUT_REGISTERS_NOT_COPIED
 /// "An AQL block did not copy its input registers"
 /// An AQL block did not copy its input registers
-constexpr int TRI_ERROR_INPUT_REGISTERS_NOT_COPIED                              = 2204;
+constexpr int TRI_ERROR_INPUT_REGISTERS_NOT_COPIED                              = 2205;
 
 /// 3000: ERROR_MALFORMED_MANIFEST_FILE
 /// "failed to parse manifest file"

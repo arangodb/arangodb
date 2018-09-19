@@ -140,13 +140,17 @@ class OutputAqlItemRow {
   }
 
   size_t numRegistersToWrite() const {
-    return executorInfos().numberOfOutputRegisters() -
-           executorInfos().numberOfInputRegisters();
+    return executorInfos().getOutputRegisters().size();
   }
 
   bool allValuesWritten() const {
     return _numValuesWritten == numRegistersToWrite();
   };
+
+  bool isOutputRegister(RegisterId regId) {
+    auto const& outRegs = executorInfos().getOutputRegisters();
+    return outRegs.find(regId) != outRegs.end();
+  }
 };
 
 }  // namespace aql

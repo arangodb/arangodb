@@ -97,6 +97,12 @@ class InputAqlItemRow {
   AqlItemBlockId _blockId;
 };
 
+// If you want to relax this requirement, make sure its necessary and that it
+// doesn't affect the performance.
+static_assert(
+    std::is_trivially_copyable<InputAqlItemRow>(),
+    "InputAqlItemRow is created and copied very often, so keep fast to copy.");
+
 }  // namespace aql
 }  // namespace arangodb
 #endif
