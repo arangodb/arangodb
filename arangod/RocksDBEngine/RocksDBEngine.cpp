@@ -428,13 +428,13 @@ void RocksDBEngine::start() {
       // we only want real errors
       _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
     }
-  } 
+  }
 
   std::shared_ptr<RocksDBLogger> logger;
- 
+
   if (!opts->_useFileLogging) {
     // if option "--rocksdb.use-file-logging" is set to false, we will use
-    // our own logger that logs to ArangoDB's logfile 
+    // our own logger that logs to ArangoDB's logfile
     logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
     _options.info_log = logger;
 
@@ -462,6 +462,8 @@ void RocksDBEngine::start() {
   // use slightly space-optimized format version 3
   tableOptions.format_version = 3;
   tableOptions.block_align = opts->_blockAlignDataBlocks;
+  tableOptions.data_block_index_type = rocksdb::BlockBasedTableOptions::DataBlockIndexType::kDataBlockBinaryAndHash;
+  tableOptions.data_block_hash_table_util_ratio = 0.75;
 
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(tableOptions));
@@ -1210,7 +1212,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   auto* coll = toRocksDBCollection(collection);
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
-  
+
   rocksdb::WriteOptions wo;
 
   // If we get here the collection is safe to drop.
@@ -1548,8 +1550,8 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
   }
   return it->second;
 }
-   
-   
+
+
 /// @brief return a list of the currently open WAL files
 std::vector<std::string> RocksDBEngine::currentWalFiles() const {
   rocksdb::VectorLogPtr files;
@@ -1716,7 +1718,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   iterateBounds(bounds, [&](rocksdb::Iterator* it) {
     RocksDBKey key(it->key());
     RocksDBValue value(RocksDBEntryType::Collection, it->value());
-    
+
     uint64_t const objectId =
     basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
     auto const cnt = _settingsManager->loadCounter(objectId);
@@ -1735,7 +1737,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         bool unique = basics::VelocyPackHelper::getBooleanValue(
           it, StaticStrings::IndexUnique, false
         );
-        
+
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
         // edge index drop fails otherwise
@@ -1752,7 +1754,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
 #endif
       }
     }
-    
+
 
     // delete documents
     RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId);
@@ -1778,7 +1780,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     return res;
   }
 
-  
+
   // remove database meta-data
   RocksDBKey key;
   key.constructDatabase(id);

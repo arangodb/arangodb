@@ -74,6 +74,13 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   /// @brief A helper function for the actual VelocyPack comparison
   //////////////////////////////////////////////////////////////////////////////
   int compareIndexedValues(VPackSlice const& lhs, VPackSlice const& rhs) const;
+
+  // This returning true is the default of the rocksdb::Comparator
+  //
+  // the function is explicitly restated here to make sure it never returns
+  // false. Because this comparator compares arrays, that have
+  // different byte contents, with a result that can be equal.
+  virtual bool CanKeysWithDifferentByteContentsBeEqual() const { return true; }
 };
 
 }  // namespace arangodb
