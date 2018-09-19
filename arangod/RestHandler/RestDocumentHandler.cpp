@@ -46,11 +46,11 @@ RestDocumentHandler::RestDocumentHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response) {}
 
 // returns the queue name
-size_t RestDocumentHandler::queue() const { 
+size_t RestDocumentHandler::queue() const {
   if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::BACKGROUND_QUEUE; 
+    return JobQueue::BACKGROUND_QUEUE;
   }
-  return JobQueue::STANDARD_QUEUE; 
+  return JobQueue::STANDARD_QUEUE;
 }
 
 RestStatus RestDocumentHandler::execute() {
@@ -574,6 +574,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
+  bool const isMultiple = search.isArray();
   OperationResult result = trx.remove(collectionName, search, opOptions);
 
   res = trx.finish(result.result);
@@ -590,7 +591,7 @@ bool RestDocumentHandler::deleteDocument() {
 
   generateDeleted(result, collectionName,
                   TRI_col_type_e(trx.getCollectionType(collectionName)),
-                  ctx->getVPackOptionsForDump());
+                  ctx->getVPackOptionsForDump(), isMultiple);
   return true;
 }
 
