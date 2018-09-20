@@ -73,10 +73,11 @@ ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  if(!_outputItemRow) {
-    auto newBlock = this->requestBlock(atMost, _infos.numberOfOutputRegisters());
-    _outputItemRow = std::make_unique<OutputAqlItemRow>(
-      std::unique_ptr<AqlItemBlock>{newBlock}, _infos);
+  if (!_outputItemRow) {
+    auto newBlock =
+        requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
+    _outputItemRow =
+        std::make_unique<OutputAqlItemRow>(std::move(newBlock), _infos);
   }
 
   // TODO It's not very obvious that `state` will be initialized, because
@@ -146,16 +147,18 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(
   return traceSkipSomeEnd(res.first, skipped);
 }
 
-template<class Executor>
+template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlockImpl<Executor>::traceGetSomeEnd(ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
+ExecutionBlockImpl<Executor>::traceGetSomeEnd(
+    ExecutionState state, std::unique_ptr<AqlItemBlock> result) {
   ExecutionBlock::traceGetSomeEnd(result.get(), state);
   return {state, std::move(result)};
 }
 
-template<class Executor>
+template <class Executor>
 std::pair<ExecutionState, size_t>
-ExecutionBlockImpl<Executor>::traceSkipSomeEnd(ExecutionState state, size_t skipped) {
+ExecutionBlockImpl<Executor>::traceSkipSomeEnd(ExecutionState state,
+                                               size_t skipped) {
   ExecutionBlock::traceSkipSomeEnd(skipped, state);
   return {state, skipped};
 }
@@ -176,6 +179,18 @@ ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
   new (&_executor) Executor(_rowFetcher, _infos);
 
   return ExecutionBlock::initializeCursor(items, pos);
+}
+
+template <class Executor>
+std::unique_ptr<AqlItemBlockShell>
+ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems,
+                                                  RegisterId nrRegs) {
+  AqlItemBlock* block = requestBlock(nrItems, nrRegs);
+  std::unique_ptr<AqlItemBlockShell> blockShell =
+      std::make_unique<AqlItemBlockShell>(
+          _engine->itemBlockManager(), std::unique_ptr<AqlItemBlock>{block},
+          nullptr, _infos.getOutputRegisters(), -1);
+  return blockShell;
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;

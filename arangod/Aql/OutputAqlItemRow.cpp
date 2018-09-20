@@ -33,16 +33,17 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
-                                   const ExecutorInfos& executorInfos)
-    : _block(std::move(block)),
+OutputAqlItemRow::OutputAqlItemRow(
+  std::unique_ptr<AqlItemBlockShell> blockShell,
+  const ExecutorInfos &executorInfos
+)
+    : _blockShell(std::move(blockShell)),
       _baseIndex(0),
       _executorInfos(executorInfos),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0) {
-  TRI_ASSERT(_block != nullptr);
-  TRI_ASSERT(_block->getNrRegs() == _executorInfos.numberOfOutputRegisters());
+  TRI_ASSERT(_blockShell != nullptr);
 }
 
 void OutputAqlItemRow::setValue(RegisterId registerId,
@@ -58,12 +59,12 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS);
   }
-  if (!_block->getValueReference(_baseIndex, registerId).isNone()) {
+  if (!block().getValueReference(_baseIndex, registerId).isNone()) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
   }
 
-  _block->emplaceValue(_baseIndex, registerId, value);
+  block().emplaceValue(_baseIndex, registerId, value);
   _numValuesWritten++;
   // allValuesWritten() must be called only *after* _numValuesWritten was
   // increased.
@@ -102,12 +103,12 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        _block->setValue(_baseIndex, itemId, clonedValue);
+        block().setValue(_baseIndex, itemId, clonedValue);
         guard.steal();
       }
     } else {
       TRI_ASSERT(_baseIndex > 0);
-      _block->copyValuesFromRow(_baseIndex, executorInfos().registersToKeep(),
+      block().copyValuesFromRow(_baseIndex, executorInfos().registersToKeep(),
                                 _baseIndex - 1);
     }
   }

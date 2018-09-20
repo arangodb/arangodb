@@ -46,7 +46,7 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
+  OutputAqlItemRow(std::unique_ptr<AqlItemBlockShell> blockShell,
                    const ExecutorInfos& executorInfos);
 
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
@@ -54,7 +54,7 @@ class OutputAqlItemRow {
 
   void copyRow(InputAqlItemRow const& sourceRow);
 
-  std::size_t getNrRegisters() const { return _block->getNrRegs(); }
+  std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -80,16 +80,17 @@ class OutputAqlItemRow {
   }
 
   std::unique_ptr<AqlItemBlock> stealBlock() {
+    auto block = _blockShell->stealBlockCompat();
     if (numRowsWritten() == 0) {
       // blocks may not be empty
-      _block.reset(nullptr);
+      block.reset(nullptr);
     } else {
-      _block->shrink(numRowsWritten());
+      block->shrink(numRowsWritten());
     }
-    return std::move(_block);
+    return block;
   }
 
-  bool isFull() { return numRowsWritten() >= _block->size(); }
+  bool isFull() { return numRowsWritten() >= block().size(); }
 
   size_t numRowsWritten() const noexcept {
     if (produced()) {
@@ -103,7 +104,7 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::unique_ptr<AqlItemBlock> _block;
+  std::unique_ptr<AqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -141,7 +142,7 @@ class OutputAqlItemRow {
   }
 
   size_t numRegistersToWrite() const {
-    return executorInfos().getOutputRegisters()->size();
+    return _blockShell->outputRegisters().size();
   }
 
   bool allValuesWritten() const {
@@ -149,9 +150,11 @@ class OutputAqlItemRow {
   };
 
   bool isOutputRegister(RegisterId regId) {
-    auto const& outRegs = *executorInfos().getOutputRegisters();
-    return outRegs.find(regId) != outRegs.end();
+    return _blockShell->isOutputRegister(regId);
   }
+
+  AqlItemBlock const& block() const { return _blockShell->block(); }
+  AqlItemBlock& block() { return _blockShell->block(); }
 };
 
 }  // namespace aql

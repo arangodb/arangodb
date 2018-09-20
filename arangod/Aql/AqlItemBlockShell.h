@@ -25,14 +25,13 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_SHELL_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_SHELL_H
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockManager.h"
 
 #include <memory>
 
 namespace arangodb {
 namespace aql {
-
-class AqlItemBlock;
 
 // Deleter usable for smart pointers that return an AqlItemBlock to its manager
 class AqlItemBlockDeleter {
@@ -91,6 +90,12 @@ class AqlItemBlockShell {
         _inputRegisters(std::move(inputRegisters_)),
         _outputRegisters(std::move(outputRegisters_)),
         _aqlItemBlockId(aqlItemBlockId_) {
+    if (_inputRegisters == nullptr) {
+      _inputRegisters = std::make_shared<decltype(_inputRegisters)::element_type>();
+    }
+    if (_outputRegisters == nullptr) {
+      _outputRegisters = std::make_shared<decltype(_outputRegisters)::element_type>();
+    }
     // An AqlItemBlockShell instance is assumed to be responsible for *exactly*
     // one AqlItemBlock. _block may never be null!
     TRI_ASSERT(_block != nullptr);
@@ -118,6 +123,14 @@ class AqlItemBlockShell {
   AqlItemBlockId blockId() const {
     TRI_ASSERT(_aqlItemBlockId >= 0);
     return _aqlItemBlockId;
+  }
+
+  /**
+  * @brief Steals the block, in a backwards-compatible unique_ptr. The shell
+  *        is broken after this.
+  */
+  std::unique_ptr<AqlItemBlock> stealBlockCompat() {
+    return std::unique_ptr<AqlItemBlock>(_block.release());
   }
 
   /**
