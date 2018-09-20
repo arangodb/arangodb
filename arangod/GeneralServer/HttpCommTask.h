@@ -23,7 +23,10 @@ class HttpCommTask final : public GeneralCommTask {
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }
-
+  
+  // whether or not this task can mix sync and async I/O
+  bool canUseMixedIO() const override;
+  
  private:
   bool processRead(double startTime) override;
   void compactify() override;
