@@ -269,3 +269,17 @@ value too low can easily overwhelm the server, while setting the value too high
 may result in high memory usage and periodic slowdowns. Value is given in
 microseconds, with a typical range of 100000 (100ms) to 10000000 (10s) and a
 default of 1000000 (1s). Use caution when changing from the default.
+
+## Get current configuration options
+
+To list the configuration options of a running `arangod` instance, you can 
+connect with an ArangoShell and invoke a transaction providing a description 
+to the _db._executeTransaction_ JavaScript function:
+
+    @startDocuBlockInline listCurrentConfigOpts
+    @EXAMPLE_ARANGOSH_OUTPUT{listCurrentConfigOpts}
+    |db._executeTransaction({ collections: {}, action: function() {
+    |  return require("internal").options(); } })
+    }
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock listCurrentConfigOpts
