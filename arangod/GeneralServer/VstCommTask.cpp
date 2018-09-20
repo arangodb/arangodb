@@ -95,6 +95,13 @@ VstCommTask::VstCommTask(GeneralServer &server, GeneralServer::IoContext &contex
       ServerFeature>("Server")
       ->vstMaxSize();
 }
+  
+// whether or not this task can mix sync and async I/O
+bool VstCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
+}
 
 /// @brief send simple response including response body
 void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
