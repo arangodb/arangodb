@@ -68,7 +68,8 @@ class SingleRowFetcherHelper : public ::arangodb::aql::SingleRowFetcher {
   uint64_t _nrCalled;
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
-  std::unique_ptr<arangodb::aql::AqlItemBlock> _itemBlock;
+  arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  std::shared_ptr<arangodb::aql::InputAqlItemBlockShell> _itemBlock;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 
@@ -95,6 +96,7 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
   uint64_t _nrRegs;
   uint64_t _nrCalled;
   arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::aql::AqlItemBlockManager _itemBlockManager;
   std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };
 

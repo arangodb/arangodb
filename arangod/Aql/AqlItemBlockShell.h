@@ -138,6 +138,10 @@ class InputAqlItemBlockShell : public AqlItemBlockShell {
 
 class OutputAqlItemBlockShell : public AqlItemBlockShell {
  public:
+  // TODO This constructor would be able to fetch a new block itself from the
+  // manager, which is needed anyway. Maybe, at least additionally, we should
+  // write a constructor that takes the block dimensions instead of the block
+  // itself for convenience.
   OutputAqlItemBlockShell(
       AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
       std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters_,

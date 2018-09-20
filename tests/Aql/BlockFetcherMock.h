@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_TESTS_BLOCK_FETCHER_MOCK_H
 
 #include "Aql/BlockFetcher.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/types.h"
 
 #include <stdint.h>
@@ -39,7 +40,7 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
  public:
   // mock methods
   std::pair<arangodb::aql::ExecutionState,
-            std::unique_ptr<arangodb::aql::AqlItemBlock>>
+            std::shared_ptr<arangodb::aql::InputAqlItemBlockShell>>
   fetchBlock() override;
 
   void returnBlock(
@@ -50,7 +51,7 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
  private:
   using FetchBlockReturnItem =
       std::pair<arangodb::aql::ExecutionState,
-                std::unique_ptr<arangodb::aql::AqlItemBlock>>;
+                std::shared_ptr<arangodb::aql::InputAqlItemBlockShell>>;
  public:
 
   // additional test methods
@@ -64,6 +65,8 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   BlockFetcherMock& andThenReturn(std::vector<FetchBlockReturnItem>);
 
   bool allBlocksFetched() const;
+  // TODO This function does not work right now with the AqlItemBlockShells,
+  // because they return the blocks to the manager
   bool allFetchedBlocksReturned() const;
   size_t numFetchBlockCalls() const;
 
@@ -77,6 +80,11 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   size_t _numFetchBlockCalls;
 
   ::arangodb::aql::RegisterId _nrRegs;
+
+  ::arangodb::aql::ResourceMonitor _monitor;
+  ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
+
+  ::arangodb::aql::InputAqlItemBlockShell::AqlItemBlockId _blockId = 0;
 };
 
 }  // namespace aql

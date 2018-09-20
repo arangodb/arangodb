@@ -79,6 +79,7 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       _nrCalled(0),
       _didWait(false),
       _resourceMonitor(),
+      _itemBlockManager(&_resourceMonitor),
       _itemBlock(nullptr),
       _lastReturnedRow{CreateInvalidInputRowHint{}} {
   if (_vPackBuffer != nullptr) {
@@ -92,11 +93,19 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
       uint64_t nrRegs = oneRow.length();
+      // Add all registers as valid input registers:
+      auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+      for (RegisterId i = 0; i < nrRegs; i++) {
+        inputRegisters->emplace(i);
+      }
       // NOTE: If this class ever gets more than one block, fetchRow() must
       // be adapted to give valid block IDs to InputAqlItemRow!
-      _itemBlock =
-          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      VPackToAqlItemBlock(_data, nrRegs, *(_itemBlock.get()));
+      _itemBlock = std::make_shared<InputAqlItemBlockShell>(
+          _itemBlockManager,
+          std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs),
+          inputRegisters, 0);
+      // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
+      VPackToAqlItemBlock(_data, nrRegs, _itemBlock->block());
     }
   }
 };
@@ -124,10 +133,10 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper::fetchRow() {
     _returnedDone = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  TRI_ASSERT(_itemBlock);
+  TRI_ASSERT(_itemBlock != nullptr);
   // Note that the blockId is hard coded to 42. If this class ever should get
   // multiple blocks, this has to be changed.
-  _lastReturnedRow = InputAqlItemRow{_itemBlock.get(), _nrCalled - 1, 42};
+  _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;
@@ -151,6 +160,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
       _nrRegs(0),
       _nrCalled(0),
       _resourceMonitor(),
+      _itemBlockManager(&_resourceMonitor),
       _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -167,8 +177,15 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
     auto itemBlock =
         std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, _nrRegs);
     VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
+    // Add all registers as valid input registers:
+    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+    for (RegisterId i = 0; i < _nrRegs; i++) {
+      inputRegisters->emplace(i);
+    }
+    auto blockShell = std::make_shared<InputAqlItemBlockShell>(
+      _itemBlockManager, std::move(itemBlock), inputRegisters, 0);
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
-    _matrix->addBlock(std::move(itemBlock));
+    _matrix->addBlock(std::move(blockShell));
   }
   if (_matrix == nullptr) {
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
