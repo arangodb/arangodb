@@ -126,7 +126,7 @@ void restrictToShard(arangodb::aql::ExecutionNode* node, std::string shardId) {
 
 struct PairHash {
   template <class T1, class T2>
-  size_t operator()(std::pair<T1, T2> const& pair) const {
+  size_t operator()(std::pair<T1, T2> const& pair) const noexcept {
     size_t first = std::hash<T1>()(pair.first);
     size_t second = std::hash<T2>()(pair.second);
 
@@ -478,27 +478,36 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
     return;
   }
 
-  if (root->type == arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR) {
-    if (root->numMembers() != 1) {
-      return;
-    }
-    root = root->getMember(0);
-    if (root == nullptr ||
-        root->type != arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
-      return;
-    }
-
-    for (size_t i = 0; i < root->numMembers(); ++i) {
-      if (root->getMember(i) != nullptr &&
-          root->getMember(i)->type ==
-              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-        findShardKeyInComparison(root->getMember(i), inputVariable, toFind,
-                                 builder);
+  switch (root->type) {
+    case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR: {
+      if (root->numMembers() != 1) {
+        return;
       }
+      root = root->getMember(0);
+      if (root == nullptr ||
+          root->type !=
+              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+        return;
+      }
+    } // falls through
+    case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_AND:
+    case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND: {
+      for (size_t i = 0; i < root->numMembers(); ++i) {
+        if (root->getMember(i) != nullptr &&
+            root->getMember(i)->type ==
+                arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+          findShardKeyInComparison(root->getMember(i), inputVariable, toFind,
+                                   builder);
+        }
+      }
+      break;
     }
-  } else if (root->type ==
-             arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
-    findShardKeyInComparison(root, inputVariable, toFind, builder);
+    case arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ: {
+      findShardKeyInComparison(root, inputVariable, toFind, builder);
+      break;
+    }
+    default:
+      break;
   }
 }
 

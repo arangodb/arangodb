@@ -959,13 +959,12 @@ void HeartbeatThread::runCoordinator() {
                 {AgencyCommManager::path(), "Target", "FailedServers"}));
 
         if (failedServersSlice.isObject()) {
-          std::vector<std::string> failedServers = {};
+          std::vector<ServerID> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
             if (server.value.isArray() && server.value.length() == 0) {
               failedServers.push_back(server.key.copyString());
             }
           }
-          // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
 
           pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
@@ -973,7 +972,7 @@ void HeartbeatThread::runCoordinator() {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr != nullptr) {
               try {
-                mngr->updatedFailedServers();
+                mngr->updatedFailedServers(failedServers);
               } catch (std::exception const& e) {
                 LOG_TOPIC(ERR, Logger::HEARTBEAT)
                 << "Got an exception in coordinator heartbeat: " << e.what();

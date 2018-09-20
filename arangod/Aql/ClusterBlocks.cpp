@@ -927,7 +927,7 @@ bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
     _lastResponse = result->result;
   }
   return true;
-};
+}
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {

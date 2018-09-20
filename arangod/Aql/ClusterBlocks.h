@@ -242,7 +242,6 @@ class RemoteBlock final : public ExecutionBlock {
   bool handleAsyncResult(ClusterCommResult* result) override;
 
  private:
-
   /**
    * @brief Handle communication errors in Async case.
    *
