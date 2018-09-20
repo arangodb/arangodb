@@ -25,7 +25,6 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/SortBlock.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/WalkerWorker.h"
