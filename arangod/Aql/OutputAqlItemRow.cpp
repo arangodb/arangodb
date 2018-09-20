@@ -34,12 +34,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-  std::unique_ptr<AqlItemBlockShell> blockShell,
-  const ExecutorInfos &executorInfos
-)
+    std::unique_ptr<AqlItemBlockShell> blockShell)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
-      _executorInfos(executorInfos),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0) {
@@ -89,7 +86,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-  for (auto itemId : *executorInfos().registersToKeep()) {
+  for (auto itemId : _blockShell->registersToKeep()) {
     // copy entries to keep
     //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
@@ -108,7 +105,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
       }
     } else {
       TRI_ASSERT(_baseIndex > 0);
-      block().copyValuesFromRow(_baseIndex, *executorInfos().registersToKeep(),
+      block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
                                 _baseIndex - 1);
     }
   }

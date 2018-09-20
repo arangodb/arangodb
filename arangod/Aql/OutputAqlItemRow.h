@@ -46,8 +46,7 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(std::unique_ptr<AqlItemBlockShell> blockShell,
-                   const ExecutorInfos& executorInfos);
+  explicit OutputAqlItemRow(std::unique_ptr<AqlItemBlockShell> blockShell);
 
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
                 AqlValue const&);
@@ -111,9 +110,6 @@ class OutputAqlItemRow {
    */
   size_t _baseIndex;
 
-  // TODO remove these in favour of using infos from AqlItemBlockShell
-  ExecutorInfos const& _executorInfos;
-
   /**
    * @brief Whether the input registers were copied from a source row.
    */
@@ -135,10 +131,6 @@ class OutputAqlItemRow {
 
   size_t nextUnwrittenIndex() const noexcept {
     return numRowsWritten();
-  }
-
-  ExecutorInfos const& executorInfos() const {
-    return _executorInfos;
   }
 
   size_t numRegistersToWrite() const {

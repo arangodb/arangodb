@@ -77,7 +77,7 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
     auto newBlock =
         requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
     _outputItemRow =
-        std::make_unique<OutputAqlItemRow>(std::move(newBlock), _infos);
+        std::make_unique<OutputAqlItemRow>(std::move(newBlock));
   }
 
   // TODO It's not very obvious that `state` will be initialized, because

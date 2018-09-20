@@ -101,6 +101,10 @@ class AqlItemBlockShell {
     return *_outputRegisters;
   };
 
+  std::unordered_set<RegisterId> const& registersToKeep() const {
+    return *_registersToKeep;
+  };
+
   bool isInputRegister(RegisterId registerId) const {
     return inputRegisters().find(registerId) != inputRegisters().end();
   }
