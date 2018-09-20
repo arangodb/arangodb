@@ -113,6 +113,11 @@ class RocksDBTransactionState final : public TransactionState {
   Result addOperation(TRI_voc_cid_t collectionId,
       TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType,
       bool& hasPerformedIntermediateCommit);
+  
+  /// @brief will perform _numRemoves = _initialNumberDocuments
+  /// be aware that this is only a valid operation under an
+  /// exclusive collection lock
+  void addTruncateOperation(TRI_voc_cid_t cid);
 
   RocksDBMethods* rocksdbMethods();
 

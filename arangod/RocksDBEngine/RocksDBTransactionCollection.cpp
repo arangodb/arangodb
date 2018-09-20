@@ -283,7 +283,7 @@ void RocksDBTransactionCollection::addTruncateOperation() {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection must be exlusively locked");
   }
-  _numRemoves = _initialNumberDocuments;
+  _numRemoves += _initialNumberDocuments + _numInserts;
 }
 
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,

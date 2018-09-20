@@ -89,7 +89,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void addOperation(TRI_voc_document_operation_e operationType,
                     TRI_voc_rid_t revisionId);
   
-  /// @brief will perform _numRemoves + _initialNumberDocuments
+  /// @brief will perform _numRemoves = _initialNumberDocuments
   /// be aware that this is only a valid operation under an
   /// exclusive collection lock
   void addTruncateOperation();

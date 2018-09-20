@@ -641,9 +641,6 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
     // range deletes and circumwent the normal rocksdb::Transaction.
     // no savepoint needed here
     
-    auto rcoll = static_cast<RocksDBTransactionCollection*>(state->findCollection(_logicalCollection.id()));
-    TRI_ASSERT(rcoll != nullptr);
-    
     rocksdb::WriteBatch batch;
     // add the assertion again here, so we are sure we can use RangeDeletes   
     TRI_ASSERT(static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->canUseRangeDeleteInWal());
@@ -680,14 +677,14 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
       }
     }
     
-    rcoll->addTruncateOperation(); // will set _numRemoved == _numberDocuments
+    state->addTruncateOperation(_logicalCollection.id());
     
     rocksdb::WriteOptions wo;
     s = rocksutils::globalRocksDB()->Write(wo, &batch);
     if (!s.ok()) {
       return rocksutils::convertStatus(s);
     }
-    TRI_ASSERT(rcoll->numRemoves() == _numberDocuments);
+    TRI_ASSERT(state->numRemoves() == _numberDocuments);
     
     if (_numberDocuments > 64 * 1024) {
       // also compact the ranges in order to speed up all further accesses
