@@ -53,11 +53,15 @@ std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRow(OutputAqlI
     std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
+      if (_returnedDone) {
+        return {ExecutionState::DONE, stats};
+      }
       return {state, stats};
     }
 
     if (!input) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      _returnedDone = true;
       return {state, stats};
     }
     TRI_ASSERT(input.isInitialized());

@@ -121,6 +121,10 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       REQUIRE(state == ExecutionState::WAITING);
       std::tie(state, block) = testee.getSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
+
+      // done should stay done!
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
     }
   }
 }

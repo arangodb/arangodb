@@ -85,6 +85,7 @@ class TestExecutorHelper {
   Infos& _infos;
  private:
   Fetcher& _fetcher;
+  bool _returnedDone = false;
 };
 
 }  // namespace aql
