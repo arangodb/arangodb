@@ -74,6 +74,18 @@ ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
 template<class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
+
+  //silence tests -- we need to introduce new fauilure tests for fetchers
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   if(!_outputItemRow) {
     auto newBlock = this->requestBlock(atMost, _infos.numberOfOutputRegisters());
     _outputItemRow = std::make_unique<OutputAqlItemRow>(

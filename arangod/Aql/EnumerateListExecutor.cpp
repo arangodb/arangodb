@@ -108,6 +108,10 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
       AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
       AqlValueGuard guard(innerValue, mustDestroy);
 
+      TRI_IF_FAILURE("EnumerateListBlock::getSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       output.setValue(_infos.getOutputRegister(), _currentRow, innerValue);
       // The output row (respectively the AqlItemBlock underneath) is now
       // responsible for the memory.
