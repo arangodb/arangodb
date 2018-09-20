@@ -446,8 +446,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         
         LOG_DEVEL << "seeing truncate ";
         
-        if (it != deltas.end() &&
-            it->second.startSequenceNumber <= currentSeqNum) {
+        if (it != deltas.end()) {
+          
+          if (it->second.startSequenceNumber > currentSeqNum) {
+            LOG_DEVEL << "skipping: truncate ";
+            return;
+          }
+          
           LOG_DEVEL << "marking truncate ";
           it->second.removed = 0;
           it->second.added = 0;
