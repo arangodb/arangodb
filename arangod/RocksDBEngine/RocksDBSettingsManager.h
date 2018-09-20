@@ -101,6 +101,7 @@ class RocksDBSettingsManager {
 
   // does not modify seq or revisionid
   arangodb::Result setAbsoluteCounter(uint64_t objectId,
+                                      rocksdb::SequenceNumber,
                                       uint64_t absouluteCount);
 
   /// Thread-Safe remove a counter

@@ -287,13 +287,13 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
 }
 
 arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
+                                                            rocksdb::SequenceNumber seq,
                                                             uint64_t value) {
   arangodb::Result res;
   WRITE_LOCKER(guard, _rwLock);
   auto it = _counters.find(objectId);
   if (it != _counters.end()) {
-    rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-    it->second._sequenceNum = db->GetLatestSequenceNumber();
+    it->second._sequenceNum = std::max(seq, it->second._sequenceNum);
     it->second._count = value;
   } else {
     // nothing to do as the counter has never been written it can not be set to

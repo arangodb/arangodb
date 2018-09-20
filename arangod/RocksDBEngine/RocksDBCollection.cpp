@@ -1784,7 +1784,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
       rocksutils::countKeyRange(engine->db(), documentBounds, true);
 
   // update counter manager value
-  res = engine->settingsManager()->setAbsoluteCounter(_objectId,
+  res = engine->settingsManager()->setAbsoluteCounter(_objectId, engine->currentTick(),
                                                       _numberDocuments);
   if (res.ok()) {
     // in case of fail the counter has never been written and hence does not

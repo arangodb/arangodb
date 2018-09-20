@@ -442,15 +442,21 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::CollectionTruncate: {
         uint64_t objectId = RocksDBLogValue::objectId(blob);
         auto const& it = deltas.find(objectId);
-        if (it != deltas.end()) {
+        
+        
+        LOG_DEVEL << "seeing truncate ";
+        
+        if (it != deltas.end() &&
+            it->second.startSequenceNumber <= currentSeqNum) {
+          LOG_DEVEL << "marking truncate ";
           it->second.removed = 0;
           it->second.added = 0;
           it->second.mustTruncate = true;
-        }
-        auto est = findEstimator(objectId);
-        if (est != nullptr && est->commitSeq() < currentSeqNum) {
-          // We track estimates for this index
-          est->bufferTruncate(currentSeqNum + 1);
+          auto est = findEstimator(objectId);
+          if (est != nullptr && est->commitSeq() < currentSeqNum) {
+            // We track estimates for this index
+            est->bufferTruncate(currentSeqNum + 1);
+          }
         }
         _lastRemovedDocRid = 0; // reset in any other case
         break;
@@ -514,10 +520,13 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       if (rv.ok()) {
         LOG_TOPIC(TRACE, Logger::ENGINES)
             << "finished WAL scan with " << handler.deltas.size();
+        
+        RocksDBSettingsManager* mgr = engine->settingsManager();
         for (auto& pair : handler.deltas) {
           WBReader::Operations const& ops = pair.second;
           if (ops.mustTruncate) {
-            engine->settingsManager()->setAbsoluteCounter(pair.first, 0);
+            LOG_DEVEL << "resetting count to 0";
+            mgr->setAbsoluteCounter(pair.first, ops.lastSequenceNumber, 0);
           }
           RocksDBSettingsManager::CounterAdjustment adj{};
           adj._sequenceNum = ops.lastSequenceNumber;
@@ -525,7 +534,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           adj._removed = ops.removed;
           adj._revisionId = ops.lastRevisionId;
           
-          engine->settingsManager()->updateCounter(pair.first, adj);
+          mgr->updateCounter(pair.first, adj);
           LOG_TOPIC(TRACE, Logger::ENGINES)
               << "WAL recovered " << adj.added() << " PUTs and "
               << adj.removed() << " DELETEs for objectID " << pair.first;
