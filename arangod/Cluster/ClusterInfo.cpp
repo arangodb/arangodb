@@ -713,11 +713,33 @@ void ClusterInfo::loadPlan() {
 
           for (auto const& collectionPairSlice :
                VPackObjectIterator(collectionsSlice)) {
+            
             VPackSlice const& collectionSlice = collectionPairSlice.value;
             if (!collectionSlice.isObject()) {
               continue;
             }
 
+            // We'll remove indexes from plan for this collection, if still `isBuilding`
+            VPackBuilder tmp;
+            { VPackObjectBuilder o(&tmp);
+              for (auto const& kvpair : VPackObjectIterator(collectionSlice)) {
+                auto const& key = kvpair.key.copyString();
+                auto const& val = kvpair.value;
+                if (key != "indexes") {
+                  tmp.add(key, val);
+                } else {
+                  tmp.add(VPackValue("indexes"));
+                  VPackArrayBuilder a(&tmp);
+                  for (auto const& index : VPackArrayIterator(val)) {
+                    if (index.hasKey("isBuilding")) { // This index is still being built
+                      continue;
+                    }
+                    tmp.add(index);
+                  }
+                }
+              }
+            }
+              
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
 
@@ -1084,6 +1106,8 @@ ClusterInfo::getCollections(DatabaseID const& databaseID) {
     if (c < '0' || c > '9') {
       // skip collections indexed by id
       result.push_back((*it2).second);
+
+      
     }
 
     ++it2;
@@ -2439,7 +2463,7 @@ int ClusterInfo::ensureIndexCoordinator(
 
     if (!found) {
       // index has vanished from plan? not good.
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "index has diappeared from plan!";
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "index has disappeared from plan!";
       return TRI_ERROR_INTERNAL;
     }
 
