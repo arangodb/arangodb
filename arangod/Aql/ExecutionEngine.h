@@ -110,10 +110,10 @@ class ExecutionEngine {
   /// note that the statistics are modification by execution blocks
   ExecutionStats _stats;
 
+ private:
   /// @brief memory recycler for AqlItemBlocks
   AqlItemBlockManager _itemBlockManager;
 
- private:
   /// @brief all blocks registered, used for memory management
   std::vector<ExecutionBlock*> _blocks;
 

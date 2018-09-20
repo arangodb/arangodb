@@ -538,7 +538,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
   }
 
-  BlockCollector collector(&_engine->_itemBlockManager);
+  BlockCollector collector(&_engine->itemBlockManager());
   std::vector<size_t> chosen;
 
   size_t i = 0;

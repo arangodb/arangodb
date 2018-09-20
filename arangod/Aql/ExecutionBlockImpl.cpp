@@ -58,7 +58,7 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
     std::unique_ptr<AqlItemBlock> block = _outputItemRow->stealBlock();
     if(block) {
       AqlItemBlock* block_pointer = block.release();
-      _engine->_itemBlockManager.returnBlock(block_pointer);
+      _engine->itemBlockManager().returnBlock(block_pointer);
     }
   }
 }
