@@ -28,6 +28,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -100,14 +101,26 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
-  bool readDocument(size_t segmentId, irs::doc_id_t docId);
+  struct ReadContext {
+    explicit ReadContext(aql::RegisterId curRegs)
+      : curRegs(curRegs) {
+    }
+
+    std::unique_ptr<aql::AqlItemBlock> res;
+    size_t pos{};
+    const aql::RegisterId curRegs;
+  }; // ReadContext
+
+  bool readDocument(
+    size_t segmentId,
+    irs::doc_id_t docId,
+    IndexIterator::DocumentCallback const& callback
+  );
 
   virtual void reset();
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) = 0;
 
@@ -119,13 +132,10 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
-  ManagedDocumentResult _mmdr;
+  size_t _inflight; // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
-
-  /// @brief The number of documents inflight if we hit a WAITING state.
-  size_t _inflight;
 }; // IResearchViewBlockBase
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -149,9 +159,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
@@ -174,9 +182,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
 
  protected:
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
@@ -207,9 +213,7 @@ class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
   }
 
   virtual bool next(
-    aql::AqlItemBlock& res,
-    aql::RegisterId curReg,
-    size_t& pos,
+    ReadContext& ctx,
     size_t limit
   ) override;
 
