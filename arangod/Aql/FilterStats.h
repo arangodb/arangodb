@@ -40,7 +40,7 @@ class FilterStats {
 
   void incrFiltered() noexcept { _filtered++; }
 
-  constexpr std::size_t getFiltered() const noexcept { return _filtered; }
+  std::size_t getFiltered() const noexcept { return _filtered; }
 
  private:
   std::size_t _filtered;
