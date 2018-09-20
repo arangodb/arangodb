@@ -24,18 +24,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
+#include "TestExecutorHelper.h"
 #include "BlockFetcherHelper.h"
 #include "BlockFetcherMock.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
 
 #include "Aql/ExecutionBlockImpl.h"
-// #include "Aql/ExecutionBlockImpl.cpp"
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/FilterExecutor.h"
 
 #include "Transaction/Methods.h"
 
@@ -52,8 +51,6 @@ namespace aql {
 SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   // ExecutionState state
   std::unique_ptr<AqlItemBlock> result;
-
-  ResourceMonitor monitor;
 
   // Mock of the ExecutionEngine
   fakeit::Mock<ExecutionEngine> mockEngine;
@@ -92,10 +89,10 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   ExecutionNode const* node = nullptr;
 
   // Executor Infos
-  // ExecutorInfos infos(0, 0, 1, 1, {});
-  FilterExecutorInfos infos(0, 1, 1, {});
+  TestExecutorHelperInfos infos(0, 1, 1, {});
 
   ExecutionState state;
+  ResourceMonitor monitor;
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
@@ -105,13 +102,14 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
     WHEN("the producer does not wait") {
       LOG_DEVEL << 1;
-      ExecutionBlockImpl<FilterExecutor> testee(&engine, node,
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
                                                 std::move(infos));
 
       LOG_DEVEL << 2;
       size_t atMost = 1000;
       LOG_DEVEL << 3;
       std::tie(state, block) = testee.getSome(atMost);
+      LOG_DEVEL << 4;
       LOG_DEVEL << state;
     }
   }

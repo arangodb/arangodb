@@ -320,18 +320,18 @@ ExecutionBlock::getSome(size_t atMost) {
 
 /// @brief request an AqlItemBlock from the memory manager
 AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  return _engine->_itemBlockManager.requestBlock(nrItems, nrRegs);
+  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
 /// @brief return an AqlItemBlock to the memory manager
 void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
-  _engine->_itemBlockManager.returnBlock(block);
+  _engine->itemBlockManager().returnBlock(block);
 }
 
 /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
 void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) noexcept {
   if (block != nullptr) {
-    _engine->_itemBlockManager.returnBlock(block);
+    _engine->itemBlockManager().returnBlock(block);
   }
 }
 

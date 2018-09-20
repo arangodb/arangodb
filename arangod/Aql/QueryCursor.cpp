@@ -192,7 +192,7 @@ QueryStreamCursor::QueryStreamCursor(
 
 QueryStreamCursor::~QueryStreamCursor() {
   while (!_queryResults.empty()) {
-    _query->engine()->_itemBlockManager.returnBlock(
+    _query->engine()->itemBlockManager().returnBlock(
         std::move(_queryResults.front()));
     _queryResults.pop_front();
   }
@@ -333,7 +333,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder &builder) {
       if (_queryResultPos == block->size()) {
         // get next block
         TRI_ASSERT(_queryResultPos == block->size());
-        engine->_itemBlockManager.returnBlock(std::move(block));
+        engine->itemBlockManager().returnBlock(std::move(block));
         _queryResults.pop_front();
         _queryResultPos = 0;
       }

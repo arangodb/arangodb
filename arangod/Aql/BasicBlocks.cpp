@@ -120,7 +120,7 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en, bool)
     : ExecutionBlock(engine, en), 
       _inReg(ExecutionNode::MaxRegisterId),
-      _collector(&engine->_itemBlockManager),
+      _collector(&engine->itemBlockManager()),
       _inflight(0) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
