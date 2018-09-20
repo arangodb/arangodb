@@ -33,6 +33,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionEngine.h"
 
+#include "Aql/CalculationExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/SortExecutor.h"
@@ -191,6 +192,7 @@ ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;

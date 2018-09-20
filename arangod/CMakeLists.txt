@@ -180,7 +180,6 @@ SET(ARANGOD_SOURCES
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemMatrix.cpp
-  Aql/InputAqlItemRow.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
@@ -194,14 +193,15 @@ SET(ARANGOD_SOURCES
   Aql/BlockCollector.cpp
   Aql/BlockFetcher.cpp
   Aql/CalculationBlock.cpp
+  Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectBlock.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
-  Aql/Collections.cpp
   Aql/CollectionAccessingNode.cpp
+  Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
@@ -223,10 +223,11 @@ SET(ARANGOD_SOURCES
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
-  Aql/Graphs.cpp
   Aql/GraphNode.cpp
+  Aql/Graphs.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
+  Aql/InputAqlItemRow.cpp
   Aql/ModificationBlocks.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
@@ -234,20 +235,20 @@ SET(ARANGOD_SOURCES
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
   Aql/OptimizerRulesCluster.cpp
-  Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerRulesFeature.cpp
+  Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
-  Aql/QueryExecutionState.cpp
-  Aql/QueryProfile.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
   Aql/QueryCursor.cpp
+  Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
+  Aql/QueryProfile.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
   Aql/QueryString.cpp
