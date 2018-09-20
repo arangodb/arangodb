@@ -45,7 +45,7 @@ bool AqlItemMatrix::empty() const {
   return _blocks.empty();
 }
 
-InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
+std::unique_ptr<InputAqlItemRow> AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
 
   for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
@@ -55,14 +55,7 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
     InputAqlItemRow::AqlItemBlockId blockId = it - _blocks.begin();
 
     if (index < block_ptr->size()) {
-      if(_prevRow) {
-        *_prevRow = InputAqlItemRow{block_ptr, index, blockId};
-      } else {
-        _prevRow = std::make_unique<InputAqlItemRow>(block_ptr, index, blockId);
-      }
-
-      std::swap(_prevRow,_lastRow);
-      return _lastRow.get();
+        return std::make_unique<InputAqlItemRow>(block_ptr, index, blockId);
     }
 
     // Jump over this block

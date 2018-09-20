@@ -245,7 +245,7 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return inVarReg.at(_trx, _index++, mustDestroy, true);
+  return inVarReg.at(_index++, mustDestroy, true);
 }
 
 void EnumerateListBlock::throwArrayExpectedException(AqlValue const& value) {

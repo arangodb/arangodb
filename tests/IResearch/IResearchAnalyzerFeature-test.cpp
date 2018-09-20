@@ -1227,7 +1227,7 @@ SECTION("test_tokens") {
 
     for (int64_t i = 0; i < 26; ++i) {
       bool mustDestroy;
-      auto entry = result->at(nullptr, i, mustDestroy, false);
+      auto entry = result->at(i, mustDestroy, false);
       CHECK((entry.isString()));
       auto value = arangodb::iresearch::getStringRef(entry.slice());
       CHECK((1 == value.size()));

@@ -122,10 +122,12 @@ bool OurLessThan::operator()(
     } else {
       // Take attributePath into consideration:
       bool mustDestroyA;
-      AqlValue aa = lhs.get(_trx, attributePath, mustDestroyA, false);
+      auto resolver = _trx->resolver();
+      TRI_ASSERT(resolver != nullptr);
+      AqlValue aa = lhs.get(*resolver, attributePath, mustDestroyA, false);
       AqlValueGuard guardA(aa, mustDestroyA);
       bool mustDestroyB;
-      AqlValue bb = rhs.get(_trx, attributePath, mustDestroyB, false);
+      AqlValue bb = rhs.get(*resolver, attributePath, mustDestroyB, false);
       AqlValueGuard guardB(bb, mustDestroyB);
       cmp = AqlValue::Compare(_trx, aa, bb, true);
     }

@@ -75,7 +75,7 @@ class AqlItemMatrix {
      *
      * @return A single row in the Matrix
      */
-    InputAqlItemRow const* getRow(size_t index) const;
+     std::unique_ptr<InputAqlItemRow> getRow(size_t index) const;
 
   protected:
     std::vector<std::unique_ptr<AqlItemBlock>>&& stealBlocks();
@@ -87,13 +87,6 @@ class AqlItemMatrix {
     size_t _size;
 
     size_t _nrRegs;
-
-    // TODO These are probably unnecessary now. They definitely don't need to
-    // be unique_ptr.
-    // Location to keep the memory of the last
-    // AQL item row. Will be mutated by getRow
-    mutable std::unique_ptr<InputAqlItemRow> _lastRow;
-    mutable std::unique_ptr<InputAqlItemRow> _prevRow;
 };
 
 }  // namespace aql
