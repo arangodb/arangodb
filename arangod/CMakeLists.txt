@@ -209,7 +209,6 @@ SET(ARANGOD_SOURCES
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
-  Aql/EnumerateListBlock.cpp
   Aql/EnumerateListExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp

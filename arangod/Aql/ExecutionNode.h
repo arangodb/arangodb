@@ -707,7 +707,6 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
