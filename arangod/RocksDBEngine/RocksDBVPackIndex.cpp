@@ -261,6 +261,30 @@ bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t 
   return true;
 }
 
+void RocksDBVPackIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (!_iterator->Valid() || outOfRange()) {
+    return;
+  }
+
+  while (count > 0) {
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+    --count;
+    ++skipped;
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return;
+    }
+  }
+}
+
 uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
   // NOTE: This function needs to use the same hashing on the
   // indexed VPack as the initial inserter does
@@ -299,7 +323,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(
 RocksDBVPackIndex::~RocksDBVPackIndex() {}
 
 double RocksDBVPackIndex::selectivityEstimate(
-    arangodb::StringRef const*) const {
+    arangodb::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -927,11 +951,13 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
 }
 
 bool RocksDBVPackIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
-                                                                  estimatedItems, estimatedCost);
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(
+    allIndexes, this, node, reference, itemsInIndex,
+    estimatedItems, estimatedCost);
 }
 
 bool RocksDBVPackIndex::supportsSortCondition(

@@ -61,7 +61,8 @@ ClusterCollection::ClusterCollection(
 )
     : PhysicalCollection(collection, info),
       _engineType(engineType),
-      _info(info) {
+      _info(info),
+      _selectivityEstimates(collection) {
   // duplicate all the error handling
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     bool isVolatile =
@@ -87,7 +88,6 @@ ClusterCollection::ClusterCollection(
                                        "<properties>.journalSize too small");
       }
     }
-
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     VPackSlice s = info.get("isVolatile");
     if (s.isBoolean() && s.getBoolean()) {
@@ -95,7 +95,6 @@ ClusterCollection::ClusterCollection(
           TRI_ERROR_BAD_PARAMETER,
           "volatile collections are unsupported in the RocksDB engine");
     }
-
   } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -108,9 +107,27 @@ ClusterCollection::ClusterCollection(
 )
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
       _engineType(static_cast<ClusterCollection const*>(physical)->_engineType),
-      _info(static_cast<ClusterCollection const*>(physical)->_info) {}
+      _info(static_cast<ClusterCollection const*>(physical)->_info),
+      _selectivityEstimates(collection) {}
 
 ClusterCollection::~ClusterCollection() {}
+  
+/// @brief fetches current index selectivity estimates
+/// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+/// fetch current values!
+std::unordered_map<std::string, double> ClusterCollection::clusterIndexEstimates(bool allowUpdate) const {
+  return _selectivityEstimates.get(allowUpdate);
+}
+
+/// @brief sets the current index selectivity estimates
+void ClusterCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+  _selectivityEstimates.set(std::move(estimates));
+}
+
+/// @brief flushes the current index selectivity estimates
+void ClusterCollection::flushClusterIndexEstimates() {
+  _selectivityEstimates.flush();
+}
 
 std::string const& ClusterCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
@@ -461,9 +478,9 @@ void ClusterCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-void ClusterCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+Result ClusterCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,

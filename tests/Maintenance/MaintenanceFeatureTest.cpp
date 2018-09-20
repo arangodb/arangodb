@@ -229,6 +229,10 @@ public:
       } // if
     } // if
 
+    if (description.get(FAST_TRACK, value).ok()) {
+      _labels.emplace(FAST_TRACK);
+    }
+
     if (description.get("result_code", value).ok()) {
       _resultCode = std::atol(value.c_str());
     } // if
@@ -616,7 +620,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -675,7 +679,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -729,7 +733,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -749,6 +753,53 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
+  SECTION("Priority queue should be able to process fast tracked action") {
+    std::vector<Expected> pre_thread, post_thread;
+
+    std::shared_ptr<arangodb::options::ProgramOptions> po =
+      std::make_shared<arangodb::options::ProgramOptions>(
+        "test", std::string(), std::string(), "path");
+    
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(as);
+    as.addFeature(tf);
+    std::thread th(
+      &arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+
+    //
+    // 1. load up the queue without threads running
+    //   a. 100 iterations then fail
+    std::unique_ptr<ActionBase> action_base_ptr;
+    action_base_ptr.reset(
+      (ActionBase*) new TestActionBasic(
+        *tf, ActionDescription(std::map<std::string,std::string>{
+            {"name","TestActionBasic"},{"iterate_count","100"},
+            {TestActionBasic::FAST_TRACK, ""}})));
+    arangodb::Result result = tf->addAction(
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
+
+    REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
+    REQUIRE(tf->_recentAction->result().ok());
+
+    //
+    // 2. start threads AFTER ApplicationServer known to be running
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit-1);
+
+    //
+    // 3. loop while waiting for threads to complete all actions
+    tf->waitRegistryComplete();
+
+#if 0   // for debugging
+    std::cout << tf->toVelocyPack().toJson() << std::endl;
+#endif
+
+    //
+    // 4. bring down the ApplicationServer, i.e. clean up
+    as.beginShutdown();
+    th.join();
+  }
+
+  
   SECTION("Action delete") {
     std::vector<Expected> pre_thread, post_thread;
 
@@ -782,7 +833,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -802,5 +853,6 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
+  
 
  } // MaintenanceFeatureThreaded

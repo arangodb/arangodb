@@ -1,8 +1,8 @@
 
 @startDocuBlock DeleteApiQueryCache
-@brief clears the AQL query cache
+@brief clears the AQL query results cache
 
-@RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query cache}
+@RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query results cache}
 
 @RESTDESCRIPTION
 clears the query cache

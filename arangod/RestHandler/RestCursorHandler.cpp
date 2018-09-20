@@ -287,7 +287,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
         result.add("count", VPackValue(n));
       }
       result.add("cached", VPackValue(_queryResult.cached));
-      if (_queryResult.cached || !_queryResult.extra) {
+      if (!_queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         // no warnings
         result.add("warnings", VPackSlice::emptyArraySlice());

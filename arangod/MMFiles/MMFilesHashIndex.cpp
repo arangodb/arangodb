@@ -352,7 +352,7 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
+double MMFilesHashIndex::selectivityEstimate(StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -419,14 +419,14 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), false
+                   info, arangodb::StaticStrings::IndexSparse, false
                  )
      ) {
     return false;
@@ -871,6 +871,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
 
 /// @brief checks whether the index supports the condition
 bool MMFilesHashIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {

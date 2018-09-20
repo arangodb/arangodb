@@ -2128,10 +2128,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
+        auto newNode = std::make_unique<IndexNode>(
             _plan, _plan->nextId(),
             enumerateCollectionNode->collection(), outVariable, usedIndexes,
-            std::move(condition), opts));
+            std::move(condition), opts);
 
         auto n = newNode.release();
 
@@ -2142,6 +2142,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
+          n->needsGatherNodeSort(true);
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
@@ -5110,6 +5111,11 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
     if (!n->isVarUsedLater(node->getOutVariableNew())) {
       // "$NEW" is not used later
       node->clearOutVariableNew();
+      modified = true;
+    }
+
+    if (!n->hasParent()) {
+      node->producesResults(false);
       modified = true;
     }
   }

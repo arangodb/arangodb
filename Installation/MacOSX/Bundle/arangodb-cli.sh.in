@@ -23,6 +23,18 @@ for script in $SCRIPTS; do
   if test $base == "arangodb"; then
   cat > "${ROOTDIR}/$base.$$" <<-'EOF'
 #!/bin/sh
+realpath() {
+  OURPWD=$PWD
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  cd "$OURPWD"
+  echo "$REALPATH"
+}
 me=$(realpath $0)
 program=$(basename $me)
 installation=$(dirname $me)

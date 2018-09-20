@@ -329,9 +329,11 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 }
 
 std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
     size_t skipped = _inflight;
     _inflight = 0;
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
     return {ExecutionState::DONE, skipped};
   }
 
@@ -340,6 +342,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       auto upstreamRes = getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
+        traceSkipSomeEnd(0, upstreamRes.first);
         return {upstreamRes.first, 0};
       }
       _upstreamState = upstreamRes.first;
@@ -347,6 +350,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
         _done = true;
         size_t skipped = _inflight;
         _inflight = 0;
+        traceSkipSomeEnd(skipped, ExecutionState::DONE);
         return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
@@ -379,7 +383,9 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 
   size_t skipped = _inflight;
   _inflight = 0;
-  return {getHasMoreState(), skipped};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(skipped, state);
+  return {state, skipped};
 }
 
 // -----------------------------------------------------------------------------

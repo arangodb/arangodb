@@ -1960,11 +1960,21 @@
 
             var markers = [];
             _.each(data.result, function (geo) {
-              if (geo.type === 'Point' || geo.type === 'MultiPoint') {
+              var geometry = {};
+              if (geo.hasOwnProperty('geometry')) {
+                geometry = geo.geometry;
+              } else {
+                geometry = geo;
+              }
+
+              if (geometry.type === 'Point' || geometry.type === 'MultiPoint') {
                 // reverse neccessary if we are using GeoJSON order
                 // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
                 try {
-                  geojson = new L.GeoJSON(geo, {
+                  geojson = new L.GeoJSON(geometry, {
+                    onEachFeature: function (feature, layer, x) {
+                      layer.bindPopup('<pre style="width: 250px; max-height: 250px;">' + JSON.stringify(geo, null, 2) + '</pre>');
+                    },
                     pointToLayer: function (feature, latlng) {
                       var res = L.circleMarker(latlng, geojsonMarkerOptions);
                       markers.push(res);
@@ -1974,10 +1984,13 @@
                 } catch (ignore) {
                   invalidGeoJSON++;
                 }
-              } else if (geo.type === 'Polygon' || geo.type === 'LineString' || geo.type === 'MultiLineString' || geo.type === 'MultiPolygon') {
+              } else if (geometry.type === 'Polygon' || geometry.type === 'LineString' || geometry.type === 'MultiLineString' || geometry.type === 'MultiPolygon') {
                 try {
-                  geojson = new L.GeoJSON(geo, {
-                    style: geoStyle
+                  geojson = new L.GeoJSON(geometry, {
+                    style: geoStyle,
+                    onEachFeature: function (feature, layer) {
+                      layer.bindPopup('<pre style="width: 250px;">' + JSON.stringify(feature, null, 2) + '</pre>');
+                    }
                   }).addTo(self.maps[counter]);
                   markers.push(geojson);
                 } catch (ignore) {
@@ -2323,7 +2336,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403 && error.code !== 501) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }
@@ -2560,9 +2573,17 @@
             if (typeof obj === 'object') {
               if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
                 if (obj.type === 'Point' || obj.type === 'MultiPoint' ||
-                    obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
-                    obj.type === 'LineString' || obj.type === 'MultiLineString') {
+                  obj.type === 'Polygon' || obj.type === 'MultiPolygon' ||
+                  obj.type === 'LineString' || obj.type === 'MultiLineString') {
                   geojson++;
+                }
+              } else if (obj.hasOwnProperty('geometry')) {
+                if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
+                  if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
+                    obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
+                    obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
+                    geojson++;
+                  }
                 }
               }
             }

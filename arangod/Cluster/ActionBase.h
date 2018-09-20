@@ -38,7 +38,6 @@ class MaintenanceFeature;
 
 namespace maintenance {
 
-
 class Action;
 
 class ActionBase {
@@ -99,6 +98,8 @@ class ActionBase {
   ActionState state() const {
     return _state;
   }
+
+  bool fastTrack() const;
 
   void notify();
 
@@ -197,16 +198,22 @@ class ActionBase {
   std::chrono::system_clock::time_point getDoneTime() const
     {return std::chrono::system_clock::time_point() + _actionDone.load(); }
 
+  /// @brief check if worker lables match ours
+  bool matches(std::unordered_set<std::string> const& options) const;
+  
+  std::string const static FAST_TRACK; 
 
 protected:
 
   /// @brief common initialization for all constructors
   void init();
 
-
   arangodb::MaintenanceFeature& _feature;
 
   ActionDescription _description;
+
+  // @brief optional labels for matching to woker labels
+  std::unordered_set<std::string> _labels;
 
   uint64_t _hash;
   std::string _clientId;
@@ -227,11 +234,9 @@ protected:
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
   std::atomic<uint64_t> _progress;
-
+  
   Result _result;
-
-
-
+  
 }; // class ActionBase
 
 } // namespace maintenance

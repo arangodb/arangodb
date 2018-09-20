@@ -88,6 +88,17 @@ class PhysicalCollection {
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
+  
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
+  
+  /// @brief sets the current index selectivity estimates
+  virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  virtual void flushClusterIndexEstimates();
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
   
@@ -129,8 +140,8 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual void truncate(transaction::Methods* trx,
-                        OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods* trx,
+                          OperationOptions&) = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

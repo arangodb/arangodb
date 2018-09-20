@@ -1038,7 +1038,7 @@ static void JS_AddressServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("address()");
   }
 
-  std::string const address = ServerState::instance()->getAddress();
+  std::string const address = ServerState::instance()->getEndpoint();
   TRI_V8_RETURN_STD_STRING(address);
   TRI_V8_TRY_CATCH_END
 }
@@ -1844,7 +1844,6 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  ONLY_IN_CLUSTER
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getId()");

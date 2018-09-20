@@ -43,8 +43,10 @@ enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
 
-  QueryCacheResultEntry(uint64_t, QueryString const&, std::shared_ptr<arangodb::velocypack::Builder>,
-                        std::vector<std::string> const&);
+  QueryCacheResultEntry(uint64_t hash, 
+                        QueryString const& queryString, 
+                        std::shared_ptr<arangodb::velocypack::Builder> const& results,
+                        std::vector<std::string> const& dataSources);
 
   ~QueryCacheResultEntry() = default;
 
@@ -60,6 +62,7 @@ struct QueryCacheResultEntry {
   uint64_t const _hash;
   std::string const _queryString;
   std::shared_ptr<arangodb::velocypack::Builder> _queryResult;
+  std::shared_ptr<arangodb::velocypack::Builder> _stats;
   std::vector<std::string> const _dataSources;
   QueryCacheResultEntry* _prev;
   QueryCacheResultEntry* _next;
@@ -100,14 +103,14 @@ struct QueryCacheDatabaseEntry {
   ~QueryCacheDatabaseEntry();
 
   /// @brief lookup a query result in the database-specific cache
-  QueryCacheResultEntry* lookup(uint64_t, QueryString const&);
+  QueryCacheResultEntry* lookup(uint64_t hash, QueryString const& queryString);
 
   /// @brief store a query result in the database-specific cache
-  void store(uint64_t, QueryCacheResultEntry*);
+  void store(uint64_t hash, QueryCacheResultEntry* entry);
 
   /// @brief invalidate all entries for the given data sources in the
   /// database-specific cache
-  void invalidate(std::vector<std::string> const&);
+  void invalidate(std::vector<std::string> const& dataSources);
 
   /// @brief invalidate all entries for a data source in the 
   /// database-specific cache
@@ -160,10 +163,10 @@ class QueryCache {
   arangodb::velocypack::Builder properties();
 
   /// @brief return the cache properties
-  void properties(std::pair<std::string, size_t>&);
+  void properties(std::pair<std::string, size_t>& result);
 
   /// @brief sets the cache properties
-  void setProperties(std::pair<std::string, size_t> const&);
+  void setProperties(std::pair<std::string, size_t> const& properties);
 
   /// @brief test whether the cache might be active
   /// this is a quick test that may save the caller from further bothering
@@ -177,23 +180,27 @@ class QueryCache {
   static std::string modeString(QueryCacheMode);
 
   /// @brief lookup a query result in the cache
-  QueryCacheResultEntry* lookup(TRI_vocbase_t*, uint64_t, QueryString const&);
+  QueryCacheResultEntry* lookup(TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString);
 
   /// @brief store a query in the cache
   /// if the call is successful, the cache has taken over ownership for the
   /// query result!
-  QueryCacheResultEntry* store(TRI_vocbase_t*, uint64_t, QueryString const&,
-                               std::shared_ptr<arangodb::velocypack::Builder>,
-                               std::vector<std::string> const& dataSources);
+  QueryCacheResultEntry* store(TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
+                               std::shared_ptr<arangodb::velocypack::Builder> const& result,
+                               std::shared_ptr<arangodb::velocypack::Builder> const& stats,
+                               std::vector<std::string>&& dataSources);
+  
+  /// @brief store a query cache entry in the cache
+  void store(TRI_vocbase_t* vocbase, std::unique_ptr<QueryCacheResultEntry> entry);
 
   /// @brief invalidate all queries for the given data sources
-  void invalidate(TRI_vocbase_t*, std::vector<std::string> const& dataSources);
+  void invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSources);
 
   /// @brief invalidate all queries for a particular data source
-  void invalidate(TRI_vocbase_t*, std::string const& dataSource);
+  void invalidate(TRI_vocbase_t* vocbase, std::string const& dataSource);
 
   /// @brief invalidate all queries for a particular database
-  void invalidate(TRI_vocbase_t*);
+  void invalidate(TRI_vocbase_t* vocbase);
 
   /// @brief invalidate all queries
   void invalidate();

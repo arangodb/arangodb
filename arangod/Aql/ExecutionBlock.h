@@ -108,6 +108,9 @@ class ExecutionBlock {
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
+  
+  void traceSkipSomeBegin(size_t atMost);
+  void traceSkipSomeEnd(size_t skipped, ExecutionState state);
  
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to

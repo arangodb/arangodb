@@ -70,6 +70,7 @@ class Ast;
 class ExecutionEngine;
 class ExecutionPlan;
 class Query;
+struct QueryCacheResultEntry;
 struct QueryProfile;
 class QueryRegistry;
 
@@ -448,6 +449,11 @@ class Query {
 
   /// @brief names of views used by the query. needed for the query cache
   std::unordered_set<std::string> _views;
+  
+  /// @brief query cache entry built by the query
+  /// only populated when the query has generated its result(s) and before storing
+  /// the cache entry in the query cache
+  std::unique_ptr<QueryCacheResultEntry> _cacheEntry;
 };
 
 }

@@ -14,7 +14,7 @@ Returns a _ArangoSearchView_ instance for the given view name.
 
 - **viewName**: `string`
 
-  Name of the arangosearch view.
+  Name of the `arangosearch` view.
 
 **Examples**
 

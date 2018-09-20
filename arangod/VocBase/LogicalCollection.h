@@ -198,20 +198,16 @@ class LogicalCollection: public LogicalDataSource {
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback);
 
-  // Estimates
-  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
-  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
-
-  double clusterIndexEstimatesTTL() const {
-    return _clusterEstimateTTL;
-  }
-
-  void clusterIndexEstimatesTTL(double ttl) {
-    _clusterEstimateTTL = ttl;
-  }
-  // End - Estimates
+  /// @brief fetches current index selectivity estimates
+  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip to
+  /// fetch current values!
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate);
   
-  //// SECTION: Indexes
+  /// @brief sets the current index selectivity estimates
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  
+  /// @brief flushes the current index selectivity estimates
+  void flushClusterIndexEstimates();
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
@@ -283,8 +279,7 @@ class LogicalCollection: public LogicalDataSource {
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
-  /// NOTE: This function throws on error
-  void truncate(transaction::Methods* trx, OperationOptions&);
+  Result truncate(transaction::Methods* trx, OperationOptions&);
 
   Result insert(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
@@ -345,10 +340,6 @@ class LogicalCollection: public LogicalDataSource {
 
   ChecksumResult checksum(bool, bool) const;
 
-  // compares the checksum value passed in the Slice (must be of type String)
-  // with the checksum provided in the reference checksum
-  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
-  
   std::unique_ptr<FollowerInfo> const& followers() const;
 
  protected:
@@ -411,10 +402,6 @@ class LogicalCollection: public LogicalDataSource {
 
   mutable arangodb::Mutex _infoLock;  // lock protecting the info
 
-  std::unordered_map<std::string, double> _clusterEstimates;
-  double _clusterEstimateTTL; //only valid if above vector is not empty
-  basics::ReadWriteLock _clusterEstimatesLock;
-  
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.

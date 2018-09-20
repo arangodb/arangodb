@@ -446,6 +446,21 @@ bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
   return defaultValue;
 }
 
+bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
+                                       std::string const& name, bool defaultValue) {
+  TRI_ASSERT(slice.isObject());
+  if (!slice.hasKey(name)) {
+    return defaultValue;
+  }
+  VPackSlice const& sub = slice.get(name);
+
+  if (sub.isBoolean()) {
+    return sub.getBool();
+  }
+
+  return defaultValue;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string

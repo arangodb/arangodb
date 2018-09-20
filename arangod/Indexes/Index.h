@@ -28,6 +28,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StringRef.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -42,7 +43,6 @@ class LocalTaskQueue;
 class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
-class StringRef;
 struct IndexIteratorOptions;
 
 namespace velocypack {
@@ -252,10 +252,10 @@ class Index {
   /// The extra StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
   virtual double selectivityEstimate(
-      arangodb::StringRef const* extra = nullptr) const;
+      arangodb::StringRef const& extra = arangodb::StringRef()) const;
   
   /// @brief update the cluster selectivity estimate
-  virtual void updateClusterSelectivityEstimate(double estimate = 0.1) {
+  virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
     TRI_ASSERT(false); // should never be called except on Coordinator
   }
 
@@ -330,7 +330,8 @@ class Index {
 
   virtual bool hasBatchInsert() const;
 
-  virtual bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  virtual bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                       arangodb::aql::AstNode const*,
                                        arangodb::aql::Variable const*, size_t,
                                        size_t&, double&) const;
 

@@ -683,10 +683,11 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
 }
 
 bool MMFilesPersistentIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference,
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference,
                                                                   itemsInIndex, estimatedItems, estimatedCost);
 }
 

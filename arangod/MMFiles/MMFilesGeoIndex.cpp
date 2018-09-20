@@ -278,14 +278,14 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                   info, arangodb::StaticStrings::IndexUnique, false
                  )
      ) {
     return false;
   }
 
   if (_sparse != basics::VelocyPackHelper::getBooleanValue(
-                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                   info, arangodb::StaticStrings::IndexSparse, true
                  )
      ) {
     return false;

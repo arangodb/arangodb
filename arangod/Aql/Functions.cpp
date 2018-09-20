@@ -53,6 +53,7 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
+#include "Rest/Version.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/Context.h"
@@ -7033,6 +7034,14 @@ AqlValue Functions::Apply(
   }
 
   return ::callApplyBackend(query, trx, AFN, invokeFN, invokeParams);
+}
+
+/// @brief function VERSION
+AqlValue Functions::Version(
+    arangodb::aql::Query* query, transaction::Methods* trx,
+    VPackFunctionParameters const& parameters) {
+
+  return AqlValue(rest::Version::getServerVersion());
 }
 
 /// @brief function IS_SAME_COLLECTION

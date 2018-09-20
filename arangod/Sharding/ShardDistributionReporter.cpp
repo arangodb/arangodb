@@ -255,7 +255,7 @@ static void ReportOffSync(
       auto const& c = counters[s.first];
       if (c.insync) {
         ReportShardNoProgress(s.first, s.second, aliases, result);
-      } else {
+      } else if (!c.followers.empty()) {
         ReportShardNoProgress(s.first, c.followers, aliases, result);
       }
     }

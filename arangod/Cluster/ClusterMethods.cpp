@@ -1028,10 +1028,10 @@ int selectivityEstimatesOnCoordinator(
 
         if (answer.isObject()) {
           // add to the total
-          for(auto const& identifier : VPackObjectIterator(answer.get("identifiers"))){
-            if(identifier.value.hasKey("selectivityEstimate")) {
+          for (auto const& identifier : VPackObjectIterator(answer.get("identifiers"))) {
+            if (identifier.value.hasKey("selectivityEstimate")) {
               StringRef shard_index_id(identifier.key);
-              auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(),'/');
+              auto split_point = std::find(shard_index_id.begin(), shard_index_id.end(), '/');
               std::string index(split_point + 1, shard_index_id.end());
 
               double estimate = arangodb::basics::VelocyPackHelper::getNumericValue(

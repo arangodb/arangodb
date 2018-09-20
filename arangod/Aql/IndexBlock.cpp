@@ -127,7 +127,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     for (size_t i = 0; i < fields.size(); ++i) {
       if (idx->isAttributeExpanded(i)) {
         ++expansions;
-        if (expansions > 1) {
+        if (expansions > 1 || i > 0) {
           _hasMultipleExpansions = true;
           break;
         }
@@ -482,6 +482,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
 
     uint64_t returned = static_cast<uint64_t>(_returned);
     _cursor->skip(atMost - returned, returned);
+    _engine->_stats.scannedIndex += returned;
     _returned = static_cast<size_t>(returned);
 
     return true;
@@ -740,7 +741,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
 
 /// @brief skipSome
 std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
   if (_done) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
     return {ExecutionState::DONE, 0};
   }
 
@@ -754,6 +757,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
       std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
       if (state == ExecutionState::WAITING) {
         TRI_ASSERT(!blockAppended);
+        traceSkipSomeEnd(0, ExecutionState::WAITING);
         return {ExecutionState::WAITING, 0};
       }
       if (!blockAppended || !initIndexes()) {
@@ -776,6 +780,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
         std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!blockAppended);
+          traceSkipSomeEnd(0, ExecutionState::WAITING);
           return {ExecutionState::WAITING, 0};
         }
         if (!blockAppended) {
@@ -800,7 +805,9 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 
   size_t returned = _returned;
   _returned = 0;
-  return {getHasMoreState(), returned};
+  ExecutionState state = getHasMoreState();
+  traceSkipSomeEnd(returned, state);
+  return {state, returned};
 }
 
 /// @brief frees the memory for all non-constant expressions

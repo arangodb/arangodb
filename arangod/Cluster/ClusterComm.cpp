@@ -34,7 +34,6 @@
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "SimpleHttpClient/ConnectionManager.h"
 #include "SimpleHttpClient/SimpleHttpCommunicatorResult.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
@@ -909,6 +908,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   ClusterCommTimeout now = startTime;
 
   std::vector<ClusterCommTimeout> dueTime;
+  dueTime.reserve(requests.size());
   for (size_t i = 0; i < requests.size(); ++i) {
     dueTime.push_back(startTime);
   }

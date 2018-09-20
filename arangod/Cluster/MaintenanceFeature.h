@@ -135,8 +135,10 @@ public:
   Result toJson(VPackBuilder & builder);
 
   /// @brief Return pointer to next ready action, or nullptr
-  std::shared_ptr<maintenance::Action> findReadyAction();
-
+  std::shared_ptr<maintenance::Action> findReadyAction(
+    std::unordered_set<std::string> const& options =
+    std::unordered_set<std::string>());
+  
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
   uint64_t nextActionId() {return _nextActionId++;};
@@ -290,6 +292,12 @@ public:
    */
   arangodb::Result copyAllErrors(errors_t& errors) const;
 
+  /// @brief Lowest limit for worker threads
+  static uint32_t const minThreadLimit;
+
+  /// @brief Highest limit for worker threads
+  static uint32_t const maxThreadLimit;
+  
 protected:
   /// @brief common code used by multiple constructors
   void init();
@@ -310,7 +318,6 @@ protected:
   /// @return shared pointer to action object if exists, nullptr if not
   std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
- protected:
   /// @brief option for forcing this feature to always be enable - used by the catch tests
   bool _forceActivation;
 
@@ -375,6 +382,9 @@ protected:
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string,
                      std::shared_ptr<VPackBuffer<uint8_t>>> _dbErrors;
+
+  
+  
 };
 
 }

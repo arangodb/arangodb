@@ -106,6 +106,9 @@ public:
   /// @brief finalize statistics
   void endStats();
 
+  /// @brief check if action matches worker options
+  bool matches(std::unordered_set<std::string> const& labels) const;
+
   /// @brief return progress statistic
   uint64_t getProgress() const { return _action->getProgress(); }
 

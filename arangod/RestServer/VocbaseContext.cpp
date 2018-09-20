@@ -54,8 +54,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
   
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
-  bool isSuperUser = req.authenticated() && req.user().empty() &&
-                     req.authenticationMethod() == rest::AuthenticationMethod::JWT;
+  const bool isSuperUser = req.authenticated() && req.user().empty() &&
+                           req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
     return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
                               /*sysLevel*/ auth::Level::RW,
@@ -102,12 +102,14 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
 
 void VocbaseContext::forceSuperuser() {
   TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
-  if (ServerState::readOnly()) {
-    return; // ignore force
-  }
   _type = ExecContext::Type::Internal;
-  _systemDbAuthLevel = auth::Level::RW;
-  _databaseAuthLevel = auth::Level::RW;
+  if (ServerState::readOnly()) {
+    _systemDbAuthLevel = auth::Level::RO;
+    _databaseAuthLevel = auth::Level::RO;
+  } else {
+    _systemDbAuthLevel = auth::Level::RW;
+    _databaseAuthLevel = auth::Level::RW;
+  }
 }
 
 void VocbaseContext::forceReadOnly() {
