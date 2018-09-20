@@ -271,7 +271,8 @@ class ExecutionBlock {
 
 
  protected:
-  // friended for this->fetchBlock() (follows below)
+  // friended for this->fetchBlock() (follows below) and
+  // _engine->_itemBlockManager.
   friend BlockFetcher;
 
   /**

@@ -42,8 +42,10 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister_, RegisterId outputRegister_,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx)
-    : ExecutorInfos({inputRegister_}, {outputRegister_}, nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+    : ExecutorInfos(
+          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
+          std::make_shared<std::unordered_set<RegisterId>>(outputRegister_),
+          nrInputRegisters, nrOutputRegisters, std::move(registersToClear)),
       _trx(trx),
       _inputRegister(inputRegister_),
       _outputRegister(outputRegister_) {

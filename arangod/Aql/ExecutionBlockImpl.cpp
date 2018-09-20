@@ -47,7 +47,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(this),
+      _blockFetcher(this, infos.getInputRegisters()),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos) {}
@@ -165,7 +165,7 @@ std::pair<ExecutionState, Result>
 ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
                                                size_t pos) {
   // re-initialize BlockFetcher
-  _blockFetcher = BlockFetcher(this);
+  _blockFetcher = BlockFetcher(this, _infos.getInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();

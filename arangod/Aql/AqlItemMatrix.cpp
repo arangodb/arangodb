@@ -23,6 +23,7 @@
 #include "AqlItemMatrix.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
@@ -30,10 +31,10 @@ using namespace arangodb::aql;
 
 AqlItemMatrix::AqlItemMatrix(size_t nrRegs_) : _size(0), _nrRegs(nrRegs_) {}
 
-void AqlItemMatrix::addBlock(std::unique_ptr<AqlItemBlock> block) {
-  TRI_ASSERT(block->getNrRegs() == getNrRegisters());
-  size_t blockSize = block->size();
-  _blocks.emplace_back(std::move(block));
+void AqlItemMatrix::addBlock(std::shared_ptr<AqlItemBlockShell> blockShell) {
+  TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
+  size_t blockSize = blockShell->block().size();
+  _blocks.emplace_back(std::move(blockShell));
   _size += blockSize;
 }
 
@@ -49,16 +50,14 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
 
   for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
-    AqlItemBlock* block_ptr = it->get();
-    TRI_ASSERT(block_ptr != nullptr);
+    std::shared_ptr<AqlItemBlockShell> blockShell = *it;
+    TRI_ASSERT(blockShell != nullptr);
 
-    InputAqlItemRow::AqlItemBlockId blockId = it - _blocks.begin();
-
-    if (index < block_ptr->size()) {
+    if (index < blockShell->block().size()) {
       if(_prevRow) {
-        *_prevRow = InputAqlItemRow{block_ptr, index, blockId};
+        *_prevRow = InputAqlItemRow{blockShell, index};
       } else {
-        _prevRow = std::make_unique<InputAqlItemRow>(block_ptr, index, blockId);
+        _prevRow = std::make_unique<InputAqlItemRow>(blockShell, index);
       }
 
       std::swap(_prevRow,_lastRow);
@@ -66,14 +65,9 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
     }
 
     // Jump over this block
-    index -= block_ptr->size();
+    index -= blockShell->block().size();
   }
   // We have asked for a row outside of this Vector
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An executor block is reading out of bounds.");
 }
 
-std::vector<std::unique_ptr<AqlItemBlock>>&& AqlItemMatrix::stealBlocks() {
-  _size = 0;
-  _nrRegs = 0;
-  return std::move(_blocks);
-}

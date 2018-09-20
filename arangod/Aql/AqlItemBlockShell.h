@@ -26,7 +26,6 @@
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_SHELL_H
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/InputAqlItemRow.h"
 
 #include <memory>
 
@@ -48,7 +47,7 @@ class AqlItemBlockDeleter {
 };
 
 /**
- * @brief This class is a facade for AqlItemBlock.
+ * @brief This class is a decorator for AqlItemBlock.
  *
  * For one thing, it automatically returns the AqlItemBlock to the
  * AqlItemBlockManager upon destruction. If only this is needed, it would also
@@ -67,9 +66,19 @@ class AqlItemBlockDeleter {
  * Thirdly, it holds an InputAqlItemRow::AqlItemBlockId. This moves the id
  * nearer to the actual block and keeps InputAqlItemRow minimal. For output
  * blocks, this should be set to -1 (which is an invalid id).
+ *
+ * TODO We should do variable-to-register mapping here. This further reduces
+ * dependencies of Executors, Fetchers etc. on internal knowledge of ItemBlocks,
+ * and probably shrinks ExecutorInfos.
  */
 class AqlItemBlockShell {
  public:
+  /**
+   * @brief ID type for AqlItemBlocks. Positive values are allowed, -1 means
+   *        invalid/uninitialized.
+   */
+  using AqlItemBlockId = int64_t;
+
   using SmartAqlItemBlockPtr =
       std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
@@ -77,11 +86,15 @@ class AqlItemBlockShell {
       AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
       std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters_,
       std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters_,
-      InputAqlItemRow::AqlItemBlockId aqlItemBlockId_)
+      AqlItemBlockId aqlItemBlockId_)
       : _block(block_.release(), AqlItemBlockDeleter{manager}),
         _inputRegisters(std::move(inputRegisters_)),
         _outputRegisters(std::move(outputRegisters_)),
-        _aqlItemBlockId(aqlItemBlockId_) {}
+        _aqlItemBlockId(aqlItemBlockId_) {
+    // An AqlItemBlockShell instance is assumed to be responsible for *exactly*
+    // one AqlItemBlock. _block may never be null!
+    TRI_ASSERT(_block != nullptr);
+  }
 
   AqlItemBlock const& block() const { return *_block; };
   AqlItemBlock& block() { return *_block; };
@@ -102,7 +115,10 @@ class AqlItemBlockShell {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
-  InputAqlItemRow::AqlItemBlockId blockId() const { return _aqlItemBlockId; }
+  AqlItemBlockId blockId() const {
+    TRI_ASSERT(_aqlItemBlockId >= 0);
+    return _aqlItemBlockId;
+  }
 
   /**
   * @brief Compares blocks by ID. The IDs of both blocks must be valid.
@@ -110,12 +126,8 @@ class AqlItemBlockShell {
   *        get an ID and thus may not be compared with this.
   */
   bool operator==(AqlItemBlockShell const& other) const {
-    // There should be only one AqlItemBlockShell instance per AqlItemBlock.
-    // And blockId() should be unique over blocks.
-    // AqlItemBlockShell may be used for output blocks *without* a unique block
-    // id, but this method may not be called then.
-    TRI_ASSERT(blockId() >= 0);
-    TRI_ASSERT(other.blockId() >= 0);
+    // There must be only one AqlItemBlockShell instance per AqlItemBlock,
+    // and blockId() must be unique over blocks.
     TRI_ASSERT((blockId() == other.blockId()) == (this == &other));
     TRI_ASSERT((blockId() == other.blockId()) == (&block() == &other.block()));
     return blockId() == other.blockId();
@@ -125,7 +137,12 @@ class AqlItemBlockShell {
   SmartAqlItemBlockPtr _block;
   std::shared_ptr<std::unordered_set<RegisterId>> _inputRegisters;
   std::shared_ptr<std::unordered_set<RegisterId>> _outputRegisters;
-  InputAqlItemRow::AqlItemBlockId _aqlItemBlockId;
+
+  /**
+   * @brief Block ID. Is assumed to biuniquely identify an AqlItemBlock. Only
+   *        positive values are valid. If this is set to -1, it may not be used.
+   */
+  AqlItemBlockId _aqlItemBlockId;
 };
 
 }  // namespace aql

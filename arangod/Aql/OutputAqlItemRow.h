@@ -110,6 +110,7 @@ class OutputAqlItemRow {
    */
   size_t _baseIndex;
 
+  // TODO remove these in favour of using infos from AqlItemBlockShell
   ExecutorInfos const& _executorInfos;
 
   /**
@@ -140,7 +141,7 @@ class OutputAqlItemRow {
   }
 
   size_t numRegistersToWrite() const {
-    return executorInfos().getOutputRegisters().size();
+    return executorInfos().getOutputRegisters()->size();
   }
 
   bool allValuesWritten() const {
@@ -148,7 +149,7 @@ class OutputAqlItemRow {
   };
 
   bool isOutputRegister(RegisterId regId) {
-    auto const& outRegs = executorInfos().getOutputRegisters();
+    auto const& outRegs = *executorInfos().getOutputRegisters();
     return outRegs.find(regId) != outRegs.end();
   }
 };

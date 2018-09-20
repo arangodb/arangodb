@@ -83,11 +83,11 @@ class OurLessThan {
 
 }
 
-static std::unordered_set<RegisterId> mapSortRegistersToRegisterIds(
+static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
     std::vector<SortRegister> const& sortRegisters) {
-  std::unordered_set<RegisterId> set{};
+  auto set = std::make_shared<std::unordered_set<RegisterId>>();
   std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(set, set.begin()),
+                 std::inserter(*set, set->begin()),
                  [](SortRegister const& sortReg) { return sortReg.reg; });
   return set;
 }
@@ -97,7 +97,7 @@ SortExecutorInfos::SortExecutorInfos(
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx,
     bool stable)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), {},
+    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear)),
       _trx(trx),

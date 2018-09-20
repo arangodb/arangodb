@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -36,7 +37,7 @@ namespace aql {
 
 struct AqlValue;
 
-struct CreateInvalidInputRowHint{
+struct CreateInvalidInputRowHint {
   // Forbid creating this via `{}`
   explicit CreateInvalidInputRowHint() = default;
 };
@@ -47,20 +48,17 @@ struct CreateInvalidInputRowHint{
  * Does not keep a reference to the data.
  * Caller needs to make sure that the underlying
  * AqlItemBlock is not going out of scope.
+ *
+ * Note that this class will be copied a lot, and therefore should be small
+ * and not do too complex things when copied!
  */
 class InputAqlItemRow {
  public:
-  /**
-  * @brief ID type for AqlItemBlocks. Positive values are allowed, -1 means
-  *        invalid/uninitialized.
-  */
-  using AqlItemBlockId = int64_t;
-
   // The default constructor contains an invalid item row
   explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
-  InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
-                  AqlItemBlockId blockId);
+  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
+                  size_t baseIndex);
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -71,41 +69,30 @@ class InputAqlItemRow {
    */
   const AqlValue& getValue(RegisterId registerId) const;
 
-  std::size_t getNrRegisters() const { return _block->getNrRegs(); }
+  std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
   bool operator==(InputAqlItemRow const& other) const noexcept;
   bool operator!=(InputAqlItemRow const& other) const noexcept;
 
-  bool isInitialized() const noexcept {
-    return _block != nullptr && _blockId >= 0;
-  }
+  bool isInitialized() const noexcept { return _blockShell != nullptr; }
 
   explicit operator bool() const noexcept { return isInitialized(); }
+
+ private:
+  AqlItemBlock& block() { return _blockShell->block(); }
+  AqlItemBlock const& block() const { return _blockShell->block(); }
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  AqlItemBlock* _block;
+  std::shared_ptr<AqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
-
-  /**
-   * @brief Block ID. Is assumed to biuniquely identify an AqlItemBlock. The
-   *        Fetcher is responsible for assigning these.
-   *        It may not be set to a negative value from the outside.
-   */
-  AqlItemBlockId _blockId;
 };
-
-// If you want to relax this requirement, make sure its necessary and that it
-// doesn't affect the performance.
-static_assert(
-    std::is_trivially_copyable<InputAqlItemRow>(),
-    "InputAqlItemRow is created and copied very often, so keep fast to copy.");
 
 }  // namespace aql
 }  // namespace arangodb
