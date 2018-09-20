@@ -66,11 +66,8 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
 template <class Executor>
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  LOG_DEVEL << "GET SOME 1";
   traceGetSomeBegin(atMost);
-  LOG_DEVEL << "GET SOME 2";
   auto result = getSomeWithoutTrace(atMost);
-  LOG_DEVEL << "GET SOME 3";
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
 
@@ -90,7 +87,6 @@ ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
   }
 
   if(!_outputItemRow) {
-    LOG_DEVEL << "no output row found";
     auto newBlock = this->requestBlock(atMost, _infos.numberOfOutputRegisters());
     _outputItemRow = std::make_unique<OutputAqlItemRow>(
       std::unique_ptr<AqlItemBlock>{newBlock}, _infos);

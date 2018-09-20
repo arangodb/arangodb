@@ -62,17 +62,9 @@ std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRow(OutputAqlI
     }
     TRI_ASSERT(input.isInitialized());
 
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-      output.copyRow(input);
-      return {state, stats};
-    } else {
-      stats.incrFiltered();
-    }
-
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
+    output.copyRow(input);
+    return {state, stats};
+    //stats.incrFiltered();
   }
 }
 

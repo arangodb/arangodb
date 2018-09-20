@@ -29,13 +29,14 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace arangodb::aql::tests;
+using namespace arangodb::tests;
+using namespace arangodb::tests::aql;
 
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(
     ExecutionEngine* engine, ExecutionNode const* node,
-    std::shared_ptr<VPackBuilder> data)
+    std::deque<std::unique_ptr<AqlItemBlock>> &&data)
     : ExecutionBlock(engine, node),
-      _data(data),
+      _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
       _hasWaited(false) {}
@@ -59,28 +60,25 @@ WaitingExecutionBlockMock::getSome(size_t atMost) {
     return {ExecutionState::WAITING, nullptr};
   }
   _hasWaited = false;
-  VPackSlice source = _data->slice();
-  size_t max = source.length();
-  TRI_ASSERT(_inflight <= max);
-  size_t toReturn = (std::min)(max - _inflight, atMost);
-  _inflight += toReturn;
-  VPackBuilder data;
-  data.openArray();
-  for (size_t i = 0; i < toReturn; ++i) {
-    data.add(source.at(i));
+
+  if (_data.empty()) {
+    return {ExecutionState::DONE, nullptr};
   }
-  data.close();
-  auto result = std::make_unique<AqlItemBlock>(&_resourceMonitor, data.slice());
-  if (_inflight < max) {
+
+  auto result = std::move(_data.front());
+  _data.pop_front();
+
+  if (_data.empty()) {
+    return {ExecutionState::DONE, std::move(result)};
+  } else {
     return {ExecutionState::HASMORE, std::move(result)};
   }
-  return {ExecutionState::DONE, std::move(result)};
-
 }
 
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(
   size_t atMost
 ) {
+
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
@@ -88,14 +86,20 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
     return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
-  size_t max = _data->slice().length();
-  TRI_ASSERT(_inflight <= max);
-  size_t skipped = (std::min)(max - _inflight, atMost);
-  _inflight += skipped;
-  if (_inflight < max) {
+
+  if (_data.empty()) {
+    traceSkipSomeEnd(0, ExecutionState::DONE);
+    return {ExecutionState::DONE, 0};
+  }
+
+  size_t skipped = _data.front()->size();
+  _data.pop_front();
+
+  if (_data.empty()) {
+    traceSkipSomeEnd(skipped, ExecutionState::DONE);
+    return {ExecutionState::DONE, skipped};
+  } else {
     traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, skipped};
   }
-  traceSkipSomeEnd(skipped, ExecutionState::DONE);
-  return {ExecutionState::DONE, skipped};
 }

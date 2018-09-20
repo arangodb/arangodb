@@ -26,6 +26,7 @@
 #include "AqlItemBlockHelper.h"
 #include "TestExecutorHelper.h"
 #include "BlockFetcherHelper.h"
+#include "WaitingExecutionBlockMock.h"
 #include "BlockFetcherMock.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
@@ -68,18 +69,25 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   fakeit::Mock<Query> mockQuery;
   Query& query = mockQuery.get();
 
+  ExecutionState state;
+  ResourceMonitor monitor;
+
   // Mock of the QueryOptions
   fakeit::Mock<QueryOptions> mockQueryOptions;
   QueryOptions& lqueryOptions = mockQueryOptions.get();
   ProfileLevel profile = ProfileLevel(PROFILE_LEVEL_NONE);
+
+  fakeit::When(Method(mockBlockManager, requestBlock))
+      .AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> AqlItemBlock* {
+        return new AqlItemBlock(&monitor, nrItems, nrRegs);
+      });
 
   fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(blockManager);
   fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
   fakeit::When(
       ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
       .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
-  fakeit::When(
-      OverloadedMethod(mockQuery, queryOptions, QueryOptions&()))
+  fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))
       .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
   fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
 
@@ -91,26 +99,28 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   // Executor Infos
   TestExecutorHelperInfos infos(0, 1, 1, {});
 
-  ExecutionState state;
-  ResourceMonitor monitor;
+  std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+  std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
+  blockDeque.push_back(std::move(block));
 
-  GIVEN("there are no blocks upstream") {
+  WaitingExecutionBlockMock dependency {&engine, node, std::move(blockDeque)};
+
+  GIVEN("there are is a block in the upstream with an empty row") {
     VPackBuilder input;
     BlockFetcherMock blockFetcherMock{0};
 
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
-    WHEN("the producer does not wait") {
-      LOG_DEVEL << 1;
+    WHEN("the executor does wait") {
       ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
                                                 std::move(infos));
+      testee.addDependency(&dependency);
 
-      LOG_DEVEL << 2;
       size_t atMost = 1000;
-      LOG_DEVEL << 3;
       std::tie(state, block) = testee.getSome(atMost);
-      LOG_DEVEL << 4;
-      LOG_DEVEL << state;
+      REQUIRE(state == ExecutionState::WAITING);
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
     }
   }
 }
