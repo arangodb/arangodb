@@ -401,11 +401,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
     // drop and truncate may use this, but we do not look at these ourselves
+    // TODO: need to clear counts and index estimates?
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
       helper->DeleteRangeCF(column_family_id, begin_key, end_key);
     }
+    
     return rocksdb::Status(); // make WAL iterator happy
   }
 

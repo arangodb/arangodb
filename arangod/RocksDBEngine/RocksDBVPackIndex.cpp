@@ -1253,6 +1253,9 @@ void RocksDBVPackIndex::recalculateEstimates() {
 }
 
 void RocksDBVPackIndex::afterTruncate() {
+  if (unique()) {
+    return;
+  }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(rocksutils::latestSequenceNumber());
   RocksDBIndex::afterTruncate();

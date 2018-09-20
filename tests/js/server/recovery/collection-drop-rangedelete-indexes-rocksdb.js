@@ -36,15 +36,18 @@ function runSetup () {
 
   // write some documents with autoincrement keys
   db._drop('UnitTestsRecovery1');
-  let c = db._create('UnitTestsRecovery1');
+  let c = db._createEdgeCollection('UnitTestsRecovery1');
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ value: i });
+    docs.push({ _from: "test/1", _to: "test/" + i, value: i });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
     }
   }
+
+  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
  
   // should trigger range deletion
   db._drop('UnitTestsRecovery1'); 
@@ -67,7 +70,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testDropRangeDeletion: function () {
+    testDropRangeDeletionIndexes: function () {
       assertNull(db._collection('UnitTestsRecovery1'));
       assertNotNull(db._collection('UnitTestsRecovery2'));
     }
