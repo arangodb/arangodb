@@ -138,5 +138,5 @@ AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return inVarReg.at(_infos.trx(), pos, mustDestroy, true);
+  return inVarReg.at(pos, mustDestroy, true);
 }

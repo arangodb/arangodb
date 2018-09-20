@@ -183,27 +183,27 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           block = result.stealBlock();
           AqlValue v = block->getValue(0, 0);
           REQUIRE(v.isNumber());
-          int64_t number = v.toInt64(nullptr);
+          int64_t number = v.toInt64();
           REQUIRE(number == 1);
 
           v = block->getValue(1, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 2);
 
           v = block->getValue(2, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 3);
 
           v = block->getValue(3, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 4);
 
           v = block->getValue(4, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 5);
         }
       }
