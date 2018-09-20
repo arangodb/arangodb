@@ -1607,7 +1607,6 @@ OperationResult transaction::Methods::insertLocal(
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
   std::shared_ptr<std::vector<ServerID> const> followers;
-
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // Block operation early if we are not supposed to perform it:
@@ -2094,7 +2093,7 @@ OperationResult transaction::Methods::removeLocal(
     OperationOptions& options) {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
-      
+  
   std::shared_ptr<std::vector<ServerID> const> followers;
 
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2368,18 +2367,12 @@ OperationResult transaction::Methods::truncateLocal(
 
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
-  try {
-    collection->truncate(this, options);
-  } catch (basics::Exception const& ex) {
+  Result res = collection->truncate(this, options);;
+  if (res.fail()) {
     if (lockResult.is(TRI_ERROR_LOCKED)) {
       unlockRecursive(cid, AccessMode::Type::WRITE);
     }
-    return OperationResult(Result(ex.code(), ex.what()));
-  } catch (std::exception const& ex) {
-    if (lockResult.is(TRI_ERROR_LOCKED)) {
-      unlockRecursive(cid, AccessMode::Type::WRITE);
-    }
-    return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
+    return OperationResult(res);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2447,7 +2440,6 @@ OperationResult transaction::Methods::truncateLocal(
     }
   }
 
-  Result res;
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     res = unlockRecursive(cid, AccessMode::Type::WRITE);
   }
@@ -3267,11 +3259,7 @@ Result Methods::replicateOperations(LogicalCollection* collection,
   double const timeout = chooseTimeout(count, body->size() * followers->size());
 
   size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
-
-  if (nrGood == followers->size()) {
-    return Result();
-  }
+  cc->performRequests(requests, timeout, nrDone, Logger::REPLICATION, false);
 
   // If any would-be-follower refused to follow there must be a
   // new leader in the meantime, in this case we must not allow
