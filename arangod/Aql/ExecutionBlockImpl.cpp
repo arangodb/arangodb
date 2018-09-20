@@ -189,7 +189,7 @@ ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems,
   std::unique_ptr<AqlItemBlockShell> blockShell =
       std::make_unique<AqlItemBlockShell>(
           _engine->itemBlockManager(), std::unique_ptr<AqlItemBlock>{block},
-          nullptr, _infos.getOutputRegisters(), -1);
+          nullptr, _infos.getOutputRegisters(), _infos.registersToKeep(), -1);
   return blockShell;
 }
 

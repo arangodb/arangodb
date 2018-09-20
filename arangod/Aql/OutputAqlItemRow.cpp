@@ -89,7 +89,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-  for (auto itemId : executorInfos().registersToKeep()) {
+  for (auto itemId : *executorInfos().registersToKeep()) {
     // copy entries to keep
     //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
@@ -108,7 +108,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
       }
     } else {
       TRI_ASSERT(_baseIndex > 0);
-      block().copyValuesFromRow(_baseIndex, executorInfos().registersToKeep(),
+      block().copyValuesFromRow(_baseIndex, *executorInfos().registersToKeep(),
                                 _baseIndex - 1);
     }
   }

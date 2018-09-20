@@ -44,7 +44,7 @@ class BlockFetcher {
  public:
   explicit BlockFetcher(
       ExecutionBlock* executionBlock_,
-      std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters_)
+      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_)
       : _executionBlock(executionBlock_),
         _inputRegisters(std::move(inputRegisters_)),
         _blockId(-1){};
@@ -70,7 +70,7 @@ class BlockFetcher {
 
  private:
   ExecutionBlock* _executionBlock;
-  std::shared_ptr<std::unordered_set<RegisterId>> _inputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
 
   // Holds the ID of the block returned *last*. Before the first block is
   // returned, this is invalid (-1).

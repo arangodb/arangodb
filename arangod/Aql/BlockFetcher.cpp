@@ -30,11 +30,9 @@ arangodb::aql::BlockFetcher::fetchBlock() {
   std::tie(state, block) = _executionBlock->fetchBlock();
   if (block != nullptr) {
     _blockId++;
-    // no output registers for input blocks
-    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
     auto shell = std::make_shared<AqlItemBlockShell>(
         _executionBlock->_engine->_itemBlockManager, std::move(block),
-        _inputRegisters, outputRegisters, _blockId);
+        _inputRegisters, nullptr, nullptr, _blockId);
     return {state, shell};
   } else {
     return {state, nullptr};

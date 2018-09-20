@@ -33,7 +33,7 @@ ExecutorInfos::ExecutorInfos(
       _outRegs(std::move(outputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
-      _registersToKeep(),
+      _registersToKeep(nullptr),
       _registersToClear(std::move(registersToClear)) {
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
   // the members to be null for simplicity and safety.
@@ -50,11 +50,15 @@ ExecutorInfos::ExecutorInfos(
     TRI_ASSERT(outReg < nrOutputRegisters);
   }
   TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
-  for (RegisterId i = 0; i < nrInputRegisters; i++) {
-    if (_registersToClear.find(i) == _registersToClear.end()) {
-      _registersToKeep.emplace(i);
+  {
+    auto registersToKeep_ = std::make_shared<std::unordered_set<RegisterId>>();
+    for (RegisterId i = 0; i < nrInputRegisters; i++) {
+      if (_registersToClear.find(i) == _registersToClear.end()) {
+        registersToKeep_->emplace(i);
+      }
     }
+    _registersToKeep = std::move(registersToKeep_);
   }
-  TRI_ASSERT(_registersToClear.size() + _registersToKeep.size() ==
+  TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() ==
              nrInputRegisters);
 }

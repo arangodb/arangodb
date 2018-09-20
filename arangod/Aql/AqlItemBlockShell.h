@@ -69,6 +69,8 @@ class AqlItemBlockDeleter {
  * TODO We should do variable-to-register mapping here. This further reduces
  * dependencies of Executors, Fetchers etc. on internal knowledge of ItemBlocks,
  * and probably shrinks ExecutorInfos.
+ *
+ * TODO This should probably be split into Input- and OutputAqlItemBlockShell.
  */
 class AqlItemBlockShell {
  public:
@@ -83,23 +85,10 @@ class AqlItemBlockShell {
 
   AqlItemBlockShell(
       AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
-      std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters_,
-      std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters_,
-      AqlItemBlockId aqlItemBlockId_)
-      : _block(block_.release(), AqlItemBlockDeleter{manager}),
-        _inputRegisters(std::move(inputRegisters_)),
-        _outputRegisters(std::move(outputRegisters_)),
-        _aqlItemBlockId(aqlItemBlockId_) {
-    if (_inputRegisters == nullptr) {
-      _inputRegisters = std::make_shared<decltype(_inputRegisters)::element_type>();
-    }
-    if (_outputRegisters == nullptr) {
-      _outputRegisters = std::make_shared<decltype(_outputRegisters)::element_type>();
-    }
-    // An AqlItemBlockShell instance is assumed to be responsible for *exactly*
-    // one AqlItemBlock. _block may never be null!
-    TRI_ASSERT(_block != nullptr);
-  }
+      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_,
+      std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters_,
+      std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep_,
+      AqlItemBlockId aqlItemBlockId_);
 
   AqlItemBlock const& block() const { return *_block; };
   AqlItemBlock& block() { return *_block; };
@@ -148,8 +137,9 @@ class AqlItemBlockShell {
 
  private:
   SmartAqlItemBlockPtr _block;
-  std::shared_ptr<std::unordered_set<RegisterId>> _inputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> _outputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _outputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
 
   /**
    * @brief Block ID. Is assumed to biuniquely identify an AqlItemBlock. Only

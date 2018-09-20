@@ -75,7 +75,7 @@ class ExecutorInfos {
    *
    * @return The indices of the input registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId>> const getInputRegisters()
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getInputRegisters()
       const {
     return _inRegs;
   }
@@ -90,7 +90,7 @@ class ExecutorInfos {
    *
    * @return The indices of the output registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId>> const getOutputRegisters()
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters()
       const {
     return _outRegs;
   }
@@ -109,7 +109,8 @@ class ExecutorInfos {
   */
   RegisterId numberOfOutputRegisters() const { return _numOutRegs; }
 
-  std::unordered_set<RegisterId> const& registersToKeep() const {
+  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToKeep()
+      const {
     return _registersToKeep;
   }
 
@@ -118,16 +119,15 @@ class ExecutorInfos {
   }
 
  private:
+  std::shared_ptr<const std::unordered_set<RegisterId>> _inRegs;
 
-  std::shared_ptr<std::unordered_set<RegisterId>> _inRegs;
-
-  std::shared_ptr<std::unordered_set<RegisterId>> _outRegs;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _outRegs;
 
   RegisterId _numInRegs;
 
   RegisterId _numOutRegs;
 
-  std::unordered_set<RegisterId> _registersToKeep;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
 
   std::unordered_set<RegisterId> const _registersToClear;
 };
