@@ -674,7 +674,7 @@ Result RocksDBCollection::truncate(transaction::Methods* trx,
         if (!s.ok()) {
           return rocksutils::convertStatus(s);
         }
-        idx->afterTruncate(); // clears caches (if applicable)
+        idx->afterTruncate(); // clears caches / clears links (if applicable)
       }
     }
     

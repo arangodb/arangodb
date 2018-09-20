@@ -118,13 +118,24 @@ bool RocksDBRecoveryManager::inRecovery() const { return _inRecovery; }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
-  std::unordered_map<uint64_t, RocksDBSettingsManager::CounterAdjustment>
-      deltas;
+  
+  struct Operations {
+    Operations(rocksdb::SequenceNumber seq) : startSequenceNumber(seq) {};
+    const rocksdb::SequenceNumber startSequenceNumber;
+    rocksdb::SequenceNumber lastSequenceNumber;
+    uint64_t added = 0;
+    uint64_t removed = 0;
+    TRI_voc_rid_t lastRevisionId = 0;
+    bool mustTruncate = false;
+  };
+  
+  std::unordered_map<uint64_t, WBReader::Operations> deltas;
   rocksdb::SequenceNumber currentSeqNum;
 
  private:
   // must be retrieved from settings manager
-  std::unordered_map<uint64_t, rocksdb::SequenceNumber> _seqStart;
+  //std::unordered_map<uint64_t, rocksdb::SequenceNumber> _seqStart;
+  // used to track used IDs for key-generators
   std::unordered_map<uint64_t, uint64_t> _generators;
 
   uint64_t _maxTick = 0;
@@ -133,8 +144,16 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   TRI_voc_rid_t _lastRemovedDocRid = 0;
 
  public:
+  
+  /// @param seqs sequence number from which to count operations
   explicit WBReader(std::unordered_map<uint64_t, rocksdb::SequenceNumber> const& seqs)
-      : currentSeqNum(0), _seqStart(seqs) {}
+      : currentSeqNum(0) {
+        for (auto const& pair : seqs) {
+          try {
+            deltas.emplace(pair.first, Operations(pair.second));
+          } catch(...) {}
+        }
+      }
 
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
@@ -174,12 +193,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   bool shouldHandleDocument(const rocksdb::Slice& key) {
     uint64_t objectId = RocksDBKey::objectId(key);
-    auto const& it = _seqStart.find(objectId);
-    if (it != _seqStart.end()) {
-      if (deltas.find(objectId) == deltas.end()) {
-        deltas.emplace(objectId, RocksDBSettingsManager::CounterAdjustment());
-      }
-      return it->second <= currentSeqNum;
+    auto const& it = deltas.find(objectId);
+    if (it != deltas.end()) {
+      return it->second.startSequenceNumber <= currentSeqNum;
     }
     return false;
   }
@@ -310,9 +326,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
-        it->second._sequenceNum = currentSeqNum;
-        it->second._added++;
-        it->second._revisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
+        it->second.lastSequenceNumber = currentSeqNum;
+        it->second.added++;
+        it->second.lastRevisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
       }
     } else {
       // We have to adjust the estimate with an insert
@@ -350,10 +366,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto const& it = deltas.find(objectId);
         if (it != deltas.end()) {
-          it->second._sequenceNum = currentSeqNum;
-          it->second._removed++;
+          it->second.lastSequenceNumber = currentSeqNum;
+          it->second.removed++;
           if (_lastRemovedDocRid != 0) {
-            it->second._revisionId = _lastRemovedDocRid;
+            it->second.lastRevisionId = _lastRemovedDocRid;
           }
         }
       }
@@ -415,16 +431,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     // a delete log message appears directly before a Delete
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch(type) {
-      case RocksDBLogType::CollectionTruncate: {
-        uint64_t objectId = RocksDBLogValue::objectId(blob);
-        auto const& it = deltas.find(objectId);
-        if (it != deltas.end()) {
-          it->second._removed = 0;
-          it->second._added = 0;
-        }
-        _lastRemovedDocRid = 0; // reset in any other case
-        break;
-      }
       case RocksDBLogType::DocumentRemoveV2: // remove within a trx
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
@@ -433,6 +439,22 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
+      case RocksDBLogType::CollectionTruncate: {
+        uint64_t objectId = RocksDBLogValue::objectId(blob);
+        auto const& it = deltas.find(objectId);
+        if (it != deltas.end()) {
+          it->second.removed = 0;
+          it->second.added = 0;
+          it->second.mustTruncate = true;
+        }
+        auto est = findEstimator(objectId);
+        if (est != nullptr && est->commitSeq() < currentSeqNum) {
+          // We track estimates for this index
+          est->bufferTruncate(currentSeqNum + 1);
+        }
+        _lastRemovedDocRid = 0; // reset in any other case
+        break;
+      }
       default:
         _lastRemovedDocRid = 0; // reset in any other case
         break;
@@ -493,10 +515,20 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         LOG_TOPIC(TRACE, Logger::ENGINES)
             << "finished WAL scan with " << handler.deltas.size();
         for (auto& pair : handler.deltas) {
-          engine->settingsManager()->updateCounter(pair.first, pair.second);
+          WBReader::Operations const& ops = pair.second;
+          if (ops.mustTruncate) {
+            engine->settingsManager()->setAbsoluteCounter(pair.first, 0);
+          }
+          RocksDBSettingsManager::CounterAdjustment adj{};
+          adj._sequenceNum = ops.lastSequenceNumber;
+          adj._added = ops.added;
+          adj._removed = ops.removed;
+          adj._revisionId = ops.lastRevisionId;
+          
+          engine->settingsManager()->updateCounter(pair.first, adj);
           LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "WAL recovered " << pair.second.added() << " PUTs and "
-              << pair.second.removed() << " DELETEs for objectID " << pair.first;
+              << "WAL recovered " << adj.added() << " PUTs and "
+              << adj.removed() << " DELETEs for objectID " << pair.first;
         }
       }
     }

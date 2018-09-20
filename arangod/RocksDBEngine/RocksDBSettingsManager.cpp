@@ -268,7 +268,9 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
       // just use the latest trx info
       if (update.sequenceNumber() > it->second._sequenceNum) {
         it->second._sequenceNum = update.sequenceNumber();
-        it->second._revisionId = update.revisionId();
+        if (update.revisionId() != 0) {
+          it->second._revisionId = update.revisionId();
+        }
       }
     } else {
       // insert new counter
