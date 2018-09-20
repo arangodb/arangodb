@@ -5,9 +5,9 @@ An _Active Failover_ is defined as:
 
 - One ArangoDB Single-Server instance which is read / writable by clients called **Leader**
 - One or more ArangoDB Single-Server instances, which are passive and not readable or writable 
-  called **Followers**, which asynchronously replicate data from the master
+called **Followers**, which asynchronously replicate data from the master
 - At least one _Agency_ acting as a "witness" to determine which server becomes the _leader_
-  in a _failure_ situation
+in a _failure_ situation
 
 **Note:** even though it is technically possible to start more than one _followers_ only one
 _follower_ is currently officially supported. This limitation may be removed in
@@ -45,12 +45,20 @@ When the _Leader_ goes down, this is automatically detected by the _Agency_
 instance, which is also started in this mode. This instance will make the
 previous follower stop its replication and make it the new _Leader_.
 
-The _Follower_ will deny all read and write requests from client applications.
+Operative Behaviour
+-------------------
+
+In contrast to the normal behaviour of a single-server instance, the Active-Failover
+mode will change the behaviour of ArangoDB in some situations.
+
+The _Follower_ will _always_ deny write requests from client applications. Starting from ArangoDB 3.4
+read requests are _only_ permitted if the requests is marked with the `X-Arango-Allow-Dirty-Read` header,
+otherwise they are denied too.
 Only the replication itself is allowed to access the follower's data until the
 follower becomes a new _Leader_ (should a _failover_ happen).
 
 When sending a request to read or write data on a _Follower_, the _Follower_ will
-always respond with `HTTP 503 (Service unavailable)` and provide the address of
+respond with `HTTP 503 (Service unavailable)` and provide the address of
 the current _Leader_. Client applications and drivers can use this information to
 then make a follow-up request to the proper _Leader_:
 
@@ -63,6 +71,18 @@ X-Arango-Endpoint: http://[::1]:8531
 Client applications can also detect who the current _Leader_ and the _Followers_
 are by calling the `/_api/cluster/endpoints` REST API. This API is accessible
 on _Leader_ and _Followers_ alike.
+
+Reading from Followers
+----------------------
+
+Followers in the active-failover setup are in a read-only mode. It is possible to read from these
+followers by adding a `X-Arango-Allow-Dirty-Read` header on each request. Responses will then automatically
+contain the `X-Arango-Potential-Dirty-Read` header so that clients can reject accidental dirty reads.
+
+Depending on the driver support for your specific programming language, you should be able to enable this option.
+
+Tooling Support
+---------------
 
 The tool _ArangoDB Starter_ supports starting two servers with asynchronous
 replication and failover [out of the box](../../../Deployment/ActiveFailover/UsingTheStarter.md).
