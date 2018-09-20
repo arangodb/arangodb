@@ -297,6 +297,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
+    } catch (std::exception const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
