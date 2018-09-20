@@ -47,7 +47,6 @@ class RedundantCalculationsReplacer;
 /// @brief class SortNode
 class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class SortBlock;
   friend class RedundantCalculationsReplacer;
 
  public:

@@ -707,7 +707,6 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -1034,7 +1033,6 @@ class SubqueryNode : public ExecutionNode {
 /// @brief class FilterNode
 class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class FilterBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
