@@ -93,7 +93,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
         TRI_ERROR_BAD_PARAMETER,
         "volatile collections are unsupported in the RocksDB engine");
   }
-  
+
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -113,7 +113,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
-  
+
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -688,8 +688,8 @@ void RocksDBCollection::invokeOnAllElements(
 // -- SECTION DML Operations --
 ///////////////////////////////////
 
-void RocksDBCollection::truncate(transaction::Methods* trx,
-                                 OperationOptions& options) {
+Result RocksDBCollection::truncate(transaction::Methods* trx,
+                                   OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
@@ -725,12 +725,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 
     state->prepareOperation(_logicalCollection->cid(), docId.id(),
                             StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    
+
     auto res = removeDocument(trx, docId, doc, options, false);
     if (res.fail()) {
       // Failed to remove document in truncate.
-      // Throw
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      return res;
     }
     res = state->addOperation(_logicalCollection->cid(), docId.id(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0,
@@ -739,7 +738,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // transaction size limit reached
     if (res.fail()) {
       // This should never happen...
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      return res;
     }
 
     if (found % 10000 == 0) {
@@ -756,15 +755,14 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   // check if documents have been deleted
   if (state->numCommits() == 0 &&
       mthd->countInBounds(documentBounds, true)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "deletion check in collection truncate "
-                                   "failed - not all documents have been "
-                                   "deleted");
+    return Result(TRI_ERROR_INTERNAL,
+                  "deletion check in collection truncate failed - not all "
+                  "documents have been deleted");
   }
 #endif
 
   TRI_IF_FAILURE("FailAfterAllCommits") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    return Result(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_SegfaultDebugging("SegfaultAfterAllCommits");
@@ -775,6 +773,8 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // to the collection
     compact();
   }
+
+  return Result();
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
@@ -856,7 +856,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       mdr.reset();
     } else {
       // copy result only if we need it
-      mdr.setManaged(newSlice.begin(), documentId); 
+      mdr.setManaged(newSlice.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
     }
 
@@ -1049,7 +1049,7 @@ Result RocksDBCollection::replace(
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
-  
+
   VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
@@ -1068,7 +1068,7 @@ Result RocksDBCollection::replace(
       mdr.reset();
     } else {
       // copy result only if we need it
-      mdr.setManaged(newDoc.begin(), documentId); 
+      mdr.setManaged(newDoc.begin(), documentId);
       TRI_ASSERT(!mdr.empty());
    }
 
@@ -1508,7 +1508,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  
+
   // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
   newKey->constructDocument(_objectId, newDocumentId.id());
@@ -1525,7 +1525,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
     res.keySize(newKey->size());
     return res;
   }
-  
+
   RocksDBKeyLeaser oldKey(trx);
   oldKey->constructDocument(_objectId, oldDocumentId.id());
   blackListKey(oldKey->string().data(),

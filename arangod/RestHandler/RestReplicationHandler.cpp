@@ -2016,16 +2016,19 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const followerId = body.get("followerId");
-  VPackSlice const readLockId = body.get("readLockId");
-  VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString()) {
+  VPackSlice const followerIdSlice = body.get("followerId");
+  VPackSlice const readLockIdSlice = body.get("readLockId");
+  VPackSlice const shardSlice = body.get("shard");
+  VPackSlice const checksumSlice = body.get("checksum");
+  if (!followerIdSlice.isString() ||
+      !shardSlice.isString() ||
+      !checksumSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId' and 'shard' attributes must be strings");
+                  "'followerId', 'shard', and 'checksum' attributes must be strings");
     return;
   }
 
-  auto col = _vocbase->lookupCollection(shard.copyString());
+  auto col = _vocbase->lookupCollection(shardSlice.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2034,8 +2037,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  if (readLockId.isNone()) {
-    // Short cut for the case that the collection is empty
+  const std::string followerId = followerIdSlice.copyString();
+  // Short cut for the case that the collection is empty
+  if (readLockIdSlice.isNone()) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, col->cid(),
                                     AccessMode::Type::EXCLUSIVE);
@@ -2046,8 +2050,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
-        if (nr == 0) {
-          col->followers()->add(followerId.copyString());
+        if (nr == 0 && checksumSlice.isEqualString("0")) {
+          col->followers()->add(followerId);
 
           VPackBuilder b;
           {
@@ -2068,15 +2072,14 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  VPackSlice const checksum = body.get("checksum");
   // optional while introducing this bugfix. should definitely be required with
   // 3.4
   // and throw a 400 then when no checksum is provided
-  if (checksum.isString() && readLockId.isString()) {
+  if (checksumSlice.isString() && readLockIdSlice.isString()) {
     std::string referenceChecksum;
     {
       CONDITION_LOCKER(locker, _condVar);
-      auto it = _holdReadLockJobs.find(readLockId.copyString());
+      auto it = _holdReadLockJobs.find(readLockIdSlice.copyString());
       if (it == _holdReadLockJobs.end()) {
         // Entry has been removed since, so we cancel the whole thing
         // right away and generate an error:
@@ -2100,23 +2103,19 @@ void RestReplicationHandler::handleCommandAddFollower() {
       referenceChecksum = std::to_string(num);
     }
 
-    auto result = col->compareChecksums(checksum, referenceChecksum);
-
-    if (result.fail()) {
-      auto errorNumber = result.errorNumber();
-      rest::ResponseCode code;
-      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
-          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
-        code = rest::ResponseCode::BAD;
-      } else {
-        code = rest::ResponseCode::SERVER_ERROR;
-      }
-      generateError(code, errorNumber, result.errorMessage());
+    if (!checksumSlice.isEqualString(referenceChecksum)) {
+      const std::string checksum = checksumSlice.copyString();
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
+       << "Expected: " << referenceChecksum << " Actual: " << checksum;
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+                    "'checksum' is wrong. Expected: "
+                    + referenceChecksum
+                    + ". Actual: " + checksum);
       return;
     }
   }
 
-  col->followers()->add(followerId.copyString());
+  col->followers()->add(followerIdSlice.copyString());
 
   VPackBuilder b;
   {

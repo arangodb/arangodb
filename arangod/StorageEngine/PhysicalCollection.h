@@ -79,7 +79,7 @@ class PhysicalCollection {
   virtual int close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
-  
+
   /// @brief rotate the active journal - will do nothing if there is no journal
   virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
 
@@ -93,13 +93,13 @@ class PhysicalCollection {
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
-  
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
 
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-  
+
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
   /// @brief Find index by definition
@@ -110,7 +110,7 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-                       
+
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
 
@@ -136,8 +136,8 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual void truncate(transaction::Methods* trx,
-                        OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods* trx,
+                          OperationOptions& options) = 0;
 
   virtual LocalDocumentId lookupKey(
       transaction::Methods*, arangodb::velocypack::Slice const&) = 0;
@@ -145,7 +145,7 @@ class PhysicalCollection {
   virtual Result read(transaction::Methods*,
                       arangodb::StringRef const& key,
                       ManagedDocumentResult& result, bool) = 0;
-  
+
   virtual Result read(transaction::Methods*,
                       arangodb::velocypack::Slice const& key,
                       ManagedDocumentResult& result, bool) = 0;
@@ -153,7 +153,7 @@ class PhysicalCollection {
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
-  
+
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
                                         IndexIterator::DocumentCallback const& cb) const = 0;
@@ -195,7 +195,7 @@ class PhysicalCollection {
   ///        it at that moment.
   virtual void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) = 0;
-  
+
  protected:
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(
