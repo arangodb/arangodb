@@ -128,9 +128,9 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
                                        double connectTimeout,
                                        double requestTimeout) {
   char const* pErr;
-  char errBuf[256];
+  char errBuf[1080];
 #ifdef _WIN32
-  char windowsErrorBuf[256];
+  char windowsErrorBuf[1080];
 #endif
 
   // set address and port

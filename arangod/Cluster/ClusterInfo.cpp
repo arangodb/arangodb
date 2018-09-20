@@ -3372,23 +3372,18 @@ void ClusterInfo::loadCurrentMappings() {
 
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
-      decltype(_dbserverIdMap) newDBServerIdMap;
-      decltype(_nameMap) newNameMap;
 
       for (auto const& mapping : VPackObjectIterator(mappings)) {
         ServerID fullId = mapping.key.copyString();
         auto mapObject = mapping.value;
         if (mapObject.isObject()) {
           ServerShortName shortName = mapObject.get("ShortName").copyString();
-          newNameMap.emplace(shortName, fullId);
 
           ServerShortID shortId = mapObject.get("TransactionID").getNumericValue<ServerShortID>();
           static std::string const expectedPrefix{"Coordinator"};
           if (shortName.size() > expectedPrefix.size() &&
               shortName.substr(0, expectedPrefix.size()) == expectedPrefix) {
             newCoordinatorIdMap.emplace(shortId, fullId);
-          } else {
-            newDBServerIdMap.emplace(shortId, fullId);
           }
         }
       }
@@ -3396,9 +3391,7 @@ void ClusterInfo::loadCurrentMappings() {
       // Now set the new value:
       {
         WRITE_LOCKER(writeLocker, _mappingsProt.lock);
-        _nameMap.swap(newNameMap);
         _coordinatorIdMap.swap(newCoordinatorIdMap);
-        _dbserverIdMap.swap(newDBServerIdMap);
         _mappingsProt.doneVersion = storedVersion;
         _mappingsProt.isValid = true;
       }
@@ -3653,50 +3646,6 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 
   auto it = _coordinatorIdMap.find(shortId);
   if (it != _coordinatorIdMap.end()) {
-    result = it->second;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup full dbserver ID from short ID
-////////////////////////////////////////////////////////////////////////////////
-
-ServerID ClusterInfo::getDBServerByShortID(ServerShortID shortId) {
-  ServerID result;
-
-  if (!_mappingsProt.isValid) {
-    loadCurrentMappings();
-  }
-
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _dbserverIdMap.find(shortId);
-  if (it != _dbserverIdMap.end()) {
-    result = it->second;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup full server ID from short name
-////////////////////////////////////////////////////////////////////////////////
-
-ServerID ClusterInfo::getServerByShortName(ServerShortName const& shortName) {
-  ServerID result;
-
-  if (!_mappingsProt.isValid) {
-    loadCurrentMappings();
-  }
-
-  // return a consistent state of servers
-  READ_LOCKER(readLocker, _mappingsProt.lock);
-
-  auto it = _nameMap.find(shortName);
-  if (it != _nameMap.end()) {
     result = it->second;
   }
 
