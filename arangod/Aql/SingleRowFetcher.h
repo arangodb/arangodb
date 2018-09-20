@@ -92,7 +92,7 @@ class SingleRowFetcher {
    *        SingleRowFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::shared_ptr<AqlItemBlockShell> _currentBlock;
+  std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
 
   /**
   * @brief Unique block ID, given by this class to every AqlItemBlock in
@@ -121,7 +121,8 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  fetchBlock();
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()

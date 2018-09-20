@@ -29,6 +29,7 @@
 #include "Aql/ExecutionState.h"
 #include "Basics/Exceptions.h"
 #include "ExecutionEngine.h"
+#include "AqlItemBlockShell.h"
 
 #include <memory>
 #include <utility>
@@ -51,8 +52,9 @@ class BlockFetcher {
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
-  TEST_VIRTUAL std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
-  fetchBlock();
+  TEST_VIRTUAL
+      std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+      fetchBlock();
 
   // TODO this should no longer be needed with AqlItemBlockShell. Maybe we
   // can get rid of the BlockFetcher now.

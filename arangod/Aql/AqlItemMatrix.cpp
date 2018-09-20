@@ -31,7 +31,7 @@ using namespace arangodb::aql;
 
 AqlItemMatrix::AqlItemMatrix(size_t nrRegs_) : _size(0), _nrRegs(nrRegs_) {}
 
-void AqlItemMatrix::addBlock(std::shared_ptr<AqlItemBlockShell> blockShell) {
+void AqlItemMatrix::addBlock(std::shared_ptr<InputAqlItemBlockShell> blockShell) {
   TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
   size_t blockSize = blockShell->block().size();
   _blocks.emplace_back(std::move(blockShell));
@@ -50,7 +50,7 @@ InputAqlItemRow const* AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
 
   for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
-    std::shared_ptr<AqlItemBlockShell> blockShell = *it;
+    std::shared_ptr<InputAqlItemBlockShell> blockShell = *it;
     TRI_ASSERT(blockShell != nullptr);
 
     if (index < blockShell->block().size()) {

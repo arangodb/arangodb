@@ -46,7 +46,8 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  explicit OutputAqlItemRow(std::unique_ptr<AqlItemBlockShell> blockShell);
+  explicit OutputAqlItemRow(
+      std::unique_ptr<OutputAqlItemBlockShell> blockShell);
 
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
                 AqlValue const&);
@@ -103,7 +104,7 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::unique_ptr<AqlItemBlockShell> _blockShell;
+  std::unique_ptr<OutputAqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

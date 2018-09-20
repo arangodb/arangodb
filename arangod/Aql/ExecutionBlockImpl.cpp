@@ -182,14 +182,14 @@ ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
 }
 
 template <class Executor>
-std::unique_ptr<AqlItemBlockShell>
+std::unique_ptr<OutputAqlItemBlockShell>
 ExecutionBlockImpl<Executor>::requestWrappedBlock(size_t nrItems,
                                                   RegisterId nrRegs) {
   AqlItemBlock* block = requestBlock(nrItems, nrRegs);
-  std::unique_ptr<AqlItemBlockShell> blockShell =
-      std::make_unique<AqlItemBlockShell>(
+  std::unique_ptr<OutputAqlItemBlockShell> blockShell =
+      std::make_unique<OutputAqlItemBlockShell>(
           _engine->itemBlockManager(), std::unique_ptr<AqlItemBlock>{block},
-          nullptr, _infos.getOutputRegisters(), _infos.registersToKeep(), -1);
+          _infos.getOutputRegisters(), _infos.registersToKeep());
   return blockShell;
 }
 

@@ -32,7 +32,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class AqlItemBlockShell;
+class InputAqlItemBlockShell;
 class BlockFetcher;
 
 /**
@@ -89,7 +89,8 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  fetchBlock();
 };
 
 }  // namespace aql

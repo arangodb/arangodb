@@ -156,8 +156,8 @@ class ExecutionBlockImpl : public ExecutionBlock {
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(
     size_t atMost);
 
-  std::unique_ptr<AqlItemBlockShell> requestWrappedBlock(size_t nrItems,
-                                                         RegisterId nrRegs);
+  std::unique_ptr<OutputAqlItemBlockShell> requestWrappedBlock(
+      size_t nrItems, RegisterId nrRegs);
 
  private:
 

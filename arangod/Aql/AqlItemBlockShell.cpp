@@ -24,26 +24,37 @@
 
 using namespace arangodb::aql;
 
-AqlItemBlockShell::AqlItemBlockShell(
+AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
+                                     std::unique_ptr<AqlItemBlock> block_)
+    : _block(block_.release(), AqlItemBlockDeleter{manager}) {
+  // An AqlItemBlockShell instance is assumed to be responsible for *exactly*
+  // one AqlItemBlock. _block may never be null!
+  TRI_ASSERT(_block != nullptr);
+}
+
+InputAqlItemBlockShell::InputAqlItemBlockShell(
     AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
     std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_,
-    std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters_,
-    std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep_,
     AqlItemBlockShell::AqlItemBlockId aqlItemBlockId_)
-    : _block(block_.release(), AqlItemBlockDeleter{manager}),
+    : AqlItemBlockShell(manager, std::move(block_)),
       _inputRegisters(std::move(inputRegisters_)),
-      _outputRegisters(std::move(outputRegisters_)),
-      _registersToKeep(std::move(registersToKeep_)),
       _aqlItemBlockId(aqlItemBlockId_) {
   if (_inputRegisters == nullptr) {
     _inputRegisters =
         std::make_shared<decltype(_inputRegisters)::element_type>();
   }
+  TRI_ASSERT(_aqlItemBlockId >= 0);
+}
+
+OutputAqlItemBlockShell::OutputAqlItemBlockShell(
+    AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
+    std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters_,
+    std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep_)
+    : AqlItemBlockShell(manager, std::move(block_)),
+      _outputRegisters(std::move(outputRegisters_)),
+      _registersToKeep(std::move(registersToKeep_)) {
   if (_outputRegisters == nullptr) {
     _outputRegisters =
         std::make_shared<decltype(_outputRegisters)::element_type>();
   }
-  // An AqlItemBlockShell instance is assumed to be responsible for *exactly*
-  // one AqlItemBlock. _block may never be null!
-  TRI_ASSERT(_block != nullptr);
 }

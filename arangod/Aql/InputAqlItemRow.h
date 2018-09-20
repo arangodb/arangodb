@@ -57,7 +57,7 @@ class InputAqlItemRow {
   // The default constructor contains an invalid item row
   explicit InputAqlItemRow(CreateInvalidInputRowHint);
 
-  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
+  InputAqlItemRow(std::shared_ptr<InputAqlItemBlockShell> blockShell,
                   size_t baseIndex);
 
   /**
@@ -86,7 +86,7 @@ class InputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
+  std::shared_ptr<InputAqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.

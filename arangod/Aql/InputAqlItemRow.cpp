@@ -36,8 +36,8 @@ using namespace arangodb::aql;
 InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
     : _blockShell(nullptr), _baseIndex(0) {}
 
-InputAqlItemRow::InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell_,
-                                 size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(
+    std::shared_ptr<InputAqlItemBlockShell> blockShell_, size_t baseIndex)
     : _blockShell(std::move(blockShell_)), _baseIndex(baseIndex) {
   TRI_ASSERT(_blockShell != nullptr);
 }

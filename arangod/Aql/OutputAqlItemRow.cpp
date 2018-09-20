@@ -34,7 +34,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
-    std::unique_ptr<AqlItemBlockShell> blockShell)
+    std::unique_ptr<OutputAqlItemBlockShell> blockShell)
     : _blockShell(std::move(blockShell)),
       _baseIndex(0),
       _inputRowCopied(false),

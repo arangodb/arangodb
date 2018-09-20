@@ -38,7 +38,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
     ExecutionState state;
-    std::shared_ptr<AqlItemBlockShell> newBlock;
+    std::shared_ptr<InputAqlItemBlockShell> newBlock;
     std::tie(state, newBlock) = fetchBlock();
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
@@ -75,7 +75,7 @@ SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
     : _blockFetcher(&executionBlock),
       _currentRow{CreateInvalidInputRowHint{}} {}
 
-std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>>
+std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
 SingleRowFetcher::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
