@@ -432,10 +432,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto const lane = handler->lane();
   auto self = shared_from_this();
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "handleRequestSync executing";
-
   bool ok = SchedulerFeature::SCHEDULER->queue(PriorityRequestLane(lane), [self, this, handler]() {
-    LOG_TOPIC(ERR, Logger::FIXME) << "inside scheduler";
     handleRequestDirectly(basics::ConditionalLocking::DoLock,
                           std::move(handler));
   });
@@ -456,20 +453,15 @@ void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "handleRequestDirectly executing";
-
   auto self = shared_from_this();
   handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
 
-    LOG_TOPIC(ERR, Logger::FIXME) << "handler->runHandler.onCompletion executing";
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context
     _peer->post(
         [self, this, stat, h]() {
-          LOG_TOPIC(ERR, Logger::FIXME) << "inside peer, addResponse executing";
           addResponse(*(h->response()), stat);
-          LOG_TOPIC(ERR, Logger::FIXME) << "inside peer, addResponse ended";
         });
   });
 }
