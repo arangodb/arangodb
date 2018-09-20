@@ -77,7 +77,7 @@ class IniFileParser {
     
     std::istringstream iss(buf);
     for (std::string line; std::getline(iss, line); ) {
-      basics:StringUtils::trimInPlace(line);
+      basics::StringUtils::trimInPlace(line);
       ++lineNumber;
 
       if (std::regex_match(line, _matchers.comment)) {
