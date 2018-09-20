@@ -63,11 +63,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string const BATCH_PATH;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection path
   //////////////////////////////////////////////////////////////////////////////
-  
+
   static std::string const COLLECTION_PATH;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -129,11 +129,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string const SIMPLE_QUERY_ALL_KEYS_PATH;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief simple query by example path
   //////////////////////////////////////////////////////////////////////////////
-  
+
   static std::string const SIMPLE_QUERY_BY_EXAMPLE;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -187,7 +187,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e, arangodb::velocypack::Options const*);
+                   TRI_col_type_e, arangodb::velocypack::Options const*,
+                   bool isMultiple, rest::ResponseCode waitForSyncResponseCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates message for a saved document
@@ -203,7 +204,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDeleted(arangodb::OperationResult const& result,
                        std::string const& collectionName, TRI_col_type_e type,
-                       arangodb::velocypack::Options const*);
+                       arangodb::velocypack::Options const*, bool isMultiple);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, no transaction info
@@ -330,7 +331,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void finalizeExecute() override;
-  
+
   virtual bool cancel() override {
     _context->cancel();
     return RestBaseHandler::cancel();
