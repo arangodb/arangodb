@@ -532,11 +532,8 @@ JOB_STATUS MoveShard::pendingLeader() {
                   trx.add(srv);
                 }
               }
-              // add the old server as follower if and only if `_remainsFollower`
-              // is set to true
-              if (_remainsFollower) {
-                trx.add(VPackValue(_from));
-              }
+              // add the old leader as follower in case of a rollback
+              trx.add(VPackValue(_from));
             }
             // Precondition: Plan still as it was
             pre.add(VPackValue(planPath));
@@ -574,7 +571,19 @@ JOB_STATUS MoveShard::pendingLeader() {
       { VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-          [&pre](Slice plan, Slice current, std::string& planPath) {
+          [&trx, &pre, this](Slice plan, Slice current, std::string& planPath) {
+            if (!_remainsFollower) {
+              // Remove _from from the list of follower
+              trx.add(VPackValue(planPath));
+              { VPackArrayBuilder guard(&trx);
+                for (auto const& srv : VPackArrayIterator(plan)) {
+                  if (!srv.isEqualString(_from)) {
+                    trx.add(srv);
+                  }
+                }
+              }
+            }
+
             // Precondition: Plan still as it was
             pre.add(VPackValue(planPath));
             { VPackObjectBuilder guard(&pre);
