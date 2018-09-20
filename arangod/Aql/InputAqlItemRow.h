@@ -50,6 +50,10 @@ struct CreateInvalidInputRowHint{
  */
 class InputAqlItemRow {
  public:
+  /**
+  * @brief ID type for AqlItemBlocks. Positive values are allowed, -1 means
+  *        invalid/uninitialized.
+  */
   using AqlItemBlockId = int64_t;
 
   // The default constructor contains an invalid item row
