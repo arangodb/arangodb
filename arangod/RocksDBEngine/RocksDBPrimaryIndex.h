@@ -24,6 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_PRIMARY_INDEX_H 1
 
+#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -102,7 +103,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const& = StringRef()) const override {
     return 1.0;
   }
 
@@ -127,7 +128,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                       LocalDocumentId& id,
                       TRI_voc_rid_t& revisionId) const;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 

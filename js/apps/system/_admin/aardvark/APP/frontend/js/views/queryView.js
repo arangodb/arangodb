@@ -2336,7 +2336,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403 && error.code !== 501) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }

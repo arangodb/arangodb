@@ -59,6 +59,7 @@ void PersistentIndexAttributeMatcher::matchAttributes(
 }
 
 bool PersistentIndexAttributeMatcher::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
@@ -68,128 +69,9 @@ bool PersistentIndexAttributeMatcher::supportsFilterCondition(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
-  std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-  std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes,
-                  false);
-
-  bool lastContainsEquality = true;
-  size_t attributesCovered = 0;
-  size_t attributesCoveredByEquality = 0;
-  double equalityReductionFactor = 20.0;
-  estimatedCost = static_cast<double>(itemsInIndex);
-
-  for (size_t i = 0; i < idx->fields().size(); ++i) {
-    auto it = found.find(i);
-
-    if (it == found.end()) {
-      // index attribute not covered by condition
-      break;
-    }
-
-    // check if the current condition contains an equality condition
-    auto const& nodes = (*it).second;
-    bool containsEquality = false;
-    for (size_t j = 0; j < nodes.size(); ++j) {
-      if (nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-          nodes[j]->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-        containsEquality = true;
-        break;
-      }
-    }
-
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
-      break;
-    }
-
-    ++attributesCovered;
-    if (containsEquality) {
-      ++attributesCoveredByEquality;
-      estimatedCost /= equalityReductionFactor;
-
-      // decrease the effect of the equality reduction factor
-      equalityReductionFactor *= 0.25;
-      if (equalityReductionFactor < 2.0) {
-        // equalityReductionFactor shouldn't get too low
-        equalityReductionFactor = 2.0;
-      }
-    } else {
-      // quick estimate for the potential reductions caused by the conditions
-      if (nodes.size() >= 2) {
-        // at least two (non-equality) conditions. probably a range with lower
-        // and upper bound defined
-        estimatedCost /= 7.5;
-      } else {
-        // one (non-equality). this is either a lower or a higher bound
-        estimatedCost /= 2.0;
-      }
-    }
-
-    lastContainsEquality = containsEquality;
-  }
-
-  if (values == 0) {
-    values = 1;
-  }
-
-  if (attributesCoveredByEquality == idx->fields().size() && idx->unique()) {
-    // index is unique and condition covers all attributes by equality
-    if (itemsInIndex == 0) {
-      estimatedItems = 0;
-      estimatedCost = 0.0;
-      return true;
-    }
-
-    estimatedItems = values;
-    estimatedCost = static_cast<double>(estimatedItems * values);
-    // cost is already low... now slightly prioritize unique indexes
-    estimatedCost *= 0.995 - 0.05 * (idx->fields().size() - 1);
-    return true;
-  }
-
-  if (attributesCovered > 0 &&
-      (!idx->sparse() || attributesCovered == idx->fields().size())) {
-    // if the condition contains at least one index attribute and is not
-    // sparse,
-    // or the index is sparse and all attributes are covered by the condition,
-    // then it can be used (note: additional checks for condition parts in
-    // sparse indexes are contained in Index::canUseConditionPart)
-    estimatedItems = static_cast<size_t>((std::max)(
-        static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
-
-    // check if the index has a selectivity estimate ready
-    if (idx->hasSelectivityEstimate() &&
-        attributesCoveredByEquality == idx->fields().size()) {
-      StringRef ignore;
-      double estimate = idx->selectivityEstimate(&ignore);
-      if (estimate > 0.0) {
-        estimatedItems = static_cast<size_t>(1.0 / estimate);
-      }
-    }
-    if (itemsInIndex == 0) {
-      estimatedCost = 0.0;
-    } else {
-      // simon: neither RocksDBVPackIndex nor MMFilesPersistentIndex have caches
-      /*if (useCache()) {
-       estimatedCost = static_cast<double>(estimatedItems * values) -
-       (_fields.size() - 1) * 0.01;
-       } else {*/
-      estimatedCost =
-          (std::max)(static_cast<double>(1),
-                     std::log2(static_cast<double>(itemsInIndex)) * values) -
-          (idx->fields().size() - 1) * 0.01;
-      //}
-    }
-    return true;
-  }
-
-  // index does not help for this condition
-  estimatedItems = itemsInIndex;
-  estimatedCost = static_cast<double>(estimatedItems);
-  return false;
+  
+  // just forward to reference implementation
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, idx, node, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
 bool PersistentIndexAttributeMatcher::supportsSortCondition(

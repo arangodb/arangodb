@@ -1,6 +1,9 @@
 v3.4.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* the query editor within the web ui is now catching http 501 responses
+  propertly.
+
 * added AQL VERSION function to return the server version as a string
 
 * added startup parameter advertised-endpoints

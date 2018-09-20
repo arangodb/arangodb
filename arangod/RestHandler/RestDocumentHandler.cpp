@@ -558,6 +558,7 @@ bool RestDocumentHandler::removeDocument() {
     return false;
   }
 
+  bool const isMultiple = search.isArray();
   OperationResult result = trx->remove(collectionName, search, opOptions);
 
   res = trx->finish(result.result);
@@ -574,7 +575,8 @@ bool RestDocumentHandler::removeDocument() {
 
   generateDeleted(result, collectionName,
                   TRI_col_type_e(trx->getCollectionType(collectionName)),
-                  trx->transactionContextPtr()->getVPackOptionsForDump());
+                  trx->transactionContextPtr()->getVPackOptionsForDump(),
+                  isMultiple);
   return true;
 }
 
