@@ -443,17 +443,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBLogValue::objectId(blob);
         auto const& it = deltas.find(objectId);
         
-        
-        LOG_DEVEL << "seeing truncate ";
-        
-        if (it != deltas.end()) {
-          
-          if (it->second.startSequenceNumber > currentSeqNum) {
-            LOG_DEVEL << "skipping: truncate ";
-            return;
-          }
-          
-          LOG_DEVEL << "marking truncate ";
+        if (it != deltas.end() &&
+            it->second.startSequenceNumber <= currentSeqNum) {
           it->second.removed = 0;
           it->second.added = 0;
           it->second.mustTruncate = true;
@@ -530,7 +521,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         for (auto& pair : handler.deltas) {
           WBReader::Operations const& ops = pair.second;
           if (ops.mustTruncate) {
-            LOG_DEVEL << "resetting count to 0";
             mgr->setAbsoluteCounter(pair.first, ops.lastSequenceNumber, 0);
           }
           RocksDBSettingsManager::CounterAdjustment adj{};
