@@ -1,4 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
+//
 /// @brief Infrastructure for ExecutionPlans
 ///
 /// DISCLAIMER
@@ -1820,7 +1821,6 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(infos));
-  //return std::make_unique<FilterBlock>(&engine, this, false);
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
