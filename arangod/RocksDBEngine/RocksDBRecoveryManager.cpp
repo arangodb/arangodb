@@ -396,6 +396,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     return rocksdb::Status();
   }
+  
+  rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
+                                const rocksdb::Slice& begin_key,
+                                const rocksdb::Slice& end_key) override {
+    // drop and truncate may use this, but we do not look at these ourselves
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    for (auto helper : engine->recoveryHelpers()) {
+      helper->DeleteRangeCF(column_family_id, begin_key, end_key);
+    }
+    return rocksdb::Status(); // make WAL iterator happy
+  }
 
   void LogData(const rocksdb::Slice& blob) override {
     // a delete log message appears directly before a Delete

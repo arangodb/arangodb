@@ -424,6 +424,12 @@ void IResearchRocksDBRecoveryHelper::SingleDeleteCF(uint32_t column_family_id,
                                                     const rocksdb::Slice& key) {
 }
 
+void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
+                                                   const rocksdb::Slice& end_key,
+                                                   const rocksdb::Slice& begin_key) {
+  // TODO: implement this!
+}
+
 void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
   TRI_ASSERT(_dbFeature);
 
