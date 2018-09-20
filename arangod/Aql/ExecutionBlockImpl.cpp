@@ -52,13 +52,12 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos) {}
 
-template<class Executor>
+template <class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if(_outputItemRow){
+  if (_outputItemRow) {
     std::unique_ptr<AqlItemBlock> block = _outputItemRow->stealBlock();
-    if(block) {
-      AqlItemBlock* block_pointer = block.release();
-      _engine->_itemBlockManager.returnBlock(block_pointer);
+    if (block != nullptr) {
+      _engine->_itemBlockManager.returnBlock(std::move(block));
     }
   }
 }
