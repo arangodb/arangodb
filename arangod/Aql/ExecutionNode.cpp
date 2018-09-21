@@ -24,26 +24,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
+#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
-#include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
+#include "Aql/EnumerateListExecutor.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
-#include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
@@ -525,7 +531,7 @@ void ExecutionNode::invalidateCost() {
     dep->invalidateCost();
   }
 }
-  
+
 /// @brief estimate the cost of the node . . .
 /// does not recalculate the estimate if already calculated
 CostEstimate ExecutionNode::getCost() const {
@@ -842,7 +848,7 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone(
 
 void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   switch (en->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: 
+    case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX: {
       depth++;
       nrRegsHere.emplace_back(1);
@@ -938,10 +944,10 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
-    case ExecutionNode::INSERT: 
+    case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
-    case ExecutionNode::REPLACE: 
-    case ExecutionNode::REMOVE: 
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::REMOVE:
     case ExecutionNode::UPSERT: {
       depth++;
       nrRegsHere.emplace_back(0);
@@ -969,7 +975,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
                         VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
-  
+
       break;
     }
 
@@ -996,7 +1002,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
-    case ExecutionNode::TRAVERSAL: 
+    case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH: {
       depth++;
       auto ep = dynamic_cast<GraphNode const*>(en);
@@ -1262,7 +1268,7 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   if (trx->status() != transaction::Status::RUNNING) {
     return CostEstimate::empty();
   }
-  
+
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems *= _collection->count(trx);
@@ -1299,7 +1305,21 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     ExecutionEngine &engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<EnumerateListBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId inputRegister = it->second.registerId;
+
+  it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outRegister = it->second.registerId;
+
+  EnumerateListExecutorInfos infos(inputRegister, outRegister,
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), engine.getQuery()->trx());
+  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1482,7 +1502,45 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine &engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<CalculationBlock>(&engine, this);
+
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outputRegister = it->second.registerId;
+
+
+  std::unordered_set<Variable const*> inVars;
+  _expression->variables(inVars);
+
+  std::vector<Variable const*> expInVars(inVars.size());
+  std::vector<RegisterId> expInRegs(inVars.size());
+
+  auto& varInfo = getRegisterPlan()->varInfo;
+  for (auto& var : inVars) {
+    auto infoIter = varInfo.find(var->id);
+    TRI_ASSERT(infoIter != varInfo.end());
+    TRI_ASSERT(infoIter->second.registerId < ExecutionNode::MaxRegisterId);
+
+    expInVars.emplace_back(var);
+    expInRegs.emplace_back(infoIter->second.registerId);
+  }
+
+  CalculationExecutorInfos infos( std::unordered_set<RegisterId>{} // inputRegister
+                                , outputRegister
+                                , getRegisterPlan()->nrRegs[previousNode->getDepth()]
+                                , getRegisterPlan()->nrRegs[getDepth()]
+                                , getRegsToClear()
+
+                                , engine.getQuery() //used for v8 contexts and in expression
+                                , this->expression()
+                                , std::move(expInVars) // required by expression.execute
+                                , std::move(expInRegs) // required by expression.execute
+                                ,_conditionVariable // unused for now (conditon reg?)
+                                );
+
+  return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this, std::move(infos));
+  //return std::make_unique<CalculationBlock>(&engine, this);
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
@@ -1790,7 +1848,18 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine &engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<FilterBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId inputRegister = it->second.registerId;
+
+  FilterExecutorInfos infos(
+      inputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
+  return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
+                                                              std::move(infos));
+  //return std::make_unique<FilterBlock>(&engine, this, false);
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1809,7 +1878,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// @brief estimateCost
 CostEstimate FilterNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
-  
+
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
   // no optimizer rule introduces FilterNodes, thus it is not important

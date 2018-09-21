@@ -118,7 +118,7 @@ template <typename T>
 std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
   // clang-format off
   std::string const typeName =
-      typeid(T) == typeid(RepairOperation)?
+      typeid(T) == typeid(RepairOperation) ?
         "RepairOperation" :
       typeid(T) == typeid(std::list<RepairOperation>) ?
         "std::list<RepairOperation>" :

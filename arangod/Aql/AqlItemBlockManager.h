@@ -41,7 +41,7 @@ class AqlItemBlockManager {
   explicit AqlItemBlockManager(ResourceMonitor*);
 
   /// @brief destroy the manager
-  ~AqlItemBlockManager();
+  TEST_VIRTUAL ~AqlItemBlockManager();
 
  public:
   /// @brief request a block with the specified size
@@ -69,7 +69,7 @@ class AqlItemBlockManager {
     size_t numItems;
     
     Bucket();
-    ~Bucket(); 
+    ~Bucket();
 
     bool empty() const noexcept { 
       return numItems == 0; 

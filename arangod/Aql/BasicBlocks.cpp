@@ -117,7 +117,7 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
+FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en, bool)
     : ExecutionBlock(engine, en), 
       _inReg(ExecutionNode::MaxRegisterId),
       _collector(&engine->_itemBlockManager),

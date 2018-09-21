@@ -245,7 +245,23 @@ class AqlItemBlock {
       }
     }
   }
-  
+
+  void copyValuesFromRow(size_t currentRow,
+                         std::unordered_set<RegisterId> const& regs,
+                         size_t fromRow) {
+    TRI_ASSERT(currentRow != fromRow);
+
+    for (auto const reg : regs) {
+      if (getValueReference(currentRow, reg).isEmpty()) {
+        // First update the reference count, if this fails, the value is empty
+        if (getValueReference(fromRow, reg).requiresDestruction()) {
+          ++_valueCount[getValueReference(fromRow, reg)];
+        }
+        _data[currentRow * _nrRegs + reg] = getValueReference(fromRow, reg);
+      }
+    }
+  }
+
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
   uint32_t valueCount(AqlValue const& v) const {
@@ -270,10 +286,10 @@ class AqlItemBlock {
   }
 
   /// @brief getter for _nrRegs
-  inline RegisterId getNrRegs() const { return _nrRegs; }
+  inline RegisterId getNrRegs() const noexcept { return _nrRegs; }
 
   /// @brief getter for _nrItems
-  inline size_t size() const { return _nrItems; }
+  inline size_t size() const noexcept { return _nrItems; }
   
   inline size_t capacity() const { return _data.size(); }
 

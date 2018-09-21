@@ -404,6 +404,17 @@ COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
 COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
 
 ################################################################################
+## internal AQL errors
+################################################################################
+
+ERROR_INTERNAL_AQL,2200,"General internal AQL error","Internal error during AQL execution"
+ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS,2201,"An AQL block wrote too few output registers","An AQL block wrote too few output registers"
+ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS,2202,"An AQL block wrote too many output registers","An AQL block wrote too many output registers"
+ERROR_WROTE_OUTPUT_REGISTER_TWICE,2203,"An AQL block wrote an output register twice","An AQL block wrote an output register twice"
+ERROR_WROTE_IN_WRONG_REGISTER,2204,"An AQL block wrote in a register that is not its output","An AQL block wrote in a register that is not its output"
+ERROR_INPUT_REGISTERS_NOT_COPIED,2205,"An AQL block did not copy its input registers","An AQL block did not copy its input registers"
+
+################################################################################
 ## Foxx management errors
 ################################################################################
 

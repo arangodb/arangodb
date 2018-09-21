@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_EXECUTION_STATE_H
 #define ARANGOD_AQL_EXECUTION_STATE_H 1
 
+#include <ostream>
+
 namespace arangodb {
 namespace aql {
 

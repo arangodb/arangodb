@@ -71,7 +71,7 @@ class ExecutionEngine {
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
-  
+
   /// @brief shutdown, will be called exactly once for the whole query, blocking variant
   Result shutdownSync(int errorCode) noexcept;
 
@@ -102,6 +102,9 @@ class ExecutionEngine {
   /// @brief get the register the final result of the query is stored in
   RegisterId resultRegister() const { return _resultRegister; }
 
+  /// @brief accessor to the memory recyler for AqlItemBlocks
+  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
+
  public:
   /// @brief execution statistics for the query
   /// note that the statistics are modification by execution blocks
@@ -128,6 +131,7 @@ class ExecutionEngine {
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
+
 };
 }
 }

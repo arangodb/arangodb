@@ -200,7 +200,7 @@ size_t AqlValue::length() const {
 }
   
 /// @brief get the (array) element at position 
-AqlValue AqlValue::at(transaction::Methods* trx,
+AqlValue AqlValue::at(transaction::Methods*,
                       int64_t position, bool& mustDestroy, 
                       bool doCopy) const {
   mustDestroy = false;
@@ -279,7 +279,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
 }
 
 /// @brief get the _key attribute from an object/document
-AqlValue AqlValue::getKeyAttribute(transaction::Methods* /*trx*/,
+AqlValue AqlValue::getKeyAttribute(transaction::Methods*,
                                    bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -362,7 +362,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _from attribute from an object/document
-AqlValue AqlValue::getFromAttribute(transaction::Methods* /*trx*/,
+AqlValue AqlValue::getFromAttribute(transaction::Methods*,
                                     bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -401,7 +401,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* /*trx*/,
 }
 
 /// @brief get the _to attribute from an object/document
-AqlValue AqlValue::getToAttribute(transaction::Methods* /*trx*/,
+AqlValue AqlValue::getToAttribute(transaction::Methods*,
                                   bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -558,7 +558,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
 }
 
 /// @brief check whether an object has a specific key
-bool AqlValue::hasKey(transaction::Methods* trx,
+bool AqlValue::hasKey(transaction::Methods*,
                       std::string const& name) const {
   switch (type()) {
     case VPACK_INLINE:
@@ -1075,7 +1075,7 @@ AqlValue AqlValue::CreateFromBlocks(
   return AqlValue(buffer.get(), shouldDelete);
 }
 
-/// @brief 3-way comparison for AqlValue objects
+/// @brief comparison for AqlValue objects
 int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
   AqlValue::AqlValueType const leftType = left.type();

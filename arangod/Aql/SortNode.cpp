@@ -23,10 +23,53 @@
 
 #include "SortNode.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortBlock.h"
+#include "Aql/SortRegister.h"
+#include "Aql/SortExecutor.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionEngine.h"
 #include "Basics/StringBuffer.h"
+
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#include "IResearch/IResearchOrderFactory.h"
+
+namespace {
+
+int compareIResearchScores(
+    irs::sort::prepared const* comparer,
+    arangodb::transaction::Methods*,
+    arangodb::aql::AqlValue const& lhs,
+    arangodb::aql::AqlValue const& rhs
+) {
+  arangodb::velocypack::ValueLength tmp;
+
+  auto const* lhsScore = reinterpret_cast<irs::byte_type const*>(lhs.slice().getString(tmp));
+  auto const* rhsScore = reinterpret_cast<irs::byte_type const*>(rhs.slice().getString(tmp));
+
+  if (comparer->less(lhsScore, rhsScore)) {
+    return -1;
+  }
+
+  if (comparer->less(rhsScore, lhsScore)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+int compareAqlValues(
+    irs::sort::prepared const*,
+    arangodb::transaction::Methods* trx,
+    arangodb::aql::AqlValue const& lhs,
+    arangodb::aql::AqlValue const& rhs) {
+  return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
+}
+
+}
+#endif
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -128,7 +171,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 
   return _elements.empty();
 }
-  
+
 void SortNode::removeConditions(size_t count) {
   TRI_ASSERT(_elements.size() > count);
   TRI_ASSERT(count > 0);
@@ -191,7 +234,50 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<SortBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+#ifdef USE_IRESEARCH
+  std::unordered_map<ExecutionNode const*, size_t> offsets;
+  irs::sort::ptr comparer;
+#endif
+
+  std::vector<SortRegister> sortRegs;
+  for(auto const& element : _elements){
+    auto it = getRegisterPlan()->varInfo.find(element.var->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    RegisterId id = it->second.registerId;
+#ifdef USE_IRESEARCH
+    sortRegs.push_back(SortRegister{ id, element, &compareAqlValues });
+
+    auto varId = element.var->id;
+    auto const* setter = _plan->getVarSetBy(varId);
+    if (setter && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == setter->getType()) {
+      // sort condition is covered by `IResearchViewNode`
+
+      auto const* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(setter);
+      auto& offset = offsets[viewNode];
+      auto* node = viewNode->sortCondition()[offset++].node;
+
+      if (arangodb::iresearch::OrderFactory::comparer(&comparer, *node)) {
+        auto& reg = sortRegs.back();
+        reg.scorer = comparer->prepare(); // set score comparer
+        reg.comparator = &compareIResearchScores; // set comparator
+      }
+    }
+#else
+    sortRegs.push_back(SortRegister{id, element});
+#endif
+  }
+
+  SortExecutorInfos infos( std::move(sortRegs)
+                         , getRegisterPlan()->nrRegs[previousNode->getDepth()]
+                         , getRegisterPlan()->nrRegs[getDepth()]
+                         , getRegsToClear()
+                         , engine.getQuery()->trx()
+                         , _stable);
+
+  return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
 }
 
 /// @brief estimateCost

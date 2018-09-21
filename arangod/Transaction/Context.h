@@ -94,7 +94,7 @@ class Context {
   void returnBuilder(arangodb::velocypack::Builder*);
 
   /// @brief get velocypack options with a custom type handler
-  arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
 
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();

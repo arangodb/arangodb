@@ -175,9 +175,11 @@ SET(ARANGOD_SOURCES
   Agency/Supervision.cpp
   Agency/v8-agency.cpp
   Aql/Aggregator.cpp
+  Aql/AllRowsFetcher.cpp
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlItemMatrix.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
@@ -189,15 +191,17 @@ SET(ARANGOD_SOURCES
   Aql/BasicBlocks.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
+  Aql/BlockFetcher.cpp
   Aql/CalculationBlock.cpp
+  Aql/CalculationExecutor.cpp
   Aql/ClusterBlocks.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectBlock.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
-  Aql/Collections.cpp
   Aql/CollectionAccessingNode.cpp
+  Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
@@ -206,19 +210,25 @@ SET(ARANGOD_SOURCES
   Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
+  Aql/EnumerateListExecutor.cpp
   Aql/ExecutionBlock.cpp
+  Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionStats.cpp
+  Aql/ExecutorExpressionContext.cpp
   Aql/Expression.cpp
+  Aql/FilterExecutor.cpp
+  Aql/FilterStats.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
-  Aql/Graphs.cpp
   Aql/GraphNode.cpp
+  Aql/Graphs.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
+  Aql/InputAqlItemRow.cpp
   Aql/ModificationBlocks.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
@@ -226,19 +236,20 @@ SET(ARANGOD_SOURCES
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
   Aql/OptimizerRulesCluster.cpp
-  Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerRulesFeature.cpp
+  Aql/OptimizerRulesReplaceFunctions.cpp
+  Aql/OutputAqlItemRow.cpp
   Aql/Parser.cpp
   Aql/PlanCache.cpp
-  Aql/QueryExecutionState.cpp
-  Aql/QueryProfile.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
   Aql/QueryCursor.cpp
+  Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
+  Aql/QueryProfile.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
   Aql/QueryString.cpp
@@ -250,8 +261,10 @@ SET(ARANGOD_SOURCES
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SingleRowFetcher.cpp
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
+  Aql/SortExecutor.cpp
   Aql/SortNode.cpp
   Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
@@ -469,7 +482,7 @@ SET(ARANGOD_SOURCES
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
-  RestServer/SystemDatabaseFeature.cpp RestServer/SystemDatabaseFeature.h
+  RestServer/SystemDatabaseFeature.cpp
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
   RestServer/UpgradeFeature.cpp

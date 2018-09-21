@@ -1,4 +1,4 @@
-foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
+foreach(LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
 
@@ -76,9 +76,20 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
+  Aql/AqlItemBlockHelper.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/BlockFetcherHelper.cpp
+  Aql/BlockFetcherMock.cpp
   Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateListExecutorTest.cpp
+  Aql/ExecutionBlockImplTest.cpp
+  Aql/FilterExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/SingleRowFetcherTest.cpp
+  Aql/SortExecutorTest.cpp
+  Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp

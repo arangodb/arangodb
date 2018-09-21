@@ -26,7 +26,6 @@
 
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/Variable.h"
 
@@ -41,6 +40,7 @@ class Methods;
 
 namespace aql {
 class AqlItemBlock;
+class BlockFetcher;
 class ExecutionEngine;
 
 class ExecutionBlock {
@@ -68,16 +68,16 @@ class ExecutionBlock {
   void throwIfKilled();
 
   /// @brief add a dependency
-  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) { 
+  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) {
     TRI_ASSERT(ep != nullptr);
-    _dependencies.emplace_back(ep); 
+    _dependencies.emplace_back(ep);
     _dependencyPos = _dependencies.end();
   }
 
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
   bool removeDependency(ExecutionBlock* ep);
-  
+
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR
@@ -108,10 +108,11 @@ class ExecutionBlock {
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state);
-  
+
+
   void traceSkipSomeBegin(size_t atMost);
   void traceSkipSomeEnd(size_t skipped, ExecutionState state);
- 
+
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
@@ -120,13 +121,13 @@ class ExecutionBlock {
   virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   ExecutionNode const* getPlanNode() const { return _exeNode; }
-  
+
   transaction::Methods* transaction() const { return _trx; }
 
   // @brief Will be called on the querywakeup callback with the
   // result collected over the network. Needs to be implemented
   // on all nodes that use this mechanism.
-  virtual bool handleAsyncResult(ClusterCommResult* result) { 
+  virtual bool handleAsyncResult(ClusterCommResult* result) {
     // This indicates that a node uses async functionality
     // but does not react to the response.
     TRI_ASSERT(false);
@@ -142,15 +143,15 @@ class ExecutionBlock {
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return an AqlItemBlock to the memory manager
-  void returnBlock(AqlItemBlock*& block);
+  void returnBlock(AqlItemBlock*& block) noexcept;
 
   /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-  void returnBlockUnlessNull(AqlItemBlock*& block);
+  void returnBlockUnlessNull(AqlItemBlock*& block) noexcept;
 
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row) {
-    return inheritRegisters(src, dst, row, 0); 
+    return inheritRegisters(src, dst, row, 0);
   }
 
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t srcRow,
@@ -172,7 +173,7 @@ class ExecutionBlock {
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
-  
+
 
   /// @brief generic method to get or skip some
   /// Does neither do tracing (traceGetSomeBegin/~End), nor call
@@ -243,13 +244,13 @@ class ExecutionBlock {
 
   /// @brief current working position in the first entry of _buffer
   size_t _pos;
-  
+
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 
   /// @brief profiling level
   uint32_t _profile;
-  
+
   /// @brief getSome begin point in time
   double _getSomeBegin;
 
@@ -269,6 +270,19 @@ class ExecutionBlock {
   aql::BlockCollector _collector;
 
 
+ protected:
+  // friended for this->fetchBlock() (follows below)
+  friend BlockFetcher;
+
+  /**
+   * @brief Internal helper function that fetches the next block
+   *        of AqlItemRows from upstream.
+   *        Will be called by the Fetcher used by the current Executor.
+   *
+   * @return The upstream state, can be DONE, WAITING or HASMORE.
+   */
+  TEST_VIRTUAL
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 };
 
 }  // namespace arangodb::aql

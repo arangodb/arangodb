@@ -68,7 +68,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _skipped(0),
-      _collector(&engine->_itemBlockManager) {
+      _collector(&engine->itemBlockManager()) {
   TRI_ASSERT(_trx != nullptr);
    
   // already insert ourselves into the statistics results 
@@ -324,12 +324,12 @@ AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
 }
 
 /// @brief return an AqlItemBlock to the memory manager
-void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
+void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
   _engine->_itemBlockManager.returnBlock(block);
 }
 
 /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
-void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
+void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) noexcept {
   if (block != nullptr) {
     _engine->_itemBlockManager.returnBlock(block);
   }
@@ -628,6 +628,9 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 RegisterId ExecutionBlock::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
+  if (previousNode == nullptr) {
+    return 0;
+  }
   TRI_ASSERT(previousNode != nullptr);
   RegisterId const inputNrRegs =
     previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
@@ -642,4 +645,11 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
     planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
   return outputNrRegs;
+}
+
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ExecutionBlock::fetchBlock() {
+  auto res = _dependencies[0]->getSome(DefaultBatchSize());
+
+  return res;
 }
