@@ -118,9 +118,11 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
 void OutputAqlItemRow::advanceRow() {
   TRI_ASSERT(produced());
   if (!allValuesWritten()) {
+    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
   }
   if (!_inputRowCopied) {
+    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
   }
   ++_baseIndex;
