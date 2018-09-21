@@ -31,11 +31,9 @@ extern std::string const DATABASES;
 extern std::string const VERSION;
 
 extern std::string const CURRENT;
-extern std::string const CURRENT_VERSION;
 extern std::string const CURRENT_COLLECTIONS;
 extern std::string const CURRENT_DATABASES;
 extern std::string const PLAN;
-extern std::string const PLAN_VERSION;
 extern std::string const PLAN_COLLECTIONS;
 extern std::string const PLAN_DATABASES;
 
