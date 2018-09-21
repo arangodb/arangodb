@@ -121,17 +121,27 @@ GeneralServer::IoContext::IoContext() :
   _clients(0),
   _thread(*this),
   _asioIoContext(1),  // only a single thread per context
-  _asioWork(_asioIoContext)
+  _asioWork(_asioIoContext),
+  _stopped(false)
 {
+  LOG_TOPIC(ERR, Logger::FIXME) << "Starting IO Thread";
   _thread.start();
 }
 
 GeneralServer::IoContext::~IoContext() {
-  stop();
+  //stop();
 }
 
 void GeneralServer::IoContext::stop() {
-  _asioIoContext.stop();
+  bool stopped = false;
+
+  if (_stopped.compare_exchange_weak(stopped, true)){
+    if (stopped == false) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Stopping IO Thread";
+      _asioIoContext.stop();
+    }
+  }
+
 }
 
 

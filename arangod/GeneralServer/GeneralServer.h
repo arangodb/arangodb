@@ -73,6 +73,7 @@ public:
     IoThread _thread;
     asio_ns::io_context _asioIoContext;
     asio_ns::io_context::work _asioWork;
+    std::atomic<bool> _stopped;
 
   public:
     IoContext();
