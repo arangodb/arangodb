@@ -157,15 +157,16 @@ void SchedulerFeature::start() {
 
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
 
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (dealer->isEnabled()) {
-    dealer->defineContextUpdate(
-        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-          TRI_InitV8Dispatcher(isolate, context);
-        },
-        nullptr);
-  }
+  try {
+    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+    if (dealer->isEnabled()) {
+      dealer->defineContextUpdate(
+          [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+            TRI_InitV8Dispatcher(isolate, context);
+          },
+          nullptr);
+    }
+  } catch(...) {}
 }
 
 void SchedulerFeature::beginShutdown() {
