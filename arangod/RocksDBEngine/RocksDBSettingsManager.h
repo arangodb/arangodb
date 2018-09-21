@@ -143,12 +143,19 @@ class RocksDBSettingsManager {
   rocksdb::SequenceNumber earliestSeqNeeded() const;
 
  private:
+  /// bump up the value of the last rocksdb::SequenceNumber we have seen
+  /// and that is pending a sync update
+  void setMaxUpdateSequenceNumber(rocksdb::SequenceNumber seqNo);
+  
   void loadCounterValues();
   void loadSettings();
   void loadIndexEstimates();
   void loadKeyGenerators();
 
   bool lockForSync(bool force);
+
+  /// @brief a reusable builder, used inside sync() to serialize objects
+  arangodb::velocypack::Builder _builder;
 
   /// @brief counter values
   std::unordered_map<uint64_t, CMValue> _counters;
@@ -169,11 +176,6 @@ class RocksDBSettingsManager {
   /// @brief last sync sequence number
   rocksdb::SequenceNumber _lastSync;
   
-  /// @brief sequence number *following* the last successful sync
-  /// we use this to skip syncing if there were no in-between changes to the
-  /// database at all
-  rocksdb::SequenceNumber _lastSeqNumAfterSync;
-
   /// @brief currently syncing
   std::atomic<bool> _syncing;
 
@@ -184,6 +186,16 @@ class RocksDBSettingsManager {
   mutable basics::ReadWriteLock _rwLock;
 
   TRI_voc_tick_t _initialReleasedTick;
+  
+  /// @brief the maximum sequence number that we have encountered
+  /// when updating a counter value
+  std::atomic<rocksdb::SequenceNumber> _maxUpdateSeqNo;
+  
+  /// @brief the last maximum sequence number we stored when we last synced
+  /// all counters back to persistent storage
+  /// if this is identical to _maxUpdateSeqNo, we do not need to write
+  /// back any counter values to disk and can save I/O
+  rocksdb::SequenceNumber _lastSyncedSeqNo;
 };
 }  // namespace arangodb
 
