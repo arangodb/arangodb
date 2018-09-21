@@ -155,7 +155,12 @@ bool State::persistconf(
   
   // The new configuration to be persisted.-------------------------------------
   // Actual agent's configuration is changed after successful persistence.
-  auto config = entry.valueAt(0).get("new").resolveExternals();
+  Slice config;
+  if (entry.valueAt(0).hasKey("new")) {
+    config = entry.valueAt(0).get("new");
+  } else {
+    config = entry.valueAt(0);
+  }
   auto const myId = _agent->id();
   Builder builder;
   if (config.get("id").copyString() != myId) {
@@ -338,6 +343,7 @@ index_t State::logFollower(query_t const& transactions) {
   bool gotSnapshot = slices.length() > 0 && slices[0].isObject() &&
                      !slices[0].get("readDB").isNone();
 
+
   // In case of a snapshot, there are three possibilities:
   //   1. Our highest log index is smaller than the snapshot index, in this
   //      case we must throw away our complete local log and start from the
@@ -410,9 +416,8 @@ index_t State::logFollower(query_t const& transactions) {
       auto clientId = slice.get("clientId").copyString();
       auto index = slice.get("index").getUInt();
       
-      bool reconfiguration =
-        query.keyAt(0).isEqualString(RECONFIGURE) == 0;
-      
+      bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
+
       // first to disk
       if (logNonBlocking(index, query, term, clientId, false, reconfiguration)==0) {
         break;
