@@ -48,6 +48,9 @@ class ActionBase {
   ActionBase (MaintenanceFeature&, ActionDescription&&);
 
   ActionBase() = delete;
+  
+  ActionBase(ActionBase const&) = delete;
+  ActionBase& operator=(ActionBase const&) = delete;
 
   virtual ~ActionBase();
 
@@ -64,26 +67,6 @@ class ActionBase {
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
   virtual bool next() { return false; }
-
-  //
-  // common property or decription names
-  //
-
-  static const char KEY[];
-  static const char FIELDS[];
-  static const char TYPE[];
-  static const char INDEXES[];
-  static const char INDEX[];
-  static const char SHARDS[];
-  static const char DATABASE[];
-  static const char COLLECTION[];
-  static const char EDGE[];
-  static const char NAME[];
-  static const char ID[];
-  static const char LEADER[];
-  static const char LOCAL_LEADER[];
-  static const char GLOB_UID[];
-  static const char OBJECT_ID[];
 
   /// @brief execution finished successfully or failed ... and race timer expired
   virtual bool done() const;
@@ -154,7 +137,7 @@ class ActionBase {
 
   /// @brief Save pointer to successor action
   void setPostAction(std::shared_ptr<ActionDescription> &post) {
-    _postAction=post;
+    _postAction = post;
   }
 
   /// @brief hash value of ActionDescription
