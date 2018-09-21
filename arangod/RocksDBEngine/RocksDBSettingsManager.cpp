@@ -164,6 +164,7 @@ writeIndexEstimatorsAndKeyGenerator(
     // or start fresh.
     return std::make_pair(Result(), returnSeq);
   }
+
   TRI_DEFER(vocbase->release());
 
   auto collection = vocbase->lookupCollection(dbColPair.second);
@@ -227,7 +228,11 @@ void RocksDBSettingsManager::CMValue::serialize(VPackBuilder& b) const {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
-    : _lastSync(0), _syncing(false), _db(db), _initialReleasedTick(0) {}
+    : _lastSync(0), 
+      _lastSeqNumAfterSync(0),
+      _syncing(false), 
+      _db(db), 
+      _initialReleasedTick(0) {}
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
@@ -361,7 +366,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   if (!lockForSync(force)) {
     return Result();
   }
-  TRI_DEFER(_syncing = false);
+  
+  // only one thread can enter here at a time
+
+  // make sure we give up our lock when we exit this function
+  auto guard = scopeGuard([this]() { _syncing = false; });
 
   std::unordered_map<uint64_t, CMValue> copy;
   {  // block all updates
@@ -369,10 +378,17 @@ Result RocksDBSettingsManager::sync(bool force) {
     copy = _counters;
   }
 
-  rocksdb::WriteOptions writeOptions;
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto seqNumber = _db->GetLatestSequenceNumber();
+ 
+  if (seqNumber <= _lastSeqNumAfterSync) {
+    // if the RocksDB sequence number hasn't increased since we were here last,
+    // there is no need to do anything!
+    return Result();
+  }
+
+  rocksdb::WriteOptions writeOptions;
   std::unique_ptr<rocksdb::Transaction> rtrx(
       _db->BeginTransaction(writeOptions));
 
@@ -398,6 +414,12 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   // we have to commit all counters in one batch
   auto s = rtrx->Commit();
+  
+  // store sequence number following our commit
+  // we only use this to check in the next iteration if there have been any
+  // writes to the database between iterations
+  _lastSeqNumAfterSync = _db->GetLatestSequenceNumber();
+
   if (s.ok()) {
     {
       WRITE_LOCKER(guard, _rwLock);
