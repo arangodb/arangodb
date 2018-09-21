@@ -167,7 +167,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
     std::unique_ptr<AqlItemBlock> block = nullptr;
 
-    WHEN("the executor does wait - using getSome") {
+    WHEN("the executor does wait - using getSome - one block") {
       // we are checking multiple input blocks
       // we are only fetching 1 row each (atMost = 1)
       // after a DONE is returned, it must stay done!
@@ -230,6 +230,64 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
       std::tie(state, block) = testee.getSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
+
+      REQUIRE(total == 5);
+    }
+
+    WHEN("the executor does wait - using getSome - multiple blocks") {
+      // as test above, BUT with a higher atMost value.
+
+      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+      std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockc = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockd = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blocke = buildBlock<1>(&monitor, {{42}});
+      blockDeque.push_back(std::move(blocka));
+      blockDeque.push_back(std::move(blockb));
+      blockDeque.push_back(std::move(blockc));
+      blockDeque.push_back(std::move(blockd));
+      blockDeque.push_back(std::move(blocke));
+
+      WaitingExecutionBlockMock dependency{&engine, node,
+                                           std::move(blockDeque)};
+
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
+                                                    std::move(infos));
+      testee.addDependency(&dependency);
+      size_t atMost = 2;
+      size_t total = 0;
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+      REQUIRE(block == nullptr);
 
       REQUIRE(total == 5);
     }
