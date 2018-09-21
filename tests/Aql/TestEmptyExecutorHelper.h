@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 #define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 
+#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/FilterStats.h"
 #include "Aql/OutputAqlItemRow.h"
