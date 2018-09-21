@@ -43,9 +43,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
             std::shared_ptr<arangodb::aql::InputAqlItemBlockShell>>
   fetchBlock() override;
 
-  void returnBlock(
-      std::unique_ptr<arangodb::aql::AqlItemBlock> block) noexcept override;
-
   arangodb::aql::RegisterId getNrInputRegisters() override;
 
  private:
@@ -65,9 +62,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   BlockFetcherMock& andThenReturn(std::vector<FetchBlockReturnItem>);
 
   bool allBlocksFetched() const;
-  // TODO This function does not work right now with the AqlItemBlockShells,
-  // because they return the blocks to the manager
-  bool allFetchedBlocksReturned() const;
   size_t numFetchBlockCalls() const;
 
  private:
@@ -76,7 +70,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   using AqlItemBlockPtr = uintptr_t;
 
   std::unordered_set<AqlItemBlockPtr> _fetchedBlocks;
-  std::unordered_set<AqlItemBlockPtr> _returnedBlocks;
   size_t _numFetchBlockCalls;
 
   ::arangodb::aql::RegisterId _nrRegs;

@@ -40,7 +40,6 @@ BlockFetcherMock::BlockFetcherMock(RegisterId nrRegisters)
     : BlockFetcher(nullptr, std::shared_ptr<std::unordered_set<RegisterId>>()),
       _itemsToReturn(),
       _fetchedBlocks(),
-      _returnedBlocks(),
       _numFetchBlockCalls(0),
       _nrRegs(nrRegisters),
       _monitor(),
@@ -67,18 +66,6 @@ BlockFetcherMock::fetchBlock() {
   }
 
   return returnValue;
-}
-
-void BlockFetcherMock::returnBlock(
-    std::unique_ptr<AqlItemBlock> block) noexcept {
-  if (block == nullptr) {
-    return;
-  }
-
-  auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(block.get());
-
-  bool didInsert;
-  std::tie(std::ignore, didInsert) = _returnedBlocks.insert(blockPtr);
 }
 
 RegisterId BlockFetcherMock::getNrInputRegisters() {
@@ -155,17 +142,6 @@ BlockFetcherMock& BlockFetcherMock::andThenReturn(
 bool BlockFetcherMock::allBlocksFetched() const {
   return _itemsToReturn.empty();
 }
-
-bool BlockFetcherMock::allFetchedBlocksReturned() const {
-  for (auto const it : _fetchedBlocks) {
-    if (_returnedBlocks.find(it) == _returnedBlocks.end()) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 size_t BlockFetcherMock::numFetchBlockCalls() const {
   return _numFetchBlockCalls;
 }
