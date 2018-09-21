@@ -272,7 +272,9 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           for (int64_t i = 0; i < 6; i++) {
             int64_t rowIdx = i;
             int64_t rowValue = i+1;
-            REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
+            auto row = matrix->getRow(rowIdx);
+            REQUIRE(row.isInitialized());
+            REQUIRE(row.getValue(0).slice().getInt() == rowValue);
           }
 
           AND_THEN("null should be returned") {

@@ -80,7 +80,7 @@ class AqlItemMatrix {
 
  private:
 
-    std::vector<std::shared_ptr<InputAqlItemBlockShell>> _blocks;
+    std::vector<std::pair<size_t, std::shared_ptr<InputAqlItemBlockShell>>> _blocks;
 
     size_t _size;
 
