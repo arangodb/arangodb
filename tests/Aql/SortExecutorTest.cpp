@@ -65,6 +65,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
   auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
 
   // Mock of the Transaction
@@ -86,6 +87,9 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
   sortRegisters.emplace_back(std::move(sortReg));
 
   SortExecutorInfos infos(std::move(sortRegisters), 1, 1, {}, &trx, false);
+  auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
+      itemBlockManager, std::move(block), infos.getOutputRegisters(),
+      infos.registersToKeep());
 
   GIVEN("there are no rows upstream") {
     VPackBuilder input;
@@ -99,7 +103,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -115,7 +119,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -143,7 +147,7 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("we will hit waiting 5 times") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
         for (size_t i = 0; i < 5; ++i) {
           std::tie(state, stats) = testee.produceRow(result);
@@ -183,27 +187,27 @@ SCENARIO("SortExecutor", "[AQL][EXECUTOR]") {
           block = result.stealBlock();
           AqlValue v = block->getValue(0, 0);
           REQUIRE(v.isNumber());
-          int64_t number = v.toInt64(nullptr);
+          int64_t number = v.toInt64();
           REQUIRE(number == 1);
 
           v = block->getValue(1, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 2);
 
           v = block->getValue(2, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 3);
 
           v = block->getValue(3, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 4);
 
           v = block->getValue(4, 0);
           REQUIRE(v.isNumber());
-          number = v.toInt64(nullptr);
+          number = v.toInt64();
           REQUIRE(number == 5);
         }
       }

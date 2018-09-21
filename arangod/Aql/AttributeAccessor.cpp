@@ -27,7 +27,7 @@
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -38,9 +38,9 @@ class AttributeAccessorKey final : public AttributeAccessor {
  public:
   explicit AttributeAccessorKey(Variable const* variable) : AttributeAccessor(variable) {}
 
-  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
-    return value.getKeyAttribute(trx, mustDestroy, true);
+    return value.getKeyAttribute(mustDestroy, true);
   }
 };
 
@@ -48,9 +48,9 @@ class AttributeAccessorId final : public AttributeAccessor {
  public:
   explicit AttributeAccessorId(Variable const* variable) : AttributeAccessor(variable) {}
 
-  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
-    return value.getIdAttribute(trx, mustDestroy, true);
+    return value.getIdAttribute(resolver, mustDestroy, true);
   }
 };
 
@@ -58,9 +58,9 @@ class AttributeAccessorFrom final : public AttributeAccessor {
  public:
   explicit AttributeAccessorFrom(Variable const* variable) : AttributeAccessor(variable) {}
 
-  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
-    return value.getFromAttribute(trx, mustDestroy, true);
+    return value.getFromAttribute(mustDestroy, true);
   }
 };
 
@@ -68,9 +68,9 @@ class AttributeAccessorTo final : public AttributeAccessor {
  public:
   explicit AttributeAccessorTo(Variable const* variable) : AttributeAccessor(variable) {}
 
-  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
-    return value.getToAttribute(trx, mustDestroy, true);
+    return value.getToAttribute(mustDestroy, true);
   }
 };
 
@@ -79,10 +79,10 @@ class AttributeAccessorSingle final : public AttributeAccessor {
   explicit AttributeAccessorSingle(Variable const* variable, std::string&& path) 
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
-  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     // use optimized version for single attribute (e.g. variable.attr)
-    return value.get(trx, _path, mustDestroy, true);
+    return value.get(resolver, _path, mustDestroy, true);
   }
 
  private:
@@ -94,10 +94,10 @@ class AttributeAccessorMulti final : public AttributeAccessor {
   explicit AttributeAccessorMulti(Variable const* variable, std::vector<std::string>&& path) 
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
-  AqlValue get(transaction::Methods* trx, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
-    return value.get(trx, _path, mustDestroy, true);
+    return value.get(resolver, _path, mustDestroy, true);
   }
 
  private:

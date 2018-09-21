@@ -1,4 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
+//
 /// @brief Infrastructure for ExecutionPlans
 ///
 /// DISCLAIMER
@@ -34,7 +35,6 @@
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionBlock.h"
-#include "Aql/EnumerateListBlock.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -1861,7 +1861,6 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear());
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(infos));
-  //return std::make_unique<FilterBlock>(&engine, this, false);
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,

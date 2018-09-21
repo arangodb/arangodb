@@ -122,10 +122,12 @@ bool OurLessThan::operator()(
     } else {
       // Take attributePath into consideration:
       bool mustDestroyA;
-      AqlValue aa = lhs.get(_trx, attributePath, mustDestroyA, false);
+      auto resolver = _trx->resolver();
+      TRI_ASSERT(resolver != nullptr);
+      AqlValue aa = lhs.get(*resolver, attributePath, mustDestroyA, false);
       AqlValueGuard guardA(aa, mustDestroyA);
       bool mustDestroyB;
-      AqlValue bb = rhs.get(_trx, attributePath, mustDestroyB, false);
+      AqlValue bb = rhs.get(*resolver, attributePath, mustDestroyB, false);
       AqlValueGuard guardB(bb, mustDestroyB);
       cmp = AqlValue::Compare(_trx, aa, bb, true);
     }
@@ -536,7 +538,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
   }
 
-  BlockCollector collector(&_engine->_itemBlockManager);
+  BlockCollector collector(&_engine->itemBlockManager());
   std::vector<size_t> chosen;
 
   size_t i = 0;

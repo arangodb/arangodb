@@ -51,6 +51,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   ExecutionState state;
 
   ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor};
   // Mock of the Transaction
   // Enough for this test, will only be passed through and accessed
   // on documents alone.
@@ -64,10 +65,13 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   fakeit::When(Method(mockContext, getVPackOptions))
       .AlwaysReturn(&arangodb::velocypack::Options::Defaults);
 
-  EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, &trx);
 
   GIVEN("there are no rows upstream") {
+    EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, &trx);
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 2);
+    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
+        itemBlockManager, std::move(block), infos.getOutputRegisters(),
+        infos.registersToKeep());
     VPackBuilder input;
 
     WHEN("the producer does not wait") {
@@ -79,7 +83,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
@@ -95,7 +99,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(!result.produced());
@@ -112,6 +116,9 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   GIVEN("there are rows in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
+    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
+        itemBlockManager, std::move(block), infos.getOutputRegisters(),
+        infos.registersToKeep());
     auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
     WHEN("the producer does wait") {
@@ -123,7 +130,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
 
         /*
          * Here we are not waiting after every row produce, because the fetcher
@@ -168,6 +175,9 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
   GIVEN("there are rows in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
+    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
+      itemBlockManager, std::move(block), infos.getOutputRegisters(),
+      infos.registersToKeep());
     auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]], [1, 2, 3, [true, true, true]] ]");
 
     WHEN("the producer does wait") {
@@ -179,7 +189,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
       NoStats stats{};
 
       THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result(std::move(block), infos);
+        OutputAqlItemRow result(std::move(outputBlockShell));
 
         // like the test above, except now two rows of input
         // are available

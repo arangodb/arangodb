@@ -48,7 +48,7 @@ class BlockFetcher;
 class SingleRowFetcher {
  public:
   explicit SingleRowFetcher(BlockFetcher& executionBlock);
-  TEST_VIRTUAL ~SingleRowFetcher();
+  TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
   // only for testing! Does not initialize _blockFetcher!
@@ -92,16 +92,7 @@ class SingleRowFetcher {
    *        SingleRowFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::unique_ptr<AqlItemBlock> _currentBlock;
-
-  /**
-  * @brief Unique block ID, given by this class to every AqlItemBlock in
-  *        fetchBlock().
-  *
-  *        Internally, blocks are numbered consecutively starting from 0, but
-  *        this is not guaranteed.
-  */
-  InputAqlItemRow::AqlItemBlockId _blockId;
+  std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
 
   /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid
@@ -121,7 +112,8 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+  fetchBlock();
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
@@ -134,11 +126,6 @@ class SingleRowFetcher {
 
   size_t getRowIndex();
 
-  /**
-  * @brief return block to the BlockFetcher (and, by extension, to the
-  *        AqlItemBlockManager)
-  */
-  void returnCurrentBlock() noexcept;
 };
 
 }  // namespace aql

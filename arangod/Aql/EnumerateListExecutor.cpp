@@ -42,8 +42,12 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister_, RegisterId outputRegister_,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx)
-    : ExecutorInfos({inputRegister_}, {outputRegister_}, nrInputRegisters,
-                    nrOutputRegisters, std::move(registersToClear)),
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{inputRegister_}),
+                    std::make_shared<std::unordered_set<RegisterId>>(
+                        std::initializer_list<RegisterId>{outputRegister_}),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear)),
       _trx(trx),
       _inputRegister(inputRegister_),
       _outputRegister(outputRegister_) {
@@ -54,7 +58,12 @@ transaction::Methods* EnumerateListExecutorInfos::trx() const { return _trx; }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE) {};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _currentRow{CreateInvalidInputRowHint{}},
+      _rowState(ExecutionState::HASMORE),
+      _inputArrayPosition(0),
+      _inputArrayLength(0){};
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
     OutputAqlItemRow& output) {
@@ -142,5 +151,5 @@ AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  return inVarReg.at(_infos.trx(), pos, mustDestroy, true);
+  return inVarReg.at(pos, mustDestroy, true);
 }

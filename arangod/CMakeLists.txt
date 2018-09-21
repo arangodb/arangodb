@@ -179,6 +179,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlItemBlockShell.cpp
   Aql/AqlItemMatrix.cpp
   Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
@@ -209,7 +210,6 @@ SET(ARANGOD_SOURCES
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
-  Aql/EnumerateListBlock.cpp
   Aql/EnumerateListExecutor.cpp
   Aql/ExecutionBlock.cpp
   Aql/ExecutionBlockImpl.cpp
@@ -218,6 +218,7 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionPlan.cpp
   Aql/ExecutionStats.cpp
   Aql/ExecutorExpressionContext.cpp
+  Aql/ExecutorInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
   Aql/FilterStats.cpp
@@ -262,7 +263,6 @@ SET(ARANGOD_SOURCES
   Aql/ShortestPathBlock.cpp
   Aql/ShortestPathNode.cpp
   Aql/SingleRowFetcher.cpp
-  Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp

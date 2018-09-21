@@ -31,6 +31,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class AqlItemBlock;
+class InputAqlItemBlockShell;
 
 /**
  * @brief A Matrix of AqlItemRows
@@ -45,9 +46,9 @@ class AqlItemMatrix {
     /**
      * @brief Add this block of rows into the Matrix
      *
-     * @param block Block of rows to append in the matrix
+     * @param blockShell Block of rows to append in the matrix
      */
-    void addBlock(std::unique_ptr<AqlItemBlock> block);
+    void addBlock(std::shared_ptr<InputAqlItemBlockShell> blockShell);
 
     /**
      * @brief Get the number of rows stored in this Matrix
@@ -77,12 +78,9 @@ class AqlItemMatrix {
      */
      std::unique_ptr<InputAqlItemRow> getRow(size_t index) const;
 
-  protected:
-    std::vector<std::unique_ptr<AqlItemBlock>>&& stealBlocks();
+ private:
 
-  private:
-
-    std::vector<std::unique_ptr<AqlItemBlock>> _blocks;
+    std::vector<std::shared_ptr<InputAqlItemBlockShell>> _blocks;
 
     size_t _size;
 

@@ -24,9 +24,12 @@
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Basics/Exceptions.h"
+#include "ExecutionEngine.h"
+#include "AqlItemBlockShell.h"
 
 #include <memory>
 #include <utility>
@@ -40,23 +43,17 @@ namespace aql {
  */
 class BlockFetcher {
  public:
-  explicit BlockFetcher(ExecutionBlock* executionBlock_)
-      : _executionBlock(executionBlock_){};
+  explicit BlockFetcher(
+      ExecutionBlock* executionBlock_,
+      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_)
+      : _executionBlock(executionBlock_),
+        _inputRegisters(std::move(inputRegisters_)) {};
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
-  TEST_VIRTUAL inline std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-  fetchBlock() {
-    return _executionBlock->fetchBlock();
-  };
-
-  TEST_VIRTUAL inline void returnBlock(
-      std::unique_ptr<AqlItemBlock> block) noexcept {
-    AqlItemBlock* blockPtr = block.get();
-    _executionBlock->returnBlockUnlessNull(blockPtr);
-    TRI_ASSERT(blockPtr == nullptr);
-    block.release();
-  };
+  TEST_VIRTUAL
+      std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+      fetchBlock();
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() {
     return _executionBlock->getNrInputRegisters();
@@ -64,6 +61,7 @@ class BlockFetcher {
 
  private:
   ExecutionBlock* _executionBlock;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
 };
 
 }  // namespace aql

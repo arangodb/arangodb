@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <lib/Logger/LogMacros.h>
-#include "FilterExecutor.h"
+#include "TestExecutorHelper.h"
 
 #include "Basics/Common.h"
 
@@ -38,11 +38,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
-FilterExecutor::~FilterExecutor() = default;
+TestExecutorHelper::TestExecutorHelper(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
+TestExecutorHelper::~TestExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow &output) {
-  TRI_IF_FAILURE("FilterExecutor::produceRow") {
+std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRow(OutputAqlItemRow &output) {
+  TRI_IF_FAILURE("TestExecutorHelper::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
@@ -53,30 +53,26 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
     std::tie(state, input) = _fetcher.fetchRow();
 
     if (state == ExecutionState::WAITING) {
+      if (_returnedDone) {
+        return {ExecutionState::DONE, stats};
+      }
       return {state, stats};
     }
 
     if (!input) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      _returnedDone = true;
       return {state, stats};
     }
     TRI_ASSERT(input.isInitialized());
 
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-      output.copyRow(input);
-      return {state, stats};
-    } else {
-      stats.incrFiltered();
-    }
-
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
+    output.copyRow(input);
+    return {state, stats};
+    //stats.incrFiltered();
   }
 }
 
-FilterExecutorInfos::FilterExecutorInfos(
+TestExecutorHelperInfos::TestExecutorHelperInfos(
     RegisterId inputRegister_, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear)

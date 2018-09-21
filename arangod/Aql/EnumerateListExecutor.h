@@ -95,20 +95,18 @@ class EnumerateListExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
- public:
-  EnumerateListExecutorInfos& _infos;
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
   void initialize();
 
  private:
+  EnumerateListExecutorInfos& _infos;
   Fetcher& _fetcher;
-
-  InputAqlItemRow _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow _currentRow;
   ExecutionState _rowState;
-  size_t _inputArrayPosition = 0;
-  size_t _inputArrayLength = 0;
+  size_t _inputArrayPosition;
+  size_t _inputArrayLength;
 
 };
 

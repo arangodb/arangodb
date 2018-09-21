@@ -28,7 +28,9 @@ using namespace arangodb::aql;
 
 /// @brief create the manager
 AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor) 
-    : _resourceMonitor(resourceMonitor) {}
+    : _resourceMonitor(resourceMonitor) {
+  TRI_ASSERT(resourceMonitor != nullptr);
+}
 
 /// @brief destroy the manager
 AqlItemBlockManager::~AqlItemBlockManager() { }

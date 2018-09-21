@@ -1,3 +1,5 @@
+#include <utility>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -32,24 +34,23 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
-    : _block(nullptr), _baseIndex(0), _blockId(-1) {}
+    : _blockShell(nullptr), _baseIndex(0) {}
 
-InputAqlItemRow::InputAqlItemRow(AqlItemBlock* block, size_t baseIndex,
-                                 AqlItemBlockId blockId_)
-    : _block(block), _baseIndex(baseIndex), _blockId(blockId_) {
-  TRI_ASSERT(block != nullptr);
-  TRI_ASSERT(_blockId >= 0);
+InputAqlItemRow::InputAqlItemRow(
+    std::shared_ptr<InputAqlItemBlockShell> blockShell_, size_t baseIndex)
+    : _blockShell(std::move(blockShell_)), _baseIndex(baseIndex) {
+  TRI_ASSERT(_blockShell != nullptr);
 }
 
 const AqlValue& InputAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId < getNrRegisters());
-  return _block->getValueReference(_baseIndex, registerId);
+  return block().getValueReference(_baseIndex, registerId);
 }
 
 bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
   TRI_ASSERT(isInitialized());
-  return this->_blockId == other._blockId &&
+  return this->_blockShell == other._blockShell &&
          this->_baseIndex == other._baseIndex;
 }
 

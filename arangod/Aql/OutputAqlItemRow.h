@@ -46,15 +46,15 @@ struct AqlValue;
  */
 class OutputAqlItemRow {
  public:
-  OutputAqlItemRow(std::unique_ptr<AqlItemBlock> block,
-                   const ExecutorInfos& executorInfos);
+  explicit OutputAqlItemRow(
+      std::unique_ptr<OutputAqlItemBlockShell> blockShell);
 
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
                 AqlValue const&);
 
   void copyRow(InputAqlItemRow const& sourceRow);
 
-  std::size_t getNrRegisters() const { return _block->getNrRegs(); }
+  std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -80,16 +80,17 @@ class OutputAqlItemRow {
   }
 
   std::unique_ptr<AqlItemBlock> stealBlock() {
+    auto block = _blockShell->stealBlockCompat();
     if (numRowsWritten() == 0) {
       // blocks may not be empty
-      _block.reset(nullptr);
+      block.reset(nullptr);
     } else {
-      _block->shrink(numRowsWritten());
+      block->shrink(numRowsWritten());
     }
-    return std::move(_block);
+    return block;
   }
 
-  bool isFull() { return numRowsWritten() >= _block->size(); }
+  bool isFull() { return numRowsWritten() >= block().size(); }
 
   size_t numRowsWritten() const noexcept {
     if (produced()) {
@@ -103,14 +104,12 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::unique_ptr<AqlItemBlock> _block;
+  std::unique_ptr<OutputAqlItemBlockShell> _blockShell;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
    */
   size_t _baseIndex;
-
-  ExecutorInfos const& _executorInfos;
 
   /**
    * @brief Whether the input registers were copied from a source row.
@@ -135,12 +134,8 @@ class OutputAqlItemRow {
     return numRowsWritten();
   }
 
-  ExecutorInfos const& executorInfos() const {
-    return _executorInfos;
-  }
-
   size_t numRegistersToWrite() const {
-    return executorInfos().getOutputRegisters().size();
+    return _blockShell->outputRegisters().size();
   }
 
   bool allValuesWritten() const {
@@ -148,9 +143,11 @@ class OutputAqlItemRow {
   };
 
   bool isOutputRegister(RegisterId regId) {
-    auto const& outRegs = executorInfos().getOutputRegisters();
-    return outRegs.find(regId) != outRegs.end();
+    return _blockShell->isOutputRegister(regId);
   }
+
+  AqlItemBlock const& block() const { return _blockShell->block(); }
+  AqlItemBlock& block() { return _blockShell->block(); }
 };
 
 }  // namespace aql
