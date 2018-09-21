@@ -126,11 +126,10 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
       // done should stay done!
       std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(state == ExecutionState::DONE);
     }
   }
 
-  /*
   GIVEN("there are multiple blocks in the upstream with no rows inside") {
     VPackBuilder input;
     BlockFetcherMock blockFetcherMock{0};
@@ -138,6 +137,10 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     std::unique_ptr<AqlItemBlock> block = nullptr;
 
     WHEN("the executor does wait") {
+      // we are checking multiple input blocks
+      // we are only fetching 1 row each (atMost = 1)
+      // after a DONE is returned, it must stay done!
+
       std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
       std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(&monitor, {{42}});
       std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(&monitor, {{42}});
@@ -156,16 +159,50 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
                                                     std::move(infos));
       testee.addDependency(&dependency);
+      size_t atMost = 1;
+      size_t total = 0;
 
-      size_t atMost = 1000;
       std::tie(state, block) = testee.getSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+
       std::tie(state, block) = testee.getSome(atMost);
-      // REQUIRE(block->size() == 1);
-      LOG_DEVEL << state;
+      REQUIRE(state == ExecutionState::HASMORE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+      total = total + block->size();
+
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+
+      REQUIRE(total == 5);
     }
   }
-  */
 }
 
 }  // namespace aql

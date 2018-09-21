@@ -98,6 +98,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::deque<std::unique_ptr<arangodb::aql::AqlItemBlock>> _data;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   size_t _inflight;
+  bool _returnedDone = false;
   bool _hasWaited;
 };
 }  // namespace aql
