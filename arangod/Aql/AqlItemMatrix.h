@@ -76,7 +76,7 @@ class AqlItemMatrix {
      *
      * @return A single row in the Matrix
      */
-     std::unique_ptr<InputAqlItemRow> getRow(size_t index) const;
+    InputAqlItemRow getRow(size_t index) const;
 
  private:
 

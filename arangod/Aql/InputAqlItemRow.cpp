@@ -1,5 +1,3 @@
-#include <utility>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -30,6 +28,8 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;

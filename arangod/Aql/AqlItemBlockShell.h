@@ -1,5 +1,3 @@
-#include <utility>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -29,6 +27,7 @@
 #include "Aql/AqlItemBlockManager.h"
 
 #include <memory>
+#include <utility>
 
 namespace arangodb {
 namespace aql {

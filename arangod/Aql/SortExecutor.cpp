@@ -52,11 +52,11 @@ class OurLessThan {
 
   bool operator()(size_t const& a,
                   size_t const& b) const {
-    auto left = _input.getRow(a);
-    auto right = _input.getRow(b);
+    InputAqlItemRow left = _input.getRow(a);
+    InputAqlItemRow right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
-      auto const& lhs = left->getValue(reg.reg);
-      auto const& rhs = right->getValue(reg.reg);
+      AqlValue const& lhs = left.getValue(reg.reg);
+      AqlValue const& rhs = right.getValue(reg.reg);
 
 #ifdef USE_IRESEARCH
       TRI_ASSERT(reg.comparator);
@@ -153,8 +153,8 @@ std::pair<ExecutionState, NoStats> SortExecutor::produceRow(
     // Bail out on no elements
     return {ExecutionState::DONE, NoStats{}};
   }
-  auto inRow = _input->getRow(_sortedIndexes[_returnNext]);
-  output.copyRow(*inRow);
+  InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
+  output.copyRow(inRow);
   _returnNext++;
   if (_returnNext >= _sortedIndexes.size()) {
     return {ExecutionState::DONE, NoStats{}};

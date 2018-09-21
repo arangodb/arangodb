@@ -87,11 +87,8 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-  for (auto itemId : _blockShell->registersToKeep()) {
-    // copy entries to keep
-    //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
-
-    if (mustClone) {
+  if (mustClone) {
+    for (auto itemId : _blockShell->registersToKeep()) {
       auto const& value = sourceRow.getValue(itemId);
       if (!value.isEmpty()) {
         AqlValue clonedValue = value.clone();
@@ -104,11 +101,11 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
         block().setValue(_baseIndex, itemId, clonedValue);
         guard.steal();
       }
-    } else {
-      TRI_ASSERT(_baseIndex > 0);
-      block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
-                                _baseIndex - 1);
     }
+  } else {
+    TRI_ASSERT(_baseIndex > 0);
+    block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
+                              _baseIndex - 1);
   }
 
   _inputRowCopied = true;
