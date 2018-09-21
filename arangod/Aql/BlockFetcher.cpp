@@ -28,7 +28,8 @@ std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
 BlockFetcher::fetchBlock() {
   ExecutionState state;
   std::unique_ptr<AqlItemBlock> block;
-  std::tie(state, block) = _upstream->getSome(ExecutionBlock::DefaultBatchSize());
+  std::tie(state, block) =
+      upstreamBlock().getSome(ExecutionBlock::DefaultBatchSize());
   if (block != nullptr) {
     auto shell = std::make_shared<InputAqlItemBlockShell>(
         itemBlockManager(), std::move(block), _inputRegisters);
