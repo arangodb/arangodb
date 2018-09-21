@@ -48,6 +48,7 @@ QueryRegistryFeature::QueryRegistryFeature(
       _slowQueryThreshold(10.0),
       _queryCacheMode("off"),
       _queryCacheEntries(128),
+      _queryCacheEntryMaxSize(16 * 1024 * 1024),
       _queryRegistryTTL(DefaultQueryTTL) {
   setOptional(false);
   startsAfter("V8Phase");
@@ -83,6 +84,10 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.cache-entries",
                      "maximum number of results in query result cache per database",
                      new UInt64Parameter(&_queryCacheEntries));
+  
+  options->addOption("--query.cache-entry-max-size",
+                     "maximum size of an invidiual result entry in query result cache per database",
+                     new UInt64Parameter(&_queryCacheEntryMaxSize));
 
   options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
@@ -104,9 +109,12 @@ void QueryRegistryFeature::validateOptions(
 
 void QueryRegistryFeature::prepare() {
   // configure the query cache
-  std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
-                                                 _queryCacheEntries};
-  arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
+  arangodb::aql::QueryCacheProperties properties{ 
+      arangodb::aql::QueryCache::modeString(_queryCacheMode), 
+      _queryCacheEntries, 
+      _queryCacheEntryMaxSize 
+  };
+  arangodb::aql::QueryCache::instance()->properties(properties);
 
   if (_queryRegistryTTL <= 0) {
     _queryRegistryTTL = DefaultQueryTTL;
