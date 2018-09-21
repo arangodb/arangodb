@@ -2599,40 +2599,6 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
   }
 
   const std::string followerId = followerIdSlice.copyString();
-  // Short cut for the case that the collection is empty
-  if (readLockIdSlice.isNone() && checksumSlice.isString()) {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, col->cid(),
-                                    AccessMode::Type::EXCLUSIVE);
-
-    auto res = trx.begin();
-    if (res.ok()) {
-      auto countRes = trx.count(col->name(), false);
-      if (countRes.successful()) {
-        VPackSlice nrSlice = countRes.slice();
-        uint64_t nr = nrSlice.getNumber<uint64_t>();
-        if (nr == 0 && checksumSlice.isEqualString("0")) {
-          col->followers()->add(followerId);
-
-          VPackBuilder b;
-          {
-            VPackObjectBuilder bb(&b);
-            b.add(StaticStrings::Error, VPackValue(false));
-          }
-
-          generateResult(rest::ResponseCode::OK, b.slice());
-
-          return;
-        }
-      }
-    }
-    // If we get here, we have to report an error:
-    generateError(rest::ResponseCode::FORBIDDEN,
-                  TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
-                  "shard not empty");
-    return;
-  }
-
   // optional while introducing this bugfix. should definitely be required with 3.4
   // and throw a 400 then when no checksum is provided
   if (checksumSlice.isString() && readLockIdSlice.isString()) {
