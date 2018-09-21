@@ -26,15 +26,14 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
-
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
 
+class InputAqlItemBlockShell;
+class AqlItemBlock;
 struct AqlValue;
 
 struct CreateInvalidInputRowHint {
@@ -69,7 +68,7 @@ class InputAqlItemRow {
    */
   const AqlValue& getValue(RegisterId registerId) const;
 
-  std::size_t getNrRegisters() const { return block().getNrRegs(); }
+  std::size_t getNrRegisters() const;
 
   bool operator==(InputAqlItemRow const& other) const noexcept;
   bool operator!=(InputAqlItemRow const& other) const noexcept;
@@ -79,8 +78,8 @@ class InputAqlItemRow {
   explicit operator bool() const noexcept { return isInitialized(); }
 
  private:
-  AqlItemBlock& block() { return _blockShell->block(); }
-  AqlItemBlock const& block() const { return _blockShell->block(); }
+  AqlItemBlock& block();
+  AqlItemBlock const& block() const;
 
  private:
   /**

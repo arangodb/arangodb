@@ -28,6 +28,7 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
 
 using namespace arangodb;
@@ -54,7 +55,17 @@ bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
          this->_baseIndex == other._baseIndex;
 }
 
-bool InputAqlItemRow::operator!=(InputAqlItemRow const &other) const noexcept {
+bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   TRI_ASSERT(isInitialized());
   return !(*this == other);
+}
+
+AqlItemBlock& InputAqlItemRow::block() { return _blockShell->block(); }
+
+AqlItemBlock const& InputAqlItemRow::block() const {
+  return _blockShell->block();
+}
+
+std::size_t InputAqlItemRow::getNrRegisters() const {
+  return block().getNrRegs();
 }

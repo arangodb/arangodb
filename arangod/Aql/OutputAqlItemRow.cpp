@@ -26,6 +26,7 @@
 #include "OutputAqlItemRow.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -91,7 +92,7 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
     //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
 
     if (mustClone) {
-      auto const &value = sourceRow.getValue(itemId);
+      auto const& value = sourceRow.getValue(itemId);
       if (!value.isEmpty()) {
         AqlValue clonedValue = value.clone();
         AqlValueGuard guard(clonedValue, true);
@@ -113,3 +114,45 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   _inputRowCopied = true;
   _lastSourceRow = sourceRow;
 }
+
+void OutputAqlItemRow::advanceRow() {
+  TRI_ASSERT(produced());
+  if (!allValuesWritten()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
+  }
+  if (!_inputRowCopied) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
+  }
+  ++_baseIndex;
+  _inputRowCopied = false;
+  _numValuesWritten = 0;
+}
+
+std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
+  auto block = _blockShell->stealBlockCompat();
+  if (numRowsWritten() == 0) {
+    // blocks may not be empty
+    block.reset(nullptr);
+  } else {
+    block->shrink(numRowsWritten());
+  }
+  return block;
+}
+
+size_t OutputAqlItemRow::numRegistersToWrite() const {
+  return _blockShell->outputRegisters().size();
+}
+
+bool OutputAqlItemRow::isOutputRegister(RegisterId regId) {
+  return _blockShell->isOutputRegister(regId);
+}
+
+AqlItemBlock const& OutputAqlItemRow::block() const {
+  return _blockShell->block();
+}
+
+AqlItemBlock& OutputAqlItemRow::block() { return _blockShell->block(); }
+
+bool OutputAqlItemRow::isFull() { return numRowsWritten() >= block().size(); }
+
+std::size_t OutputAqlItemRow::getNrRegisters() const { return block().getNrRegs(); }

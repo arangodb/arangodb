@@ -26,8 +26,6 @@
 #ifndef ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -35,6 +33,7 @@
 namespace arangodb {
 namespace aql {
 
+class OutputAqlItemBlockShell;
 struct AqlValue;
 
 /**
@@ -54,43 +53,23 @@ class OutputAqlItemRow {
 
   void copyRow(InputAqlItemRow const& sourceRow);
 
-  std::size_t getNrRegisters() const { return block().getNrRegs(); }
+  std::size_t getNrRegisters() const;
 
   /**
    * @brief May only be called after all output values in the current row have
    * been set, or in case there are zero output registers, after copyRow has
    * been called.
    */
-  void advanceRow() {
-    TRI_ASSERT(produced());
-    if (!allValuesWritten()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
-    }
-    if (!_inputRowCopied) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
-    }
-    ++_baseIndex;
-    _inputRowCopied = false;
-    _numValuesWritten = 0;
-  }
+  void advanceRow();
 
   // returns true if row was produced
   bool produced() const {
     return allValuesWritten() && _inputRowCopied;
   }
 
-  std::unique_ptr<AqlItemBlock> stealBlock() {
-    auto block = _blockShell->stealBlockCompat();
-    if (numRowsWritten() == 0) {
-      // blocks may not be empty
-      block.reset(nullptr);
-    } else {
-      block->shrink(numRowsWritten());
-    }
-    return block;
-  }
+  std::unique_ptr<AqlItemBlock> stealBlock();
 
-  bool isFull() { return numRowsWritten() >= block().size(); }
+  bool isFull();
 
   size_t numRowsWritten() const noexcept {
     if (produced()) {
@@ -134,20 +113,16 @@ class OutputAqlItemRow {
     return numRowsWritten();
   }
 
-  size_t numRegistersToWrite() const {
-    return _blockShell->outputRegisters().size();
-  }
+  size_t numRegistersToWrite() const;
 
   bool allValuesWritten() const {
     return _numValuesWritten == numRegistersToWrite();
   };
 
-  bool isOutputRegister(RegisterId regId) {
-    return _blockShell->isOutputRegister(regId);
-  }
+  bool isOutputRegister(RegisterId regId);
 
-  AqlItemBlock const& block() const { return _blockShell->block(); }
-  AqlItemBlock& block() { return _blockShell->block(); }
+  AqlItemBlock const& block() const;
+  AqlItemBlock& block();
 };
 
 }  // namespace aql
