@@ -1,5 +1,3 @@
-#include <utility>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -34,6 +32,8 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
