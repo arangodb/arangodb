@@ -52,8 +52,8 @@ class OurLessThan {
 
   bool operator()(size_t const& a,
                   size_t const& b) const {
-    InputAqlItemRow const* left = _input.getRow(a);
-    InputAqlItemRow const* right = _input.getRow(b);
+    auto left = _input.getRow(a);
+    auto right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       auto const& lhs = left->getValue(reg.reg);
       auto const& rhs = right->getValue(reg.reg);

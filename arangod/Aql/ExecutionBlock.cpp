@@ -64,7 +64,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _pos(0),
       _done(false),
-      _profile(engine->getQuery()->queryOptions().profile),
+      _profile(engine->getQuery()->queryOptions().getProfileLevel()),
       _getSomeBegin(0.0),
       _upstreamState(ExecutionState::HASMORE),
       _skipped(0),
@@ -320,18 +320,18 @@ ExecutionBlock::getSome(size_t atMost) {
 
 /// @brief request an AqlItemBlock from the memory manager
 AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  return _engine->_itemBlockManager.requestBlock(nrItems, nrRegs);
+  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
 /// @brief return an AqlItemBlock to the memory manager
 void ExecutionBlock::returnBlock(AqlItemBlock*& block) noexcept {
-  _engine->_itemBlockManager.returnBlock(block);
+  _engine->itemBlockManager().returnBlock(block);
 }
 
 /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
 void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) noexcept {
   if (block != nullptr) {
-    _engine->_itemBlockManager.returnBlock(block);
+    _engine->itemBlockManager().returnBlock(block);
   }
 }
 

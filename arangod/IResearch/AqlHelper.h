@@ -296,14 +296,14 @@ class ScopedAqlValue : private irs::util::noncopyable {
     bool failed = false;
     value = _node->isConstant()
       ? _node->getDoubleValue()
-      : _value.toDouble(nullptr, failed);
+      : _value.toDouble(failed);
     return !failed;
   }
 
   int64_t getInt64() const {
     return _node->isConstant()
       ? _node->getIntValue()
-      : _value.toInt64(nullptr);
+      : _value.toInt64();
   }
 
   bool getString(irs::string_ref& value) const {
@@ -342,7 +342,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
 
  private:
   ScopedAqlValue(aql::AqlValue const& src, size_t i, bool doCopy) {
-    _value = src.at(nullptr, i, _destroy, doCopy);
+    _value = src.at(i, _destroy, doCopy);
     _node = &INVALID_NODE;
     _executed = true;
     _type = AqlValueTraits::type(_value);

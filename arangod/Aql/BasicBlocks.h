@@ -54,40 +54,6 @@ class SingletonBlock final : public ExecutionBlock {
   std::unordered_set<RegisterId> _whitelist;
 };
 
-class FilterBlock final : public ExecutionBlock {
- public:
-  FilterBlock(ExecutionEngine*, FilterNode const*, bool letItFail);
-
-  ~FilterBlock();
-
-  std::pair<ExecutionState, arangodb::Result> initializeCursor(
-      AqlItemBlock* items, size_t pos) override final;
-
- private:
-  /// @brief internal function to actually decide if the document should be used
-  bool takeItem(AqlItemBlock* items, size_t index) const;
-
-  /// @brief internal function to get another block
-  std::pair<ExecutionState, bool> getBlock(size_t atMost);
-
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
-      size_t atMost, bool skipping, AqlItemBlock*& result,
-      size_t& skipped) override;
-
- private:
-  /// @brief input register
-  RegisterId _inReg;
-
-  /// @brief vector of indices of those documents in the current block
-  /// that are chosen
-  std::vector<size_t> _chosen;
-
-  BlockCollector _collector;
-
-  /// @brief counter for documents inflight during WAITING
-  size_t _inflight;
-};
-
 class LimitBlock final : public ExecutionBlock {
  private:
 

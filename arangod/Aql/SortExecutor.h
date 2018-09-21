@@ -94,12 +94,10 @@ class SortExecutor {
  private:
   void doSorting();
 
- public:
+ private:
   SortExecutorInfos& _infos;
 
- private:
   Fetcher& _fetcher;
-
 
   AqlItemMatrix const* _input;
 

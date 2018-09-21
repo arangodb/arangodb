@@ -45,7 +45,7 @@ class AqlItemBlockManager {
 
  public:
   /// @brief request a block with the specified size
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
+  TEST_VIRTUAL AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
 
   /// @brief return a block to the manager
   void returnBlock(AqlItemBlock*& block) noexcept;

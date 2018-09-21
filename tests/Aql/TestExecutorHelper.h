@@ -23,8 +23,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_FILTER_EXECUTOR_H
-#define ARANGOD_AQL_FILTER_EXECUTOR_H
+#ifndef ARANGOD_AQL_TEST_EXECUTOR_H
+#define ARANGOD_AQL_TEST_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/FilterStats.h"
@@ -40,16 +40,16 @@ class InputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
-class FilterExecutorInfos : public ExecutorInfos {
+class TestExecutorHelperInfos : public ExecutorInfos {
  public:
-  FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
+  TestExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                       RegisterId nrOutputRegisters,
                       std::unordered_set<RegisterId> registersToClear);
 
-  FilterExecutorInfos() = delete;
-  FilterExecutorInfos(FilterExecutorInfos &&) = default;
-  FilterExecutorInfos(FilterExecutorInfos const&) = delete;
-  ~FilterExecutorInfos() = default;
+  TestExecutorHelperInfos() = delete;
+  TestExecutorHelperInfos(TestExecutorHelperInfos &&) = default;
+  TestExecutorHelperInfos(TestExecutorHelperInfos const&) = delete;
+  ~TestExecutorHelperInfos() = default;
 
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
 
@@ -62,17 +62,17 @@ class FilterExecutorInfos : public ExecutorInfos {
 /**
  * @brief Implementation of Filter Node
  */
-class FilterExecutor {
+class TestExecutorHelper {
  public:
   using Fetcher = SingleRowFetcher;
-  using Infos = FilterExecutorInfos;
+  using Infos = TestExecutorHelperInfos;
   using Stats = FilterStats;
 
-  FilterExecutor() = delete;
-  FilterExecutor(FilterExecutor&&) = default;
-  FilterExecutor(FilterExecutor const&) = delete;
-  FilterExecutor(Fetcher& fetcher, Infos&);
-  ~FilterExecutor();
+  TestExecutorHelper() = delete;
+  TestExecutorHelper(TestExecutorHelper&&) = default;
+  TestExecutorHelper(TestExecutorHelper const&) = delete;
+  TestExecutorHelper(Fetcher& fetcher, Infos&);
+  ~TestExecutorHelper();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -81,9 +81,11 @@ class FilterExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
- private:
+ public:
   Infos& _infos;
+ private:
   Fetcher& _fetcher;
+  bool _returnedDone = false;
 };
 
 }  // namespace aql
