@@ -34,16 +34,13 @@ AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
 
 InputAqlItemBlockShell::InputAqlItemBlockShell(
     AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
-    std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_,
-    AqlItemBlockShell::AqlItemBlockId aqlItemBlockId_)
+    std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_)
     : AqlItemBlockShell(manager, std::move(block)),
-      _inputRegisters(std::move(inputRegisters_)),
-      _aqlItemBlockId(aqlItemBlockId_) {
+      _inputRegisters(std::move(inputRegisters_)) {
   if (_inputRegisters == nullptr) {
     _inputRegisters =
         std::make_shared<decltype(_inputRegisters)::element_type>();
   }
-  TRI_ASSERT(_aqlItemBlockId >= 0);
 }
 
 OutputAqlItemBlockShell::OutputAqlItemBlockShell(

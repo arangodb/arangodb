@@ -47,24 +47,13 @@ class BlockFetcher {
       ExecutionBlock* executionBlock_,
       std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_)
       : _executionBlock(executionBlock_),
-        _inputRegisters(std::move(inputRegisters_)),
-        _blockId(-1){};
+        _inputRegisters(std::move(inputRegisters_)) {};
 
   TEST_VIRTUAL ~BlockFetcher() = default;
 
   TEST_VIRTUAL
       std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
       fetchBlock();
-
-  // TODO this should no longer be needed with AqlItemBlockShell. Maybe we
-  // can get rid of the BlockFetcher now.
-  TEST_VIRTUAL inline void returnBlock(
-      std::unique_ptr<AqlItemBlock> block) noexcept {
-    AqlItemBlock* blockPtr = block.get();
-    _executionBlock->returnBlockUnlessNull(blockPtr);
-    TRI_ASSERT(blockPtr == nullptr);
-    block.release();
-  };
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() {
     return _executionBlock->getNrInputRegisters();
@@ -73,10 +62,6 @@ class BlockFetcher {
  private:
   ExecutionBlock* _executionBlock;
   std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
-
-  // Holds the ID of the block returned *last*. Before the first block is
-  // returned, this is invalid (-1).
-  AqlItemBlockShell::AqlItemBlockId _blockId;
 };
 
 }  // namespace aql

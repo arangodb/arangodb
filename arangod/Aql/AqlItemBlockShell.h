@@ -57,22 +57,12 @@ class AqlItemBlockDeleter {
  * are allowed to be read or written at the current ExecutionBlock, for usage
  * with InputAqlItemRow or OutputAqlItemRow, respectively.
  *
- * Thirdly, the InputAqlItemBlockShell holds an AqlItemBlockId to be able to
- * distinguish Blocks.
- *
  * TODO We should do variable-to-register mapping here. This further reduces
  * dependencies of Executors, Fetchers etc. on internal knowledge of ItemBlocks,
  * and probably shrinks ExecutorInfos.
  */
 class AqlItemBlockShell {
  public:
-  /**
-   * @brief ID type for AqlItemBlocks. Positive values are allowed, -1 means
-   *        invalid/uninitialized.
-   */
-  // TODO Move to InputAqlItemBlockShell
-  using AqlItemBlockId = int64_t;
-
   using SmartAqlItemBlockPtr =
       std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter>;
 
@@ -95,8 +85,7 @@ class InputAqlItemBlockShell : public AqlItemBlockShell {
  public:
   InputAqlItemBlockShell(
       AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
-      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
-      AqlItemBlockId aqlItemBlockId);
+      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters);
 
  public:
   std::unordered_set<RegisterId> const& inputRegisters() const {
@@ -107,33 +96,17 @@ class InputAqlItemBlockShell : public AqlItemBlockShell {
     return inputRegisters().find(registerId) != inputRegisters().end();
   }
 
-  AqlItemBlockId blockId() const {
-    return _aqlItemBlockId;
-  }
-
   /**
-   * @brief Compares blocks by ID.
+   * @brief Compares blocks by pointer.
    */
-  // TODO Is using the block ID still necessary? As we now are using shared ptrs
-  // for blocks, its no longer possible that an InputAqlItemRow holds a pointer
-  // to an AqlItemBlock that was already returned to the AqlItemBlockManager.
-  // So we might be able to just compare pointers instead.
   bool operator==(InputAqlItemBlockShell const& other) const {
-    // There must be only one AqlItemBlockShell instance per AqlItemBlock,
-    // and blockId() must be unique over blocks.
-    TRI_ASSERT((blockId() == other.blockId()) == (this == &other));
-    TRI_ASSERT((blockId() == other.blockId()) == (&block() == &other.block()));
-    return blockId() == other.blockId();
+    // There must be only one AqlItemBlockShell instance per AqlItemBlock
+    TRI_ASSERT((this == &other) == (&block() == &other.block()));
+    return &block() == &other.block();
   }
 
  private:
   std::shared_ptr<const std::unordered_set<RegisterId>> _inputRegisters;
-
-  /**
-   * @brief Block ID. Is assumed to biuniquely identify an AqlItemBlock. Only
-   *        positive values are valid.
-   */
-  AqlItemBlockId _aqlItemBlockId;
 };
 
 class OutputAqlItemBlockShell : public AqlItemBlockShell {

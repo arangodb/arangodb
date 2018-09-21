@@ -98,12 +98,10 @@ SingleRowFetcherHelper::SingleRowFetcherHelper(
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
       }
-      // NOTE: If this class ever gets more than one block, fetchRow() must
-      // be adapted to give valid block IDs to InputAqlItemRow!
       _itemBlock = std::make_shared<InputAqlItemBlockShell>(
           _itemBlockManager,
           std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs),
-          inputRegisters, 0);
+          inputRegisters);
       // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
       VPackToAqlItemBlock(_data, nrRegs, _itemBlock->block());
     }
@@ -134,8 +132,6 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper::fetchRow() {
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   TRI_ASSERT(_itemBlock != nullptr);
-  // Note that the blockId is hard coded to 42. If this class ever should get
-  // multiple blocks, this has to be changed.
   _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
   ExecutionState state;
   if (_nrCalled < _nrItems) {
@@ -183,7 +179,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(
       inputRegisters->emplace(i);
     }
     auto blockShell = std::make_shared<InputAqlItemBlockShell>(
-      _itemBlockManager, std::move(itemBlock), inputRegisters, 0);
+      _itemBlockManager, std::move(itemBlock), inputRegisters);
     _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
     _matrix->addBlock(std::move(blockShell));
   }
