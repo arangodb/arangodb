@@ -39,24 +39,24 @@ AqlValue const& ExecutorExpressionContext::getRegisterValue(size_t i) const {
 }
 
 Variable const* ExecutorExpressionContext::getVariable(size_t i) const {
-  return (*_vars)[i];
+  return (_vars)[i];
 }
 
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy, bool& mustDestroy) const {
   mustDestroy = false;
 
-  TRI_ASSERT(_vars != nullptr);
-  TRI_ASSERT(_regs != nullptr);
-
-  size_t i = 0;
-  for (auto it = (*_vars).begin(); it != (*_vars).end(); ++it, ++i) {
-    if ((*it)->id == variable->id) {
-      TRI_ASSERT(i < _regs->size());
+  auto const searchId = variable->id;
+  size_t i = -1; //size_t is guraranteded to be unsigned so the overflow is ok
+  for (auto const* var : _vars) {
+    TRI_ASSERT(var != nullptr);
+    ++i;
+    if ( var->id == searchId) {
+      TRI_ASSERT(i < _regs.size());
       if (doCopy) {
         mustDestroy = true;  // as we are copying
-        return _inputRow.getValue((*_regs)[i]).clone();
+        return _inputRow.getValue((_regs)[i]).clone();
       }
-      return _inputRow.getValue((*_regs)[i]);
+      return _inputRow.getValue((_regs)[i]);
     }
   }
 

@@ -45,8 +45,7 @@ namespace _detail {
 }
 
 
-CalculationExecutorInfos::CalculationExecutorInfos( std::unordered_set<RegisterId> inputRegister_
-                                                  , RegisterId outputRegister_
+CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister_
                                                   , RegisterId nrInputRegisters
                                                   , RegisterId nrOutputRegisters
                                                   , std::unordered_set<RegisterId> registersToClear
@@ -57,7 +56,8 @@ CalculationExecutorInfos::CalculationExecutorInfos( std::unordered_set<RegisterI
                                                   , std::vector<RegisterId>&& expInRegs
                                                   , Variable const* conditionVar
                                                   )
-    : ExecutorInfos({inputRegister_}, {outputRegister_}, nrInputRegisters, nrOutputRegisters, std::move(registersToClear))
+    : ExecutorInfos({expInRegs.begin(), expInRegs.end()}, {outputRegister_}, nrInputRegisters, nrOutputRegisters, std::move(registersToClear))
+    ,  _outputRegister(outputRegister_)
     ,  _query(query)
     ,  _expression(expression)
     ,  _expInVars(std::move(expInVars))
@@ -65,9 +65,10 @@ CalculationExecutorInfos::CalculationExecutorInfos( std::unordered_set<RegisterI
     ,  _conditionVariable(conditionVar)
 {
 
+
   TRI_ASSERT(_query->trx() != nullptr);
 
-  bool _isReference = (_expression->node()->type == NODE_TYPE_REFERENCE);
+  _isReference = (_expression->node()->type == NODE_TYPE_REFERENCE);
   if (_isReference) {
     TRI_ASSERT(_inRegs.size() == 1);
   }
@@ -108,6 +109,17 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, Output
   static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
   // non-reference expression
   TRI_ASSERT(info._expression != nullptr);
+
+  if (info._isReference) {
+    // the calculation is a reference to a variable only.
+    // no need to execute the expression at all
+    TRI_ASSERT(false); //not implemented
+    //fillBlockWithReference(result);
+    if (info._query->killed()){
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+    return;
+  }
 
   if (!info._expression->willUseV8()) {
     // an expression that does not require V8

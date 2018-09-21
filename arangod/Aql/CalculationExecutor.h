@@ -48,8 +48,7 @@ class Query;
 struct Variable;
 
 struct CalculationExecutorInfos : public ExecutorInfos {
-  CalculationExecutorInfos( std::unordered_set<RegisterId> inputRegister_
-                          , RegisterId outputRegister
+  CalculationExecutorInfos( RegisterId outputRegister
                           , RegisterId nrInputRegisters
                           , RegisterId nrOutputRegisters
                           , std::unordered_set<RegisterId> registersToClear
@@ -73,6 +72,7 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   std::vector<Variable const*> _expInVars;
   std::vector<RegisterId> _expInRegs;
   Variable const* _conditionVariable;
+  bool _isReference = false;
 
 };
 

@@ -1513,11 +1513,14 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   std::unordered_set<Variable const*> inVars;
   _expression->variables(inVars);
 
-  std::vector<Variable const*> expInVars(inVars.size());
-  std::vector<RegisterId> expInRegs(inVars.size());
+  std::vector<Variable const*> expInVars;
+  expInVars.reserve(inVars.size());
+  std::vector<RegisterId> expInRegs;
+  expInRegs.reserve(inVars.size());
 
   auto& varInfo = getRegisterPlan()->varInfo;
   for (auto& var : inVars) {
+    TRI_ASSERT(var != nullptr);
     auto infoIter = varInfo.find(var->id);
     TRI_ASSERT(infoIter != varInfo.end());
     TRI_ASSERT(infoIter->second.registerId < ExecutionNode::MaxRegisterId);
@@ -1526,8 +1529,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     expInRegs.emplace_back(infoIter->second.registerId);
   }
 
-  CalculationExecutorInfos infos( std::unordered_set<RegisterId>{} // inputRegister
-                                , outputRegister
+  CalculationExecutorInfos infos( outputRegister
                                 , getRegisterPlan()->nrRegs[previousNode->getDepth()]
                                 , getRegisterPlan()->nrRegs[getDepth()]
                                 , getRegsToClear()
