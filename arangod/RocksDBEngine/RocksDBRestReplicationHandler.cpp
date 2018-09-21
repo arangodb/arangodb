@@ -185,7 +185,7 @@ RestStatus RocksDBRestReplicationHandler::execute() {
         // xample: curl -XPOST --dump - 'http://localhost:5555/_db/_system/_api/replication/keys/?collection=_users&batchId=169' ; echo
         // returns
         // { "id": <context id - int>,
-        //   "count": <number of documents in collection - int> 
+        //   "count": <number of documents in collection - int>
         // }
         handleCommandCreateKeys();
       } else if (type == rest::RequestType::GET) {
@@ -442,7 +442,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
-    
+
     bool found;
     std::string const& value = _request->value("serverId", found);
     TRI_server_id_t serverId = 0;
@@ -587,7 +587,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
-    
+
   std::string const& value3 = _request->value("serverId", found);
 
   TRI_server_id_t serverId = 0;
@@ -695,7 +695,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       }
     }
   }
-    
+
   // insert the start tick (minus 1 to be on the safe side) as the
   // minimum tick we need to keep on the master. we cannot be sure
   // the master's response makes it to the slave safely, so we must
@@ -932,7 +932,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   RocksDBReplicationContextGuard guard(_manager, ctx);
 
   // to is ignored because the snapshot time is the latest point in time
- 
+
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
   // std::string const& value = _request->value("to", found);
@@ -1619,16 +1619,19 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const followerId = body.get("followerId");
-  VPackSlice const readLockId = body.get("readLockId");
-  VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString()) {
+  VPackSlice const followerIdSlice = body.get("followerId");
+  VPackSlice const readLockIdSlice = body.get("readLockId");
+  VPackSlice const shardSlice = body.get("shard");
+  VPackSlice const checksumSlice = body.get("checksum");
+  if (!followerIdSlice.isString() ||
+      !shardSlice.isString() ||
+      (!checksumSlice.isNone() && !checksumSlice.isString())) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId' and 'shard' attributes must be strings");
+                  "'followerId', 'shard', and 'checksum' attributes must be strings");
     return;
   }
 
-  auto col = _vocbase->lookupCollection(shard.copyString());
+  auto col = _vocbase->lookupCollection(shardSlice.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1637,14 +1640,48 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  VPackSlice const checksum = body.get("checksum");
+  const std::string followerId = followerIdSlice.copyString();
+  // Short cut for the case that the collection is empty
+  if (readLockIdSlice.isNone() && checksumSlice.isString()) {
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    SingleCollectionTransaction trx(ctx, col->cid(),
+                                    AccessMode::Type::EXCLUSIVE);
+
+    auto res = trx.begin();
+    if (res.ok()) {
+      auto countRes = trx.count(col->name(), false);
+      if (countRes.successful()) {
+        VPackSlice nrSlice = countRes.slice();
+        uint64_t nr = nrSlice.getNumber<uint64_t>();
+        if (nr == 0 && checksumSlice.isEqualString("0")) {
+          col->followers()->add(followerId);
+
+          VPackBuilder b;
+          {
+            VPackObjectBuilder bb(&b);
+            b.add(StaticStrings::Error, VPackValue(false));
+          }
+
+          generateResult(rest::ResponseCode::OK, b.slice());
+
+          return;
+        }
+      }
+    }
+    // If we get here, we have to report an error:
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
+                  "shard not empty");
+    return;
+  }
+
   // optional while introducing this bugfix. should definetely be required with 3.4
   // and throw a 400 then when no checksum is provided
-  if (checksum.isString() && readLockId.isString()) {
+  if (checksumSlice.isString() && readLockIdSlice.isString()) {
     std::string referenceChecksum;
     {
       CONDITION_LOCKER(locker, _condVar);
-      auto it = _holdReadLockJobs.find(readLockId.copyString());
+      auto it = _holdReadLockJobs.find(readLockIdSlice.copyString());
       if (it == _holdReadLockJobs.end()) {
         // Entry has been removed since, so we cancel the whole thing
         // right away and generate an error:
@@ -1661,31 +1698,26 @@ void RocksDBRestReplicationHandler::handleCommandAddFollower() {
           "Read lock not yet acquired!");
         return;
       }
-     
+
       // referenceChecksum is the stringified number of documents in the
-      // collection 
+      // collection
       uint64_t num = col->numberDocuments(trx.get());
       referenceChecksum = std::to_string(num);
     }
 
-    auto result = col->compareChecksums(checksum, referenceChecksum);
-
-    if (result.fail()) {
-      auto errorNumber = result.errorNumber();
-      rest::ResponseCode code;
-      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
-          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
-        code = rest::ResponseCode::BAD;
-      } else {
-        code = rest::ResponseCode::SERVER_ERROR;
-      }
-      generateError(code,
-        errorNumber, result.errorMessage());
-      return;
-    }
+    if (!checksumSlice.isEqualString(referenceChecksum)) {
+         const std::string checksum = checksumSlice.copyString();
+         LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
+          << "Expected: " << referenceChecksum << " Actual: " << checksum;
+         generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+                       "'checksum' is wrong. Expected: "
+                       + referenceChecksum
+                       + ". Actual: " + checksum);
+         return;
+   }
   }
 
-  col->followers()->add(followerId.copyString());
+  col->followers()->add(followerId);
 
   VPackBuilder b;
   {
@@ -1832,7 +1864,7 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
                     "read transaction was cancelled");
       return;
     }
-      
+
     it->second = trx; // mark the read lock as acquired
   }
 
@@ -2116,7 +2148,7 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
 
     return res;
   }
-  
+
   // might be also called on dbservers
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && ServerState::instance()->isSingleServer()) {
@@ -2279,7 +2311,7 @@ int RocksDBRestReplicationHandler::processRestoreCollectionCoordinator(
         collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors,
         createWaitsForSyncReplication);
     TRI_ASSERT(col != nullptr);
-    
+
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr) {
       AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;

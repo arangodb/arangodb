@@ -160,8 +160,8 @@ ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is runnin
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
 ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication applier is started without a known start tick value."
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
-ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,1415,"the checksum format is wrong", "Will be raised when the format of the checksum is wrong")
 ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
+ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a shard is not empty and the follower tries a shortcut"
 
 ################################################################################
 ## ArangoDB cluster errors
