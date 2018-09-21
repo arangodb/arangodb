@@ -522,10 +522,15 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
+
+  UnicodeString ubuf(buf, len);
+  LPCWSTR buffers[1] = {
+    ubuf.getTerminatedBuffer()
+  };
   // Try to get messages through to windows syslog...
-  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-                   MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
-                   NULL)) {
+  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+                    MSG_INVALID_COMMAND, NULL, 4, 0, buffers,
+                    NULL)) {
     // well, fail then...
   }
 }
@@ -543,10 +548,14 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
+  UnicodeString ubuf(buf, len);
+  LPCWSTR buffers[1] = {
+    ubuf.getTerminatedBuffer()
+  };
   // Try to get messages through to windows syslog...
-  if (!ReportEvent(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-                   MSG_INVALID_COMMAND, NULL, 4, 0, (LPCSTR*)logBuffers,
-                   NULL)) {
+  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+                    MSG_INVALID_COMMAND, NULL, 4, 0, buffers,
+                    NULL)) {
     // well, fail then...
   }
 }
