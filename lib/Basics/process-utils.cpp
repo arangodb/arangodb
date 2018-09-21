@@ -329,8 +329,6 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
 
 
 static int wAppendQuotedArg(std::wstring &buf, wchar_t const* p) {
-  int err;
-
   buf += L'"';
 
   while (*p != 0) {

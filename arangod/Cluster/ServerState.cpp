@@ -24,8 +24,6 @@
 #include "ServerState.h"
 
 #include <iomanip>
-#include <iostream>
-#include <sstream>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -451,20 +449,24 @@ std::string ServerState::generatePersistedId(RoleEnum const& role) {
 }
 
 std::string ServerState::getPersistedId() {
+  std::string uuidFilename = getUuidFilename();
   if (hasPersistedId()) {
-    std::string uuidFilename = getUuidFilename();
-    std::ifstream ifs(uuidFilename);
-
-    auto uuidBuf = arangodb::basics::FileUtils::slurp(uuidFilename);
-    if (uuidBuf.length() > 0) {
-      std::istringstream iss(uuidBuf);
-      std::string id;
-      std::getline(iss, id);
-      return id;
+    try {
+      auto uuidBuf = arangodb::basics::FileUtils::slurp(uuidFilename);
+      basics::StringUtils::trimInPlace(uuidBuf);
+      if (!uuidBuf.empty()) {
+        return uuidBuf;
+      }
+    }
+    catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't read UUID file '"
+                                                << uuidFilename << "' - "
+                                                << ex.what();
+      FATAL_ERROR_EXIT();
     }
   }
 
-  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << getUuidFilename() << "'";
+  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << uuidFilename << "'";
   FATAL_ERROR_EXIT();
 }
 

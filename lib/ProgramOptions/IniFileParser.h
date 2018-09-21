@@ -68,8 +68,15 @@ class IniFileParser {
       return _options->fail(
           "unable to open configuration file: no configuration file specified");
     }
-
-    auto buf = arangodb::basics::FileUtils::slurp(filename);
+    std::string buf;
+    try {
+      buf = arangodb::basics::FileUtils::slurp(filename);
+    }
+    catch (arangodb::basics::Exception const& ex) {
+      return _options->fail(std::string("Couldn't open configuration file: '") +
+                            filename + "' - " + ex.what());
+      return true;
+    }
     bool isCommunity = false;
     bool isEnterprise = false;
     std::string currentSection;

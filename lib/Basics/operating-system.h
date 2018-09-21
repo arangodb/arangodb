@@ -858,14 +858,14 @@ typedef unsigned char bool;
 #define TRI_GET_ARGV(ARGC, ARGV) TRI_GET_ARGV_WIN(ARGC, ARGV)
 
 // Implemented wrappers in win-utils.cpp:
-FILE* TRI_FOPEN(const char* filename, const char *mode);
-int TRI_CHDIR(const char *dirname);
-int TRI_STAT(const char *path, TRI_stat_t *buffer);
-char *TRI_GETCWD(char *buffer, int maxlen);
-int TRI_MKDIR_WIN32(const char *dirname);
-int TRI_RMDIR(const char *dirname);
-int TRI_UNLINK(const char *filename);
-void TRI_GET_ARGV_WIN(int &argc, char** argv);
+FILE* TRI_FOPEN(char const* filename, char const* mode);
+int TRI_CHDIR(char const* dirname);
+int TRI_STAT(char const* path, TRI_stat_t* buffer);
+char* TRI_GETCWD(char* buffer, int maxlen);
+int TRI_MKDIR_WIN32(char const* dirname);
+int TRI_RMDIR(char const* dirname);
+int TRI_UNLINK(char const* filename);
+void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
 
