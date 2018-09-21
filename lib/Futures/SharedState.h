@@ -27,8 +27,6 @@
 
 #include "Futures/Try.h"
 #include "Futures/function2/function2.hpp"
-//#include "Scheduler/Scheduler.h"
-//#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb { namespace futures { namespace detail {
 

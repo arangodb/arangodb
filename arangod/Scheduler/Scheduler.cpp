@@ -214,7 +214,6 @@ Scheduler::~Scheduler() {
   }
 }
 
-// do not pass callback by reference, might get deleted before execution
 void Scheduler::post(std::function<void()> const& cb, bool isV8,
                      uint64_t timeout) {
   // increment number of queued and guard against exceptions
@@ -234,7 +233,8 @@ void Scheduler::post(std::function<void()> const& cb, bool isV8,
   });
 
   // capture without self, ioContext will not live longer than scheduler
-  //asio_ns::post([this, cb, isV8, timeout]() {
+  // do not pass callback by reference, might get deleted before execution
+  //asio_ns::post([this, cb, isV8, timeout]() { <-- breaks tests in jenkins
   _ioContext->post([this, cb, isV8, timeout]() {
     // at the end (either success or exception),
     // reduce number of queued V8
@@ -293,7 +293,7 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
   try {
     // capture without self, ioContext will not live longer than scheduler
     // do not pass callback by reference, might get deleted before execution
-    //asio_ns::post(strand, [this, cb, isV8, timeout]() {
+    //asio_ns::post(strand, [this, cb, isV8, timeout]() { <-- breaks tests in jenkins
     strand.post([this, cb]() {
       decQueued();
 
