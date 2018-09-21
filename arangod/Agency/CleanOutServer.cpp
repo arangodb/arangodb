@@ -389,6 +389,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
             serversCopy.end());
         }
 
+        bool isLeader = (found == 0);
+
         // Among those a random destination:
         std::string toServer;
         if (serversCopy.empty()) {
@@ -403,7 +405,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Schedule move into trx:
         MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, database.first, collptr.first,
-                  shard.first, _server, toServer, found == 0)
+                  shard.first, _server, toServer, isLeader, false)
           .create(trx);
       }
     }

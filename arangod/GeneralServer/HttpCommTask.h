@@ -25,9 +25,7 @@ class HttpCommTask final : public GeneralCommTask {
   }
   
   // whether or not this task can mix sync and async I/O
-  // this is always true for the HTTPCommTask, because we are not
-  // multiplexing I/O
-  bool canUseMixedIO() const override { return true; } 
+  bool canUseMixedIO() const override;
   
  private:
   bool processRead(double startTime) override;

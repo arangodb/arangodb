@@ -70,6 +70,13 @@ HttpCommTask::HttpCommTask(GeneralServer &server, GeneralServer::IoContext &cont
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
 
+// whether or not this task can mix sync and async I/O
+bool HttpCommTask::canUseMixedIO() const {
+  // in case SSL is used, we cannot use a combination of sync and async I/O
+  // because that will make TLS fall apart
+  return !_peer->isEncrypted();
+}
+
 /// @brief send error response including response body
 void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
                                      uint64_t /*messageId*/, velocypack::Buffer<uint8_t>&& buffer) {

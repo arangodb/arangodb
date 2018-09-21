@@ -35,6 +35,22 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& database,
                      std::string const& collection, std::string const& shard,
                      std::string const& from, std::string const& to,
+                     bool isLeader, bool remainsFollower)
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+      _database(database),
+      _collection(collection),
+      _shard(shard),
+      _from(id(from)),
+      _to(id(to)),
+      _isLeader(isLeader), // will be initialized properly when information known
+      _remainsFollower(remainsFollower)
+{ }
+
+MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
+                     std::string const& jobId, std::string const& creator,
+                     std::string const& database,
+                     std::string const& collection, std::string const& shard,
+                     std::string const& from, std::string const& to,
                      bool isLeader)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
@@ -42,7 +58,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _shard(shard),
       _from(id(from)),
       _to(id(to)),
-      _isLeader(isLeader) // will be initialized properly when information known
+      _isLeader(isLeader), // will be initialized properly when information known
+      _remainsFollower(isLeader)
 { }
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
@@ -57,6 +74,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_to = _snapshot.hasAsString(path + "toServer");
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_isLeader = _snapshot.hasAsSlice(path + "isLeader");
+  auto tmp_remainsFollower = _snapshot.hasAsSlice(path + "remainsFollower");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
 
   if (tmp_database.second && tmp_collection.second && tmp_from.second && tmp_to.second
@@ -67,6 +85,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _to = tmp_to.first;
     _shard = tmp_shard.first;
     _isLeader = tmp_isLeader.first.isTrue();
+    _remainsFollower = tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
     _creator = tmp_creator.first;
   } else {
     std::stringstream err;
@@ -130,6 +149,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("toServer", VPackValue(_to));
     _jb->add("isLeader", VPackValue(_isLeader));
+    _jb->add("remainsFollower", VPackValue(_remainsFollower));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
   }
@@ -276,6 +296,11 @@ bool MoveShard::start() {
     return false;
   }
 
+  if (!_isLeader && _remainsFollower) {
+    finish("", "", false, "remainsFollower is invalid without isLeader");
+    return false;
+  }
+
   // Compute group to move shards together:
   std::vector<Job::shard_t> shardsLikeMe
       = clones(_snapshot, _database, _collection, _shard);
@@ -354,7 +379,7 @@ bool MoveShard::start() {
       addPreconditionUnchanged(pending, planPath, planned);
       addPreconditionShardNotBlocked(pending, _shard);
       addPreconditionServerNotBlocked(pending, _to);
-      addPreconditionServerHealth(pending, _to, "GOOD"); 
+      addPreconditionServerHealth(pending, _to, "GOOD");
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }   // precondition done
@@ -507,6 +532,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                   trx.add(srv);
                 }
               }
+              // add the old leader as follower in case of a rollback
               trx.add(VPackValue(_from));
             }
             // Precondition: Plan still as it was
@@ -545,7 +571,19 @@ JOB_STATUS MoveShard::pendingLeader() {
       { VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-          [&pre](Slice plan, Slice current, std::string& planPath) {
+          [&trx, &pre, this](Slice plan, Slice current, std::string& planPath) {
+            if (!_remainsFollower) {
+              // Remove _from from the list of follower
+              trx.add(VPackValue(planPath));
+              { VPackArrayBuilder guard(&trx);
+                for (auto const& srv : VPackArrayIterator(plan)) {
+                  if (!srv.isEqualString(_from)) {
+                    trx.add(srv);
+                  }
+                }
+              }
+            }
+
             // Precondition: Plan still as it was
             pre.add(VPackValue(planPath));
             { VPackObjectBuilder guard(&pre);

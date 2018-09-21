@@ -407,10 +407,6 @@ void HeartbeatThread::runDBServer() {
       if (--currentCount == 0) {
         currentCount = currentCountStart;
 
-        // send an initial GET request to Sync/Commands/my-id
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
-
         // DBServers disregard the ReadOnly flag, otherwise (without authentication and JWT)
         // we are not able to identify valid requests from other cluster servers
         AgencyReadTransaction trx(

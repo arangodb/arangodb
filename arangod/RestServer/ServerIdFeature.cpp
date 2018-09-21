@@ -44,6 +44,7 @@ ServerIdFeature::ServerIdFeature(
   startsAfter("BasicsPhase");
   startsAfter("Database");
   startsAfter("SystemDatabase");
+  startsAfter("InitDatabase");
 }
 
 void ServerIdFeature::start() {
