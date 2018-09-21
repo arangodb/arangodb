@@ -38,10 +38,6 @@ class BlockFetcher;
 /**
  * @brief Interface for all AqlExecutors that do need all
  *        rows at a time in order to make progress.
- *        The guarantee is the following:
- *        If fetchAllRows returns a matrix the pointer to
- *        this matrix stays valid until the next call
- *        of fetchAllRows.
  */
 class AllRowsFetcher {
  public:

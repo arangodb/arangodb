@@ -126,7 +126,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->getNrRegisters() == 1);
           REQUIRE(!matrix->empty());
           REQUIRE(matrix->size() == 1);
-          REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+          REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
           AND_THEN("null should be returned") {
             std::tie(state, matrix) = testee.fetchAllRows();
@@ -155,7 +155,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           REQUIRE(matrix->getNrRegisters() == 1);
           REQUIRE(!matrix->empty());
           REQUIRE(matrix->size() == 1);
-          REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+          REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
           AND_THEN("null should be returned") {
             std::tie(state, matrix) = testee.fetchAllRows();
@@ -189,7 +189,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(!matrix->empty());
             REQUIRE(matrix->size() == 1);
             REQUIRE(matrix->getNrRegisters() == 1);
-            REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+            REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
             AND_THEN("null should be returned") {
               std::tie(state, matrix) = testee.fetchAllRows();
@@ -225,7 +225,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             REQUIRE(!matrix->empty());
             REQUIRE(matrix->size() == 1);
             REQUIRE(matrix->getNrRegisters() == 1);
-            REQUIRE(matrix->getRow(0)->getValue(0).slice().getInt() == 42);
+            REQUIRE(matrix->getRow(0).getValue(0).slice().getInt() == 42);
 
             AND_THEN("null should be returned") {
               std::tie(state, matrix) = testee.fetchAllRows();
@@ -272,7 +272,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
           for (int64_t i = 0; i < 6; i++) {
             int64_t rowIdx = i;
             int64_t rowValue = i+1;
-            REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+            REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
           }
 
           AND_THEN("null should be returned") {
@@ -322,7 +322,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             for (int64_t i = 0; i < 6; i++) {
               int64_t rowIdx = i;
               int64_t rowValue = i+1;
-              REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+              REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
             }
 
             AND_THEN("null should be returned") {
@@ -376,7 +376,7 @@ SCENARIO("AllRowsFetcher", "[AQL][EXECUTOR][FETCHER]") {
             for (int64_t i = 0; i < 6; i++) {
               int64_t rowIdx = i;
               int64_t rowValue = i+1;
-              REQUIRE(matrix->getRow(rowIdx)->getValue(0).slice().getInt() == rowValue);
+              REQUIRE(matrix->getRow(rowIdx).getValue(0).slice().getInt() == rowValue);
             }
 
             AND_THEN("null should be returned") {

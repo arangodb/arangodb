@@ -647,9 +647,3 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
   return outputNrRegs;
 }
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-ExecutionBlock::fetchBlock() {
-  auto res = _dependencies[0]->getSome(DefaultBatchSize());
-
-  return res;
-}

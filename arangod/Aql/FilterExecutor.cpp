@@ -1,5 +1,3 @@
-#include <utility>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -25,15 +23,17 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <lib/Logger/LogMacros.h>
 #include "FilterExecutor.h"
 
-#include "Basics/Common.h"
-
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/Common.h"
+
+#include <lib/Logger/LogMacros.h>
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -77,11 +77,11 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
 }
 
 FilterExecutorInfos::FilterExecutorInfos(
-    RegisterId inputRegister_, RegisterId nrInputRegisters,
+    RegisterId inputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
+          std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
           nullptr, nrInputRegisters, nrOutputRegisters,
           std::move(registersToClear)),
-      _inputRegister(inputRegister_) {}
+      _inputRegister(inputRegister) {}

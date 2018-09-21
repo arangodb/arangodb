@@ -57,8 +57,8 @@ struct SortRegister {
 
 #ifdef USE_IRESEARCH
   SortRegister(RegisterId reg, SortElement const& element,
-               CompareFunc comparator_) noexcept
-      : comparator(comparator_),
+               CompareFunc comparator) noexcept
+      : comparator(comparator),
         attributePath(element.attributePath),
         reg(reg),
         asc(element.ascending) {}

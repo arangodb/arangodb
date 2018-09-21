@@ -26,6 +26,7 @@
 #include "OutputAqlItemRow.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -86,12 +87,9 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
   bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
 
-  for (auto itemId : _blockShell->registersToKeep()) {
-    // copy entries to keep
-    //_block->emplaceValue(_baseIndex, itemId, sourceRow.getValue(itemId));
-
-    if (mustClone) {
-      auto const &value = sourceRow.getValue(itemId);
+  if (mustClone) {
+    for (auto itemId : _blockShell->registersToKeep()) {
+      auto const& value = sourceRow.getValue(itemId);
       if (!value.isEmpty()) {
         AqlValue clonedValue = value.clone();
         AqlValueGuard guard(clonedValue, true);
@@ -103,13 +101,59 @@ void OutputAqlItemRow::copyRow(InputAqlItemRow const& sourceRow) {
         block().setValue(_baseIndex, itemId, clonedValue);
         guard.steal();
       }
-    } else {
-      TRI_ASSERT(_baseIndex > 0);
-      block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
-                                _baseIndex - 1);
     }
+  } else {
+    TRI_ASSERT(_baseIndex > 0);
+    block().copyValuesFromRow(_baseIndex, _blockShell->registersToKeep(),
+                              _baseIndex - 1);
   }
 
   _inputRowCopied = true;
   _lastSourceRow = sourceRow;
 }
+
+void OutputAqlItemRow::advanceRow() {
+  TRI_ASSERT(produced());
+  if (!allValuesWritten()) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS);
+  }
+  if (!_inputRowCopied) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INPUT_REGISTERS_NOT_COPIED);
+  }
+  ++_baseIndex;
+  _inputRowCopied = false;
+  _numValuesWritten = 0;
+}
+
+std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
+  auto block = _blockShell->stealBlockCompat();
+  if (numRowsWritten() == 0) {
+    // blocks may not be empty
+    block.reset(nullptr);
+  } else {
+    // numRowsWritten() returns the exact number of rows that were fully
+    // written and takes into account whether the current row was written.
+    block->shrink(numRowsWritten());
+  }
+  return block;
+}
+
+size_t OutputAqlItemRow::numRegistersToWrite() const {
+  return _blockShell->outputRegisters().size();
+}
+
+bool OutputAqlItemRow::isOutputRegister(RegisterId regId) {
+  return _blockShell->isOutputRegister(regId);
+}
+
+AqlItemBlock const& OutputAqlItemRow::block() const {
+  return _blockShell->block();
+}
+
+AqlItemBlock& OutputAqlItemRow::block() { return _blockShell->block(); }
+
+bool OutputAqlItemRow::isFull() { return numRowsWritten() >= block().size(); }
+
+std::size_t OutputAqlItemRow::getNrRegisters() const { return block().getNrRegs(); }
