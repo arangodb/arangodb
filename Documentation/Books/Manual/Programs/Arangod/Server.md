@@ -281,6 +281,5 @@ to the _db._executeTransaction_ JavaScript function:
     @EXAMPLE_ARANGOSH_OUTPUT{listCurrentConfigOpts}
     |db._executeTransaction({ collections: {}, action: function() {
     |  return require("internal").options(); } })
-    }
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock listCurrentConfigOpts
