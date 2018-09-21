@@ -75,6 +75,7 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
+  LOG_TOPIC(ERR, Logger::FIXME) << "GeneralServer::stopListening()";
   for (auto& context : _contexts) {
     context.stop();
   }
@@ -129,7 +130,7 @@ GeneralServer::IoContext::IoContext() :
 }
 
 GeneralServer::IoContext::~IoContext() {
-  //stop();
+  stop();
 }
 
 void GeneralServer::IoContext::stop() {
@@ -139,6 +140,8 @@ void GeneralServer::IoContext::stop() {
     if (stopped == false) {
       LOG_TOPIC(ERR, Logger::FIXME) << "Stopping IO Thread";
       _asioIoContext.stop();
+    } else {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Already stopped. asio: " << _asioIoContext.stopped();
     }
   }
 
