@@ -28,6 +28,28 @@
 
 using namespace arangodb::consensus;
 
+std::string const config_t::idStr = "id";
+std::string const config_t::agencySizeStr = "agency size";
+std::string const config_t::poolSizeStr = "pool size";
+std::string const config_t::minPingStr = "min ping";
+std::string const config_t::maxPingStr = "max ping";
+std::string const config_t::timeoutMultStr = "timeoutMult";
+std::string const config_t::endpointStr = "endpoint";
+std::string const config_t::uuidStr = "uuid";
+std::string const config_t::poolStr = "pool";
+std::string const config_t::gossipPeersStr = "gossipPeers";
+std::string const config_t::activeStr = "active";
+std::string const config_t::supervisionStr = "supervision";
+std::string const config_t::waitForSyncStr = "wait for sync";
+std::string const config_t::supervisionFrequencyStr = "supervision frequency";
+std::string const config_t::supervisionGracePeriodStr = "supervision grace period";
+std::string const config_t::compactionStepSizeStr = "compaction step size";
+std::string const config_t::compactionKeepSizeStr = "compaction keep size";
+std::string const config_t::defaultEndpointStr = "tcp://localhost:8529";
+std::string const config_t::versionStr = "version";
+std::string const config_t::startupStr = "startup";
+
+
 config_t::config_t()
   : _agencySize(0),
     _poolSize(0),

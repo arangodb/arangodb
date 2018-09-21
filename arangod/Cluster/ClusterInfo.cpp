@@ -648,9 +648,9 @@ void ClusterInfo::loadPlan() {
       //  "_system": {
       //    "3010001": {
       //      "deleted": false,
-      //      "doCompact": true,
+      //      DO_COMPACT: true,
       //      "id": "3010001",
-      //      "indexBuckets": 8,
+      //      INDEX_BUCKETS: 8,
       //      "indexes": [
       //        {
       //          "fields": [
@@ -665,7 +665,7 @@ void ClusterInfo::loadPlan() {
       //      "isSmart": false,
       //      "isSystem": true,
       //      "isVolatile": false,
-      //      "journalSize": 1048576,
+      //      JOURNAL_SIZE: 1048576,
       //      "keyOptions": {
       //        "allowUserKeys": true,
       //        "lastValue": 0,
@@ -687,7 +687,7 @@ void ClusterInfo::loadPlan() {
       //      "status": 3,
       //      "statusString": "loaded",
       //      "type": 2,
-      //      "waitForSync": false
+      //      StaticStrings::WaitForSyncString: false
       //    },...
       //  },...
       // }}
@@ -2018,7 +2018,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 
   VPackBuilder temp;
   temp.openObject();
-  temp.add("waitForSync", VPackValue(info->waitForSync()));
+  temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();

@@ -25,6 +25,8 @@
 #ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
 #define ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
 
+#include "MaintenanceStrings.h"
+
 #include "Basics/VelocyPackHelper.h"
 
 #include <map>
@@ -50,23 +52,6 @@ enum ActionState {
   FAILED = 8,    // task failed, no longer executing
 };
 
-static std::string const KEY("key");
-static std::string const FIELDS("fields");
-static std::string const TYPE("type");
-static std::string const INDEXES("indexes");
-static std::string const SHARDS("shards");
-static std::string const DATABASE("database");
-static std::string const EDGE("edge");
-static std::string const COLLECTION("collection");
-static std::string const SHARD("shard");
-static std::string const NAME("name");
-static std::string const ID("id");
-static std::string const LEADER("theLeader");
-static std::string const LOCAL_LEADER("localLeader");
-static std::string const GLOB_UID("globallyUniqueId");
-static std::string const OBJECT_ID("objectId");
-static std::string const SERVER_ID("serverId");
-
 /**
  * @brief Action description for mainenance actions
  *
@@ -82,10 +67,10 @@ public:
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  supp  Non discriminatory properties
    */
-  ActionDescription(
+  explicit ActionDescription(
     std::map<std::string, std::string> const& desc,
     std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
-
+  
   /**
    * @brief Clean up
    */
@@ -112,7 +97,7 @@ public:
    * @param  key   Key to lookup
    * @return       true if key is found
    */
-  bool has(std::string const& keu) const;
+  bool has(std::string const& key) const;
 
   /**
    * @brief Get a string value from description

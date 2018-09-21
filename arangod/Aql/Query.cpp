@@ -578,8 +578,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
           auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
             &_vocbase, queryHash, _queryString
           );
-          arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
-
+          
           if (cacheEntry != nullptr) {
             bool hasPermissions = true;
 
@@ -599,11 +598,6 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               // we don't have yet a transaction when we're here, so let's create
               // a mimimal context to build the result
               queryResult.context = transaction::StandaloneContext::Create(_vocbase);
-              queryResult.extra = std::make_shared<VPackBuilder>();
-              {
-                VPackObjectBuilder guard(queryResult.extra.get(), true);
-                addWarningsToVelocyPack(*queryResult.extra);
-              }
               TRI_ASSERT(cacheEntry->_queryResult != nullptr);
               queryResult.result = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
@@ -784,7 +778,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
         &_vocbase, queryHash, _queryString
       );
-      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
         bool hasPermissions = true;
@@ -974,11 +967,6 @@ ExecutionState Query::finalize(QueryResult& result) {
     return state;
   }
 
-  if (_cacheEntry != nullptr) {
-    _cacheEntry->_stats = result.extra;
-    QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
-  }
-
   addWarningsToVelocyPack(*result.extra);
   double now = TRI_microtime();
   if (_profile != nullptr && _queryOptions.profile >= PROFILE_LEVEL_BASIC) {
@@ -986,6 +974,11 @@ ExecutionState Query::finalize(QueryResult& result) {
     _profile->toVelocyPack(*(result.extra));
   }
   result.extra->close();
+
+  if (_cacheEntry != nullptr) {
+    _cacheEntry->_stats = result.extra;
+    QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
+  }
 
   // patch executionTime stats value in place
   // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
