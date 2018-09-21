@@ -67,16 +67,38 @@ class OutputAqlItemRow {
     return allValuesWritten() && _inputRowCopied;
   }
 
+  /**
+  * @brief Steal the AqlItemBlock held by the OutputAqlItemRow. The returned
+  *        block will contain exactly the number of written rows. e.g., if 42
+  *        rows were written, block->size() will be 42, even if the original
+  *        block was larger.
+  *        The block will never be empty. If no rows were written, this will
+  *        return a nullptr.
+  *        After stealBlock(), the OutputAqlItemRow is unusable!
+  */
   std::unique_ptr<AqlItemBlock> stealBlock();
 
   bool isFull();
 
+  /**
+  * @brief Returns the number of rows that were fully written.
+  */
   size_t numRowsWritten() const noexcept {
+    // If the current line was fully written, the number of fully written rows
+    // is the index plus one.
     if (produced()) {
       return _baseIndex + 1;
     }
 
+    // If the current line was not fully written, the last one was, so the
+    // number of fully written rows is (_baseIndex - 1) + 1.
     return _baseIndex;
+
+    // Disregarding unsignedness, we could also write:
+    //   lastWrittenIndex = produced()
+    //     ? _baseIndex
+    //     : _baseIndex - 1;
+    //   return lastWrittenIndex + 1;
   }
 
  private:

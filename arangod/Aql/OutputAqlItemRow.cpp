@@ -136,6 +136,8 @@ std::unique_ptr<AqlItemBlock> OutputAqlItemRow::stealBlock() {
     // blocks may not be empty
     block.reset(nullptr);
   } else {
+    // numRowsWritten() returns the exact number of rows that were fully
+    // written and takes into account whether the current row was written.
     block->shrink(numRowsWritten());
   }
   return block;
