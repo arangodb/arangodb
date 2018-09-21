@@ -65,7 +65,7 @@ CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister_
     ,  _conditionVariable(conditionVar)
 {
 
-
+  TRI_ASSERT(_expression != nullptr);
   TRI_ASSERT(_query->trx() != nullptr);
 
   _isReference = (_expression->node()->type == NODE_TYPE_REFERENCE);
@@ -107,14 +107,12 @@ namespace _detail {
 
 void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, OutputAqlItemRow& output) {
   static const bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
-  // non-reference expression
   TRI_ASSERT(info._expression != nullptr);
 
   if (info._isReference) {
-    // the calculation is a reference to a variable only.
-    // no need to execute the expression at all
-    TRI_ASSERT(false); //not implemented
-    //fillBlockWithReference(result);
+    auto const& inRegs = info._expInRegs;
+    TRI_ASSERT(inRegs.size() == 1);
+    output.setValue(info._outputRegister, input, input.getValue(inRegs[0]));
     if (info._query->killed()){
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
