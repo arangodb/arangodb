@@ -33,10 +33,10 @@ AqlItemBlockShell::AqlItemBlockShell(AqlItemBlockManager& manager,
 }
 
 InputAqlItemBlockShell::InputAqlItemBlockShell(
-    AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
+    AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
     std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_,
     AqlItemBlockShell::AqlItemBlockId aqlItemBlockId_)
-    : AqlItemBlockShell(manager, std::move(block_)),
+    : AqlItemBlockShell(manager, std::move(block)),
       _inputRegisters(std::move(inputRegisters_)),
       _aqlItemBlockId(aqlItemBlockId_) {
   if (_inputRegisters == nullptr) {

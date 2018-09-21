@@ -94,9 +94,9 @@ class AqlItemBlockShell {
 class InputAqlItemBlockShell : public AqlItemBlockShell {
  public:
   InputAqlItemBlockShell(
-      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
-      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters_,
-      AqlItemBlockId aqlItemBlockId_);
+      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
+      std::shared_ptr<const std::unordered_set<RegisterId>> inputRegisters,
+      AqlItemBlockId aqlItemBlockId);
 
  public:
   std::unordered_set<RegisterId> const& inputRegisters() const {
