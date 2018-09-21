@@ -263,8 +263,8 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
   }
 
   WHEN("writing rows to target") {
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters{};
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters{};
+    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
     std::unordered_set<RegisterId> registersToClear{};
     RegisterId nrInputRegisters = 0;
     RegisterId nrOutputRegisters = 0;

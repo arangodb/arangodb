@@ -123,9 +123,13 @@ BlockFetcherMock& BlockFetcherMock::andThenReturn(
   for(RegisterId i = 0; i < getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
-  auto blockShell = std::make_shared<InputAqlItemBlockShell>(
-    _itemBlockManager, std::move(block), inputRegisters, _blockId);
-  _blockId++;
+  std::shared_ptr<InputAqlItemBlockShell> blockShell;
+  if (block != nullptr) {
+    blockShell = std::make_shared<InputAqlItemBlockShell>(
+      _itemBlockManager, std::move(block), inputRegisters, _blockId
+    );
+    _blockId++;
+  }
   return andThenReturn({state, std::move(blockShell)});
 }
 
