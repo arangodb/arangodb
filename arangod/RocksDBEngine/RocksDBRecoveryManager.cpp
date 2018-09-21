@@ -443,8 +443,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBLogValue::objectId(blob);
         auto const& it = deltas.find(objectId);
         
+        LOG_DEVEL << "found truncate at " << currentSeqNum;
         if (it != deltas.end() &&
             it->second.startSequenceNumber <= currentSeqNum) {
+          LOG_DEVEL << "applying it" << currentSeqNum;
           it->second.removed = 0;
           it->second.added = 0;
           it->second.mustTruncate = true;
@@ -453,6 +455,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             // We track estimates for this index
             est->bufferTruncate(currentSeqNum + 1);
           }
+        } else if (it != deltas.end()) {
+          LOG_DEVEL << "skipping it, supposedly already buffered" << it->second.startSequenceNumber;
         }
         _lastRemovedDocRid = 0; // reset in any other case
         break;

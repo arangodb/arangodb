@@ -320,10 +320,11 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 
     ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
-    rocksdb::SequenceNumber latestSeq =
-        rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 
     if (result.ok()) {
+      rocksdb::SequenceNumber latestSeq =
+        rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+      
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
             static_cast<RocksDBTransactionCollection*>(trxCollection);
