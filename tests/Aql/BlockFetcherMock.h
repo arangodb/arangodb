@@ -43,8 +43,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
             std::shared_ptr<arangodb::aql::InputAqlItemBlockShell>>
   fetchBlock() override;
 
-  arangodb::aql::RegisterId getNrInputRegisters() override;
-
  private:
   using FetchBlockReturnItem =
       std::pair<arangodb::aql::ExecutionState,
@@ -71,8 +69,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
 
   std::unordered_set<AqlItemBlockPtr> _fetchedBlocks;
   size_t _numFetchBlockCalls;
-
-  ::arangodb::aql::RegisterId _nrRegs;
 
   ::arangodb::aql::ResourceMonitor _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;

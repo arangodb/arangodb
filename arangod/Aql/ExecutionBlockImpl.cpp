@@ -43,11 +43,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 template <class Executor>
-ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                 ExecutionNode const* node,
-                                                 typename Executor::Infos&& infos)
+ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
+    ExecutionEngine* engine, ExecutionNode const* node,
+    typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
-      _blockFetcher(this, infos.getInputRegisters()),
+      _blockFetcher(_dependencies, _engine->itemBlockManager(),
+                    infos.getInputRegisters(), infos.numberOfInputRegisters()),
       _rowFetcher(_blockFetcher),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos) {}
@@ -180,8 +181,11 @@ std::pair<ExecutionState, Result>
 ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
                                                size_t pos) {
   LOG_DEVEL << "INITIAZLI";
-  // re-initialize BlockFetcher
-  _blockFetcher = BlockFetcher(this, _infos.getInputRegisters());
+  // destroy and re-create the BlockFetcher
+  _blockFetcher.~BlockFetcher();
+  new (&_blockFetcher)
+      BlockFetcher(_dependencies, _engine->itemBlockManager(),
+                   _infos.getInputRegisters(), _infos.numberOfInputRegisters());
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();

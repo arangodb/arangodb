@@ -39,9 +39,6 @@ namespace aql {
  */
 class ExecutorInfos {
  public:
-  // inputRegister and outputRegister do not generally apply for all blocks.
-  // TODO Thus they should not be part of this class, but only of its
-  // descendants.
   /**
    * @brief Input for Executors. Derived classes exist where additional
    *        input is needed.
