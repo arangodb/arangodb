@@ -549,18 +549,6 @@ class ClusterInfo {
   ServerID getCoordinatorByShortID(ServerShortID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full dbserver ID by short ID
-  //////////////////////////////////////////////////////////////////////////////
-
-  ServerID getDBServerByShortID(ServerShortID);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full server ID by short name
-  //////////////////////////////////////////////////////////////////////////////
-
-  ServerID getServerByShortName(ServerShortName const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
   //////////////////////////////////////////////////////////////////////////////
 
@@ -595,7 +583,7 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
-
+  
   std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
@@ -715,8 +703,6 @@ class ClusterInfo {
 
   // Mappings between short names/IDs and full server IDs
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
-  std::unordered_map<ServerShortID, ServerID> _dbserverIdMap;
-  std::unordered_map<ServerShortName, ServerID> _nameMap;
   ProtectionData _mappingsProt;
 
   std::shared_ptr<VPackBuilder> _plan;

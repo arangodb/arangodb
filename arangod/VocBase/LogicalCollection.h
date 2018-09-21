@@ -268,8 +268,7 @@ class LogicalCollection: public LogicalDataSource {
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
-  /// NOTE: This function throws on error
-  void truncate(transaction::Methods* trx, OperationOptions&);
+  Result truncate(transaction::Methods* trx, OperationOptions&);
 
   Result insert(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
@@ -329,10 +328,6 @@ class LogicalCollection: public LogicalDataSource {
   transaction::CountCache& countCache() { return _countCache; }
 
   ChecksumResult checksum(bool, bool) const;
-
-  // compares the checksum value passed in the Slice (must be of type String)
-  // with the checksum provided in the reference checksum
-  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
   
   std::unique_ptr<FollowerInfo> const& followers() const;
 

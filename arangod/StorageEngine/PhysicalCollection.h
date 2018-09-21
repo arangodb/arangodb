@@ -140,8 +140,8 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual void truncate(transaction::Methods* trx,
-                        OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods* trx,
+                          OperationOptions& options) = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

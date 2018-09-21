@@ -92,7 +92,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual int restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
-  virtual void truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions& options) override;
+  virtual arangodb::Result truncate(arangodb::transaction::Methods* trx, arangodb::OperationOptions&) override;
   virtual arangodb::Result update(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, arangodb::velocypack::Slice const key) override;
   virtual void load() override {}
   virtual void unload() override {}
