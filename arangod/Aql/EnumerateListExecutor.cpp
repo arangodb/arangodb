@@ -54,7 +54,12 @@ transaction::Methods* EnumerateListExecutorInfos::trx() const { return _trx; }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
                                              EnumerateListExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _rowState(ExecutionState::HASMORE) {};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _currentRow{CreateInvalidInputRowHint{}},
+      _rowState(ExecutionState::HASMORE),
+      _inputArrayPosition(0),
+      _inputArrayLength(0){};
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
     OutputAqlItemRow& output) {

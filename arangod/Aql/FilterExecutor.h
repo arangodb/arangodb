@@ -81,9 +81,8 @@ class FilterExecutor {
    */
   std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
 
- public:
-  Infos& _infos;
  private:
+  Infos& _infos;
   Fetcher& _fetcher;
 };
 
