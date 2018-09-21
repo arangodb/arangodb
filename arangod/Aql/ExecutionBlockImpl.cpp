@@ -179,6 +179,7 @@ template <class Executor>
 std::pair<ExecutionState, Result>
 ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
                                                size_t pos) {
+  LOG_DEVEL << "INITIAZLI";
   // re-initialize BlockFetcher
   _blockFetcher = BlockFetcher(this, _infos.getInputRegisters());
 

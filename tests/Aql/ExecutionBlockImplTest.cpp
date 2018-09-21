@@ -105,7 +105,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
     std::unique_ptr<AqlItemBlock> block = nullptr;
 
-    WHEN("the executor does wait") {
+    WHEN("the executor does wait, using getSome") {
       std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
       std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
       blockDeque.push_back(std::move(block));
@@ -128,6 +128,33 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       std::tie(state, block) = testee.getSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
     }
+
+    WHEN("the executor does wait, using skipSome") {
+      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+      std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
+      blockDeque.push_back(std::move(block));
+
+      WaitingExecutionBlockMock dependency{&engine, node,
+                                           std::move(blockDeque)};
+
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
+                                                    std::move(infos));
+      testee.addDependency(&dependency);
+
+      size_t atMost = 1;
+      size_t skipped = 0;
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+
+      // done should stay done!
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+    }
+
   }
 
   GIVEN("there are multiple blocks in the upstream with no rows inside") {
@@ -136,7 +163,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
     std::unique_ptr<AqlItemBlock> block = nullptr;
 
-    WHEN("the executor does wait") {
+    WHEN("the executor does wait - using getSome") {
       // we are checking multiple input blocks
       // we are only fetching 1 row each (atMost = 1)
       // after a DONE is returned, it must stay done!
@@ -201,6 +228,67 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       REQUIRE(state == ExecutionState::DONE);
 
       REQUIRE(total == 5);
+    }
+
+    WHEN("the executor does wait - using skipSome") {
+      // we are checking multiple input blocks
+      // we are only fetching 1 row each (atMost = 1)
+      // after a DONE is returned, it must stay done!
+
+      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+      std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockc = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockd = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blocke = buildBlock<1>(&monitor, {{42}});
+      blockDeque.push_back(std::move(blocka));
+      blockDeque.push_back(std::move(blockb));
+      blockDeque.push_back(std::move(blockc));
+      blockDeque.push_back(std::move(blockd));
+      blockDeque.push_back(std::move(blocke));
+
+      WaitingExecutionBlockMock dependency{&engine, node,
+                                           std::move(blockDeque)};
+
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
+                                                    std::move(infos));
+      testee.addDependency(&dependency);
+      size_t atMost = 1;
+      size_t skipped = 0;
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::HASMORE);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+
+      std::tie(state, skipped) = testee.skipSome(atMost);
+      REQUIRE(state == ExecutionState::DONE);
+
     }
   }
 }
