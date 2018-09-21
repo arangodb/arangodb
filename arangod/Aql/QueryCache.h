@@ -40,6 +40,12 @@ namespace aql {
 /// @brief cache mode
 enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 
+struct QueryCacheProperties {
+  QueryCacheMode mode;
+  uint64_t maxEntries;
+  uint64_t maxEntrySize;
+};
+
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
 
@@ -55,8 +61,12 @@ struct QueryCacheResultEntry {
   std::shared_ptr<arangodb::velocypack::Builder> _queryResult;
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
   std::vector<std::string> const _dataSources;
+  size_t _size;
+  std::atomic<uint64_t> _hits;
   QueryCacheResultEntry* _prev;
   QueryCacheResultEntry* _next;
+
+  void increaseHits() { _hits.fetch_add(1, std::memory_order_relaxed); }
 };
 
 struct QueryCacheDatabaseEntry {
@@ -82,10 +92,19 @@ struct QueryCacheDatabaseEntry {
   /// @brief invalidate all entries for a data source in the 
   /// database-specific cache
   void invalidate(std::string const& dataSource);
+  
+  void queriesToVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   /// @brief enforce maximum number of results
-  /// must be called under the cache's properties lock
+  /// must be called under the shard's lock
   void enforceMaxResults(size_t);
+  
+  /// @brief enforce maximum size of individual entries
+  /// must be called under the shard's lock
+  void enforceMaxEntrySize(size_t);
+
+  /// @brief unlink the result entry from all datasource maps
+  void removeDatasources(QueryCacheResultEntry const* e);
 
   /// @brief unlink the result entry from the list
   void unlink(QueryCacheResultEntry*);
@@ -125,13 +144,13 @@ class QueryCache {
 
  public:
   /// @brief return the query cache properties
-  arangodb::velocypack::Builder properties();
-
-  /// @brief return the cache properties
-  void properties(std::pair<std::string, size_t>& result);
-
+  QueryCacheProperties properties() const;
+  
+  /// @brief return the query cache properties
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  
   /// @brief sets the cache properties
-  void setProperties(std::pair<std::string, size_t> const& properties);
+  void properties(QueryCacheProperties const& properties);
 
   /// @brief test whether the cache might be active
   /// this is a quick test that may save the caller from further bothering
@@ -143,18 +162,13 @@ class QueryCache {
 
   /// @brief return a string version of the mode
   static std::string modeString(QueryCacheMode);
+  
+  /// @brief return a string version of the mode
+  static QueryCacheMode modeString(std::string const&);
 
   /// @brief lookup a query result in the cache
   std::shared_ptr<QueryCacheResultEntry> lookup(TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString);
 
-  /// @brief store a query in the cache
-  /// if the call is successful, the cache has taken over ownership for the
-  /// query result!
-  void store(TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
-             std::shared_ptr<arangodb::velocypack::Builder> const& result,
-             std::shared_ptr<arangodb::velocypack::Builder> const& stats,
-             std::vector<std::string>&& dataSources);
-  
   /// @brief store a query cache entry in the cache
   void store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultEntry> entry);
 
@@ -177,33 +191,38 @@ class QueryCache {
   /// note that the caller of this method must hold the write lock
   void invalidate(unsigned int);
 
-  /// @brief sets the maximum number of elements in the cache
-  void setMaxResults(size_t);
+  void queriesToVelocyPack(arangodb::velocypack::Builder& builder) const;
 
-  /// @brief enable or disable the query cache
-  void setMode(QueryCacheMode);
-
-  /// @brief enable or disable the query cache
-  void setMode(std::string const&);
-  
  private:
   /// @brief enforce maximum number of results in each database-specific cache
   /// must be called under the cache's properties lock
   void enforceMaxResults(size_t);
+  
+  /// @brief enforce maximum size of individual entries in each database-specific cache
+  /// must be called under the cache's properties lock
+  void enforceMaxEntrySize(size_t);
+  
+  /// @brief sets the maximum number of elements in the cache
+  void setMaxResults(size_t);
+  
+  /// @brief sets the maximum size for each entry in the cache
+  void setMaxEntrySize(size_t);
+
+  /// @brief enable or disable the query cache
+  void setMode(QueryCacheMode);
 
   /// @brief determine which part of the cache to use for the cache entries
   unsigned int getPart(TRI_vocbase_t const*) const;
 
-
  private:
   /// @brief number of R/W locks for the query cache
   static constexpr uint64_t numberOfParts = 8;
-
+  
   /// @brief protect mode changes with a mutex
-  arangodb::Mutex _propertiesLock;
+  mutable arangodb::Mutex _propertiesLock;
 
   /// @brief read-write lock for the cache
-  arangodb::basics::ReadWriteLock _entriesLock[numberOfParts];
+  mutable arangodb::basics::ReadWriteLock _entriesLock[numberOfParts];
 
   /// @brief cached query entries, organized per database
   std::unordered_map<TRI_vocbase_t*, std::unique_ptr<QueryCacheDatabaseEntry>>

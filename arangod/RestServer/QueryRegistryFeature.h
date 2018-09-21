@@ -64,6 +64,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double _slowQueryThreshold;
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
+  uint64_t _queryCacheEntryMaxSize;
   double _queryRegistryTTL;
 
  public:
