@@ -1036,7 +1036,7 @@ void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest> const& r
 }
 
 
-class SharedRequestsState : public ClusterCommCallback, std::enable_shared_from_this<SharedRequestsState> {
+class SharedRequestsState : public ClusterCommCallback, public std::enable_shared_from_this<SharedRequestsState> {
   
 public:
   SharedRequestsState(std::vector<ClusterCommRequest>&& reqs,
