@@ -537,7 +537,7 @@ void RocksDBTransactionState::addTruncateOperation(TRI_voc_cid_t cid) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
   tcoll->addTruncateOperation();
-  _numRemoves = tcoll->numRemoves();
+  _numRemoves += tcoll->numRemoves();
   TRI_ASSERT(_numInserts == 0 && _numUpdates == 0);
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

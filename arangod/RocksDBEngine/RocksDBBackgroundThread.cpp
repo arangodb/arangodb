@@ -108,10 +108,6 @@ void RocksDBBackgroundThread::run() {
         // and then prune them when they expired
         _engine->pruneWalFiles();
       }
-      
-#warning DO NOT MERGE INTO DEVEL
-      return;
-      
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();
