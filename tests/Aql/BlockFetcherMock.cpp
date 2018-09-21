@@ -113,9 +113,7 @@ BlockFetcherMock& BlockFetcherMock::andThenReturn(
   std::shared_ptr<InputAqlItemBlockShell> blockShell;
   if (block != nullptr) {
     blockShell = std::make_shared<InputAqlItemBlockShell>(
-      _itemBlockManager, std::move(block), inputRegisters, _blockId
-    );
-    _blockId++;
+        _itemBlockManager, std::move(block), inputRegisters);
   }
   return andThenReturn({state, std::move(blockShell)});
 }

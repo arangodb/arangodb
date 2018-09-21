@@ -102,7 +102,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
             itemBlockManager, std::move(inputBlock),
-            executorInfos.getInputRegisters(), 0);
+            executorInfos.getInputRegisters());
 
         InputAqlItemRow source{inputBlockShell, 0};
 
@@ -136,7 +136,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
           itemBlockManager, std::move(inputBlock),
-          executorInfos.getInputRegisters(), 0);
+          executorInfos.getInputRegisters());
 
         InputAqlItemRow source{inputBlockShell, 0};
 
@@ -186,7 +186,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
           itemBlockManager, std::move(inputBlock),
-          executorInfos.getInputRegisters(), 0);
+          executorInfos.getInputRegisters());
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
@@ -239,7 +239,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
         auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
           itemBlockManager, std::move(inputBlock),
-          executorInfos.getInputRegisters(), 0);
+          executorInfos.getInputRegisters());
 
         for (size_t i = 0; i < 3; ++i) {
           // Iterate over source rows
@@ -304,7 +304,7 @@ SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
 
       auto inputBlockShell = std::make_shared<InputAqlItemBlockShell>(
         itemBlockManager, std::move(inputBlock),
-        executorInfos.getInputRegisters(), 0);
+        executorInfos.getInputRegisters());
 
       for (size_t i = 0; i < 3; ++i) {
         // Iterate over source rows

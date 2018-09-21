@@ -95,15 +95,6 @@ class SingleRowFetcher {
   std::shared_ptr<InputAqlItemBlockShell> _currentBlock;
 
   /**
-  * @brief Unique block ID, given by this class to every AqlItemBlock in
-  *        fetchBlock().
-  *
-  *        Internally, blocks are numbered consecutively starting from 0, but
-  *        this is not guaranteed.
-  */
-  //InputAqlItemRow::AqlItemBlockId _blockId;
-
-  /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid
    *        iff _currentBlock != nullptr and it's smaller or equal than
    *        _currentBlock->size(). May be moved if the Fetcher implementations

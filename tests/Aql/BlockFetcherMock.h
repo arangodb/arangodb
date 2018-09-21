@@ -76,8 +76,6 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
 
   ::arangodb::aql::ResourceMonitor _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
-
-  ::arangodb::aql::InputAqlItemBlockShell::AqlItemBlockId _blockId = 0;
 };
 
 }  // namespace aql
