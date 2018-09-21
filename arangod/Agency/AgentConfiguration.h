@@ -47,7 +47,7 @@ struct config_t {
   int64_t _timeoutMult;
   std::string _endpoint;
   std::unordered_map<std::string, std::string> _pool;
-  std::vector<std::string> _gossipPeers;
+  std::unordered_set<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
   bool _supervisionTouched;
@@ -184,10 +184,13 @@ public:
   bool merge(VPackSlice const& conf);
 
   /// @brief gossip peers
-  std::vector<std::string> gossipPeers() const;
+  std::unordered_set<std::string> gossipPeers() const;
 
   /// @brief remove endpoint from gossip peers
-  void eraseFromGossipPeers(std::string const& endpoint);
+  size_t eraseGossipPeer(std::string const& endpoint);
+
+  /// @brief remove endpoint from gossip peers
+  bool addGossipPeer(std::string const& endpoint);
 
   /// @brief add active agents
   bool activePushBack(std::string const& id);

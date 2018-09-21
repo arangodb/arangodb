@@ -72,6 +72,13 @@ class Agent final : public arangodb::Thread,
   /// @brief Get timeoutMult:
   int64_t getTimeoutMult() const;
 
+  /**
+   * @brief add gossip peer to configuration
+   * @param   endpoint  new endpoint
+   * @return  true: if new endpoint, false: if already known
+   */
+  bool addGossipPeer(std::string const& endpoint);
+
   /// @brief Adjust timeoutMult:
   void adjustTimeoutMult(int64_t timeoutMult);
 

@@ -81,7 +81,7 @@ config_t::config_t(
     _maxPing(maxp),
     _timeoutMult(1),
     _endpoint(e),
-    _gossipPeers(g),
+    _gossipPeers(g.begin(), g.end()),
     _supervision(s),
     _supervisionTouched(st),
     _waitForSync(w),
@@ -271,25 +271,27 @@ bool config_t::activePushBack(std::string const& id) {
   return false;
 }
 
-std::vector<std::string> config_t::gossipPeers() const {
-  READ_LOCKER(readLocker, _lock);
+std::unordered_set<std::string> config_t::gossipPeers() const {
+  READ_LOCKER(lock, _lock);
   return _gossipPeers;
 }
 
-void config_t::eraseFromGossipPeers(std::string const& endpoint) {
-  WRITE_LOCKER(readLocker, _lock);
-  if (std::find(_gossipPeers.begin(), _gossipPeers.end(), endpoint) !=
-      _gossipPeers.end()) {
-    _gossipPeers.erase(
-      std::remove(_gossipPeers.begin(), _gossipPeers.end(), endpoint),
-      _gossipPeers.end());
-    ++_version;
-  }
+size_t config_t::eraseGossipPeer(std::string const& endpoint) {
+  WRITE_LOCKER(lock, _lock);
+  auto ret = _gossipPeers.erase(endpoint);
+  ++_version;
+  return ret;
+}
+
+bool config_t::addGossipPeer(std::string const& endpoint) {
+  WRITE_LOCKER(lock, _lock);
+  ++_version;
+  return _gossipPeers.emplace(endpoint).second;
 }
 
 bool config_t::upsertPool(
   VPackSlice const& otherPool, std::string const& otherId) {
-  WRITE_LOCKER(readLocker, _lock);
+  WRITE_LOCKER(lock, _lock);
   for (auto const& entry : VPackObjectIterator(otherPool)) {
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();

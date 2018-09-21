@@ -96,7 +96,7 @@ Node createRootNode() {
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
   parser.parse(agency);
-  
+
   VPackBuilder builder;
   { VPackObjectBuilder a(&builder);
     builder.add("new", parser.steal()->slice()); }

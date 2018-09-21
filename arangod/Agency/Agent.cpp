@@ -1478,6 +1478,11 @@ void Agent::updatePeerEndpoint(query_t const& message) {
 
 }
 
+
+bool Agent::addGossipPeer(std::string const& endpoint) {
+  return _config.addGossipPeer(endpoint);
+}
+
 void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
   if (_config.updateEndpoint(id, ep)) {
     if (!challengeLeadership()) {
@@ -1737,10 +1742,10 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   {
     VPackObjectBuilder b(out.get());
 
-    std::vector<std::string> gossipPeers = _config.gossipPeers();
+    std::unordered_set<std::string> gossipPeers = _config.gossipPeers();
     if (!gossipPeers.empty()) {
       try {
-        _config.eraseFromGossipPeers(endpoint);
+        _config.eraseGossipPeer(endpoint);
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY)
           << __FILE__ << ":" << __LINE__ << " " << e.what();
@@ -1750,7 +1755,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     std::string err;
     
     /// Only leaders can update pool through RAFT
-    if (_config.poolComplete()) {
+    if (_config.poolComplete() && term() >= 1) {
 
       if (!challengeLeadership()) {
         auto tmp = _config;

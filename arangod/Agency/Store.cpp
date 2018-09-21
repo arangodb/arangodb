@@ -166,7 +166,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
           }
           if (found) {
             
-            LOG_TOPIC(ERR, Logger::FIXME) << "forbidden";
+            LOG_TOPIC(ERR, Logger::AGENCY) << "forbidden";
             success.push_back(FORBIDDEN);
             continue;
           }
