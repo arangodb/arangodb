@@ -2075,7 +2075,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   // optional while introducing this bugfix. should definitely be required with
   // 3.4
   // and throw a 400 then when no checksum is provided
-  if (checksumSlice.isString() && readLockIdSlice.isString()) {
+  if (readLockIdSlice.isString()) {
     std::string referenceChecksum;
     {
       CONDITION_LOCKER(locker, _condVar);
@@ -2115,7 +2115,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     }
   }
 
-  col->followers()->add(followerIdSlice.copyString());
+  col->followers()->add(followerId);
 
   VPackBuilder b;
   {
