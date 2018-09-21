@@ -1389,7 +1389,7 @@ Result RocksDBCollection::insertDocument(
   Result res = mthds->Put(RocksDBColumnFamily::documents(), key.ref(),
                           rocksdb::Slice(reinterpret_cast<char const*>(doc.begin()),
                                          static_cast<size_t>(doc.byteSize())));
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1398,12 +1398,12 @@ Result RocksDBCollection::insertDocument(
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->insertInternal(trx, mthds, documentId, doc,
                                          options.indexOperationMode);
-    if (!tmpres.ok()) {
+    if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
-      } else if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
-                 res.ok()) {
+      } 
+      if (tmpres.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) || res.ok()) {
         // "prefer" unique constraint violated over other errors
         res.reset(tmpres);
       }
@@ -1432,7 +1432,7 @@ Result RocksDBCollection::removeDocument(
   IndexingDisabler disabler(mthd, trx->isSingleOperationTransaction());
 
   Result res = mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1445,7 +1445,7 @@ Result RocksDBCollection::removeDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     Result tmpres = idx->remove(trx, documentId, doc, options.indexOperationMode);
-    if (!tmpres.ok()) {
+    if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
@@ -1484,7 +1484,7 @@ Result RocksDBCollection::updateDocument(
   Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
                          rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
                                         static_cast<size_t>(newDoc.byteSize())));
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1494,7 +1494,7 @@ Result RocksDBCollection::updateDocument(
                static_cast<uint32_t>(oldKey->string().size()));
 
   res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -1503,7 +1503,7 @@ Result RocksDBCollection::updateDocument(
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc, newDocumentId,
                                          newDoc, options.indexOperationMode);
-    if (!tmpres.ok()) {
+    if (tmpres.fail()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
         return tmpres;
@@ -1531,12 +1531,12 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     auto f = _cache->find(key->string().data(),
                           static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      std::string* value = mdr.string();
+      std::string* value = mdr.setManaged(documentId);
       value->append(reinterpret_cast<char const*>(f.value()->value()),
                     f.value()->valueSize());
-      mdr.setManagedAfterStringUsage(documentId);
       return TRI_ERROR_NO_ERROR;
-    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    } 
+    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
@@ -1544,7 +1544,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   }
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  std::string* value = mdr.string();
+  std::string* value = mdr.setManaged(documentId);
   Result res = mthd->Get(RocksDBColumnFamily::documents(), key.ref(), value);
 
   if (res.ok()) {
@@ -1569,8 +1569,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         }
       }
     }
-
-    mdr.setManagedAfterStringUsage(documentId);
   } else {
     LOG_TOPIC(DEBUG, Logger::FIXME)
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
@@ -1601,7 +1599,8 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       cb(documentId,
          VPackSlice(reinterpret_cast<char const*>(f.value()->value())));
       return TRI_ERROR_NO_ERROR;
-    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    } 
+    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
       lockTimeout = true;  // we skip the insert in this case
