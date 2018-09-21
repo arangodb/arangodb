@@ -45,7 +45,7 @@ namespace _detail {
 }
 
 
-CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister_
+CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister
                                                   , RegisterId nrInputRegisters
                                                   , RegisterId nrOutputRegisters
                                                   , std::unordered_set<RegisterId> registersToClear
@@ -56,8 +56,14 @@ CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister_
                                                   , std::vector<RegisterId>&& expInRegs
                                                   , Variable const* conditionVar
                                                   )
-    : ExecutorInfos({expInRegs.begin(), expInRegs.end()}, {outputRegister_}, nrInputRegisters, nrOutputRegisters, std::move(registersToClear))
-    ,  _outputRegister(outputRegister_)
+
+    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(expInRegs.begin(), expInRegs.end())
+                   , std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{outputRegister})
+                   , nrInputRegisters
+                   , nrOutputRegisters
+                   , std::move(registersToClear)
+                   )
+    ,  _outputRegister(outputRegister)
     ,  _query(query)
     ,  _expression(expression)
     ,  _expInVars(std::move(expInVars))
@@ -70,7 +76,7 @@ CalculationExecutorInfos::CalculationExecutorInfos( RegisterId outputRegister_
 
   _isReference = (_expression->node()->type == NODE_TYPE_REFERENCE);
   if (_isReference) {
-    TRI_ASSERT(_inRegs.size() == 1);
+    TRI_ASSERT(_inRegs->size() == 1);
   }
 
 }
