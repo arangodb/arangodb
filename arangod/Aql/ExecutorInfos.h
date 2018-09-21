@@ -58,31 +58,10 @@ class ExecutorInfos {
    *   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
    *   RegisterId register = it->second.registerId;
    */
-  ExecutorInfos(std::unordered_set<RegisterId> inputRegisters,
-                std::unordered_set<RegisterId> outputRegisters,
+  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
+                std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                std::unordered_set<RegisterId> registersToClear)
-      : _inRegs(std::move(inputRegisters)),
-        _outRegs(std::move(outputRegisters)),
-        _numInRegs(nrInputRegisters),
-        _numOutRegs(nrOutputRegisters),
-        _registersToKeep(),
-        _registersToClear(std::move(registersToClear)) {
-    for (RegisterId const inReg : inputRegisters) {
-      TRI_ASSERT(inReg < nrInputRegisters);
-    }
-    for (RegisterId const outReg : outputRegisters) {
-      TRI_ASSERT(outReg < nrOutputRegisters);
-    }
-    TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
-    for (RegisterId i = 0; i < nrInputRegisters; i++) {
-      if (_registersToClear.find(i) == _registersToClear.end()) {
-        _registersToKeep.emplace(i);
-      }
-    }
-    TRI_ASSERT(_registersToClear.size() + _registersToKeep.size() ==
-               nrInputRegisters);
-  }
+                std::unordered_set<RegisterId> registersToClear);
 
   ExecutorInfos(ExecutorInfos &&) = default;
   ExecutorInfos(ExecutorInfos const&) = delete;
@@ -96,7 +75,10 @@ class ExecutorInfos {
    *
    * @return The indices of the input registers.
    */
-  std::unordered_set<RegisterId> getInputRegisters() const { return _inRegs; }
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getInputRegisters()
+      const {
+    return _inRegs;
+  }
 
   /**
    * @brief Get the output registers the Executor is allowed to write. This has
@@ -108,7 +90,10 @@ class ExecutorInfos {
    *
    * @return The indices of the output registers.
    */
-  std::unordered_set<RegisterId> getOutputRegisters() const { return _outRegs; }
+  std::shared_ptr<const std::unordered_set<RegisterId>> const getOutputRegisters()
+      const {
+    return _outRegs;
+  }
 
   /**
   * @brief Total number of registers in input AqlItemBlocks. Not to be confused
@@ -124,7 +109,8 @@ class ExecutorInfos {
   */
   RegisterId numberOfOutputRegisters() const { return _numOutRegs; }
 
-  std::unordered_set<RegisterId> const& registersToKeep() const {
+  std::shared_ptr<const std::unordered_set<RegisterId>> const& registersToKeep()
+      const {
     return _registersToKeep;
   }
 
@@ -133,16 +119,15 @@ class ExecutorInfos {
   }
 
  private:
+  std::shared_ptr<const std::unordered_set<RegisterId>> _inRegs;
 
-  std::unordered_set<RegisterId> _inRegs;
-
-  std::unordered_set<RegisterId> _outRegs;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _outRegs;
 
   RegisterId _numInRegs;
 
   RegisterId _numOutRegs;
 
-  std::unordered_set<RegisterId> _registersToKeep;
+  std::shared_ptr<const std::unordered_set<RegisterId>> _registersToKeep;
 
   std::unordered_set<RegisterId> const _registersToClear;
 };

@@ -179,6 +179,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlItemBlockShell.cpp
   Aql/AqlItemMatrix.cpp
   Aql/InputAqlItemRow.cpp
   Aql/AqlResult.cpp
@@ -216,6 +217,7 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionStats.cpp
+  Aql/ExecutorInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
   Aql/FilterStats.cpp

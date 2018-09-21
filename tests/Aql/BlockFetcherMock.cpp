@@ -37,14 +37,16 @@ using namespace arangodb::aql;
  * * * * */
 
 BlockFetcherMock::BlockFetcherMock(RegisterId nrRegisters)
-    : BlockFetcher(nullptr),
+    : BlockFetcher(nullptr, std::shared_ptr<std::unordered_set<RegisterId>>()),
       _itemsToReturn(),
       _fetchedBlocks(),
       _returnedBlocks(),
       _numFetchBlockCalls(0),
-      _nrRegs(nrRegisters) {}
+      _nrRegs(nrRegisters),
+      _monitor(),
+      _itemBlockManager(&_monitor) {}
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
 BlockFetcherMock::fetchBlock() {
   _numFetchBlockCalls++;
 
@@ -52,8 +54,8 @@ BlockFetcherMock::fetchBlock() {
     return {ExecutionState::DONE, nullptr};
   }
 
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> returnValue =
-      std::move(_itemsToReturn.front());
+  std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+      returnValue = std::move(_itemsToReturn.front());
   _itemsToReturn.pop_front();
 
   if (returnValue.second != nullptr) {
@@ -89,11 +91,15 @@ RegisterId BlockFetcherMock::getNrInputRegisters() {
 
 BlockFetcherMock& BlockFetcherMock::shouldReturn(
     ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
-  return shouldReturn({state, std::move(block)});
+  // Should only be called once on each instance
+  TRI_ASSERT(_itemsToReturn.empty());
+
+  return andThenReturn(state, std::move(block));
 }
 
 BlockFetcherMock& BlockFetcherMock::shouldReturn(
-    std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> firstReturnValue) {
+    std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
+        firstReturnValue) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
 
@@ -101,17 +107,34 @@ BlockFetcherMock& BlockFetcherMock::shouldReturn(
 }
 
 BlockFetcherMock& BlockFetcherMock::shouldReturn(
-    std::vector<std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>>
+    std::vector<
+        std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>>
         firstReturnValues) {
   // Should only be called once on each instance
   TRI_ASSERT(_itemsToReturn.empty());
-  andThenReturn(std::move(firstReturnValues));
 
-  return *this;
+  return andThenReturn(std::move(firstReturnValues));
 }
 
 BlockFetcherMock& BlockFetcherMock::andThenReturn(
-    std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+  ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  // add all registers as input
+  for(RegisterId i = 0; i < getNrInputRegisters(); i++) {
+    inputRegisters->emplace(i);
+  }
+  std::shared_ptr<InputAqlItemBlockShell> blockShell;
+  if (block != nullptr) {
+    blockShell = std::make_shared<InputAqlItemBlockShell>(
+      _itemBlockManager, std::move(block), inputRegisters, _blockId
+    );
+    _blockId++;
+  }
+  return andThenReturn({state, std::move(blockShell)});
+}
+
+BlockFetcherMock& BlockFetcherMock::andThenReturn(
+    std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
         additionalReturnValue) {
   _itemsToReturn.emplace_back(std::move(additionalReturnValue));
 
@@ -119,7 +142,8 @@ BlockFetcherMock& BlockFetcherMock::andThenReturn(
 }
 
 BlockFetcherMock& BlockFetcherMock::andThenReturn(
-    std::vector<std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>>
+    std::vector<
+        std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>>
         additionalReturnValues) {
   for (auto& it : additionalReturnValues) {
     andThenReturn(std::move(it));
@@ -140,11 +164,6 @@ bool BlockFetcherMock::allFetchedBlocksReturned() const {
   }
 
   return true;
-}
-
-BlockFetcherMock& BlockFetcherMock::andThenReturn(
-    ExecutionState state, std::unique_ptr<AqlItemBlock> block) {
-  return andThenReturn({state, std::move(block)});
 }
 
 size_t BlockFetcherMock::numFetchBlockCalls() const {

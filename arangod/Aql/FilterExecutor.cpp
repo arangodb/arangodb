@@ -80,6 +80,8 @@ FilterExecutorInfos::FilterExecutorInfos(
     RegisterId inputRegister_, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos({inputRegister_}, {}, nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear)),
+    : ExecutorInfos(
+          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
+          nullptr, nrInputRegisters, nrOutputRegisters,
+          std::move(registersToClear)),
       _inputRegister(inputRegister_) {}

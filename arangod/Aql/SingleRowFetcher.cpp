@@ -37,11 +37,8 @@ using namespace arangodb::aql;
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
   // Fetch a new block iff necessary
   if (_currentBlock == nullptr || !indexIsValid()) {
-    returnCurrentBlock();
-    TRI_ASSERT(_currentBlock == nullptr);
-
     ExecutionState state;
-    std::unique_ptr<AqlItemBlock> newBlock;
+    std::shared_ptr<InputAqlItemBlockShell> newBlock;
     std::tie(state, newBlock) = fetchBlock();
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
@@ -59,7 +56,7 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
     rowState = ExecutionState::DONE;
   } else {
     TRI_ASSERT(_currentBlock);
-    _currentRow = InputAqlItemRow{_currentBlock.get(), _rowIndex, _blockId};
+    _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
 
     TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
     if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
@@ -76,18 +73,13 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher::fetchRow() {
 
 SingleRowFetcher::SingleRowFetcher(BlockFetcher& executionBlock)
     : _blockFetcher(&executionBlock),
-      _blockId(-1),
       _currentRow{CreateInvalidInputRowHint{}} {}
 
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
 SingleRowFetcher::fetchBlock() {
   auto res = _blockFetcher->fetchBlock();
 
   _upstreamState = res.first;
-
-  if (res.second != nullptr) {
-    _blockId++;
-  }
 
   return res;
 }
@@ -97,12 +89,12 @@ RegisterId SingleRowFetcher::getNrInputRegisters() const {
 }
 
 bool SingleRowFetcher::indexIsValid() {
-  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
+  return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->block().size();
 }
 
 bool SingleRowFetcher::isLastRowInBlock() {
   TRI_ASSERT(indexIsValid());
-  return _rowIndex + 1 == _currentBlock->size();
+  return _rowIndex + 1 == _currentBlock->block().size();
 }
 
 size_t SingleRowFetcher::getRowIndex() {
@@ -110,19 +102,6 @@ size_t SingleRowFetcher::getRowIndex() {
   return _rowIndex;
 }
 
-void SingleRowFetcher::returnCurrentBlock() noexcept {
-  if (_currentBlock == nullptr) {
-    // Leave this checks here, so tests can more easily check the number
-    // of returned blocks by the number of returnBlock calls
-    return;
-  }
-
-  _blockFetcher->returnBlock(std::move(_currentBlock));
-}
-
-SingleRowFetcher::~SingleRowFetcher() {
-  returnCurrentBlock();
-}
 
 SingleRowFetcher::SingleRowFetcher()
     : _blockFetcher(nullptr), _currentRow{CreateInvalidInputRowHint{}} {}
