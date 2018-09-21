@@ -32,7 +32,7 @@ BlockFetcher::fetchBlock() {
   if (block != nullptr) {
     _blockId++;
     auto shell = std::make_shared<InputAqlItemBlockShell>(
-        _executionBlock->_engine->_itemBlockManager, std::move(block),
+        _executionBlock->_engine->itemBlockManager(), std::move(block),
         _inputRegisters, _blockId);
     return {state, shell};
   } else {

@@ -24,10 +24,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "TestExecutorHelper.h"
 #include "BlockFetcherHelper.h"
-#include "WaitingExecutionBlockMock.h"
 #include "BlockFetcherMock.h"
+#include "TestExecutorHelper.h"
+#include "WaitingExecutionBlockMock.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
 
@@ -99,27 +99,29 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
   // Executor Infos
   TestExecutorHelperInfos infos(0, 1, 1, {});
 
-  std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
-  std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
-  blockDeque.push_back(std::move(block));
-
-  WaitingExecutionBlockMock dependency {&engine, node, std::move(blockDeque)};
-
-  GIVEN("there are is a block in the upstream with an empty row") {
+  GIVEN("there is a block in the upstream with no rows inside") {
     VPackBuilder input;
     BlockFetcherMock blockFetcherMock{0};
 
-    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 1);
+    std::unique_ptr<AqlItemBlock> block = nullptr;
 
     WHEN("the executor does wait") {
+      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+      std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
+      blockDeque.push_back(std::move(block));
+
+      WaitingExecutionBlockMock dependency{&engine, node,
+                                           std::move(blockDeque)};
+
       ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
-                                                std::move(infos));
+                                                    std::move(infos));
       testee.addDependency(&dependency);
 
       size_t atMost = 1000;
       std::tie(state, block) = testee.getSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
       std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(block->size() == 1);
       REQUIRE(state == ExecutionState::DONE);
 
       // done should stay done!
@@ -127,6 +129,43 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       REQUIRE(state == ExecutionState::WAITING);
     }
   }
+
+  /*
+  GIVEN("there are multiple blocks in the upstream with no rows inside") {
+    VPackBuilder input;
+    BlockFetcherMock blockFetcherMock{0};
+
+    std::unique_ptr<AqlItemBlock> block = nullptr;
+
+    WHEN("the executor does wait") {
+      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+      std::unique_ptr<AqlItemBlock> blocka = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockb = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockc = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blockd = buildBlock<1>(&monitor, {{42}});
+      std::unique_ptr<AqlItemBlock> blocke = buildBlock<1>(&monitor, {{42}});
+      blockDeque.push_back(std::move(blocka));
+      blockDeque.push_back(std::move(blockb));
+      blockDeque.push_back(std::move(blockc));
+      blockDeque.push_back(std::move(blockd));
+      blockDeque.push_back(std::move(blocke));
+
+      WaitingExecutionBlockMock dependency{&engine, node,
+                                           std::move(blockDeque)};
+
+      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node,
+                                                    std::move(infos));
+      testee.addDependency(&dependency);
+
+      size_t atMost = 1000;
+      std::tie(state, block) = testee.getSome(atMost);
+      REQUIRE(state == ExecutionState::WAITING);
+      std::tie(state, block) = testee.getSome(atMost);
+      // REQUIRE(block->size() == 1);
+      LOG_DEVEL << state;
+    }
+  }
+  */
 }
 
 }  // namespace aql
