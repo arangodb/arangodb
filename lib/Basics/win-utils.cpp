@@ -486,7 +486,7 @@ int TRI_MapSystemError(DWORD error) {
 static HANDLE hEventLog = INVALID_HANDLE_VALUE;
 
 bool TRI_InitWindowsEventLog(void) {
-  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  hEventLog = RegisterEventSourceW(NULL, L"ArangoDB");
   if (NULL == hEventLog) {
     // well, fail then.
     return false;
@@ -498,13 +498,6 @@ void TRI_CloseWindowsEventlog(void) {
   DeregisterEventSource(hEventLog);
   hEventLog = INVALID_HANDLE_VALUE;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a message to the windows event log.
-/// we rather are keen on logging something at all then on being able to work
-/// with fancy dynamic buffers; thus we work with a static buffer.
-/// the arango internal logging will handle that usually.
-////////////////////////////////////////////////////////////////////////////////
 
 // No clue why there is no header for these...
 #define MSG_INVALID_COMMAND ((DWORD)0xC0020100L)
@@ -522,15 +515,27 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
-
-  UnicodeString ubuf(buf, len);
-  LPCWSTR buffers[1] = {
-    ubuf.getTerminatedBuffer()
+  UnicodeString ubufs[]{
+    UnicodeString(buf, len),
+      UnicodeString(file),
+      UnicodeString(func),
+      UnicodeString(linebuf)
+      };
+  LPCWSTR buffers[] = {
+    ubufs[0].getTerminatedBuffer(),
+    ubufs[1].getTerminatedBuffer(),
+    ubufs[2].getTerminatedBuffer(),
+    ubufs[3].getTerminatedBuffer(), 
+    nullptr
   };
   // Try to get messages through to windows syslog...
-  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-                    MSG_INVALID_COMMAND, NULL, 4, 0, buffers,
-                    NULL)) {
+  if (!ReportEventW(hEventLog,
+                    EVENTLOG_ERROR_TYPE,
+                    UI_CATEGORY,
+                    MSG_INVALID_COMMAND,
+                    NULL,
+                    4, 0,
+                    buffers, NULL)) {
     // well, fail then...
   }
 }
@@ -548,14 +553,27 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  UnicodeString ubuf(buf, len);
-  LPCWSTR buffers[1] = {
-    ubuf.getTerminatedBuffer()
+  UnicodeString ubufs[]{
+    UnicodeString(buf, len),
+      UnicodeString(file),
+      UnicodeString(func),
+      UnicodeString(linebuf)
+      };
+  LPCWSTR buffers[] = {
+    ubufs[0].getTerminatedBuffer(),
+    ubufs[1].getTerminatedBuffer(),
+    ubufs[2].getTerminatedBuffer(),
+    ubufs[3].getTerminatedBuffer(), 
+    nullptr
   };
   // Try to get messages through to windows syslog...
-  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
-                    MSG_INVALID_COMMAND, NULL, 4, 0, buffers,
-                    NULL)) {
+  if (!ReportEventW(hEventLog,
+                    EVENTLOG_ERROR_TYPE,
+                    UI_CATEGORY,
+                    MSG_INVALID_COMMAND,
+                    NULL,
+                    4, 0,
+                    buffers, NULL)) {
     // well, fail then...
   }
 }
