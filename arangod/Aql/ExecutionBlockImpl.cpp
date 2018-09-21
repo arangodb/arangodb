@@ -180,7 +180,6 @@ template <class Executor>
 std::pair<ExecutionState, Result>
 ExecutionBlockImpl<Executor>::initializeCursor(AqlItemBlock* items,
                                                size_t pos) {
-  LOG_DEVEL << "INITIAZLI";
   // destroy and re-create the BlockFetcher
   _blockFetcher.~BlockFetcher();
   new (&_blockFetcher)
