@@ -27,6 +27,7 @@
 #include "BlockFetcherHelper.h"
 #include "BlockFetcherMock.h"
 #include "TestExecutorHelper.h"
+#include "TestEmptyExecutorHelper.h"
 #include "WaitingExecutionBlockMock.h"
 #include "catch.hpp"
 #include "fakeit.hpp"
@@ -98,6 +99,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
   // Executor Infos
   TestExecutorHelperInfos infos(0, 1, 1, {});
+  TestEmptyExecutorHelperInfos emptyInfos(0, 1, 1, {});
 
   GIVEN("there is a block in the upstream with no rows inside") {
     VPackBuilder input;
@@ -146,15 +148,17 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(skipped == 0);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
+      REQUIRE(skipped == 1);
 
       // done should stay done!
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
+      REQUIRE(skipped == 0);
     }
-
   }
 
   GIVEN("there are multiple blocks in the upstream with no rows inside") {
@@ -258,39 +262,78 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(skipped == 0);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::HASMORE);
+      REQUIRE(skipped == 1);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(skipped == 0);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::HASMORE);
+      REQUIRE(skipped == 1);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(skipped == 0);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::HASMORE);
+      REQUIRE(skipped == 1);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(skipped == 0);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::HASMORE);
+      REQUIRE(skipped == 1);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::WAITING);
+      REQUIRE(skipped == 0);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
+      REQUIRE(skipped == 1);
 
       std::tie(state, skipped) = testee.skipSome(atMost);
       REQUIRE(state == ExecutionState::DONE);
-
+      REQUIRE(skipped == 0);
     }
   }
+
+  /* THIS TEST NEEDS TO BE FINALISED
+  GIVEN("there is an invalid/empty block in the upstream") {
+    VPackBuilder input;
+    BlockFetcherMock blockFetcherMock{0};
+
+    std::unique_ptr<AqlItemBlock> block = nullptr;
+
+    WHEN("the executor does wait, using getSome") {
+      std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;
+      std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
+      blockDeque.push_back(std::move(block));
+
+      WaitingExecutionBlockMock dependency{&engine, node,
+                                           std::move(blockDeque)};
+
+      ExecutionBlockImpl<TestEmptyExecutorHelper> testee(&engine, node,
+                                                    std::move(emptyInfos));
+      testee.addDependency(&dependency);
+
+      size_t atMost = 1000;
+      std::tie(state, block) = testee.getSome(atMost);
+      LOG_DEVEL << 1;
+      LOG_DEVEL << state;
+      LOG_DEVEL << 2;
+      LOG_DEVEL <<block;
+    }
+  }
+  */
 }
 
 }  // namespace aql
