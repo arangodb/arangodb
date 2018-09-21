@@ -29,7 +29,6 @@
 #include <chrono>
 #include <thread>
 #include <unicode/locid.h>
-#include "Basics/win-utils.h"
 #endif
 
 #include <algorithm>

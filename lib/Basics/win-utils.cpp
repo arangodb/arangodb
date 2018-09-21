@@ -259,29 +259,33 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
 }
 
 
-FILE* TRI_FOPEN(const char* filename, const char *mode) {
+FILE* TRI_FOPEN(char const* filename, char const* mode) {
   UnicodeString fn(filename);
   UnicodeString umod(mode);
   return _wfopen(fn.getTerminatedBuffer(), umod.getTerminatedBuffer());
 }
 
 
-int TRI_CHDIR(const char *dirname) {
+int TRI_CHDIR(char const* dirname) {
   UnicodeString dn(dirname);
   return ::_wchdir(dn.getTerminatedBuffer());
 }
 
-int TRI_STAT(const char *path, TRI_stat_t *buffer) {
+int TRI_STAT(char const* path, TRI_stat_t* buffer) {
   UnicodeString p(path);
   auto rc =  ::_wstat64(p.getTerminatedBuffer(), buffer);
   return rc;
 }
 
-char *TRI_GETCWD(char *buffer, int maxlen){
-  char * rc = nullptr;
-  wchar_t *rcw;
+char *TRI_GETCWD(char* buffer, int maxlen){
+  char* rc = nullptr;
+  wchar_t* rcw;
   int wBufLen = maxlen;
   wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
+
+  if (wbuf == nullptr) {
+    return nullptr;
+  }
   rcw = ::_wgetcwd(wbuf, wBufLen);
 
   if (rcw != nullptr) {
@@ -298,16 +302,16 @@ char *TRI_GETCWD(char *buffer, int maxlen){
   return rc;
 }
 
-int TRI_MKDIR_WIN32(const char *dirname) {
+int TRI_MKDIR_WIN32(char const* dirname) {
   UnicodeString dir(dirname);
   return ::_wmkdir(dir.getTerminatedBuffer());
 }
   
-int TRI_RMDIR(const char *dirname) {
+int TRI_RMDIR(char const* dirname) {
   UnicodeString dir(dirname);
   return ::_wrmdir(dir.getTerminatedBuffer());
 }
-int TRI_UNLINK(const char *filename) {
+int TRI_UNLINK(char const* filename) {
   UnicodeString fn(filename);
   return ::_wunlink(fn.getTerminatedBuffer());
 }
@@ -730,12 +734,12 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
 
 static std::vector<std::string> argVec;
 
-void TRI_GET_ARGV_WIN(int &argc, char** argv) {
+void TRI_GET_ARGV_WIN(int& argc, char** argv) {
   auto wargStr = GetCommandLineW();
 
   // if you want your argc in unicode, all you gonna do 
   // is ask: 
-  wchar_t ** wargv = CommandLineToArgvW(wargStr, &argc);
+  auto wargv = CommandLineToArgvW(wargStr, &argc);
 
   argVec.reserve(argc);
 
@@ -747,7 +751,7 @@ void TRI_GET_ARGV_WIN(int &argc, char** argv) {
     buf = wargv[i];
     buf.toUTF8String<std::string>(uBuf);
     // memorize the utf8 value to keep the instance:
-    argVec.push_back(std::string(uBuf));
+    argVec.push_back(uBuf);
 
     // Now overwrite our original argc entry with the utf8 one:
     argv[i] = (char*) argVec[i].c_str();

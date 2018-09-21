@@ -22,12 +22,11 @@
 
 #include "DaemonFeature.h"
 
-#include <fstream>
-#include <iostream>
 #include <thread>
 #include <chrono>
 
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -147,15 +146,30 @@ void DaemonFeature::checkPidFile() {
     } else if (FileUtils::exists(_pidFile) && FileUtils::size(_pidFile) > 0) {
       LOG_TOPIC(INFO, Logger::STARTUP) << "pid-file '" << _pidFile
                                        << "' already exists, verifying pid";
+      std::string oldPidS;
+      try {
+        oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
+      }
+      catch (arangodb::basics::Exception const& ex) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Couldn't read PID file '"
+                                                << _pidFile << "' - "
+                                                << ex.what();
+        FATAL_ERROR_EXIT();
+      }
 
-      auto oldPidS = arangodb::basics::FileUtils::slurp(_pidFile);
+      basics::StringUtils::trimInPlace(oldPidS);
 
-      // file can be opened
-      if (oldPidS.length() > 0) {
+      if (!oldPidS.empty()) {
         TRI_pid_t oldPid;
 
-        oldPid = std::stol(oldPidS);
-
+        try {
+          oldPid = std::stol(oldPidS);
+        }
+        catch (std::invalid_argument const& ex) {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
+                                                    << "' doesn't contain a number.";
+          FATAL_ERROR_EXIT();
+        }
         if (oldPid == 0) {
           LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "pid-file '" << _pidFile
                                                     << "' is unreadable";
@@ -320,10 +334,9 @@ void DaemonFeature::writePidFile(int pid) {
     arangodb::basics::FileUtils::spit(_pidFile, std::to_string(pid), true);
   }
   catch (arangodb::basics::Exception const& ex) {
-      int res = ex.code();
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot write pid-file '"
                                                 << _pidFile << "' - "
-                                                << TRI_errno_string(res);
+                                                << ex.what();
   }
 }
 
