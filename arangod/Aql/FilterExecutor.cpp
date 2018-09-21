@@ -77,11 +77,11 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
 }
 
 FilterExecutorInfos::FilterExecutorInfos(
-    RegisterId inputRegister_, RegisterId nrInputRegisters,
+    RegisterId inputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
+          std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
           nullptr, nrInputRegisters, nrOutputRegisters,
           std::move(registersToClear)),
-      _inputRegister(inputRegister_) {}
+      _inputRegister(inputRegister) {}

@@ -29,7 +29,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemMatrix::AqlItemMatrix(size_t nrRegs_) : _size(0), _nrRegs(nrRegs_) {}
+AqlItemMatrix::AqlItemMatrix(size_t nrRegs) : _size(0), _nrRegs(nrRegs) {}
 
 void AqlItemMatrix::addBlock(std::shared_ptr<InputAqlItemBlockShell> blockShell) {
   TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());

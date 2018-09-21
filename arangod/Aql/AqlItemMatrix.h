@@ -40,7 +40,7 @@ class AqlItemMatrix {
   friend class AllRowsFetcher;
 
   public:
-    explicit AqlItemMatrix(size_t nrRegisters);
+    explicit AqlItemMatrix(size_t nrRegs);
     ~AqlItemMatrix() = default;
 
     /**

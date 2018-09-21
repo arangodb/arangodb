@@ -37,8 +37,8 @@ InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
     : _blockShell(nullptr), _baseIndex(0) {}
 
 InputAqlItemRow::InputAqlItemRow(
-    std::shared_ptr<InputAqlItemBlockShell> blockShell_, size_t baseIndex)
-    : _blockShell(std::move(blockShell_)), _baseIndex(baseIndex) {
+    std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex)
+    : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
   TRI_ASSERT(_blockShell != nullptr);
 }
 

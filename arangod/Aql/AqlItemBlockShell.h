@@ -36,8 +36,8 @@ namespace aql {
 // Deleter usable for smart pointers that return an AqlItemBlock to its manager
 class AqlItemBlockDeleter {
  public:
-  explicit AqlItemBlockDeleter(AqlItemBlockManager& manager_)
-      : _manager(manager_) {}
+  explicit AqlItemBlockDeleter(AqlItemBlockManager& manager)
+      : _manager(manager) {}
 
   void operator()(AqlItemBlock* block) { _manager.returnBlock(block); }
 
@@ -75,7 +75,7 @@ class AqlItemBlockShell {
   // std::unique_ptr<AqlItemBlock, AqlItemBlockDeleter> would accomplish the
   // same.
   AqlItemBlockShell(AqlItemBlockManager& manager,
-                    std::unique_ptr<AqlItemBlock> block_);
+                    std::unique_ptr<AqlItemBlock> block);
 
  protected:
   SmartAqlItemBlockPtr _block;
@@ -116,9 +116,9 @@ class OutputAqlItemBlockShell : public AqlItemBlockShell {
   // write a constructor that takes the block dimensions instead of the block
   // itself for convenience.
   OutputAqlItemBlockShell(
-      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block_,
-      std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters_,
-      std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep_);
+      AqlItemBlockManager& manager, std::unique_ptr<AqlItemBlock> block,
+      std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters,
+      std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep);
 
  public:
   std::unordered_set<RegisterId> const& outputRegisters() const {
