@@ -46,12 +46,24 @@ bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
         << " body: " << res->result->getBodyVelocyPack()->slice().toJson();
       _agent->gossip(res->result->getBodyVelocyPack(), true, _version);
       break;
-
+      
     case 307 : // Add new endpoint to gossip peers
-      static std::string const LOCATION = "Location";
       bool found;
-      newLocation = res->result->getHeaderField(LOCATION, found);
+      newLocation = res->result->getHeaderField("location", found);
+      
       if (found) {
+
+        std::string ep;
+        if (newLocation.compare(0, 5, "https") == 0) {
+          newLocation = newLocation.replace(0, 5, "ssl");
+        } else if (newLocation.compare(0, 4, "http") == 0) {
+          newLocation = newLocation.replace(0, 4, "tcp");
+        } else {
+          LOG_TOPIC(FATAL, Logger::AGENCY)
+            << "Invalid URL specified as gossip endpoint";
+          FATAL_ERROR_EXIT();
+        }
+        
         LOG_TOPIC(DEBUG, Logger::AGENCY)
           << "Got redirect to " << newLocation << ". Adding peer to gossip peers"; 
         bool added = _agent->addGossipPeer(newLocation);
@@ -80,5 +92,5 @@ bool GossipCallback::operator()(arangodb::ClusterCommResult* res) {
     << "Got error from gossip message, status:" << res->status;
   
   return true;
-
+  
 }

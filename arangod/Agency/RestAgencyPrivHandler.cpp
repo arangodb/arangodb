@@ -90,8 +90,7 @@ RestStatus RestAgencyPrivHandler::reportMessage(
 
 void RestAgencyPrivHandler::redirectRequest(std::string const& leaderId) {
   try {
-    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId)) +
-      _request->requestPath();
+    std::string url = Endpoint::uriForm(_agent->config().poolAt(leaderId));
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
