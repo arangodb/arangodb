@@ -306,7 +306,6 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
     }
   }
 
-  /* THIS TEST NEEDS TO BE FINALISED */
   GIVEN("there is an invalid/empty block in the upstream") {
     VPackBuilder input;
     BlockFetcherMock blockFetcherMock{0};
@@ -331,7 +330,6 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
       REQUIRE(block == nullptr);
     }
   }
-  // */
 }
 
 }  // namespace aql
