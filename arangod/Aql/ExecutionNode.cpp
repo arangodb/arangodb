@@ -29,6 +29,7 @@
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
+#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
@@ -1501,7 +1502,45 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine &engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<CalculationBlock>(&engine, this);
+
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId outputRegister = it->second.registerId;
+
+
+  std::unordered_set<Variable const*> inVars;
+  _expression->variables(inVars);
+
+  std::vector<Variable const*> expInVars(inVars.size());
+  std::vector<RegisterId> expInRegs(inVars.size());
+
+  auto& varInfo = getRegisterPlan()->varInfo;
+  for (auto& var : inVars) {
+    auto infoIter = varInfo.find(var->id);
+    TRI_ASSERT(infoIter != varInfo.end());
+    TRI_ASSERT(infoIter->second.registerId < ExecutionNode::MaxRegisterId);
+
+    expInVars.emplace_back(var);
+    expInRegs.emplace_back(infoIter->second.registerId);
+  }
+
+  CalculationExecutorInfos infos( std::unordered_set<RegisterId>{} // inputRegister
+                                , outputRegister
+                                , getRegisterPlan()->nrRegs[previousNode->getDepth()]
+                                , getRegisterPlan()->nrRegs[getDepth()]
+                                , getRegsToClear()
+
+                                , engine.getQuery() //used for v8 contexts and in expression
+                                , this->expression()
+                                , std::move(expInVars) // required by expression.execute
+                                , std::move(expInRegs) // required by expression.execute
+                                ,_conditionVariable // unused for now (conditon reg?)
+                                );
+
+  return std::make_unique<ExecutionBlockImpl<CalculationExecutor>>(&engine, this, std::move(infos));
+  //return std::make_unique<CalculationBlock>(&engine, this);
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,

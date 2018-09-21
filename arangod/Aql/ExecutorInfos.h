@@ -132,7 +132,7 @@ class ExecutorInfos {
     return _registersToClear;
   }
 
- private:
+ protected:
 
   std::unordered_set<RegisterId> _inRegs;
 
