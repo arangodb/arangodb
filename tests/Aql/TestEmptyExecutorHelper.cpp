@@ -45,39 +45,16 @@ std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRow(Outpu
   TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutionState state;
+  ExecutionState state = ExecutionState::DONE;
   FilterStats stats{};
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
-  LOG_DEVEL << "LOOP";
-  output.copyRow(input);
   return {state, stats};
 
   // will not reach this part of code, it is still here to prevent
-  // a compile warning. We do not want to test the fetcher here.
+  // a compile warning. We do not want to test the fetcher here. But it
+  // must be included due template scheme.
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
   std::tie(state, input) = _fetcher.fetchRow();
-  /*
-  while (true) {
-    // do not use fetcher
-
-    if (state == ExecutionState::WAITING) {
-      if (_returnedDone) {
-        return {ExecutionState::DONE, stats};
-      }
-      return {state, stats};
-    }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      _returnedDone = true;
-      return {state, stats};
-    }
-    TRI_ASSERT(input.isInitialized());
-
-    output.copyRow(input);
-    return {state, stats};
-    //stats.incrFiltered();
-  }*/
 }
 
 TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
