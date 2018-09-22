@@ -46,9 +46,11 @@ function ArangoQueryCursor (database, data, stream) {
   this._count = 0;
   this._total = 0;
   this._stream = stream || false;
+  this._cached = false;
 
   if (data.result !== undefined) {
     this._count = data.result.length;
+    this._cached = data.cached || false;
 
     if (this._pos < this._count) {
       this._hasNext = true;

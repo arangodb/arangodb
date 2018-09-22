@@ -34,6 +34,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 namespace aql {
 
@@ -42,8 +43,10 @@ enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 
 struct QueryCacheProperties {
   QueryCacheMode mode;
-  uint64_t maxEntries;
+  uint64_t maxResultsCount;
+  uint64_t maxResultsSize;
   uint64_t maxEntrySize;
+  bool includeSystem;
 };
 
 struct QueryCacheResultEntry {
@@ -52,7 +55,7 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry(uint64_t hash, 
                         QueryString const& queryString, 
                         std::shared_ptr<arangodb::velocypack::Builder> const& results,
-                        std::vector<std::string> const& dataSources);
+                        std::vector<std::string>&& dataSources);
 
   ~QueryCacheResultEntry() = default;
 
@@ -62,11 +65,16 @@ struct QueryCacheResultEntry {
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
   std::vector<std::string> const _dataSources;
   size_t _size;
+  size_t _rows;
   std::atomic<uint64_t> _hits;
+  double _stamp;
   QueryCacheResultEntry* _prev;
   QueryCacheResultEntry* _next;
 
   void increaseHits() { _hits.fetch_add(1, std::memory_order_relaxed); }
+  double executionTime() const;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 };
 
 struct QueryCacheDatabaseEntry {
@@ -97,11 +105,15 @@ struct QueryCacheDatabaseEntry {
 
   /// @brief enforce maximum number of results
   /// must be called under the shard's lock
-  void enforceMaxResults(size_t);
+  void enforceMaxResults(size_t numResults, size_t sizeResults);
   
   /// @brief enforce maximum size of individual entries
   /// must be called under the shard's lock
-  void enforceMaxEntrySize(size_t);
+  void enforceMaxEntrySize(size_t value);
+  
+  /// @brief exclude all data from system collections
+  /// must be called under the shard's lock
+  void excludeSystem();
 
   /// @brief unlink the result entry from all datasource maps
   void removeDatasources(QueryCacheResultEntry const* e);
@@ -127,8 +139,11 @@ struct QueryCacheDatabaseEntry {
   /// @brief end of linked list of result entries
   QueryCacheResultEntry* _tail;
 
-  /// @brief number of elements in this cache
-  size_t _numElements;
+  /// @brief number of results in this cache
+  size_t _numResults;
+  
+  /// @brief total size of results in this cache
+  size_t _sizeResults;
 };
 
 class QueryCache {
@@ -146,12 +161,15 @@ class QueryCache {
   /// @brief return the query cache properties
   QueryCacheProperties properties() const;
   
+  /// @brief sets the cache properties
+  void properties(QueryCacheProperties const& properties);
+  
+  /// @brief sets the cache properties
+  void properties(arangodb::velocypack::Slice const& properties);
+  
   /// @brief return the query cache properties
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   
-  /// @brief sets the cache properties
-  void properties(QueryCacheProperties const& properties);
-
   /// @brief test whether the cache might be active
   /// this is a quick test that may save the caller from further bothering
   /// about the query cache if case it returns `false`
@@ -187,26 +205,33 @@ class QueryCache {
   /// @brief get the pointer to the global query cache
   static QueryCache* instance();
 
-  /// @brief invalidate all entries in the cache part
-  /// note that the caller of this method must hold the write lock
-  void invalidate(unsigned int);
-
-  void queriesToVelocyPack(arangodb::velocypack::Builder& builder) const;
+  /// @brief create a velocypack representation of the queries in the cache
+  void queriesToVelocyPack(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& builder) const;
 
  private:
+  /// @brief invalidate all entries in the cache part
+  /// note that the caller of this method must hold the write lock
+  void invalidate(unsigned int part);
+
   /// @brief enforce maximum number of results in each database-specific cache
   /// must be called under the cache's properties lock
-  void enforceMaxResults(size_t);
+  void enforceMaxResults(size_t numResults, size_t sizeResults);
   
   /// @brief enforce maximum size of individual entries in each database-specific cache
   /// must be called under the cache's properties lock
-  void enforceMaxEntrySize(size_t);
+  void enforceMaxEntrySize(size_t value);
+  
+  /// @brief exclude all data from system collections
+  void excludeSystem();
   
   /// @brief sets the maximum number of elements in the cache
-  void setMaxResults(size_t);
+  void setMaxResults(size_t numResults, size_t sizeResults);
   
   /// @brief sets the maximum size for each entry in the cache
-  void setMaxEntrySize(size_t);
+  void setMaxEntrySize(size_t value);
+  
+  /// @brief sets the "include-system" flag
+  void setIncludeSystem(bool value);
 
   /// @brief enable or disable the query cache
   void setMode(QueryCacheMode);
@@ -216,7 +241,7 @@ class QueryCache {
 
  private:
   /// @brief number of R/W locks for the query cache
-  static constexpr uint64_t numberOfParts = 8;
+  static constexpr uint64_t numberOfParts = 16;
   
   /// @brief protect mode changes with a mutex
   mutable arangodb::Mutex _propertiesLock;
