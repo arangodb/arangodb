@@ -1107,32 +1107,20 @@ static void JS_QueryCachePropertiesAql(
   }
 
   auto queryCache = arangodb::aql::QueryCache::instance();
+  VPackBuilder builder;
 
   if (args.Length() == 1) {
     // called with options
-    
-    // fetch current configuration
-    arangodb::aql::QueryCacheProperties cacheProperties = queryCache->properties();  
+    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
-    auto obj = args[0]->ToObject();
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "mode"))) {
-      cacheProperties.mode = arangodb::aql::QueryCache::modeString(
-          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "mode"))));
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxResults"))) {
-      cacheProperties.maxEntries = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING(isolate, "maxResults")));
-    }
-    
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxEntrySize"))) {
-      cacheProperties.maxEntrySize = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING(isolate, "maxEntrySize")));
-    }
-
-    // set mode and max elements
-    queryCache->properties(cacheProperties);
+    queryCache->properties(builder.slice());
   }
 
-  VPackBuilder builder;
+  builder.clear();
   queryCache->toVelocyPack(builder);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
@@ -1148,9 +1136,11 @@ static void JS_QueryCacheQueriesAql(
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_QUERIES()");
   }
+  
+  auto& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  arangodb::aql::QueryCache::instance()->queriesToVelocyPack(builder);
+  arangodb::aql::QueryCache::instance()->queriesToVelocyPack(&vocbase, builder);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }

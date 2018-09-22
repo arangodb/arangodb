@@ -91,7 +91,7 @@ void RestQueryCacheHandler::readQueries() {
   auto queryCache = arangodb::aql::QueryCache::instance();
 
   VPackBuilder result;
-  queryCache->queriesToVelocyPack(result);
+  queryCache->queriesToVelocyPack(&_vocbase, result);
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
@@ -126,28 +126,6 @@ void RestQueryCacheHandler::replaceProperties() {
     return;
   }
 
-  auto queryCache = arangodb::aql::QueryCache::instance();
-
-  QueryCacheProperties cacheProperties = queryCache->properties();
-
-  VPackSlice attribute = body.get("mode");
-  if (attribute.isString()) {
-    cacheProperties.mode = QueryCache::modeString(attribute.copyString());
-  }
-
-  attribute = body.get("maxResults");
-
-  if (attribute.isNumber()) {
-    cacheProperties.maxEntries = static_cast<size_t>(attribute.getUInt());
-  }
-  
-  attribute = body.get("maxEntrySize");
-
-  if (attribute.isNumber()) {
-    cacheProperties.maxEntrySize = static_cast<size_t>(attribute.getUInt());
-  }
-
-  queryCache->properties(cacheProperties);
-
+  arangodb::aql::QueryCache::instance()->properties(body);
   readProperties();
 }

@@ -47,11 +47,19 @@ QueryRegistryFeature::QueryRegistryFeature(
       _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
       _queryCacheMode("off"),
-      _queryCacheEntries(128),
-      _queryCacheEntryMaxSize(16 * 1024 * 1024),
+      _queryCacheMaxResultsCount(0),
+      _queryCacheMaxResultsSize(0),
+      _queryCacheMaxEntrySize(0),
+      _queryCacheIncludeSystem(false),
       _queryRegistryTTL(DefaultQueryTTL) {
   setOptional(false);
   startsAfter("V8Phase");
+  
+  auto properties = arangodb::aql::QueryCache::instance()->properties();
+  _queryCacheMaxResultsCount = properties.maxResultsCount;
+  _queryCacheMaxResultsSize = properties.maxResultsSize;
+  _queryCacheMaxEntrySize = properties.maxEntrySize;
+  _queryCacheIncludeSystem = properties.includeSystem;
 }
 
 void QueryRegistryFeature::collectOptions(
@@ -83,16 +91,24 @@ void QueryRegistryFeature::collectOptions(
 
   options->addOption("--query.cache-entries",
                      "maximum number of results in query result cache per database",
-                     new UInt64Parameter(&_queryCacheEntries));
+                     new UInt64Parameter(&_queryCacheMaxResultsCount));
+  
+  options->addOption("--query.cache-entries-max-size",
+                     "maximum cumulated size of results in query result cache per database",
+                     new UInt64Parameter(&_queryCacheMaxResultsSize));
   
   options->addOption("--query.cache-entry-max-size",
-                     "maximum size of an invidiual result entry in query result cache per database",
-                     new UInt64Parameter(&_queryCacheEntryMaxSize));
+                     "maximum size of an invidiual result entry in query result cache",
+                     new UInt64Parameter(&_queryCacheMaxEntrySize));
+  
+  options->addOption("--query.cache-include-system-collections",
+                     "whether or not to include system collection queries in the query result cache",
+                     new BooleanParameter(&_queryCacheIncludeSystem));
 
   options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
 
-  options->addHiddenOption("--query.registry-ttl", "Default time-to-live of query snippets (in seconds)",
+  options->addHiddenOption("--query.registry-ttl", "default time-to-live of query snippets (in seconds)",
                            new DoubleParameter(&_queryRegistryTTL));
 }
 
@@ -111,8 +127,10 @@ void QueryRegistryFeature::prepare() {
   // configure the query cache
   arangodb::aql::QueryCacheProperties properties{ 
       arangodb::aql::QueryCache::modeString(_queryCacheMode), 
-      _queryCacheEntries, 
-      _queryCacheEntryMaxSize 
+      _queryCacheMaxResultsCount,
+      _queryCacheMaxResultsSize,
+      _queryCacheMaxEntrySize,
+      _queryCacheIncludeSystem
   };
   arangodb::aql::QueryCache::instance()->properties(properties);
 
