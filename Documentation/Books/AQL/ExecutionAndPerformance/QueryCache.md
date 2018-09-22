@@ -59,6 +59,7 @@ A query is eligible for caching only if all of the following conditions are met:
   are marked as cacheable
 * the size of the query result does not exceed the cache's configured maximal
   size for individual cache results or cumulated results
+* the query is not executed using a streaming cursor
 
 The usage of non-deterministic functions leads to a query not being cachable. 
 This is intentional to avoid caching of function results which should rather

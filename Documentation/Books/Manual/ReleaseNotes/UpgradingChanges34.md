@@ -273,6 +273,14 @@ APIs:
 
 The following APIs have been added or augmented:
 
+- additional `stream` attribute in queries HTTP API
+
+  The REST APIs for retrieving the list of currently running and slow queries
+  at `GET /_api/query/current` and `GET /_api/query/slow` are now returning an
+  additional attribute `stream` for each query.
+  
+  This attribute indicates whether the query was started using a streaming cursor. 
+
 - `POST /_api/document/{collection}` now supports repsert (replace-insert). 
   
   This can be achieved by using the URL parameter `overwrite=true`. When set to 

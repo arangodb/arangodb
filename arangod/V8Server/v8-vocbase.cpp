@@ -986,6 +986,7 @@ static void JS_QueriesCurrentAql(
       obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"),
                v8::Number::New(isolate, q.runTime));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "state"), TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
       result->Set(i++, obj);
     }
 
@@ -1037,6 +1038,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"),
                v8::Number::New(isolate, q.runTime));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "state"), TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
       result->Set(i++, obj);
     }
 

@@ -87,12 +87,15 @@ class QueryStreamCursor final : public arangodb::Cursor {
   QueryStreamCursor(TRI_vocbase_t& vocbase, CursorId id,
                     std::string const& query,
                     std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts, size_t batchSize,
+                    std::shared_ptr<velocypack::Builder> opts, 
+                    size_t batchSize,
                     double ttl);
 
   ~QueryStreamCursor();
 
   CursorType type() const override final { return CURSOR_VPACK; }
+  
+  void kill() override;
 
   size_t count() const override final { return 0; }
 
@@ -113,7 +116,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // appropriately.
   // Relies on the caller to have fetched more than batchSize() result rows
   // (if possible) in order to set hasMore reliably.
-  Result writeResult(velocypack::Builder &builder);
+  Result writeResult(velocypack::Builder& builder);
 
  private:
   DatabaseGuard _guard;
