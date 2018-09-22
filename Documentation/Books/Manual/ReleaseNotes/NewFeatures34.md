@@ -904,7 +904,7 @@ undesired. Creating a streaming cursor for such queries will solve both problems
 Please note that streaming cursors will use resources all the time till you
 fetch the last chunk of results.
 
-Depending on the storage engine you use this has different consequences:
+Depending on the storage engine used this has different consequences:
 
 - **MMFiles**: While before collection locks would only be held during the creation of the cursor
   (the first request) and thus until the result set was well prepared,
@@ -913,27 +913,28 @@ Depending on the storage engine you use this has different consequences:
 
   While Multiple reads are possible, one write operation will effectively stop
   all other actions from happening on the collections in question.
-- **Rocksdb**: Reading occurs on the state of the data when the query
+- **RocksDB**: Reading occurs on the state of the data when the query
   was started. Writing however will happen during working with the cursor.
   Thus be prepared for possible conflicts if you have other writes on the collections,
   and probably overrule them by `ignoreErrors: True`, else the query
   will abort by the time the conflict happenes.
 
 Taking into account the above consequences, you shouldn't use streaming
-cursors light minded for data modification queries.
+cursors light-minded for data modification queries.
 
 Please note that the query options `cache`, `count` and `fullCount` will not work with streaming
 cursors. Additionally, the query statistics, warnings and profiling data will only be available
-when the last result batch for the query is sent.
+when the last result batch for the query is sent. Using a streaming cursor will also prevent
+the query results being stored in the AQL query results cache.
 
 By default, query cursors created via the cursor API are non-streaming in ArangoDB 3.4,
 but streaming can be enabled on a per-query basis by setting the `stream` attribute
 in the request to the cursor API at endpoint `/_api/cursor`.
 
-However, streaming cursors are enabled for the following parts of ArangoDB in 3.4:
+However, streaming cursors are enabled automatically for the following parts of ArangoDB in 3.4:
 
 * when exporting data from collections using the arangoexport binary
-* when using `db.<collection>.toArray()` from the Arango shell.
+* when using `db.<collection>.toArray()` from the Arango shell
 
 Native implementations
 ----------------------
