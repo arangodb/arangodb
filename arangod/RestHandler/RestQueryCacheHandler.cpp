@@ -59,7 +59,7 @@ RestStatus RestQueryCacheHandler::execute() {
 
 void RestQueryCacheHandler::clearCache() {
   auto queryCache = arangodb::aql::QueryCache::instance();
-  queryCache->invalidate();
+  queryCache->invalidate(&_vocbase);
     
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));

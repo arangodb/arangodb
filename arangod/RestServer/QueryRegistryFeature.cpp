@@ -25,6 +25,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Cluster/ServerState.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -104,7 +105,7 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.cache-include-system-collections",
                      "whether or not to include system collection queries in the query result cache",
                      new BooleanParameter(&_queryCacheIncludeSystem));
-
+  
   options->addOption("--query.optimizer-max-plans", "maximum number of query plans to create for a query",
                      new UInt64Parameter(&_maxQueryPlans));
 
@@ -124,13 +125,20 @@ void QueryRegistryFeature::validateOptions(
 }
 
 void QueryRegistryFeature::prepare() {
+  if (ServerState::instance()->isCoordinator()) {
+    // turn the query cache off on the coordinator, as it is not implemented
+    // for the cluster
+    _queryCacheMode = "off";
+  }
+
   // configure the query cache
   arangodb::aql::QueryCacheProperties properties{ 
       arangodb::aql::QueryCache::modeString(_queryCacheMode), 
       _queryCacheMaxResultsCount,
       _queryCacheMaxResultsSize,
       _queryCacheMaxEntrySize,
-      _queryCacheIncludeSystem
+      _queryCacheIncludeSystem,
+      _trackBindVars
   };
   arangodb::aql::QueryCache::instance()->properties(properties);
 

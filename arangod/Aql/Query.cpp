@@ -576,7 +576,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-            &_vocbase, queryHash, _queryString
+            &_vocbase, queryHash, _queryString, bindParameters() 
           );
           
           if (cacheEntry != nullptr) {
@@ -689,7 +689,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         if (useQueryCache && _warnings.empty()) {
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-            queryHash, _queryString, _resultBuilder, _trx->state()->collectionNames(_views));
+            queryHash, _queryString, _resultBuilder, bindParameters(), _trx->state()->collectionNames(_views));
         }
 
         queryResult.result = std::move(_resultBuilder);
@@ -776,7 +776,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-        &_vocbase, queryHash, _queryString
+        &_vocbase, queryHash, _queryString, bindParameters()
       );
 
       if (cacheEntry != nullptr) {
@@ -901,7 +901,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     if (useQueryCache && _warnings.empty()) {
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-        queryHash, _queryString, builder, _trx->state()->collectionNames(_views));
+        queryHash, _queryString, builder, bindParameters(), _trx->state()->collectionNames(_views));
     }
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);

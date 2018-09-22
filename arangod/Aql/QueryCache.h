@@ -47,6 +47,7 @@ struct QueryCacheProperties {
   uint64_t maxResultsSize;
   uint64_t maxEntrySize;
   bool includeSystem;
+  bool showBindVars;
 };
 
 struct QueryCacheResultEntry {
@@ -54,14 +55,16 @@ struct QueryCacheResultEntry {
 
   QueryCacheResultEntry(uint64_t hash, 
                         QueryString const& queryString, 
-                        std::shared_ptr<arangodb::velocypack::Builder> const& results,
+                        std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
+                        std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
                         std::vector<std::string>&& dataSources);
 
   ~QueryCacheResultEntry() = default;
 
   uint64_t const _hash;
   std::string const _queryString;
-  std::shared_ptr<arangodb::velocypack::Builder> _queryResult;
+  std::shared_ptr<arangodb::velocypack::Builder> const _queryResult;
+  std::shared_ptr<arangodb::velocypack::Builder> const _bindVars;
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
   std::vector<std::string> const _dataSources;
   size_t _size;
@@ -88,10 +91,14 @@ struct QueryCacheDatabaseEntry {
   ~QueryCacheDatabaseEntry();
 
   /// @brief lookup a query result in the database-specific cache
-  std::shared_ptr<QueryCacheResultEntry> lookup(uint64_t hash, QueryString const& queryString);
+  std::shared_ptr<QueryCacheResultEntry> lookup(uint64_t hash, 
+                                                QueryString const& queryString,
+                                                std::shared_ptr<arangodb::velocypack::Builder> const& bindVars) const;
 
   /// @brief store a query result in the database-specific cache
-  void store(uint64_t hash, std::shared_ptr<QueryCacheResultEntry> entry);
+  void store(std::shared_ptr<QueryCacheResultEntry>&& entry, 
+             size_t allowedMaxResultsCount,
+             size_t allowedMaxResultsSize);
 
   /// @brief invalidate all entries for the given data sources in the
   /// database-specific cache
@@ -185,7 +192,10 @@ class QueryCache {
   static QueryCacheMode modeString(std::string const&);
 
   /// @brief lookup a query result in the cache
-  std::shared_ptr<QueryCacheResultEntry> lookup(TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString);
+  std::shared_ptr<QueryCacheResultEntry> lookup(TRI_vocbase_t* vocbase, 
+                                                uint64_t hash, 
+                                                QueryString const& queryString,
+                                                std::shared_ptr<arangodb::velocypack::Builder> const& bindVars) const;
 
   /// @brief store a query cache entry in the cache
   void store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultEntry> entry);
