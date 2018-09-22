@@ -810,6 +810,53 @@ the optimizer in 3.4 will now be able to use a sparse index on `value`:
 The optimizer in 3.3 was not able to detect this, and refused to use sparse indexes
 for such queries.
 
+### Query results cache
+
+The AQL query results cache in ArangoDB 3.4 has got additional parameters to 
+control which queries should be stored in the cache.
+
+In addition to the already existing configuration option `--query.cache-entries`
+that controls the maximum number of query results cached in each database's
+query results cache, there now exist the following extra options:
+
+- `--query.cache-entries-max-size`: maximum cumulated size of the results stored
+  in each database's query results cache
+- `--query.cache-entry-max-size`: maximum size for an individual cache result
+- `--query.cache-include-system-collections`: whether or not results of queries
+  that involve system collections should be stored in the query results cache
+
+These options allow more effective control of the amount of memory used by the
+query results cache, and can be used to better utilitize the cache memory.
+
+The cache configuration can be changed at runtime using the `properties` function
+of the cache. For example, to limit the per-database number of cache entries to
+256 MB and to limit the per-database cumulated size of query results to 64 MB, 
+and the maximum size of each individual cache entry to 1MB, the following call
+could be used:
+
+```
+require("@arangodb/aql/cache").properties({
+  maxResults: 256,
+  maxResultsSize: 64 * 1024 * 1024,
+  maxEntrySize: 1024 * 1024,
+  includeSystem: false
+});
+```
+
+The contents of the query results cache can now also be inspected at runtime using 
+the cache's new `toArray` function:
+
+```
+require("@arangodb/aql/cache").toArray();
+```
+
+This will show all query results currently stored in the query results cache of
+the current database, along with their query strings, sizes, number of results
+and original query run times.
+
+The functionality is also available via HTTP REST APIs.
+
+
 ### Miscellaneous changes
 
 When creating query execution plans for a query, the query optimizer was fetching

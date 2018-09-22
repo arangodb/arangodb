@@ -341,6 +341,12 @@ The following APIs have been added or augmented:
   In single-server mode, the *shardingStrategy* attribute is meaningless and
   will be ignored.
 
+- a new API for inspecting the contents of the AQL query results cache has been added
+  to endpoint `GET /_api/query/cache/entries`
+
+  This API returns the current contents of the AQL query results cache of the 
+  currently selected database.
+
 - APIs for view management have been added at endpoint `/_api/view`.
 
 - The REST APIs for modifying graphs at endpoint `/_api/gharial` now support returning
