@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
 
@@ -50,20 +51,26 @@ static std::atomic<size_t> maxResultsCount(128); // default value. can be change
 static std::atomic<size_t> maxResultsSize(256 * 1024 * 1024); // default value. can be changed later
 
 /// @brief maximum size of an individual cache entry
-static std::atomic<size_t> maxEntrySize(8 * 1024 * 1024); // default value. can be changed later
+static std::atomic<size_t> maxEntrySize(16 * 1024 * 1024); // default value. can be changed later
 
 /// @brief whether or not to include results of system collections
 static std::atomic<bool> includeSystem(false); // default value. can be changed later
+
+/// @brief whether or not the query cache will return bind vars in its list of cached results
+static bool showBindVars = true; // will be set once on startup. cannot be changed at runtime
 }
 
 /// @brief create a cache entry
 QueryCacheResultEntry::QueryCacheResultEntry(
-    uint64_t hash, QueryString const& queryString,
+    uint64_t hash, 
+    QueryString const& queryString,
     std::shared_ptr<VPackBuilder> const& queryResult, 
+    std::shared_ptr<VPackBuilder> const& bindVars,
     std::vector<std::string>&& dataSources)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
+      _bindVars(bindVars),
       _dataSources(std::move(dataSources)),
       _size(_queryString.size()),
       _rows(0),
@@ -76,6 +83,9 @@ QueryCacheResultEntry::QueryCacheResultEntry(
     if (_queryResult) {
       _size += _queryResult->size();
       _rows = _queryResult->slice().length();
+    }
+    if (_bindVars) {
+      _size += _bindVars->size();
     }
   } catch (...) {}
 }
@@ -109,6 +119,15 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
  
   builder.add("hash", VPackValue(std::to_string(_hash)));
   builder.add("query", VPackValue(_queryString));
+
+  if (::showBindVars) {
+    if (_bindVars && !_bindVars->slice().isNone()) {
+      builder.add("bindVars", _bindVars->slice());
+    } else {
+      builder.add("bindVars", VPackSlice::emptyObjectSlice());
+    }
+  }
+
   builder.add("size", VPackValue(_size));
   builder.add("results", VPackValue(_rows));
   builder.add("hits", VPackValue(_hits.load()));
@@ -161,7 +180,9 @@ void QueryCacheDatabaseEntry::queriesToVelocyPack(VPackBuilder& builder) const {
 
 /// @brief lookup a query result in the database-specific cache
 std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup(
-    uint64_t hash, QueryString const& queryString) {
+    uint64_t hash, 
+    QueryString const& queryString,
+    std::shared_ptr<VPackBuilder> const& bindVars) const {
   auto it = _entriesByHash.find(hash);
 
   if (it == _entriesByHash.end()) {
@@ -170,30 +191,58 @@ std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup(
   }
 
   // found some result in cache
+  auto entry = (*it).second.get();
 
-  if (queryString.size() != (*it).second->_queryString.size() ||
-      memcmp(queryString.data(), (*it).second->_queryString.data(), queryString.size()) != 0) {
+  if (queryString.size() != entry->_queryString.size() ||
+      memcmp(queryString.data(), entry->_queryString.data(), queryString.size()) != 0) {
     // found something, but obviously the result of a different query with the
     // same hash
     return nullptr;
   }
 
-  (*it).second->increaseHits();
+  // compare bind variables
+  VPackSlice entryBindVars = VPackSlice::emptyObjectSlice();
+  if (entry->_bindVars != nullptr) {
+    entryBindVars = entry->_bindVars->slice();
+  }
+  VPackValueLength entryLength = entryBindVars.length();
+  
+  VPackSlice lookupBindVars = VPackSlice::emptyObjectSlice();
+  if (bindVars != nullptr) {
+    lookupBindVars = bindVars->slice();
+  }
+  VPackValueLength lookupLength = lookupBindVars.length();
+
+  if (entryLength > 0 || lookupLength > 0) {
+    if (entryLength != lookupLength) {
+      // different number of bind variables
+      return nullptr;
+    }
+
+    if (basics::VelocyPackHelper::compare(entryBindVars, lookupBindVars, false) != 0) {
+      // different bind variables
+      return nullptr;
+    }
+  }
+
+  // all equal -> hit!
+  entry->increaseHits();
 
   // found an entry
   return (*it).second;
 }
 
 /// @brief store a query result in the database-specific cache
-void QueryCacheDatabaseEntry::store(uint64_t hash,
-                                    std::shared_ptr<QueryCacheResultEntry> entry) {
+void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& entry,
+                                    size_t allowedMaxResultsCount,
+                                    size_t allowedMaxResultsSize) {
   auto* e = entry.get();
 
-  size_t mr = ::maxResultsCount.load();
-  size_t ms = ::maxResultsSize.load();
-  enforceMaxResults(mr > 0 ? mr - 1 : 0, ms > e->_size ? ms - e->_size : 0);
+  // make room in the cache so the new entry will definitely fit
+  enforceMaxResults(allowedMaxResultsCount - 1, allowedMaxResultsSize - e->_size);
 
   // insert entry into the cache
+  uint64_t hash = e->_hash;
   if (!_entriesByHash.emplace(hash, entry).second) {
     // remove previous entry
     auto it = _entriesByHash.find(hash);
@@ -238,11 +287,11 @@ void QueryCacheDatabaseEntry::store(uint64_t hash,
 
   link(e);
 
-  TRI_ASSERT(_numResults <= mr);
-  TRI_ASSERT(_sizeResults <= ms);
+  TRI_ASSERT(_numResults <= allowedMaxResultsCount);
+  TRI_ASSERT(_sizeResults <= allowedMaxResultsSize);
   TRI_ASSERT(_head != nullptr);
   TRI_ASSERT(_tail != nullptr);
-  TRI_ASSERT(_tail == entry.get());
+  TRI_ASSERT(_tail == e);
   TRI_ASSERT(e->_next == nullptr);
 }
 
@@ -428,7 +477,8 @@ QueryCacheProperties QueryCache::properties() const {
       ::maxResultsCount.load(), 
       ::maxResultsSize.load(), 
       ::maxEntrySize.load(),
-      ::includeSystem.load()
+      ::includeSystem.load(),
+      ::showBindVars
   }; 
 }
 
@@ -440,6 +490,7 @@ void QueryCache::properties(QueryCacheProperties const& properties) {
   setMaxResults(properties.maxResultsCount, properties.maxResultsSize);
   setMaxEntrySize(properties.maxEntrySize);
   setIncludeSystem(properties.includeSystem);
+  ::showBindVars = properties.showBindVars;
 }
 
 /// @brief set the cache properties
@@ -525,8 +576,10 @@ QueryCacheMode QueryCache::modeString(std::string const& mode) {
 }
 
 /// @brief lookup a query result in the cache
-std::shared_ptr<QueryCacheResultEntry> QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
-                                                          QueryString const& queryString) {
+std::shared_ptr<QueryCacheResultEntry> QueryCache::lookup(TRI_vocbase_t* vocbase, 
+                                                          uint64_t hash,
+                                                          QueryString const& queryString,
+                                                          std::shared_ptr<VPackBuilder> const& bindVars) const {
   auto const part = getPart(vocbase);
   READ_LOCKER(readLocker, _entriesLock[part]);
 
@@ -537,14 +590,14 @@ std::shared_ptr<QueryCacheResultEntry> QueryCache::lookup(TRI_vocbase_t* vocbase
     return nullptr;
   }
 
-  return (*it).second->lookup(hash, queryString);
+  return (*it).second->lookup(hash, queryString, bindVars);
 }
 
 /// @brief store a query in the cache
 void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultEntry> entry) {
   TRI_ASSERT(entry != nullptr);
   auto* e = entry.get();
-
+  
   if (e->_size > ::maxEntrySize.load()) {
     // entry is too big
     return;
@@ -558,6 +611,19 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
         return;
       }
     }
+  }
+  
+  size_t const allowedMaxResultsCount = ::maxResultsCount.load();
+  size_t const allowedMaxResultsSize = ::maxResultsSize.load();
+
+  if (allowedMaxResultsCount == 0) {
+    // cache has only space for 0 entries...
+    return;
+  }
+
+  if (e->_size > allowedMaxResultsSize) {
+    // entry is too big
+    return;
   }
 
   // set insertion time
@@ -576,7 +642,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   }
 
   // store cache entry
-  (*it).second->store(entry->_hash, entry);
+  (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
 }
 
 /// @brief invalidate all queries for the given data sources

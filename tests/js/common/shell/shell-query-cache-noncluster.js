@@ -53,32 +53,37 @@ function AqlQueryCacheSuite () {
     assertEqual(1, queries.length);
     assertEqual(hits, queries[0].hits);
   };
-  
+
+  let resetCache = function() {
+    cache.properties({ 
+      mode: "off", 
+      maxResults: 128, 
+      maxResultsSize: 8 * 1024 * 1024, 
+      maxEntrySize: 16 * 1024 * 1024
+    });
+    cache.clear();
+  };
+
   return {
 
-    setUp : function () {
-      cache.properties({ mode: "off", maxResults: 128, maxEntrySize: 16 * 1024 * 1024 });
-      cache.clear();
-    },
-
-    tearDown : function () {
-      cache.properties({ mode: "off", maxResults: 128, maxEntrySize: 16 * 1024 * 1024 });
-      cache.clear();
-    },
+    setUp : function () { resetCache(); },
+    tearDown : function () { resetCache(); },
     
     testProperties : function () {
-      cache.properties({ mode: "demand", maxResults: 3, maxEntrySize: 123456 });
+      cache.properties({ mode: "demand", maxResults: 3, maxResultsSize: 16399, maxEntrySize: 123456 });
 
       let p = cache.properties();
       assertEqual("demand", p.mode);
       assertEqual(3, p.maxResults);
+      assertEqual(16399, p.maxResultsSize);
       assertEqual(123456, p.maxEntrySize);
       
-      cache.properties({ mode: "off", maxResults: 99, maxEntrySize: 6886 });
+      cache.properties({ mode: "off", maxResults: 99, maxEntrySize: 6886, maxResultsSize: 65538 });
       p = cache.properties();
       
       assertEqual("off", p.mode);
       assertEqual(99, p.maxResults);
+      assertEqual(65538, p.maxResultsSize);
       assertEqual(6886, p.maxEntrySize);
       
       cache.properties({ mode: "demand", maxResults: 99999, maxEntrySize: 123456788113 });
@@ -86,7 +91,48 @@ function AqlQueryCacheSuite () {
       
       assertEqual("demand", p.mode);
       assertEqual(99999, p.maxResults);
+      assertEqual(65538, p.maxResultsSize);
       assertEqual(123456788113, p.maxEntrySize);
+      
+      cache.properties({ mode: "on" });
+      p = cache.properties();
+      
+      assertEqual("on", p.mode);
+      assertEqual(99999, p.maxResults);
+      assertEqual(65538, p.maxResultsSize);
+      assertEqual(123456788113, p.maxEntrySize);
+      
+      cache.properties({});
+      p = cache.properties();
+      
+      assertEqual("on", p.mode);
+      assertEqual(99999, p.maxResults);
+      assertEqual(65538, p.maxResultsSize);
+      assertEqual(123456788113, p.maxEntrySize);
+      
+      cache.properties({ maxResults: 7 });
+      p = cache.properties();
+      
+      assertEqual("on", p.mode);
+      assertEqual(7, p.maxResults);
+      assertEqual(65538, p.maxResultsSize);
+      assertEqual(123456788113, p.maxEntrySize);
+      
+      cache.properties({ maxResultsSize: 1948468 });
+      p = cache.properties();
+      
+      assertEqual("on", p.mode);
+      assertEqual(7, p.maxResults);
+      assertEqual(1948468, p.maxResultsSize);
+      assertEqual(123456788113, p.maxEntrySize);
+      
+      cache.properties({ maxEntrySize: 245 });
+      p = cache.properties();
+      
+      assertEqual("on", p.mode);
+      assertEqual(7, p.maxResults);
+      assertEqual(1948468, p.maxResultsSize);
+      assertEqual(245, p.maxEntrySize);
     },
 
     testPropertiesDatabases : function () {
@@ -571,6 +617,55 @@ function AqlQueryCacheSuite () {
       }
     },
     
+    testMaxResultsSize1 : function () {
+      const query = "FOR i IN 1..@value RETURN i";
+      cache.properties({ mode: "demand", maxResults: 10, maxResultsSize: 8192 });
+      
+      let q = query + " // 1000";
+      let res = db._query(q, { value: 1000 }, cached);
+      assertFalse(res._cached);
+      assertInCache(q, 0);
+      
+      q = query + " // 1001";
+      res = db._query(q, { value: 1001 }, cached);
+      assertFalse(res._cached);
+      assertInCache(q, 0);
+      
+      q = query + " // 5000";
+      res = db._query(q, { value: 5000 }, cached);
+      assertFalse(res._cached);
+      assertNotInCache(q);
+      
+      q = query + " // 1000";
+      res = db._query(q, { value: 1000 }, cached);
+      assertTrue(res._cached);
+      assertInCache(q, 1);
+
+      q = query + " // 1001";
+      res = db._query(q, { value: 1001 }, cached);
+      assertTrue(res._cached);
+      assertInCache(q, 1);
+    },
+    
+    testMaxResultsSize2 : function () {
+      const query = "FOR i IN 1..@value RETURN i";
+      cache.properties({ mode: "demand", maxResults: 10 });
+      
+      let res = db._query(query, { value: 5000 }, cached);
+      assertFalse(res._cached);
+      assertInCache(query, 0);
+      
+      assertEqual(1, cache.toArray().length);
+
+      cache.properties({ mode: "demand", maxResults: 10, maxResultsSize: 8192 });
+
+      res = db._query(query, { value: 5000 }, cached);
+      assertFalse(res._cached);
+      assertNotInCache(query);
+
+      assertEqual(0, cache.toArray().length);
+    },
+    
     testMaxEntrySize1 : function () {
       cache.properties({ mode: "demand", maxResults: 10, maxEntrySize: 2048 });
       
@@ -640,6 +735,114 @@ function AqlQueryCacheSuite () {
       assertNotInCache(query);
 
       assertEqual(0, cache.toArray().length);
+    },
+    
+    testMaxEntrySize4 : function () {
+      const query = "FOR i IN 1..@value RETURN i";
+      cache.properties({ mode: "demand", maxEntrySize: 8192 });
+      
+      let q = query + " // 10000";
+      let res = db._query(q, { value: 10000 }, cached);
+      assertFalse(res._cached);
+      assertNotInCache(q);
+
+      assertEqual(0, cache.toArray().length);
+      
+      q = query + " // 8000";
+      res = db._query(q, { value: 8000 }, cached);
+      assertFalse(res._cached);
+      assertNotInCache(q);
+
+      assertEqual(0, cache.toArray().length);
+      
+      q = query + " // 100";
+      res = db._query(q, { value: 100 }, cached);
+      assertFalse(res._cached);
+      assertInCache(q, 0);
+
+      assertEqual(1, cache.toArray().length);
+      
+      q = query + " // 8000";
+      res = db._query(q, { value: 8000 }, cached);
+      assertFalse(res._cached);
+      assertNotInCache(q);
+
+      assertEqual(1, cache.toArray().length);
+      
+      q = query + " // 100";
+      res = db._query(q, { value: 100 }, cached);
+      assertTrue(res._cached);
+      assertInCache(q, 1);
+
+      assertEqual(1, cache.toArray().length);
+    },
+    
+    testToArray : function () {
+      const query = "FOR i IN 1..@value RETURN i";
+      cache.properties({ mode: "demand" });
+      
+      let q = query + " // 10000";
+      let res = db._query(q, { value: 10000 }, cached);
+      assertInCache(q, 0);
+
+      assertEqual(1, cache.toArray().length);
+      
+      q = query + " // 1000";
+      res = db._query(q, { value: 1000 }, cached);
+      assertInCache(q, 0);
+
+      assertEqual(2, cache.toArray().length);
+      
+      q = query + " // 100";
+      res = db._query(q, { value: 100 }, cached);
+      assertInCache(q, 0);
+
+      assertEqual(3, cache.toArray().length);
+
+      cache.toArray().forEach(function(e) {
+        assertTrue(e.hasOwnProperty("hash"));
+        assertTrue(typeof e.hash === "string");
+        assertTrue(e.hasOwnProperty("query"));
+        assertTrue(typeof e.query === "string");
+        assertTrue(e.hasOwnProperty("size"));
+        assertTrue(typeof e.size === "number");
+        assertTrue(e.hasOwnProperty("results"));
+        assertTrue(typeof e.results === "number");
+        assertTrue(e.hasOwnProperty("runTime"));
+        assertTrue(typeof e.runTime === "number");
+        assertTrue(e.hasOwnProperty("started"));
+        assertTrue(typeof e.started === "string");
+      });
+
+      cache.clear();
+      assertEqual(0, cache.toArray().length);
+    },
+    
+    testResults : function () {
+      const query = "FOR i IN 1..@value RETURN i";
+      cache.properties({ mode: "demand" });
+      
+      let q = query + " // 10000";
+      let res = db._query(q, { value: 10000 }, cached);
+      assertInCache(q, 0);
+      assertEqual(1, cache.toArray().length);
+      assertEqual(10000, cache.toArray()[0].results);
+     
+      cache.clear();
+       
+      q = query + " // 1000";
+      res = db._query(q, { value: 1000 }, cached);
+      assertInCache(q, 0);
+      assertEqual(1, cache.toArray().length);
+      assertEqual(1000, cache.toArray()[0].results);
+
+      cache.clear();
+       
+      q = query + " // 100";
+      res = db._query(q, { value: 100 }, cached);
+      assertInCache(q, 0);
+      assertEqual(1, cache.toArray().length);
+      assertEqual(100, cache.toArray()[0].results);
     },
 
   };
