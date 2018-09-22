@@ -477,11 +477,11 @@ void QueryCache::setMaxResults(size_t value) {
 
   size_t maxResults = MaxResults.load();
 
-  if (value > maxResults) {
+  if (value < maxResults) {
     enforceMaxResults(value);
   }
 
-  maxResults = value;
+  MaxResults.store(value);
 }
 
 /// @brief sets the caching mode
