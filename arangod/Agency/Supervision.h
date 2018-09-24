@@ -24,6 +24,8 @@
 #ifndef ARANGOD_CONSENSUS_SUPERVISION_H
 #define ARANGOD_CONSENSUS_SUPERVISION_H 1
 
+#include "Agency/AgencyCommon.h"
+#include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
@@ -164,6 +166,10 @@ class Supervision : public arangodb::CriticalThread {
 
   void shrinkCluster();
 
+public:
+  static void cleanupLostCollections(Node const& snapshot, AgentInterface *agent, std::string const& jobId);
+
+private:
   /**
    * @brief Report status of supervision in agency
    * @param  status  Status, which will show in Supervision/State
