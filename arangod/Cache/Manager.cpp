@@ -96,7 +96,7 @@ Manager::Manager(PostFn schedulerPost, uint64_t globalLimit,
       _findStats.reset(new Manager::FindStatBuffer(16384));
       _fixedAllocation += _findStats->memoryUsage();
       _globalAllocation = _fixedAllocation;
-    } catch (std::bad_alloc) {
+    } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
     }
@@ -688,7 +688,7 @@ std::shared_ptr<Table> Manager::leaseTable(uint32_t logSize) {
       try {
         table = std::make_shared<Table>(logSize);
         _globalAllocation += table->memoryUsage();
-      } catch (std::bad_alloc) {
+      } catch (std::bad_alloc const&) {
         table.reset();
       }
     }
