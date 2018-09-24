@@ -227,9 +227,6 @@ HeartbeatThread::~HeartbeatThread() {
 /// the heartbeat thread constantly reports the current server status to the
 /// agency. it does so by sending the current state string to the key
 /// "Sync/ServerStates/" + my-id.
-/// after transferring the current state to the agency, the heartbeat thread
-/// will wait for changes on the "Sync/Commands/" + my-id key. If no changes
-/// occur,
 /// then the request it aborted and the heartbeat thread will go on with
 /// reporting its state to the agency again. If it notices a change when
 /// watching the command key, it will wake up and apply the change locally.
@@ -406,10 +403,6 @@ void HeartbeatThread::runDBServer() {
 
       if (--currentCount == 0) {
         currentCount = currentCountStart;
-
-        // send an initial GET request to Sync/Commands/my-id
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
 
         // DBServers disregard the ReadOnly flag, otherwise (without authentication and JWT)
         // we are not able to identify valid requests from other cluster servers
