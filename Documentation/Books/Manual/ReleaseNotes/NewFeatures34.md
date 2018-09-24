@@ -387,6 +387,16 @@ coordinator's startup.
 Previous versions of ArangoDB did not detect the usage of different storage
 engines in a cluster, but the runtime behavior of the cluster was undefined.
 
+### Advertised endpoints
+
+It is now possible to configure the endpoints advertised by the
+coordinators to clients to be different from the endpoints which are
+used for cluster internal communication. This is important for client
+drivers which refresh the list of endpoints during the lifetime of the
+cluster (which they should do!). In this way one can make the cluster
+advertise a load balancer or a separate set of IP addresses for external
+access. The new option is called `--cluster.my-advertised-endpoint`.
+
 ### Startup safety checks
 
 The new option `--cluster.require-persisted-id` can be used to prevent the startup
