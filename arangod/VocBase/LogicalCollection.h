@@ -249,7 +249,7 @@ class LogicalCollection {
   // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
-  
+
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
@@ -301,7 +301,7 @@ class LogicalCollection {
 
   /// @brief processes a truncate operation
   /// NOTE: This function throws on error
-  void truncate(transaction::Methods* trx, OperationOptions&);
+  Result truncate(transaction::Methods* trx, OperationOptions&);
 
   Result insert(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
@@ -321,7 +321,7 @@ class LogicalCollection {
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
                     ManagedDocumentResult& result) const;
-  
+
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb) const;
@@ -348,10 +348,6 @@ class LogicalCollection {
   inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
 
   ChecksumResult checksum(bool, bool) const;
-
-  // compares the checksum value passed in the Slice (must be of type String)
-  // with the checksum provided in the reference checksum
-  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
   // Set and get _planVersion, this is only used if the object is used in
   // ClusterInfo to represent a cluster wide collection in the agency.
@@ -380,7 +376,7 @@ class LogicalCollection {
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-  
+
   bool const _isAStub;
 
   // @brief Local collection id
@@ -420,7 +416,7 @@ class LogicalCollection {
   bool const _isSystem;
 
   bool _waitForSync;
-  
+
   uint32_t _version;
 
   // SECTION: Replication
