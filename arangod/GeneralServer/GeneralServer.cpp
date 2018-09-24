@@ -137,12 +137,10 @@ void GeneralServer::IoContext::stop() {
   bool stopped = false;
 
   if (_stopped.compare_exchange_weak(stopped, true)){
-    if (stopped == false) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Stopping IO Thread";
-      _asioIoContext.stop();
-    } else {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Already stopped. asio: " << _asioIoContext.stopped();
-    }
+    LOG_TOPIC(ERR, Logger::FIXME) << "Stopping IO Thread";
+    _asioIoContext.stop();
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Already stopped. asio: " << _asioIoContext.stopped();
   }
 
 }
