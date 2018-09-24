@@ -62,7 +62,7 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
   }
 
-  block().emplaceValue(_baseIndex, registerId, value);
+  block().setValue(_baseIndex, registerId, value);
   _numValuesWritten++;
   // allValuesWritten() must be called only *after* _numValuesWritten was
   // increased.
