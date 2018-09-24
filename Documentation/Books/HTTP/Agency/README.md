@@ -1,13 +1,13 @@
 HTTP Interface for Agency feature
 =================================
 
-The Agency is the ArangoDB component, which  manages the entire ArangoDB cluster. 
+The Agency is the ArangoDB component which manages the entire ArangoDB cluster. 
 ArangoDB itself mainly uses the Agency as a central place to store the configuration
 and the cluster nodes health management. It implements the Raft concensus protocol to act as
 the single-source of truth for the entire cluster. You may know other software providing similar functionality e.g. _Apache Zookeeper_, _etcd_ or _Consul_.
 
 To an end-user the Agency is essentially a fault-tolerant Key-Value Store with a simple REST-API. 
-It is possilbe to use the Agency API for a variety of use-cases, for example:
+It is possible to use the Agency API for a variety of use-cases, for example:
 
 - Centralized configuration repository
 - Service discovery registry
@@ -21,7 +21,7 @@ with every request. The authorization header _must_ contain a *superuser JWT Tok
 
 ### Key-Value store APIs
 
-Generally, all document IO to and from the key-value store consists of JSON arrays. The outer Array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
+Generally, all document IO to and from the key-value store consists of JSON arrays. The outer array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
 
 Consider the following write operation into a prestine agency:
 
@@ -53,9 +53,9 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/"]]'
 ]
 ```
 
-In the first step we commited a single transaction that commits the JSON document inside the inner transaction array to the agency. The result is `[1]`, which is the replicated log index. Repeated invocation will yield growing log numbers 2, 3, 4, etc. 
+In the first step we committed a single transaction that commits the JSON document inside the inner transaction array to the agency. The result is `[1]`, which is the replicated log index. Repeated invocation will yield growing log numbers 2, 3, 4, etc. 
 
-The read access is a complete access to the key-value store indicated by access to it's root element and returns the result as an array corresponding to the outermost array in the read transaction.
+The read access is a complete access to the key-value store indicated by access to its root element and returns the result as an array corresponding to the outermost array in the read transaction.
 
 Let's dig in some deeper.
 

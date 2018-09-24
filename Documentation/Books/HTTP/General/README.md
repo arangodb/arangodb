@@ -213,13 +213,13 @@ As an example the decoded JWT body would look like this:
 
 To access specific internal APIs as well as Agency and DBServer instances a token generated via `/open/auth` is not 
 good enough. For these special APIs you will need to generate a special JWT token which grants superuser access.
-Note that uses super-user access for normal database access is **NOT advised**.
+Note that using superuser access for normal database operations is **NOT advised**.
 
 _Note_: It is only possible to generate this JWT token with the knowledge of the JWT secret.
 
 For your convenience it is possible to generate this token via the [ArangoDB starter CLI](../../Manual/Programs/Starter/Security.html#using-authentication-tokens).
 
-Should you whish to generate the JWT token yourself with another tool of your choice you need to included the correct body.
+Should you whish to generate the JWT token yourself with another tool of your choice, you need to include the correct body.
 The body must contain the _iss_ field with string value `arangodb` and the `server_id` field with an arbirtrary string identifier:
 
 ```json
