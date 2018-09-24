@@ -40,7 +40,7 @@ class AqlItemMatrix {
   friend class AllRowsFetcher;
 
   public:
-    explicit AqlItemMatrix(size_t nrRegisters);
+    explicit AqlItemMatrix(size_t nrRegs);
     ~AqlItemMatrix() = default;
 
     /**
@@ -76,11 +76,11 @@ class AqlItemMatrix {
      *
      * @return A single row in the Matrix
      */
-     std::unique_ptr<InputAqlItemRow> getRow(size_t index) const;
+    InputAqlItemRow getRow(size_t index) const;
 
  private:
 
-    std::vector<std::shared_ptr<InputAqlItemBlockShell>> _blocks;
+    std::vector<std::pair<size_t, std::shared_ptr<InputAqlItemBlockShell>>> _blocks;
 
     size_t _size;
 

@@ -23,65 +23,46 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "FilterExecutor.h"
+#include <lib/Logger/LogMacros.h>
+#include "TestEmptyExecutorHelper.h"
 
-#include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 
-#include <lib/Logger/LogMacros.h>
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/AqlValue.h"
+#include "Aql/ExecutorInfos.h"
+#include "Aql/SingleRowFetcher.h"
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
-FilterExecutor::~FilterExecutor() = default;
+TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
+TestEmptyExecutorHelper::~TestEmptyExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow &output) {
-  TRI_IF_FAILURE("FilterExecutor::produceRow") {
+std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRow(OutputAqlItemRow &output) {
+  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRow") {
      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  ExecutionState state;
+  ExecutionState state = ExecutionState::DONE;
   FilterStats stats{};
+
+  return {state, stats};
+
+  // will not reach this part of code, it is still here to prevent
+  // a compile warning. We do not want to test the fetcher here. But it
+  // must be included due template scheme.
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
-  while (true) {
-    std::tie(state, input) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
-
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
-    TRI_ASSERT(input.isInitialized());
-
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-      output.copyRow(input);
-      return {state, stats};
-    } else {
-      stats.incrFiltered();
-    }
-
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-    TRI_ASSERT(state == ExecutionState::HASMORE);
-  }
+  std::tie(state, input) = _fetcher.fetchRow();
 }
 
-FilterExecutorInfos::FilterExecutorInfos(
-    RegisterId inputRegister, RegisterId nrInputRegisters,
+TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
+    RegisterId inputRegister_, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
+          std::make_shared<std::unordered_set<RegisterId>>(inputRegister_),
           nullptr, nrInputRegisters, nrOutputRegisters,
           std::move(registersToClear)),
-      _inputRegister(inputRegister) {}
+      _inputRegister(inputRegister_) {}

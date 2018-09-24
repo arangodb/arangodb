@@ -27,6 +27,7 @@
 #define ARANGOD_AQL_TESTS_BLOCK_FETCHER_HELPER_H
 
 #include "Aql/AllRowsFetcher.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"

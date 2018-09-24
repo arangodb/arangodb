@@ -39,18 +39,18 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister_, RegisterId outputRegister_,
+    RegisterId inputRegister, RegisterId outputRegister,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear, transaction::Methods* trx)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(
-                        std::initializer_list<RegisterId>{inputRegister_}),
+                        std::initializer_list<RegisterId>{inputRegister}),
                     std::make_shared<std::unordered_set<RegisterId>>(
-                        std::initializer_list<RegisterId>{outputRegister_}),
+                        std::initializer_list<RegisterId>{outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear)),
       _trx(trx),
-      _inputRegister(inputRegister_),
-      _outputRegister(outputRegister_) {
+      _inputRegister(inputRegister),
+      _outputRegister(outputRegister) {
   TRI_ASSERT(trx != nullptr);
 }
 

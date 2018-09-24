@@ -57,11 +57,15 @@ std::pair<arangodb::aql::ExecutionState,
 WaitingExecutionBlockMock::getSome(size_t atMost) {
   if (!_hasWaited) {
     _hasWaited = true;
+    if (_returnedDone) {
+      return {ExecutionState::DONE, nullptr};
+    }
     return {ExecutionState::WAITING, nullptr};
   }
   _hasWaited = false;
 
   if (_data.empty()) {
+    _returnedDone = true;
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -69,6 +73,7 @@ WaitingExecutionBlockMock::getSome(size_t atMost) {
   _data.pop_front();
 
   if (_data.empty()) {
+    _returnedDone = true;
     return {ExecutionState::DONE, std::move(result)};
   } else {
     return {ExecutionState::HASMORE, std::move(result)};

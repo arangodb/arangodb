@@ -51,13 +51,13 @@ ExecutorInfos::ExecutorInfos(
   }
   TRI_ASSERT(nrInputRegisters <= nrOutputRegisters);
   {
-    auto registersToKeep_ = std::make_shared<std::unordered_set<RegisterId>>();
+    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>();
     for (RegisterId i = 0; i < nrInputRegisters; i++) {
       if (_registersToClear.find(i) == _registersToClear.end()) {
-        registersToKeep_->emplace(i);
+        registersToKeep->emplace(i);
       }
     }
-    _registersToKeep = std::move(registersToKeep_);
+    _registersToKeep = std::move(registersToKeep);
   }
   TRI_ASSERT(_registersToClear.size() + _registersToKeep->size() ==
              nrInputRegisters);

@@ -268,22 +268,6 @@ class ExecutionBlock {
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
-
-
- protected:
-  // friended for this->fetchBlock() (follows below) and
-  // _engine->_itemBlockManager.
-  friend BlockFetcher;
-
-  /**
-   * @brief Internal helper function that fetches the next block
-   *        of AqlItemRows from upstream.
-   *        Will be called by the Fetcher used by the current Executor.
-   *
-   * @return The upstream state, can be DONE, WAITING or HASMORE.
-   */
-  TEST_VIRTUAL
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> fetchBlock();
 };
 
 }  // namespace arangodb::aql

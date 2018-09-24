@@ -24,17 +24,20 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockShell.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
+
+#include <math.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemMatrix::AqlItemMatrix(size_t nrRegs_) : _size(0), _nrRegs(nrRegs_) {}
+AqlItemMatrix::AqlItemMatrix(size_t nrRegs) : _size(0), _nrRegs(nrRegs) {}
 
 void AqlItemMatrix::addBlock(std::shared_ptr<InputAqlItemBlockShell> blockShell) {
   TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
   size_t blockSize = blockShell->block().size();
-  _blocks.emplace_back(std::move(blockShell));
+  _blocks.emplace_back(_size, std::move(blockShell));
   _size += blockSize;
 }
 
@@ -46,20 +49,36 @@ bool AqlItemMatrix::empty() const {
   return _blocks.empty();
 }
 
-std::unique_ptr<InputAqlItemRow> AqlItemMatrix::getRow(size_t index) const {
+InputAqlItemRow AqlItemMatrix::getRow(size_t index) const {
   TRI_ASSERT(index < _size);
+  TRI_ASSERT(!empty());
 
-  for (auto it = _blocks.begin(); it != _blocks.end() ; ++it) {
-    std::shared_ptr<InputAqlItemBlockShell> blockShell = *it;
-    TRI_ASSERT(blockShell != nullptr);
+  // Most blocks will have DefaultBatchSize
+  size_t mostLikelyIndex = (std::min)(
+      static_cast<size_t>(floor(index / ExecutionBlock::DefaultBatchSize())),
+      _blocks.size() - 1);
 
-    if (index < blockShell->block().size()) {
-        return std::make_unique<InputAqlItemRow>(blockShell, index);
+  // Under the assumption that most blocks will have the DefaultBatchSize size
+  // This algorithm will most likely hit the correct block in the first
+  // attempt, or just one operation away.
+  // If most blocks violate this condition this assumption is far of and might
+  // in worst case be linear.
+  while (true) {
+    TRI_ASSERT(mostLikelyIndex < _blocks.size());
+    auto& candidate = _blocks[mostLikelyIndex];
+    TRI_ASSERT(candidate.second != nullptr);
+    if (index < candidate.first) {
+      // This block starts after the requested index, go left
+      --mostLikelyIndex;
+    } else if (index >= candidate.first + candidate.second->block().size()) {
+      // This block ends before the requestsed index, go right
+      ++mostLikelyIndex;
+    } else {
+      // Got it
+      return InputAqlItemRow{candidate.second, index - candidate.first};
     }
-
-    // Jump over this block
-    index -= blockShell->block().size();
   }
+
   // We have asked for a row outside of this Vector
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal Aql Logic Error: An executor block is reading out of bounds.");
 }

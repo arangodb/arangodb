@@ -1,5 +1,3 @@
-#include <utility>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -28,7 +26,10 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockShell.h"
 #include "Aql/AqlValue.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -37,8 +38,8 @@ InputAqlItemRow::InputAqlItemRow(CreateInvalidInputRowHint)
     : _blockShell(nullptr), _baseIndex(0) {}
 
 InputAqlItemRow::InputAqlItemRow(
-    std::shared_ptr<InputAqlItemBlockShell> blockShell_, size_t baseIndex)
-    : _blockShell(std::move(blockShell_)), _baseIndex(baseIndex) {
+    std::shared_ptr<InputAqlItemBlockShell> blockShell, size_t baseIndex)
+    : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
   TRI_ASSERT(_blockShell != nullptr);
 }
 
@@ -54,7 +55,17 @@ bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
          this->_baseIndex == other._baseIndex;
 }
 
-bool InputAqlItemRow::operator!=(InputAqlItemRow const &other) const noexcept {
+bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   TRI_ASSERT(isInitialized());
   return !(*this == other);
+}
+
+AqlItemBlock& InputAqlItemRow::block() { return _blockShell->block(); }
+
+AqlItemBlock const& InputAqlItemRow::block() const {
+  return _blockShell->block();
+}
+
+std::size_t InputAqlItemRow::getNrRegisters() const {
+  return block().getNrRegs();
 }

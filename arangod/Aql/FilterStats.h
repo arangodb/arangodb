@@ -34,9 +34,9 @@ class FilterStats {
  public:
   FilterStats() noexcept : _filtered(0) {}
 
-  void setFiltered(std::size_t filtered_) noexcept { _filtered = filtered_; }
+  void setFiltered(std::size_t filtered) noexcept { _filtered = filtered; }
 
-  void addFiltered(std::size_t filtered_) noexcept { _filtered += filtered_; }
+  void addFiltered(std::size_t filtered) noexcept { _filtered += filtered; }
 
   void incrFiltered() noexcept { _filtered++; }
 

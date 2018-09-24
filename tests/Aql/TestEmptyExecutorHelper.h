@@ -23,11 +23,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TEST_EXECUTOR_H
-#define ARANGOD_AQL_TEST_EXECUTOR_H
+#ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
+#define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 
-#include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/FilterStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
@@ -41,16 +41,16 @@ class InputAqlItemRow;
 class ExecutorInfos;
 class SingleRowFetcher;
 
-class TestExecutorHelperInfos : public ExecutorInfos {
+class TestEmptyExecutorHelperInfos : public ExecutorInfos {
  public:
-  TestExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
+  TestEmptyExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
                       RegisterId nrOutputRegisters,
                       std::unordered_set<RegisterId> registersToClear);
 
-  TestExecutorHelperInfos() = delete;
-  TestExecutorHelperInfos(TestExecutorHelperInfos &&) = default;
-  TestExecutorHelperInfos(TestExecutorHelperInfos const&) = delete;
-  ~TestExecutorHelperInfos() = default;
+  TestEmptyExecutorHelperInfos() = delete;
+  TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos &&) = default;
+  TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos const&) = delete;
+  ~TestEmptyExecutorHelperInfos() = default;
 
   RegisterId getInputRegister() const noexcept { return _inputRegister; };
 
@@ -63,17 +63,17 @@ class TestExecutorHelperInfos : public ExecutorInfos {
 /**
  * @brief Implementation of Filter Node
  */
-class TestExecutorHelper {
+class TestEmptyExecutorHelper {
  public:
   using Fetcher = SingleRowFetcher;
-  using Infos = TestExecutorHelperInfos;
+  using Infos = TestEmptyExecutorHelperInfos;
   using Stats = FilterStats;
 
-  TestExecutorHelper() = delete;
-  TestExecutorHelper(TestExecutorHelper&&) = default;
-  TestExecutorHelper(TestExecutorHelper const&) = delete;
-  TestExecutorHelper(Fetcher& fetcher, Infos&);
-  ~TestExecutorHelper();
+  TestEmptyExecutorHelper() = delete;
+  TestEmptyExecutorHelper(TestEmptyExecutorHelper&&) = default;
+  TestEmptyExecutorHelper(TestEmptyExecutorHelper const&) = delete;
+  TestEmptyExecutorHelper(Fetcher& fetcher, Infos&);
+  ~TestEmptyExecutorHelper();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -86,7 +86,6 @@ class TestExecutorHelper {
   Infos& _infos;
  private:
   Fetcher& _fetcher;
-  bool _returnedDone = false;
 };
 
 }  // namespace aql
