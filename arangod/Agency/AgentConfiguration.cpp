@@ -501,6 +501,14 @@ std::string config_t::startup() const {
   return _startup;
 }
 
+
+/// @brief findIdInPool
+bool config_t::findInPool(std::string const& id) const {
+  READ_LOCKER(readLocker, _lock);
+  return _pool.find(id) != _pool.end();
+}
+
+
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...

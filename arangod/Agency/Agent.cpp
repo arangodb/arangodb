@@ -1699,6 +1699,18 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
   std::string id = slice.get("id").copyString();
 
+  // If pool is complete and id not in our pool reject under all circumstances
+  if (_config.poolComplete() && _config.findInPool()) {
+    query_t ret = std::make_shared<VPackBuilder>();
+    VPackObjectBuilder o(ret.get());
+    out->add(StaticStrings::Code, VPackValue(403));
+    out->add(StaticStrings::Error, VPackValue(true));
+    out->add(StaticStrings::ErrorMessage,
+             VPackValue("This agents is not member of this pool"));
+    out->add(StaticStrings::ErrorNum, VPackValue(403));
+    return ret;
+  }
+
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");

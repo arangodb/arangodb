@@ -127,6 +127,9 @@ public:
   /// @brief wait for sync requested
   bool waitForSync() const;
 
+  /// @brief find id in pool
+  bool findInPool() const;
+
   /**
    * @brief           Verify other agent's pool against our own:
    *                  - We only get here, if our pool is not complete yet or the
