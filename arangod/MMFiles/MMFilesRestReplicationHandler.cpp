@@ -765,7 +765,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     includeSystem = StringUtils::boolean(value4);
   }
-  
+
   // grab list of transactions from the body value
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
@@ -825,7 +825,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     MMFilesLogfileManager::instance()->extendLogfileBarrier(barrierId, 180,
                                                             tickStart);
   }
- 
+
   auto transactionContext =
       std::make_shared<transaction::StandaloneContext>(_vocbase);
 
@@ -895,7 +895,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       TRI_StealStringBuffer(dump._buffer);
     }
   }
-  
+
   // insert the start tick (minus 1 to be on the safe side) as the
   // minimum tick we need to keep on the master. we cannot be sure
   // the master's response makes it to the slave safely, so we must
@@ -1205,7 +1205,7 @@ void MMFilesRestReplicationHandler::handleCommandRestoreCollection() {
     res =
       processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
   }
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1337,7 +1337,7 @@ int MMFilesRestReplicationHandler::processRestoreCollection(
 
     return res;
   }
-  
+
   // might be also called on dbservers
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && ServerState::instance()->isSingleServer()) {
@@ -1495,7 +1495,7 @@ int MMFilesRestReplicationHandler::processRestoreCollectionCoordinator(
     auto col = ClusterMethods::createCollectionOnCoordinator(
       collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors, createWaitsForSyncReplication);
     TRI_ASSERT(col != nullptr);
-    
+
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr) {
       AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
@@ -1816,7 +1816,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   // initialize a container with the keys
   auto keys =
       std::make_unique<MMFilesCollectionKeys>(_vocbase, std::move(guard), id, 300.0);
@@ -2577,16 +2577,19 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const followerId = body.get("followerId");
-  VPackSlice const readLockId = body.get("readLockId");
-  VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString()) {
+  VPackSlice const followerIdSlice = body.get("followerId");
+  VPackSlice const readLockIdSlice = body.get("readLockId");
+  VPackSlice const shardSlice = body.get("shard");
+  VPackSlice const checksumSlice = body.get("checksum");
+  if (!followerIdSlice.isString() ||
+      !shardSlice.isString() ||
+      (!checksumSlice.isNone() && !checksumSlice.isString())) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId' and 'shard' attributes must be strings");
+                  "'followerId', 'shard', and 'checksum' attributes must be strings");
     return;
   }
 
-  auto col = _vocbase->lookupCollection(shard.copyString());
+  auto col = _vocbase->lookupCollection(shardSlice.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2595,14 +2598,14 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  VPackSlice const checksum = body.get("checksum");
+  const std::string followerId = followerIdSlice.copyString();
   // optional while introducing this bugfix. should definitely be required with 3.4
   // and throw a 400 then when no checksum is provided
-  if (checksum.isString() && readLockId.isString()) {
+  if (checksumSlice.isString() && readLockIdSlice.isString()) {
     std::string referenceChecksum;
     {
       CONDITION_LOCKER(locker, _condVar);
-      auto it = _holdReadLockJobs.find(readLockId.copyString());
+      auto it = _holdReadLockJobs.find(readLockIdSlice.copyString());
       if (it == _holdReadLockJobs.end()) {
         // Entry has been removed since, so we cancel the whole thing
         // right away and generate an error:
@@ -2619,31 +2622,26 @@ void MMFilesRestReplicationHandler::handleCommandAddFollower() {
           "Read lock not yet acquired!");
         return;
       }
-      
+
       // referenceChecksum is the stringified number of documents in the
-      // collection 
+      // collection
       uint64_t num = col->numberDocuments(trx.get());
       referenceChecksum = std::to_string(num);
     }
 
-    auto result = col->compareChecksums(checksum, referenceChecksum);
-
-    if (result.fail()) {
-      auto errorNumber = result.errorNumber();
-      rest::ResponseCode code;
-      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
-          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
-        code = rest::ResponseCode::BAD;
-      } else {
-        code = rest::ResponseCode::SERVER_ERROR;
-      }
-      generateError(code,
-        errorNumber, result.errorMessage());
+    if (!checksumSlice.isEqualString(referenceChecksum)) {
+      const std::string checksum = checksumSlice.copyString();
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
+       << "Expected: " << referenceChecksum << " Actual: " << checksum;
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+                    "'checksum' is wrong. Expected: "
+                    + referenceChecksum
+                    + ". Actual: " + checksum);
       return;
     }
   }
 
-  col->followers()->add(followerId.copyString());
+  col->followers()->add(followerId);
 
   VPackBuilder b;
   {
@@ -2812,7 +2810,7 @@ void MMFilesRestReplicationHandler::handleCommandHoldReadLockCollection() {
       _holdReadLockJobs.erase(it);
     }
   }
-  
+
   if (stopping) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_SHUTTING_DOWN);
     return;

@@ -129,7 +129,6 @@
     "ERROR_REPLICATION_APPLIER_STOPPED" : { "code" : 1412, "message" : "replication stopped" },
     "ERROR_REPLICATION_NO_START_TICK" : { "code" : 1413, "message" : "no start tick" },
     "ERROR_REPLICATION_START_TICK_NOT_PRESENT" : { "code" : 1414, "message" : "start tick not present" },
-    "ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT" : { "code" : 1415, "message" : "the checksum format is wrong" },
     "ERROR_REPLICATION_WRONG_CHECKSUM" : { "code" : 1416, "message" : "wrong checksum" },
     "ERROR_CLUSTER_NO_AGENCY"      : { "code" : 1450, "message" : "could not connect to agency" },
     "ERROR_CLUSTER_NO_COORDINATOR_HEADER" : { "code" : 1451, "message" : "missing coordinator header" },

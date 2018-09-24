@@ -368,7 +368,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_cid));
-  
+
   TRI_ASSERT(_physical != nullptr);
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
@@ -937,8 +937,8 @@ void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
     bool forPersistence) const {
   TRI_ASSERT(result.isOpenObject());
   VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
-  result.add(VPackObjectIterator(b.slice())); 
-} 
+  result.add(VPackObjectIterator(b.slice()));
+}
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
@@ -969,7 +969,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // ... probably a few others missing here ...
 
   WRITE_LOCKER(writeLocker, _infoLock);
-  
+
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");
   if (!rfSl.isNone()) {
@@ -984,7 +984,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       if ((!isSatellite() && rf == 0) || rf > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
       }
-      
+
       if (!_isLocal && rf != _replicationFactor) { // sanity checks
         if (!_distributeShardsLike.empty()) {
           return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
@@ -1127,11 +1127,17 @@ void LogicalCollection::deferDropCollection(
 /// @brief reads an element from the document collection
 Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::read") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->read(trx, key, result, lock);
 }
 
 Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
             ManagedDocumentResult& result, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::read") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   return getPhysical()->read(trx, key, result, lock);
 }
 
@@ -1142,6 +1148,9 @@ Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::
 
 void LogicalCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   getPhysical()->truncate(trx, options);
 }
 
@@ -1154,6 +1163,9 @@ Result LogicalCollection::insert(transaction::Methods* trx,
                                  ManagedDocumentResult& result,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock) {
+  TRI_IF_FAILURE("LogicalCollection::insert") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
                                lock);
@@ -1167,6 +1179,9 @@ Result LogicalCollection::update(transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::update") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
 
   if (!newSlice.isObject()) {
@@ -1210,6 +1225,9 @@ Result LogicalCollection::replace(transaction::Methods* trx,
                                   TRI_voc_tick_t& resultMarkerTick, bool lock,
                                   TRI_voc_rid_t& prevRev,
                                   ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::replace") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
 
   if (!newSlice.isObject()) {
@@ -1261,6 +1279,9 @@ Result LogicalCollection::remove(transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous) {
+  TRI_IF_FAILURE("LogicalCollection::remove") {
+    return Result(TRI_ERROR_DEBUG);
+  }
   resultMarkerTick = 0;
 
   TRI_voc_rid_t revisionId = 0;
@@ -1329,20 +1350,20 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   }
 
   trx.pinData(_cid); // will throw when it fails
-  
+
   // get last tick
   LogicalCollection* collection = trx.documentCollection();
   auto physical = collection->getPhysical();
   TRI_ASSERT(physical != nullptr);
   std::string const revisionId = TRI_RidToString(physical->revision(&trx));
   uint64_t hash = 0;
-        
+
   ManagedDocumentResult mmdr;
   trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
       if (collection->readDocument(&trx, token, mmdr)) {
       VPackSlice const slice(mmdr.vpack());
 
-      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
+      uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
       if (withRevisions) {
       localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
@@ -1359,7 +1380,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
       // was already handled before
       VPackValueLength keyLength;
       char const* key = it.key.getString(keyLength);
-      if (keyLength >= 3 && 
+      if (keyLength >= 3 &&
           key[0] == '_' &&
           ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
            (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
@@ -1367,8 +1388,8 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
         continue;
       }
 
-      localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-      localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+      localHash ^= it.key.hash(seed) ^ 0xba5befd00d;
+      localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421;
       }
       }
 
@@ -1389,26 +1410,4 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   }
 
   return ChecksumResult(std::move(b));
-}
-
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
-  if (!checksumSlice.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
-    );
-  }
-
-  auto checksum = checksumSlice.copyString();
-
-  if (checksum != referenceChecksum) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "'checksum' is wrong. Expected: "
-        + referenceChecksum
-        + ". Actual: " + checksum
-    );
-  }
-
-  return Result();
 }

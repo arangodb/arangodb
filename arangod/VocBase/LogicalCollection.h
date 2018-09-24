@@ -253,7 +253,7 @@ class LogicalCollection {
   // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
-  
+
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
@@ -324,7 +324,7 @@ class LogicalCollection {
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result);
-  
+
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 DocumentIdentifierToken const& token,
                                 IndexIterator::DocumentCallback const& cb);
@@ -352,10 +352,6 @@ class LogicalCollection {
 
   ChecksumResult checksum(bool, bool) const;
 
-  // compares the checksum value passed in the Slice (must be of type String)
-  // with the checksum provided in the reference checksum
-  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
-
   // Set and get _planVersion, this is only used if the object is used in
   // ClusterInfo to represent a cluster wide collection in the agency.
   void setPlanVersion(uint64_t v) {
@@ -381,7 +377,7 @@ class LogicalCollection {
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-  
+
   bool const _isAStub;
 
   // @brief Local collection id

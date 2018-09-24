@@ -288,8 +288,6 @@
 /// - 1414: @LIT{start tick not present}
 ///   Will be raised when the replication applier fetches data using a start
 ///   tick, but that start tick is not present on the logger server anymore.
-/// - 1415: @LIT{the checksum format is wrong}
-///    "Will be raised when the format of the checksum is wrong")
 /// - 1416: @LIT{wrong checksum}
 ///   Will be raised when a new born follower submits a wrong checksum
 /// - 1450: @LIT{could not connect to agency}
@@ -1996,16 +1994,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
-///
-/// the checksum format is wrong
-///
-///  "Will be raised when the format of the checksum is wrong")
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       (1415)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1416: ERROR_REPLICATION_WRONG_CHECKSUM

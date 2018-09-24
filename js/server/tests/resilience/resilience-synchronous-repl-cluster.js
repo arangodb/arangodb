@@ -37,8 +37,6 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-const download = require('internal').download;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -82,7 +80,7 @@ function SynchronousReplicationSuite () {
       if (replicas.every(x => x > 1)) {
         console.info("Replication up and running!");
         return true;
-      }  
+      }
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
@@ -188,7 +186,7 @@ function SynchronousReplicationSuite () {
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
-    
+
     var doc = c.document(id._key);
     assertEqual(12, doc.Hallo);
 
@@ -791,4 +789,3 @@ function SynchronousReplicationSuite () {
 jsunity.run(SynchronousReplicationSuite);
 
 return jsunity.done();
-
