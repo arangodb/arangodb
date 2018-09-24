@@ -180,8 +180,7 @@ class Methods {
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
-
-  Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
+  
   Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection, char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
@@ -252,9 +251,6 @@ class Methods {
   bool isEdgeCollection(std::string const& collectionName) const;
   bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
-
-  /// @brief return the name of a collection
-  std::string collectionName(TRI_voc_cid_t cid);
 
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,

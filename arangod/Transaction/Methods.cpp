@@ -1142,11 +1142,6 @@ TRI_col_type_e transaction::Methods::getCollectionType(
   return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
-/// @brief return the name of a collection
-std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) {
-  return resolver()->getCollectionName(cid);
-}
-
 /// @brief Iterate over all elements of the collection.
 void transaction::Methods::invokeOnAllElements(
     std::string const& collectionName,
@@ -3404,32 +3399,6 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 
   // We have successfully found an index with the requested id.
   return IndexHandle(idx);
-}
-
-Result transaction::Methods::resolveId(char const* handle, size_t length,
-                                       TRI_voc_cid_t& cid, char const*& key,
-                                       size_t& outLength) {
-  char const* p = static_cast<char const*>(
-      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
-
-  if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-
-  if (*handle >= '0' && *handle <= '9') {
-    cid = NumberUtils::atoi_zero<TRI_voc_cid_t>(handle, p);
-  } else {
-    cid = resolver()->getCollectionIdCluster(std::string(handle, p - handle));
-  }
-
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-
-  key = p + 1;
-  outLength = length - (key - handle);
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,
