@@ -82,7 +82,7 @@ void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
   for (auto& it : aggregators) {
     it->reset();
   }
-  
+
   rowsAreValid = false;
 }
 
@@ -193,7 +193,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
   }
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
   TRI_ASSERT(_aggregateRegisters.size() == _currentGroup.aggregators.size());
-    
+
   if (en->_outVariable != nullptr) {
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     auto it = registerPlan.find(en->_outVariable->id);
@@ -218,7 +218,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
     // iterate over all our variables
     if (en->_keepVariables.empty()) {
       auto usedVariableIds(en->getVariableIdsUsedHere());
-       
+
       for (auto const& vi : registerPlan) {
         if (vi.second.depth > 0 || en->getDepth() == 1) {
           // Do not keep variables from depth 0, unless we are depth 1 ourselves
@@ -247,7 +247,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
       }
     }
   }
-  
+
   // reserve space for the current row
   _currentGroup.initialize(_groupRegisters.size());
   _pos = 0;
@@ -482,7 +482,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);
     for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-      res->emplaceValue(row, i, res->getValueReference(0, i));
+      res->setValue(row, i, res->getValueReference(0, i));
       // Note: if this throws, then all values will be deleted
       // properly since the first one is.
     }
@@ -926,7 +926,7 @@ DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
   }
 
   TRI_ASSERT(!_groupRegisters.empty());
-      
+
   _seen = std::make_unique<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>>(
     1024, AqlValueGroupHash(transaction(), _groupRegisters.size()), AqlValueGroupEqual(transaction()));
 }
@@ -959,7 +959,7 @@ void DistinctCollectBlock::clearValues() {
         const_cast<AqlValue*>(&it2)->destroy();
       }
     }
-    _seen->clear(); 
+    _seen->clear();
   }
 }
 
@@ -1044,8 +1044,8 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
     }
 
     throwIfKilled();  // check if we were aborted
-   
-    groupValues.clear(); 
+
+    groupValues.clear();
     // for hashing simply re-use the aggregate registers, without cloning
     // their contents
     for (auto &it : _groupRegisters) {
@@ -1063,13 +1063,13 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
         size_t i = 0;
         for (auto& it : _groupRegisters) {
           if (_skipped > 0) {
-            _res->copyValuesFromFirstRow(_skipped, cur->getNrRegs()); 
+            _res->copyValuesFromFirstRow(_skipped, cur->getNrRegs());
           }
           _res->setValue(_skipped, it.first, groupValues[i].clone());
           ++i;
         }
       }
-      // transfer ownership 
+      // transfer ownership
       std::vector<AqlValue> copy;
       copy.reserve(groupValues.size());
       for (auto const& it : groupValues) {
@@ -1094,7 +1094,7 @@ CountCollectBlock::CountCollectBlock(ExecutionEngine* engine,
   TRI_ASSERT(en->_groupVariables.empty());
   TRI_ASSERT(en->_count);
   TRI_ASSERT(en->_outVariable != nullptr);
-   
+
   auto const& registerPlan = en->getRegisterPlan()->varInfo;
   auto it = registerPlan.find(en->_outVariable->id);
   TRI_ASSERT(it != registerPlan.end());
@@ -1120,20 +1120,20 @@ std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
 std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping,
                                                                    AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
-  
+
   if (_done) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   TRI_ASSERT(_dependencies.size() == 1);
-  
-  while (!_done) { 
-    // consume all the buffers we still have queued 
+
+  while (!_done) {
+    // consume all the buffers we still have queued
     while (!_buffer.empty()) {
       AqlItemBlock* cur = _buffer.front();
       TRI_ASSERT(cur != nullptr);
       _count += cur->size();
-       
+
       // we are only aggregating data here, so we can immediately get rid of
       // everything that we see
       _buffer.pop_front();
@@ -1152,21 +1152,21 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
     if (upstreamRes.second > 0) {
       _count += upstreamRes.second;
     }
-  
+
     throwIfKilled();  // check if we were aborted
   }
 
   TRI_ASSERT(_done);
 
   std::unique_ptr<AqlItemBlock> res;
- 
+
   if (skipping) {
     skipped = 1;
   } else {
     res.reset(requestBlock(1, getNrOutputRegisters()));
     res->emplaceValue(0, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_count)));
   }
-   
+
   result = res.release();
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
