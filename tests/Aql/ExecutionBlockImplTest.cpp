@@ -103,7 +103,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
   GIVEN("there is a block in the upstream with no rows inside") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{0};
+    BlockFetcherMock blockFetcherMock{monitor, 0};
 
     std::unique_ptr<AqlItemBlock> block = nullptr;
 
@@ -163,7 +163,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
   GIVEN("there are multiple blocks in the upstream with no rows inside") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{0};
+    BlockFetcherMock blockFetcherMock{monitor, 0};
 
     std::unique_ptr<AqlItemBlock> block = nullptr;
 
@@ -366,9 +366,7 @@ SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
 
   GIVEN("there is an invalid/empty block in the upstream") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{0};
-
-    std::unique_ptr<AqlItemBlock> block = nullptr;
+    BlockFetcherMock blockFetcherMock{monitor, 0};
 
     WHEN("the executor does wait, using getSome") {
       std::deque<std::unique_ptr<AqlItemBlock>> blockDeque;

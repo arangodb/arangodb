@@ -48,8 +48,17 @@ class OutputAqlItemRow {
   explicit OutputAqlItemRow(
       std::unique_ptr<OutputAqlItemBlockShell> blockShell);
 
+  // Clones the given AqlValue
   void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
-                AqlValue const&);
+                AqlValue const& value);
+
+  // Copies the given AqlValue. If it holds external memory, it will be
+  // destroyed when the block is destroyed.
+  // Note that there is no real move happening here, just a trivial copy of
+  // the passed AqlValue. However, that means the output block will take
+  // responsibility of possibly referenced external memory.
+  void setValue(RegisterId registerId, InputAqlItemRow const& sourceRow,
+                AqlValue&& value);
 
   void copyRow(InputAqlItemRow const& sourceRow);
 

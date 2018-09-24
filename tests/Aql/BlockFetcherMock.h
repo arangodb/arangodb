@@ -35,7 +35,8 @@ namespace aql {
 
 class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
  public:
-  explicit BlockFetcherMock(::arangodb::aql::RegisterId nrRegisters);
+  explicit BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
+                            ::arangodb::aql::RegisterId nrRegisters);
 
  public:
   // mock methods
@@ -70,7 +71,7 @@ class BlockFetcherMock : public ::arangodb::aql::BlockFetcher {
   std::unordered_set<AqlItemBlockPtr> _fetchedBlocks;
   size_t _numFetchBlockCalls;
 
-  ::arangodb::aql::ResourceMonitor _monitor;
+  ::arangodb::aql::ResourceMonitor& _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 

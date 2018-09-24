@@ -51,12 +51,13 @@ namespace aql {
 //      is fetched)
 
 SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
+  ResourceMonitor monitor;
   ExecutionState state;
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
   GIVEN("there are no blocks upstream") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{0};
+    BlockFetcherMock blockFetcherMock{monitor, 0};
 
     WHEN("the producer does not wait") {
       blockFetcherMock.shouldReturn(ExecutionState::DONE, nullptr);
@@ -104,8 +105,8 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
 
   GIVEN("A single upstream block with a single row") {
     VPackBuilder input;
-    BlockFetcherMock blockFetcherMock{1};
     ResourceMonitor monitor;
+    BlockFetcherMock blockFetcherMock{monitor, 1};
 
     std::unique_ptr<AqlItemBlock> block = buildBlock<1>(&monitor, {{42}});
 
@@ -222,7 +223,7 @@ SCENARIO("SingleRowFetcher", "[AQL][EXECUTOR][FETCHER]") {
   // specification should be compared with the actual output.
   GIVEN("there are multiple blocks upstream") {
     ResourceMonitor monitor;
-    BlockFetcherMock blockFetcherMock{1};
+    BlockFetcherMock blockFetcherMock{monitor, 1};
 
     // three 1-column matrices with 3, 2 and 1 rows, respectively
     std::unique_ptr<AqlItemBlock> block1 = buildBlock<1>(&monitor, {{{1}}, {{2}}, {{3}}}),

@@ -150,6 +150,12 @@ class AqlItemBlock {
       // invoke dtor
       value->~AqlValue();
 
+      // TODO This is wrong in case emplaceValue was called with an AqlValue,
+      // e.g.
+      // AqlValue v = foo();
+      // block.emplaceValue(i, j, v);
+      // This must either be handled differently, or we should simply forbid
+      // emplaceValue to be called that way; setValue can be used instead.
       _data[index * _nrRegs + varNr].destroy();
       throw;
     }
