@@ -188,7 +188,7 @@ class QueryCache {
   /// @brief return a string version of the mode
   static std::string modeString(QueryCacheMode);
   
-  /// @brief return a string version of the mode
+  /// @brief return the internal type for a mode string
   static QueryCacheMode modeString(std::string const&);
 
   /// @brief lookup a query result in the cache
