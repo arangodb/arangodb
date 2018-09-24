@@ -55,9 +55,6 @@ class term_iterator;
 class doc_iterator;
 NS_END
 
-/* TODO: since actual string data stores in global ids
- * it looks like we should not to create additional copy
- * of field name. It is implicity interned by global ids */
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(

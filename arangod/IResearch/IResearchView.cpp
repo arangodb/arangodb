@@ -79,7 +79,9 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 ////////////////////////////////////////////////////////////////////////////////
 class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
  public:
-  CompoundReader(ReadMutex& viewMutex);
+  explicit CompoundReader(ReadMutex& viewMutex) noexcept
+    : _viewLock(viewMutex) {
+  }
   irs::sub_reader const& operator[](
       size_t subReaderId
   ) const noexcept override {
@@ -87,10 +89,13 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
   }
 
   void add(irs::directory_reader const& reader);
-  virtual reader_iterator begin() const override;
+  virtual reader_iterator begin() const override {
+    return reader_iterator(new IteratorImpl(_subReaders.begin()));
+  }
   virtual uint64_t docs_count() const override;
-  virtual uint64_t docs_count(const irs::string_ref& field) const override;
-  virtual reader_iterator end() const override;
+  virtual reader_iterator end() const override {
+    return reader_iterator(new IteratorImpl(_subReaders.end()));
+  }
   virtual uint64_t live_docs_count() const override;
 
   irs::columnstore_reader::values_reader_f const& pkColumn(
@@ -113,17 +118,15 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
 
   class IteratorImpl final: public irs::index_reader::reader_iterator_impl {
    public:
-    explicit IteratorImpl(SubReadersType::const_iterator const& itr)
+    explicit IteratorImpl(SubReadersType::const_iterator const& itr) noexcept
       : _itr(itr) {
     }
-
     virtual void operator++() noexcept override { ++_itr; }
     virtual reference operator*() noexcept override { return *(_itr->first); }
 
     virtual const_reference operator*() const noexcept override {
       return *(_itr->first);
     }
-
     virtual bool operator==(
         const reader_iterator_impl& other
     ) noexcept override {
@@ -138,9 +141,6 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
   SubReadersType _subReaders;
   std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
 };
-
-CompoundReader::CompoundReader(ReadMutex& viewMutex): _viewLock(viewMutex) {
-}
 
 void CompoundReader::add(irs::directory_reader const& reader) {
   _readers.emplace_back(reader);
@@ -160,10 +160,6 @@ void CompoundReader::add(irs::directory_reader const& reader) {
   }
 }
 
-irs::index_reader::reader_iterator CompoundReader::begin() const {
-  return reader_iterator(new IteratorImpl(_subReaders.begin()));
-}
-
 uint64_t CompoundReader::docs_count() const {
   uint64_t count = 0;
 
@@ -172,20 +168,6 @@ uint64_t CompoundReader::docs_count() const {
   }
 
   return count;
-}
-
-uint64_t CompoundReader::docs_count(const irs::string_ref& field) const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->docs_count(field);
-  }
-
-  return count;
-}
-
-irs::index_reader::reader_iterator CompoundReader::end() const {
-  return reader_iterator(new IteratorImpl(_subReaders.end()));
 }
 
 uint64_t CompoundReader::live_docs_count() const {
@@ -457,7 +439,7 @@ bool syncStore(
       << "registering consolidation policy '" << policy.type() << "for store '" << storeName << "' with IResearch view '" << view.name() << "' run id '" << size_t(&runId) << " segment threshold '" << policy.segmentThreshold() << "' segment count '" << segmentCount.load() << "'";
 
     try {
-      writer.consolidate(policy.policy(), false);
+      writer.consolidate(policy.policy());
       forceCommit = true; // a consolidation policy was found requiring commit
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -595,8 +577,15 @@ IResearchView::MemoryStore::MemoryStore() {
 
   _directory = irs::directory::make<irs::memory_directory>();
 
+  // do not lock repository
+  irs::index_writer::options options;
+  options.lock_repository = false;
+
   // create writer before reader to ensure data directory is present
-  _writer = irs::index_writer::make(*_directory, format, irs::OM_CREATE_APPEND);
+  _writer = irs::index_writer::make(
+    *_directory, format, irs::OM_CREATE | irs::OM_APPEND, options
+  );
+
   _writer->commit(); // initialize 'store'
   _reader = irs::directory_reader::open(*_directory); // open after 'commit' for valid 'store'
 }
@@ -610,7 +599,9 @@ IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchView::ViewStateRead: public arangodb::TransactionState::Cookie {
   CompoundReader _snapshot;
-  ViewStateRead(ReadMutex& mutex): _snapshot(mutex) {}
+  explicit ViewStateRead(ReadMutex& mutex) noexcept
+    : _snapshot(mutex) {
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,7 +614,10 @@ struct IResearchView::ViewStateWrite
   // transactions are single-threaded so no mutex is required
   std::vector<std::shared_ptr<irs::filter>> _removals;
   std::lock_guard<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
-  ViewStateWrite(ReadMutex& viewMutex): _viewLock(viewMutex) {}
+
+  explicit ViewStateWrite(ReadMutex& viewMutex) noexcept
+    : _viewLock(viewMutex) {
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -926,8 +920,8 @@ IResearchView::IResearchView(
           // FIXME TODO potential problem of loss of 'remove' if:
           // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
           // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
-          viewPtr->_memoryNode->_store._writer->remove(filter);
-          viewPtr->_toFlush->_store._writer->remove(filter);
+          viewPtr->_memoryNode->_store._writer->documents().remove(filter);
+          viewPtr->_toFlush->_store._writer->documents().remove(filter);
         }
 
         // transfer filters to persisted store as well otherwise query resuts will be incorrect
@@ -935,7 +929,7 @@ IResearchView::IResearchView(
         if (viewPtr->_storePersisted) {
           // transactions are single-threaded so no mutex is required for '_removals'
           for (auto& filter: cookie->_removals) {
-            viewPtr->_storePersisted._writer->remove(filter);
+            viewPtr->_storePersisted._writer->documents().remove(filter);
           }
         }
 
@@ -1195,10 +1189,10 @@ arangodb::Result IResearchView::drop(
     // FIXME TODO remove from in-progress transactions, i.e. ViewStateWrite ???
     // FIXME TODO remove from '_toFlush' memory-store ???
     auto& memoryStore = activeMemoryStore();
-    memoryStore._writer->remove(shared_filter);
+    memoryStore._writer->documents().remove(shared_filter);
 
     if (_storePersisted) {
-      _storePersisted._writer->remove(shared_filter);
+      _storePersisted._writer->documents().remove(shared_filter);
     }
   } catch (arangodb::basics::Exception& e) {
     IR_LOG_EXCEPTION();
@@ -1477,7 +1471,7 @@ int IResearchView::insert(
   DataStore* store;
 
   if (_inRecovery) {
-    _storePersisted._writer->remove(FilterFactory::filter(cid, documentId.id()));
+    _storePersisted._writer->documents().remove(FilterFactory::filter(cid, documentId.id()));
     store = &_storePersisted;
   } else if (!trx.state()) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction state required
@@ -1514,14 +1508,11 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR; // nothing to index
   }
 
-  auto insert = [&body, cid, documentId](irs::segment_writer::document& doc)->bool {
+  try {
+    auto doc = store->_writer->documents().insert();
     insertDocument(doc, body, cid, documentId.id());
 
-    return false; // break the loop
-  };
-
-  try {
-    if (store->_writer->insert(insert)) {
+    if (!doc.valid()) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1558,7 +1549,7 @@ int IResearchView::insert(
 
   if (_inRecovery) {
     for (auto& doc : batch) {
-      _storePersisted._writer->remove(FilterFactory::filter(cid, doc.first.id()));
+      _storePersisted._writer->documents().remove(FilterFactory::filter(cid, doc.first.id()));
     }
 
     store = &_storePersisted;
@@ -1593,42 +1584,25 @@ int IResearchView::insert(
 
   auto begin = batch.begin();
   auto const end = batch.end();
-  FieldIterator body;
-  TRI_voc_rid_t rid = 0; // initialize to an arbitary value to avoid compile warning
-
-  // find first valid document
-  while (!body.valid() && begin != end) {
-    body.reset(begin->second, meta);
-    rid = begin->first.id();
-    ++begin;
-  }
-
-  if (!body.valid()) {
-    return TRI_ERROR_NO_ERROR; // nothing to index
-  }
-
-  auto insert = [&meta, &begin, &end, &body, cid, &rid](irs::segment_writer::document& doc)->bool {
-    insertDocument(doc, body, cid, rid);
-
-    // find next valid document
-    while (begin != end) {
-      body.reset(begin->second, meta);
-      rid = begin->first.id();
-      ++begin;
-
-      if (body.valid()) {
-        return true; // next document available
-      }
-    }
-
-    return false; // break the loop
-  };
+  auto segment = store->_writer->documents();
 
   try {
-    if (!store->_writer->insert(insert)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
-      return TRI_ERROR_INTERNAL;
+    for (FieldIterator body; begin != end; ++begin) {
+      body.reset(begin->second, meta);
+
+      if (!body.valid()) {
+        // find first valid document
+        continue;
+      }
+
+      auto doc = segment.insert();
+      insertDocument(doc, body, cid, begin->first.id());
+
+      if (!doc.valid()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
+        return TRI_ERROR_INTERNAL;
+      }
     }
 
     store->_writer->commit(); // no need to consolidate if batch size is set correctly
@@ -1758,14 +1732,20 @@ void IResearchView::open() {
         irs::directory::make<irs::mmap_directory>(_storePersisted._path.utf8());
 
       if (_storePersisted._directory) {
+        // do not lock index, ArangoDB has it's own lock
+        irs::index_writer::options options;
+        options.lock_repository = false;
+
         // create writer before reader to ensure data directory is present
-        _storePersisted._writer =
-          irs::index_writer::make(*(_storePersisted._directory), format, irs::OM_CREATE_APPEND);
+        _storePersisted._writer = irs::index_writer::make(
+          *(_storePersisted._directory), format, irs::OM_CREATE | irs::OM_APPEND, options
+        );
 
         if (_storePersisted._writer) {
           _storePersisted._writer->commit(); // initialize 'store'
-          _storePersisted._reader
-            = irs::directory_reader::open(*(_storePersisted._directory));
+          _storePersisted._reader = irs::directory_reader::open(
+            *(_storePersisted._directory)
+          );
 
           if (_storePersisted._reader) {
             registerFlushCallback();
@@ -1778,7 +1758,7 @@ void IResearchView::open() {
         }
       }
     }
-  } catch (arangodb::basics::Exception& e) {
+  } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while opening iResearch view '" << id() << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
@@ -1814,9 +1794,9 @@ int IResearchView::remove(
     // FIXME TODO potential problem of loss of 'remove' if:
     // 'insert' in '_toFlush' and 'remove' comes during IResearchView::commit()
     // after '_toFlush' is commit()ed but before '_toFlush' in import()ed
-    _memoryNode->_store._writer->remove(shared_filter);
-    _toFlush->_store._writer->remove(shared_filter);
-    _storePersisted._writer->remove(shared_filter);
+    _memoryNode->_store._writer->documents().remove(shared_filter);
+    _toFlush->_store._writer->documents().remove(shared_filter);
+    _storePersisted._writer->documents().remove(shared_filter);
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -1854,7 +1834,7 @@ int IResearchView::remove(
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    store->_writer->remove(shared_filter);
+    store->_writer->documents().remove(shared_filter);
     store->_removals.emplace_back(shared_filter); // transactions are single-threaded so no mutex is required for '_removals'
 
     return TRI_ERROR_NO_ERROR;

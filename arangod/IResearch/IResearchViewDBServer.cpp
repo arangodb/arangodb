@@ -62,7 +62,6 @@ class CompoundReader final: public arangodb::iresearch::PrimaryKeyIndexReader {
   virtual reader_iterator begin() const override;
   void clear() noexcept { _subReaders.clear(); }
   virtual uint64_t docs_count() const override;
-  virtual uint64_t docs_count(const irs::string_ref& field) const override;
   virtual reader_iterator end() const override;
   virtual uint64_t live_docs_count() const override;
 
@@ -132,16 +131,6 @@ uint64_t CompoundReader::docs_count() const {
 
   for (auto& entry: _subReaders) {
     count += entry.first->docs_count();
-  }
-
-  return count;
-}
-
-uint64_t CompoundReader::docs_count(const irs::string_ref& field) const {
-  uint64_t count = 0;
-
-  for (auto& entry: _subReaders) {
-    count += entry.first->docs_count(field);
   }
 
   return count;

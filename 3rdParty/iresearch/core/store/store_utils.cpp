@@ -21,21 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_MSC_VER)
-  #pragma warning(disable: 4244) // conversion from 'unsigned int' to 'unsigned char', possible loss of data
-  #pragma warning(disable: 4245) // conversion from 'int' to '...', signed/unsigned mismatch
-#endif
-
-  #include <boost/crc.hpp>
-
-#if defined(_MSC_VER)
-  #pragma warning(default: 4244)
-  #pragma warning(default: 4245)
-#endif
-
 #include "shared.hpp"
 #include "store_utils.hpp"
 
+#include "utils/crc.hpp"
 #include "utils/std.hpp"
 #include "utils/memory.hpp"
 
@@ -257,7 +246,7 @@ uint32_t write_block(
   }
 
   const auto bits = packed::bits_required_32(
-    *std::max_element(decoded, decoded + size)
+    decoded, decoded + size
   );
 
   std::memset(encoded, 0, sizeof(uint32_t) * size);
@@ -288,7 +277,7 @@ uint32_t write_block(
   }
 
   const auto bits = packed::bits_required_64(
-    *std::max_element(decoded, decoded + size)
+    decoded, decoded + size
   );
 
   std::memset(encoded, 0, sizeof(uint64_t) * size);
@@ -302,7 +291,6 @@ uint32_t write_block(
 
   return bits;
 }
-
 
 NS_END // bitpack
 NS_END // encode
@@ -360,7 +348,7 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
 }
 
 int64_t bytes_ref_input::checksum(size_t offset) const {
-  boost::crc_32_type crc;
+  crc32c crc;
 
   crc.process_block(pos_, std::min(pos_ + offset, data_.end()));
 

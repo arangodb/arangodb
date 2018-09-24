@@ -70,7 +70,7 @@ struct IdentityValue : irs::term_attribute {
 class IdentityAnalyzer: public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
-  DECLARE_FACTORY_DEFAULT(irs::string_ref const& args); // args ignored
+  DECLARE_FACTORY(irs::string_ref const& args); // args ignored
 
   IdentityAnalyzer();
   virtual irs::attribute_view const& attributes() const NOEXCEPT override;
@@ -385,8 +385,9 @@ irs::flags const& IResearchAnalyzerFeature::AnalyzerPool::features() const noexc
 
 irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
   try {
-    return _cache.emplace(_type, _properties);
-  } catch (arangodb::basics::Exception& e) {
+    // FIXME do not use shared_ptr
+    return _cache.emplace(_type, _properties).release();
+  } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();

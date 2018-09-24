@@ -37,7 +37,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
@@ -50,7 +50,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
@@ -63,7 +63,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
@@ -76,7 +76,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
@@ -89,7 +89,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
@@ -102,7 +102,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
@@ -119,7 +119,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
@@ -132,7 +132,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
@@ -145,7 +145,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
@@ -158,7 +158,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
@@ -171,7 +171,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
@@ -184,7 +184,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
@@ -201,7 +201,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
@@ -213,7 +213,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
@@ -225,7 +225,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
@@ -237,7 +237,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
@@ -249,7 +249,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
@@ -261,7 +261,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
@@ -277,7 +277,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
@@ -289,7 +289,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
@@ -301,7 +301,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
@@ -313,7 +313,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
@@ -325,7 +325,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
@@ -337,7 +337,7 @@ matrix:
     - os: linux
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
@@ -354,7 +354,7 @@ matrix:
       dist: trusty # gcc7 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
@@ -367,7 +367,7 @@ matrix:
       dist: trusty # gcc7 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
@@ -380,7 +380,7 @@ matrix:
       dist: trusty # gcc7 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
@@ -393,7 +393,7 @@ matrix:
       dist: trusty # gcc7 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
@@ -406,7 +406,7 @@ matrix:
       dist: trusty # gcc7 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
@@ -419,10 +419,92 @@ matrix:
       dist: trusty # gcc7 is not available in `precise`
       before_install:
         - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - travis_retry sudo apt-get update
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+
+    ############################################################################
+    # GCC 8
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library (filesystem tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library (filesystem tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc8 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
+        - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
+      env:
+        - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -625,7 +707,7 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On"
+  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
 
@@ -639,18 +721,31 @@ script:
         BUILD_TYPE_SUFFIX="-shared"
         TEST_EXECUTABLE_SUFFIX=""
       fi
+      # build library and tests
       if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
         if ! make -j 1 iresearch-tests${BUILD_TYPE_SUFFIX} 2> stderr.log; then
-          head --bytes=2097152 stderr.log
+          head --bytes=1048576 stderr.log
+          echo ""
+          echo "..."
+          echo ""
+          tail --bytes=1048576 stderr.log
           exit 1
         fi
       else
         make iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
+      # build utils
+      if [[ "${STATIC_LIB}" == "true" ]]; then
+        make iresearch-index-util
+        make iresearch-benchmarks
+      fi
+      # execute tests
       ulimit -n 1024 # required for MacOS
+      ulimit -a
       if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi
+      # archive artifacts
       tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
 
 deploy:

@@ -217,8 +217,11 @@ void order::prepared::scorers::score(
   size_t i = 0;
   std::for_each(
     scorers_.begin(), scorers_.end(),
-    [&ord, &scr, &i] (const sort::scorer::ptr& scorer) {
-      if (scorer) scorer->score(scr);
+    [&ord, &scr, &i](const sort::scorer::ptr& scorer)->void {
+      if (scorer) {
+        scorer->score(scr);
+      }
+
       const sort::prepared& bucket = *ord[i++].bucket;
       scr += bucket.size();
   });

@@ -26,24 +26,112 @@
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"
 
-namespace tests {
-  class directory_utils_tests: public ::testing::Test {
+#include "index/index_tests.hpp"
 
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
+NS_LOCAL
+
+class directory_utils_tests: public ::testing::Test {
+  virtual void SetUp() { }
+
+  virtual void TearDown() { }
+
+ protected:
+  class directory_mock: public irs::directory {
+   public:
+    directory_mock() NOEXCEPT { }
+
+    using directory::attributes;
+
+    virtual irs::attribute_store& attributes() NOEXCEPT override {
+      return attrs_;
     }
 
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
+    virtual void close() NOEXCEPT override { }
 
-using namespace tests;
+    virtual irs::index_output::ptr create(
+      const std::string& name
+    ) NOEXCEPT override {
+      return nullptr;
+    }
+
+    virtual bool exists(
+      bool& result, const std::string& name
+    ) const NOEXCEPT override {
+      return false;
+    }
+
+    virtual bool length(
+      uint64_t& result, const std::string& name
+    ) const NOEXCEPT override {
+      return false;
+    }
+
+    virtual irs::index_lock::ptr make_lock(
+      const std::string& name
+    ) NOEXCEPT override {
+      return nullptr;
+    }
+
+    virtual bool mtime(
+      std::time_t& result, const std::string& name
+    ) const NOEXCEPT override {
+      return false;
+    }
+
+    virtual irs::index_input::ptr open(
+      const std::string& name,
+      irs::IOAdvice advice
+    ) const NOEXCEPT override {
+      return nullptr;
+    }
+
+    virtual bool remove(const std::string& name) NOEXCEPT override {
+      return false;
+    }
+
+    virtual bool rename(
+      const std::string& src, const std::string& dst
+    ) NOEXCEPT override {
+      return false;
+    }
+
+    virtual bool sync(const std::string& name) NOEXCEPT override {
+      return false;
+    }
+
+    virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+      return false;
+    }
+
+   private:
+    irs::attribute_store attrs_;
+  }; // directory_mock
+};
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+
+TEST_F(directory_utils_tests, ensure_get_allocator) {
+  directory_mock dir;
+  ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
+  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+
+  // size == 0 -> use global allocator
+  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::ensure_allocator(dir, 0));
+  ASSERT_FALSE(dir.attributes().get<irs::memory_allocator>());
+  ASSERT_EQ(&irs::memory_allocator::global(), &irs::directory_utils::get_allocator(dir));
+
+  // size != 0 -> create allocator
+  auto& alloc = irs::directory_utils::ensure_allocator(dir, 42);
+  auto* alloc_attr = dir.attributes().get<irs::memory_allocator>();
+  ASSERT_NE(nullptr, alloc_attr);
+  ASSERT_NE(nullptr, *alloc_attr);
+  ASSERT_EQ(&alloc, alloc_attr->get());
+  ASSERT_EQ(&alloc, &irs::directory_utils::get_allocator(dir));
+}
 
 TEST_F(directory_utils_tests, test_reference) {
   // test clear refs (all free)

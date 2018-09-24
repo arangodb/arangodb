@@ -43,7 +43,7 @@ class bm25_sort : public sort {
   static void init(); // for trigering registration in a static build
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY_DEFAULT();
+  DECLARE_FACTORY();
 
   typedef float_t score_t;
 
@@ -65,7 +65,7 @@ class bm25_sort : public sort {
     return b_ == 0.f;
   }
 
-  virtual sort::prepared::ptr prepare() const override;
+  virtual sort::prepared::ptr prepare() const;
 
  private:
   float_t k_; // [1.2 .. 2.0]

@@ -26,6 +26,10 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
+# set required standard version
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
@@ -72,6 +76,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
+  ./utils/crc_test.cpp
   ./utils/file_utils_tests.cpp
   ./utils/map_utils_tests.cpp
   ./utils/object_pool_tests.cpp
@@ -91,6 +96,7 @@ set(IReSearch_tests_sources
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
+  ./utils/fst_string_weight_test.cpp
   ./tests_main.cpp
 )
 
@@ -189,6 +195,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
+  ${ATOMIC_LIBRARY}
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
@@ -196,18 +203,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-)
-
-target_compile_features(${IResearchTests_TARGET_NAME}-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearchTests_TARGET_NAME}-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
+  ${ATOMIC_LIBRARY}
 )
 
 # setup CRT
@@ -228,6 +224,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 include_directories(${IResearchTests_TARGET_NAME}-static
@@ -239,6 +236,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${Boost_INCLUDE_DIRS}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

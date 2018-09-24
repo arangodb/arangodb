@@ -24,9 +24,10 @@
 #ifndef IRESEARCH_TYPE_UTILS_H
 #define IRESEARCH_TYPE_UTILS_H
 
+#include <type_traits>
+
 #include "shared.hpp"
 #include "std.hpp"
-#include <type_traits>
 
 NS_ROOT
 

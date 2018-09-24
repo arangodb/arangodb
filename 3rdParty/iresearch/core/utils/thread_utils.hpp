@@ -24,10 +24,10 @@
 #ifndef IRESEARCH_THREAD_UTILS_H
 #define IRESEARCH_THREAD_UTILS_H
 
-#include <mutex>
-#include <condition_variable>
-#include <thread>
 #include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 #include <type_traits>
 
 #include "shared.hpp"

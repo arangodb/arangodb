@@ -283,6 +283,25 @@ inline typename std::enable_if<
 #define DECLARE_MANAGED_PTR(class_name) typedef std::unique_ptr<class_name, memory::managed_deleter<class_name> > ptr
 
 // ----------------------------------------------------------------------------
+// --SECTION--                                                      make_shared
+// ----------------------------------------------------------------------------
+
+template<typename T, typename... Args>
+inline std::shared_ptr<T> make_shared(Args&&... args) {
+  try {
+    return std::make_shared<T>(std::forward<Args>(args)...);
+  } catch (std::bad_alloc&) {
+    fprintf(
+      stderr,
+      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+      sizeof(T)
+    );
+    dump_mem_stats_trace();
+    throw;
+  }
+}
+
+// ----------------------------------------------------------------------------
 // --SECTION--                                                      make_unique
 // ----------------------------------------------------------------------------
 
@@ -477,7 +496,7 @@ struct maker {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
     // creates shared_ptr with a single heap allocation
-    return std::make_shared<Class>(std::forward<Args>(args)...);
+    return irs::memory::make_shared<Class>(std::forward<Args>(args)...);
   }
 };
 
@@ -485,7 +504,24 @@ template<typename Class>
 struct maker<Class, false> {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
-    return typename Class::ptr(new Class(std::forward<Args>(args)...));
+    static_assert(
+      std::is_nothrow_constructible<
+        typename Class::ptr,
+        typename Class::ptr::element_type*>::value,
+      "type must be nothrow constructible"
+    );
+
+    try {
+      return typename Class::ptr(new Class(std::forward<Args>(args)...));
+    } catch (std::bad_alloc&) {
+      fprintf(
+        stderr,
+        "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n",
+        sizeof(Class)
+      );
+      ::iresearch::memory::dump_mem_stats_trace();
+      throw;
+    }
   }
 };
 
@@ -506,100 +542,42 @@ NS_END // ROOT
     throw; \
   }
 
-#define PTR_NAMED_NOTHROW(class_type, name, ...) \
-  class_type::ptr name; \
-  try { \
-    name.reset(new class_type(__VA_ARGS__)); \
-  } catch (const std::bad_alloc&) { \
-    fprintf( \
-      stderr, \
-      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
-      sizeof(class_type) \
-    ); \
-    ::iresearch::memory::dump_mem_stats_trace(); \
-  }
+#define DECLARE_SHARED_PTR(class_name) \
+  friend struct irs::memory::maker<class_name, true>; \
+  typedef std::shared_ptr<class_name> ptr
 
-#define DECLARE_SPTR(class_name) typedef std::shared_ptr<class_name> ptr
-#define DECLARE_PTR(class_name) typedef std::unique_ptr<class_name> ptr
-#define DECLARE_REF(class_name) typedef std::reference_wrapper<class_name> ref
-#define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
+#define DECLARE_UNIQUE_PTR(class_name) \
+  friend struct irs::memory::maker<class_name, false>; \
+  typedef std::unique_ptr<class_name> ptr
 
-#define DECLARE_FACTORY(class_name) \
+#define DECLARE_REFERENCE(class_name) typedef std::reference_wrapper<class_name> ref
+#define DECLARE_CONST_REFERENCE(class_name) typedef std::reference_wrapper<const class_name> cref
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief default inline implementation of a factory method, instantiation on
+///        heap
+//////////////////////////////////////////////////////////////////////////////
+#define DEFINE_FACTORY_INLINE(class_name) \
 template<typename Class, bool> friend struct irs::memory::maker; \
-template<typename _T, typename... _Args> \
-static ptr make(_Args&&... args) { \
+template<typename _T, typename... Args> \
+static ptr make(Args&&... args) { \
   typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, _T>::type type; \
-  try { \
-    typedef irs::memory::maker<type> maker_t; \
-    return maker_t::template make(std::forward<_Args>(args)...); \
-  } catch (std::bad_alloc&) { \
-    fprintf( \
-      stderr, \
-      "Memory allocation failure while creating and initializing an object of size " IR_SIZE_T_SPECIFIER " bytes\n", \
-      sizeof(type) \
-    ); \
-    ::iresearch::memory::dump_mem_stats_trace(); \
-    throw; \
-  } \
+  typedef irs::memory::maker<type> maker_t; \
+  return maker_t::template make(std::forward<Args>(args)...); \
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief declaration of a factory method
+//////////////////////////////////////////////////////////////////////////////
+#define DECLARE_FACTORY(...) static ptr make(__VA_ARGS__);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation of a factory method, instantiation on heap
 ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
 //////////////////////////////////////////////////////////////////////////////
-#define DECLARE_FACTORY_DEFAULT(...) static ptr make(__VA_ARGS__);
 #define DEFINE_FACTORY_DEFAULT(class_type) \
 /*static*/ class_type::ptr class_type::make() { \
-  PTR_NAMED(class_type, ptr); \
-  return ptr; \
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of a factory method, using a deque to store and
-///        reuse instances with the help of a skip-list style offset free_list
-///        use std::deque as a non-reordering block-reserving container
-///        user should #include all required dependencies e.g. <deque>,<mutex>
-///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-//////////////////////////////////////////////////////////////////////////////
-#define DEFINE_FACTORY_POOLED(class_type) \
-/*static*/ class_type::ptr class_type::make() { \
-  static const size_t free_list_empty = std::numeric_limits<size_t>::max(); \
-  static size_t free_list_head = free_list_empty; \
-  static std::mutex mutex; \
-  static std::deque<std::pair<class_type, size_t>> pool; \
-  class_type::ptr::element_type* entry; \
-  size_t entry_pos; \
-  std::lock_guard<std::mutex> lock(mutex); \
-  if (free_list_empty == free_list_head) { \
-    entry_pos = pool.size(); \
-    entry = &(pool.emplace(pool.end(), class_type(), free_list_empty)->first); \
-  } else { \
-    auto& entry_pair = pool[free_list_head]; \
-    entry = &(entry_pair.first); \
-    entry_pos = free_list_head; \
-    free_list_head = entry_pair.second; \
-  } \
-  return class_type::ptr( \
-    entry, \
-    [entry_pos](class_type::ptr::element_type*)->void { \
-      std::lock_guard<std::mutex> lock(mutex); \
-      pool[entry_pos].second = free_list_head; \
-      free_list_head = entry_pos; \
-    } \
-  ); \
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief implementation of a factory method, returning a singleton instance
-///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-//////////////////////////////////////////////////////////////////////////////
-#define DEFINE_FACTORY_SINGLETON(class_type) \
-/*static*/ class_type::ptr class_type::make() { \
-  struct make_impl_t { \
-    static class_type::ptr make() { PTR_NAMED(class_type, ptr); return ptr; } \
-  }; \
-  static auto instance = make_impl_t::make(); \
-  return instance; \
+  return irs::memory::maker<class_type>::make(); \
 }
 
 #endif

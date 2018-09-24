@@ -90,8 +90,8 @@ struct IRESEARCH_API data_input
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_input : public data_input {
  public:
-  DECLARE_PTR(index_input);
-  DECLARE_FACTORY(index_input);
+  DECLARE_UNIQUE_PTR(index_input);
+  DEFINE_FACTORY_INLINE(index_input);
 
   virtual ~index_input();
   virtual ptr dup() const NOEXCEPT = 0; // non-thread-safe fd copy (offset preserved)
@@ -137,29 +137,29 @@ class IRESEARCH_API buffered_index_input : public index_input {
  public:
   virtual ~buffered_index_input();
 
-  virtual byte_type read_byte() override final;
+  virtual byte_type read_byte() final;
 
-  virtual size_t read_bytes(byte_type* b, size_t count) override final;
+  virtual size_t read_bytes(byte_type* b, size_t count) final;
 
-  virtual size_t file_pointer() const override final {
+  virtual size_t file_pointer() const final {
     return start_ + offset();
   }
 
-  virtual bool eof() const override final {
+  virtual bool eof() const final {
     return file_pointer() >= length();
   }
 
-  virtual void seek(size_t pos) override final;
+  virtual void seek(size_t pos) final;
 
   size_t buffer_size() const { return buf_size_; }
 
-  virtual int32_t read_int() override final;
+  virtual int32_t read_int() final;
 
-  virtual int64_t read_long() override final;
+  virtual int64_t read_long() final;
 
-  virtual uint32_t read_vint() override final;
+  virtual uint32_t read_vint() final;
 
-  virtual uint64_t read_vlong() override final;
+  virtual uint64_t read_vlong() final;
 
  protected:
   explicit buffered_index_input(size_t buf_size = 1024);

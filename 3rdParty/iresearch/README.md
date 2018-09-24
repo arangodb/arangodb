@@ -168,6 +168,7 @@ win32 binaries also available in:
 - http://sourceforge.net/projects/mingwbuilds/files/external-binary-packages
 
 ### [ICU](http://site.icu-project.org/download)
+v53 or higher
 
 #### install (*nix)
 ```bash
@@ -408,6 +409,7 @@ v2.4 or later
 used for compilation of the IQL (index query language) grammar
 
 ### [ICU](http://site.icu-project.org/download)
+used by locale_utils as a back-end for locale facets
 used by analysis::text_analyzer for parsing, transforming and tokenising string data
 
 ### [Snowball](http://snowball.tartarus.org)

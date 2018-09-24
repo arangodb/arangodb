@@ -287,7 +287,7 @@ void setNullValue(
 
   // set field properties
   field._name = name;
-  field._analyzer = stream;
+  field._analyzer = stream.release(); // FIXME don't use shared_ptr
   field._features = &irs::flags::empty_instance();
 }
 
@@ -307,7 +307,7 @@ void setBoolValue(
 
   // set field properties
   field._name = name;
-  field._analyzer = stream;
+  field._analyzer = stream.release(); // FIXME don't use shared_ptr
   field._features = &irs::flags::empty_instance();
 }
 
@@ -327,7 +327,7 @@ void setNumericValue(
 
   // set field properties
   field._name = name;
-  field._analyzer = stream;
+  field._analyzer = stream.release(); // FIXME don't use shared_ptr
   field._features = &NumericStreamFeatures;
 }
 
@@ -403,7 +403,7 @@ NS_BEGIN(iresearch)
     TRI_voc_cid_t& cid,
     Field::init_stream_t
 ) {
-  field._analyzer = StringStreamPool.emplace();
+  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
   setCidValue(field, cid);
 }
 
@@ -418,7 +418,7 @@ NS_BEGIN(iresearch)
     TRI_voc_rid_t& rid,
     Field::init_stream_t
 ) {
-  field._analyzer = StringStreamPool.emplace();
+  field._analyzer = StringStreamPool.emplace().release(); // FIXME don't use shared_ptr
   setRidValue(field, rid);
 }
 
@@ -448,7 +448,8 @@ Field& Field::operator=(Field&& rhs) {
 
 /*static*/ FieldIterator const FieldIterator::END;
 
-FieldIterator::FieldIterator(): _name(BufferPool.emplace()) {
+FieldIterator::FieldIterator()
+  : _name(BufferPool.emplace().release()) { // FIXME don't use shared_ptr
   // initialize iterator's value
 }
 

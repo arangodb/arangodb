@@ -45,9 +45,27 @@ segment_writer::column::column(
   this->handle = columnstore.push_column();
 }
 
+doc_id_t segment_writer::begin(
+    const update_context& ctx,
+    size_t reserve_rollback_extra /*= 0*/
+) {
+  valid_ = true;
+  norm_fields_.clear(); // clear norm fields
+  docs_mask_.reserve(
+    docs_mask_.size() + 1 + reserve_rollback_extra
+  ); // reserve space for potential rollback
+  docs_context_.emplace_back(ctx);
+// FIXME TODO should return non-zero based, that way get eof()
+  return docs_cached() - 1; // 0-based doc_id
+}
+
 segment_writer::ptr segment_writer::make(directory& dir) {
-  PTR_NAMED(segment_writer, ptr, dir);
-  return ptr;
+  // can't use make_unique becuase of the private constructor
+  return memory::maker<segment_writer>::make(dir);
+}
+
+size_t segment_writer::memory() const NOEXCEPT {
+  return 0; // FIXME TODO implement pool *2 + update_constexts + doc_removals
 }
 
 segment_writer::segment_writer(directory& dir) NOEXCEPT
@@ -66,6 +84,7 @@ bool segment_writer::index(
     const flags& features) {
   REGISTER_TIMER_DETAILED();
 
+  assert(docs_cached() < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
   const doc_id_t doc_id = docs_cached();
   auto& slot = fields_.get(name);
   auto& slot_features = slot.meta().features;
@@ -159,7 +178,9 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
     fields_.flush(*field_writer_, state);
   }
 
+  assert(docs_cached() >= docs_mask().size());
   meta.docs_count = docs_cached();
+  meta.live_docs_count = meta.docs_count - docs_mask().size();
   meta.files.clear(); // prepare empy set to be swaped into dir_
 
   if (!dir_.swap_tracked(meta.files)) {

@@ -50,7 +50,7 @@ NS_BEGIN(tests)
 /// @brief base interface for all fields
 //////////////////////////////////////////////////////////////////////////////
 struct ifield {
-  DECLARE_SPTR(ifield);
+  DECLARE_SHARED_PTR(ifield);
   virtual ~ifield() {}
 
   virtual const irs::flags& features() const = 0;
@@ -290,8 +290,8 @@ struct document: irs::util::noncopyable {
 
 /* Base class for document generators */
 struct doc_generator_base {
-  DECLARE_PTR( doc_generator_base );
-  DECLARE_FACTORY( doc_generator_base );
+  DECLARE_UNIQUE_PTR( doc_generator_base );
+  DEFINE_FACTORY_INLINE( doc_generator_base );
 
   virtual const tests::document* next() = 0;
   virtual void reset() = 0;
@@ -462,12 +462,9 @@ template<typename Indexed>
 bool insert(
     irs::index_writer& writer,
     Indexed ibegin, Indexed iend) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().insert();
 
-  return writer.insert(inserter);
+  return doc.insert(irs::action::index, ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -475,13 +472,10 @@ bool insert(
     irs::index_writer& writer,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    doc.insert(irs::action::store, sbegin, send);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().insert();
 
-  return writer.insert(inserter);
+  return doc.insert(irs::action::index, ibegin, iend)
+         && doc.insert(irs::action::store, sbegin, send);
 }
 
 template<typename Indexed>
@@ -489,12 +483,9 @@ bool update(
     irs::index_writer& writer,
     const irs::filter& filter,
     Indexed ibegin, Indexed iend) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().replace(filter);
 
-  return writer.update(filter, inserter);
+  return doc.insert(irs::action::index, ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -503,13 +494,10 @@ bool update(
     const irs::filter& filter,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    doc.insert(irs::action::store, sbegin, send);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().replace(filter);
 
-  return writer.update(filter, inserter);
+  return doc.insert(irs::action::index, ibegin, iend)
+         && doc.insert(irs::action::store, sbegin, send);
 }
 
 template<typename Indexed>
@@ -517,12 +505,9 @@ bool update(
     irs::index_writer& writer,
     irs::filter::ptr&& filter,
     Indexed ibegin, Indexed iend) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().replace(std::move(filter));
 
-  return writer.update(std::move(filter), inserter);
+  return doc.insert(irs::action::index, ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -531,13 +516,10 @@ bool update(
     irs::filter::ptr&& filter,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    doc.insert(irs::action::store, sbegin, send);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().replace(std::move(filter));
 
-  return writer.update(std::move(filter), inserter);
+  return doc.insert(irs::action::index, ibegin, iend)
+         && doc.insert(irs::action::store, sbegin, send);
 }
 
 template<typename Indexed>
@@ -545,12 +527,9 @@ bool update(
     irs::index_writer& writer,
     const std::shared_ptr<irs::filter>& filter,
     Indexed ibegin, Indexed iend) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().replace(filter);
 
-  return writer.update(filter, inserter);
+  return doc.insert(irs::action::index, ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -559,13 +538,10 @@ bool update(
     const std::shared_ptr<irs::filter>& filter,
     Indexed ibegin, Indexed iend,
     Stored sbegin, Stored send) {
-  auto inserter = [&](irs::segment_writer::document& doc) {
-    doc.insert(irs::action::index, ibegin, iend);
-    doc.insert(irs::action::store, sbegin, send);
-    return false; // break the loop
-  };
+  auto doc = writer.documents().replace(filter);
 
-  return writer.update(filter, inserter);
+  return doc.insert(irs::action::index, ibegin, iend)
+         && doc.insert(irs::action::store, sbegin, send);
 }
 
 NS_END // tests

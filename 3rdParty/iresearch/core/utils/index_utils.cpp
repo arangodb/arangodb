@@ -25,13 +25,119 @@
 #include "formats/format_utils.hpp"
 #include "index_utils.hpp"
 
+NS_LOCAL
+
+// FIXME
+// - FIX segment_consolidate_clear_commit
+// - store segment size in segment_meta
+
+//uint64_t segment_size(
+//    const irs::directory& dir,
+//    const irs::segment_meta& segment
+//) {
+//  uint64_t total_size = 0;
+//  uint64_t file_size = 0;
+//  for (const auto& file : segment.files) {
+//    if (dir.length(file_size, file)) {
+//      total_size += file_size;
+//    }
+//  }
+//  return total_size;
+//}
+//
+//double fill_factor(const irs::segment_meta& segment) NOEXCEPT {
+//  return double(segment.live_docs_count)/segment.docs_count;
+//}
+//
+//std::vector<const irs::segment_meta*> get_sorted_segments(
+//    const irs::index_meta& index,
+//    const irs::directory& dir
+//) {
+//  std::vector<const irs::segment_meta*> segments;
+//  segments.reserve(index.size());
+//
+//  // get segments from index meta
+//  auto push_segments = [&segments](
+//      const std::string& /*filename*/,
+//      const irs::segment_meta& segment
+//  ) NOEXCEPT { // NOEXCEPT - because we reserved enough space
+//    segments.push_back(&segment);
+//    return true;
+//  };
+//
+//  index.visit_segments(push_segments);
+//
+//  // sort segments by size
+//  auto less = [&dir](
+//      const irs::segment_meta* lhs,
+//      const irs::segment_meta* rhs) {
+//    const auto lhs_size = segment_size(dir, *lhs);
+//    const auto rhs_size = segment_size(dir, *rhs);
+//
+//    if (lhs_size == rhs_size) {
+//      const auto lhs_fill_factor = fill_factor(*lhs);
+//      const auto rhs_fill_factor = fill_factor(*rhs);
+//
+//      if (lhs_fill_factor == rhs_fill_factor) {
+//        return lhs->name < rhs->name;
+//      }
+//
+//      return lhs_fill_factor < rhs_fill_factor;
+//    }
+//
+//    return lhs_size < rhs_size;
+//  };
+//
+//  std::sort(segments.begin(), segments.end(), less);
+//
+//  return segments;
+//}
+
+NS_END
+
 NS_ROOT
 NS_BEGIN(index_utils)
 
+//index_writer::consolidation_policy_t consolidate_tier(
+//    size_t max_segments /*=10*/,                // maximum allowed number of segments to consolidate at once
+//    size_t max_segments_bytes /*= 5*(1<<30)*/,  // maxinum allowed size of all consolidated segments
+//    size_t floor_segment_bytes /*= 2*(1<<20)*/, // treat all smaller segments as equal for consolidation selection
+//    double_t fill_factor /* = 0.7 */            // percentage of live documents in a segment
+//) {
+//  max_segments = (std::max)(size_t(1), max_segments); // can't merge less than 1 segment
+//  fill_factor = (std::max)(0., (std::min)(1., fill_factor));
+//
+//  return [max_segments, fill_factor, floor_segment_bytes, max_segments_bytes](
+//      std::set<const segment_meta*>& candidates,
+//      const directory& dir,
+//      const index_meta& meta,
+//      const index_writer::consolidating_segments_t& consolidating_segments
+//  ) ->void {
+//    auto sorted_segments = get_sorted_segments(meta, dir);
+//  };
+//}
+
+index_writer::consolidation_policy_t consolidate_all() {
+  return [](
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+   ) ->void {
+    // merge every segment
+    for (auto& segment : meta) {
+      candidates.insert(&segment.meta);
+    }
+  };
+}
+
 index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
-  )->void {
+      std::set<const segment_meta*>& candidates,
+      const directory& dir,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+  ) ->void {
     size_t all_segment_bytes_size = 0;
     size_t segment_count = meta.size();
     uint64_t length;
@@ -46,7 +152,6 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
 
     auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
     auto threshold_bytes_avg = (all_segment_bytes_size / (float)segment_count) * threshold;
-    size_t i = 0;
 
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes / #segments)
     for (auto& segment: meta) {
@@ -59,19 +164,20 @@ index_writer::consolidation_policy_t consolidate_bytes(float byte_threshold /*= 
         }
       }
 
-      if (threshold_bytes_avg > segment_bytes_size) {
-        candidates.set(i);
+      if (threshold_bytes_avg >= segment_bytes_size) {
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshold /*= 0*/) {
   return [byte_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
-  )->void {
+      std::set<const segment_meta*>& candidates,
+      const directory& dir,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
+  ) ->void {
     size_t all_segment_bytes_size = 0;
     uint64_t length;
 
@@ -85,9 +191,8 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
 
     size_t cumulative_size = 0;
     auto threshold_size = all_segment_bytes_size * std::max<float>(0, std::min<float>(1, byte_threshold));
-    size_t i = 0;
 
-    // merge segment if: {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+    // merge segment if: {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes
     for (auto& segment: meta) {
       size_t segment_bytes_size = 0;
       uint64_t length;
@@ -98,71 +203,57 @@ index_writer::consolidation_policy_t consolidate_bytes_accum(float byte_threshol
         }
       }
 
-      if (cumulative_size + segment_bytes_size < threshold_size) {
+      if (cumulative_size + segment_bytes_size <= threshold_size) {
         cumulative_size += segment_bytes_size;
-        candidates.set(i);
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_count(float docs_threshold /*= 0*/) {
   return [docs_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
     size_t all_segment_docs_count = 0;
     size_t segment_count = meta.size();
 
     //for (uint32_t i = 0; i < segment_count; ++i) {
     for (auto& segment : meta) {
-      auto& segment_meta = segment.meta;
-      document_mask docs_mask;
-
-      read_document_mask(docs_mask, dir, segment_meta);
-      all_segment_docs_count += segment_meta.docs_count - docs_mask.size();
+      all_segment_docs_count += segment.meta.live_docs_count;
     }
 
     auto threshold = std::max<float>(0, std::min<float>(1, docs_threshold));
     auto threshold_docs_avg = (all_segment_docs_count / (float)segment_count) * threshold;
-    size_t i = 0;
 
-    // merge segment if: {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)
+    // merge segment if: {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
     for (auto& segment: meta) {
-      document_mask docs_mask;
-
-      read_document_mask(docs_mask, dir, segment.meta);
-
-      if (segment.meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
-          || threshold_docs_avg > (segment.meta.docs_count - docs_mask.size())) {
-        candidates.set(i);
+      if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
+          || threshold_docs_avg >= segment.meta.live_docs_count) {
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
 
 index_writer::consolidation_policy_t consolidate_fill(float fill_threshold /*= 0*/) {
   return [fill_threshold](
-    bitvector& candidates, const directory& dir, const index_meta& meta
+      std::set<const segment_meta*>& candidates,
+      const directory& /*dir*/,
+      const index_meta& meta,
+      const index_writer::consolidating_segments_t& /*consolidating_segments*/
   )->void {
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
-    size_t i = 0;
 
-    // merge segment if: {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
+    // merge segment if: {threshold} >= #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment: meta) {
-      document_mask docs_mask;
-
-      read_document_mask(docs_mask, dir, segment.meta);
-
-      if (segment.meta.docs_count <= docs_mask.size() // if no valid doc_ids left in segment
-          || segment.meta.docs_count * threshold > (segment.meta.docs_count - docs_mask.size())) {
-        candidates.set(i);
+      if (!segment.meta.live_docs_count // if no valid doc_ids left in segment
+          || segment.meta.docs_count * threshold >= segment.meta.live_docs_count) {
+        candidates.insert(&segment.meta);
       }
-
-      ++i;
     }
   };
 }
@@ -177,17 +268,23 @@ void read_document_mask(
   }
 
   auto reader = meta.codec->get_document_mask_reader();
-  auto visitor = [&docs_mask](const doc_id_t& value)->bool {
-    docs_mask.insert(value);
-    return true;
-  };
-
-  // there will not be a document_mask list for new segments without deletes
-  if (reader->prepare(dir, meta)) {
-    read_all<iresearch::doc_id_t>(visitor, *reader, reader->begin());
-    reader->end();
-  }
+  reader->read(dir, meta, docs_mask);
 }
 
-NS_END
-NS_END
+std::string write_segment_meta(
+    directory& dir,
+    const segment_meta& meta
+) {
+  assert(meta.codec);
+  auto writer = meta.codec->get_segment_meta_writer();
+
+  writer->write(dir, meta);
+  return writer->filename(meta);
+}
+
+NS_END // index_utils
+NS_END // NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

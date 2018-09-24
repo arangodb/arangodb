@@ -29,6 +29,7 @@
 #include "formats/formats.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
+#include "utils/type_limits.hpp"
 
 NS_ROOT
 
@@ -152,8 +153,8 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     segment_writer& writer_;
   }; // document
 
-  DECLARE_PTR(segment_writer);
-  DECLARE_FACTORY_DEFAULT(directory& dir);
+  DECLARE_UNIQUE_PTR(segment_writer);
+  DECLARE_FACTORY(directory& dir);
 
   struct update_context {
     size_t generation;
@@ -163,11 +164,15 @@ class IRESEARCH_API segment_writer: util::noncopyable {
   typedef std::vector<update_context> update_contexts;
 
   // begin document-write transaction
-  void begin(const update_context& ctx) {
-    valid_ = true;
-    norm_fields_.clear(); // clear norm fields
-    docs_mask_.reserve(docs_mask_.size() + 1); // reserve space for potential rollback
-    docs_context_.emplace_back(ctx);
+  // @return 0-based doc_id
+  doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
+
+  // expect 0-based doc_id
+  // FIXME TODO use valid doc_id_t range [min.. eof)
+  // @return modifiable update_context for the specified doc_id
+  update_context& doc_context(doc_id_t doc_id) {
+    assert(doc_id < docs_context_.size());
+    return docs_context_[doc_id];
   }
 
   // adds stored document field
@@ -198,11 +203,14 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     }
   }
 
+  // @return aproximate amount of memory used by this writer
+  size_t memory() const NOEXCEPT;
+
   // rollbacks document-write transaction,
   // implicitly NOEXCEPT since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    remove(docs_cached() - (type_limits<type_t::doc_id_t>::min)());
+    remove(docs_cached() - 1); // 0-based doc_id
     valid_ = false;
   }
 
@@ -210,8 +218,6 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   const std::string& name() const NOEXCEPT { return seg_name_; }
   size_t docs_cached() const NOEXCEPT { return docs_context_.size(); }
-  const update_contexts& docs_context() const NOEXCEPT { return docs_context_; }
-  const update_context& doc_context() const { return docs_context_.back(); }
   const document_mask& docs_mask() NOEXCEPT { return docs_mask_; }
   bool initialized() const NOEXCEPT { return initialized_; }
   bool remove(doc_id_t doc_id); // expect 0-based doc_id
@@ -249,6 +255,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
       std::hash<irs::string_ref>()
     );
 
+    assert(docs_cached() < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
     const doc_id_t doc = docs_cached();
     auto& stream = this->stream(doc, name);
 
@@ -294,6 +301,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     }
 
     // store field
+    assert(docs_cached() < type_limits<type_t::doc_id_t>::eof()); // user should check return of begin() != eof()
     const doc_id_t doc = docs_cached();
     auto& stream = this->stream(doc, name);
 

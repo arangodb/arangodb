@@ -12,6 +12,10 @@ if (NOT IResearch_version_patch)
   set(IResearch_version_patch "0")
 endif()
 
+# set required standard version
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # calculate version
 math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)" )
 set(IResearch_version "${IResearch_version_major}.${IResearch_version_minor}.${IResearch_version_revision}.${IResearch_version_patch}")
@@ -27,7 +31,6 @@ set(IResearch_INCLUDE_DIR
   CACHE INTERNAL
   ""
 )
-
 
 if (MSVC)
   add_definitions(/W4)
@@ -45,7 +48,10 @@ if (MSVC)
   )
 else()
   add_definitions(-Wall)
-  set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+
+  if (NOT APPLE)
+    set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+  endif()
 
   # set OS specific headers
   set(IResearch_core_os_specific_headers
@@ -119,6 +125,7 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp 
   ./store/store_utils.cpp 
+  ./store/store_utils_optimized.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp 
   ./utils/bit_packing.cpp 
@@ -369,48 +376,25 @@ endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR}
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+    PRIVATE ${ICU_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
- )
-endif()
-
-target_compile_features(${IResearch_TARGET_NAME}-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearch_TARGET_NAME}-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(${IResearch_TARGET_NAME}-shared-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
+    PRIVATE ${ICU_INCLUDE_DIR}
   )
-
-  target_compile_features(${IResearch_TARGET_NAME}-static-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
- )
 endif()
 
 # setup MSVC specific compiler flags
@@ -484,9 +468,12 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
+  $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+  $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
+  simdcomp-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -498,9 +485,11 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
+  icu-static
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
+  simdcomp-static
 )
 
 # setup CRT
@@ -510,6 +499,8 @@ if(MSVC)
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
+    $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
+    $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -524,6 +515,7 @@ if(MSVC)
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
+    icu-static
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -668,33 +660,6 @@ if(MSVC)
   )
 endif()
 
-target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-shared-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-
-  target_compile_features(${IResearch_TARGET_NAME}-analyzer-delimited-static-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
-
 # setup CRT
 if(MSVC)
   target_compile_options(${IResearch_TARGET_NAME}-analyzer-delimited-shared
@@ -800,52 +765,25 @@ if(MSVC)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
-  PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static
-  PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
     PRIVATE ${Snowball_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
     PRIVATE ${Snowball_INCLUDE_DIR}
-  )
-endif()
-
-target_compile_features(${IResearch_TARGET_NAME}-analyzer-text-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearch_TARGET_NAME}-analyzer-text-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-
-  target_compile_features(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
   )
 endif()
 
@@ -908,15 +846,11 @@ endif()
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
-  ${Boost_SHARED_sharedRT_LIBRARIES}
-  $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
-  $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
   stemmer-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-static
-  icu-static
   stemmer-static
 )
 
@@ -925,21 +859,24 @@ if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
     ${Boost_SHARED_sharedRT_LIBRARIES}
-    $<TARGET_PROPERTY:icu-shared,IMPORTED_LOCATION> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
-    $<TARGET_PROPERTY:icu-shared,INTERFACE_LINK_LIBRARIES> # cmake on MSVC does not properly expand dependencies for 'icu-shared'
     stemmer-shared
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
-    icu-static
     stemmer-static
   )
 endif()
 
 ################################################################################
-### format plugins
+### format plugin: format-1_0
 ################################################################################
+
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
+else()
+  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")
+endif()
 
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp
@@ -950,13 +887,16 @@ set(IResearch_format-1_0_source
   ./formats/formats_burst_trie.hpp
 )
 
-add_library(${IResearch_TARGET_NAME}-format-1_0-shared
+set(shared_format_library_name ${IResearch_TARGET_NAME}-format-1_0-shared)
+set(static_format_library_name ${IResearch_TARGET_NAME}-format-1_0-static)
+
+add_library(${shared_format_library_name}
   SHARED
   ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
 
-add_library(${IResearch_TARGET_NAME}-format-1_0-static
+add_library(${static_format_library_name}
   STATIC
   ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
@@ -964,141 +904,117 @@ add_library(${IResearch_TARGET_NAME}-format-1_0-static
 
 # setup CRT
 if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
+  add_library(${shared_format_library_name}-scrt
     SHARED
     ${IResearch_format-1_0_source}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 
-  add_library(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+  add_library(${static_format_library_name}-scrt
     STATIC
     ${IResearch_format-1_0_source}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 endif()
 
-target_compile_features(${IResearch_TARGET_NAME}-format-1_0-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearch_TARGET_NAME}-format-1_0-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
 # setup CRT
 if(MSVC)
-  target_compile_features(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-
-  target_compile_features(${IResearch_TARGET_NAME}-format-1_0-static-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
-
-# setup CRT
-if(MSVC)
-  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-shared
+  target_compile_options(${shared_format_library_name}
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
   )
 
-  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-static
+  target_compile_options(${static_format_library_name}
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
   )
 
-  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
+  target_compile_options(${shared_format_library_name}-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
   )
 
-  target_compile_options(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+  target_compile_options(${static_format_library_name}-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
   )
 endif()
 
-set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared
+set_target_properties(${shared_format_library_name}
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
   CXX_VISIBILITY_PRESET hidden
 )
 
-set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static
+set_target_properties(${static_format_library_name}
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
 )
 
 # setup CRT
 if(MSVC)
-  set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
+  set_target_properties(${shared_format_library_name}-scrt
     PROPERTIES
     PREFIX lib
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
     CXX_VISIBILITY_PRESET hidden
   )
 
-  set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+  set_target_properties(${static_format_library_name}-scrt
     PROPERTIES
     PREFIX lib
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;${FORMAT_10_EXTRA_DEFS}"
   )
 endif()
 
-target_include_directories(${IResearch_TARGET_NAME}-format-1_0-shared
+target_include_directories(${shared_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
 )
 
-target_include_directories(${IResearch_TARGET_NAME}-format-1_0-static
+target_include_directories(${static_format_library_name}
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
 )
 
 # setup CRT
 if(MSVC)
-  target_include_directories(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
+  target_include_directories(${shared_format_library_name}-scrt
     SYSTEM
     PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
   )
 
-  target_include_directories(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+  target_include_directories(${static_format_library_name}-scrt
     SYSTEM
     PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
   )
 endif()
 
-target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-shared
+target_link_libraries(${shared_format_library_name}
   ${IResearch_TARGET_NAME}-shared
+  ${ATOMIC_LIBRARY}
+  ${FORMAT_10_EXTRA_LIBS_SHARED}
 )
 
-target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-static
+target_link_libraries(${static_format_library_name}
   ${IResearch_TARGET_NAME}-static
+  ${FORMAT_10_EXTRA_LIBS_STATIC}
 )
 
 # setup CRT
 if(MSVC)
-  target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-shared-scrt
+  target_link_libraries(${shared_format_library_name}-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
   )
 
-  target_link_libraries(${IResearch_TARGET_NAME}-format-1_0-static-scrt
+  target_link_libraries(${static_format_library_name}-scrt
     ${IResearch_TARGET_NAME}-static-scrt
   )
 endif()
@@ -1132,33 +1048,6 @@ if(MSVC)
   add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     STATIC
     ${IResearch_tfidf_source}
-  )
-endif()
-
-target_compile_features(${IResearch_TARGET_NAME}-scorer-tfidf-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearch_TARGET_NAME}-scorer-tfidf-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-
-  target_compile_features(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
   )
 endif()
 
@@ -1260,33 +1149,6 @@ if(MSVC)
   add_library(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
     STATIC
     ${IResearch_bm25_source}
-  )
-endif()
-
-target_compile_features(${IResearch_TARGET_NAME}-scorer-bm25-shared
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-target_compile_features(${IResearch_TARGET_NAME}-scorer-bm25-static
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-# setup CRT
-if(MSVC)
-  target_compile_features(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-
-  target_compile_features(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
   )
 endif()
 
