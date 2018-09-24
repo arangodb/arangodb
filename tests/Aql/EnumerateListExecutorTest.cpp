@@ -113,7 +113,7 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
     }
   }
 
-  GIVEN("there are rows in the upstream") {
+  GIVEN("there is one row in the upstream") {
     EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
     auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
     auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
@@ -168,6 +168,72 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+
+        block = result.stealBlock();
+        AqlValue v = block->getValue(0, 0);
+        REQUIRE(v.isNumber());
+        int64_t number = v.toInt64();
+        REQUIRE(number == 1);
+
+        v = block->getValue(1, 0);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 1);
+
+        v = block->getValue(1, 1);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 2);
+
+        v = block->getValue(1, 2);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 3);
+
+        bool mustDestroy = false;
+        v = block->getValue(1, 3);
+        REQUIRE(v.isArray());
+        REQUIRE(v.at(0, mustDestroy, false).toBoolean() == true);
+        REQUIRE(v.at(1, mustDestroy, false).toBoolean() == true);
+        REQUIRE(v.at(2, mustDestroy, false).toBoolean() == true);
+
+        v = block->getValue(1, 4);
+        REQUIRE(v.isBoolean());
+        REQUIRE(v.toBoolean() == true);
+      }
+    }
+  }
+
+  GIVEN("there is one empty array row in the upstream") {
+    // EnumerateListExecutorInfos infos(1, 1, 1, 2, {}, &trx);
+    EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, &trx);
+    auto block = std::make_unique<AqlItemBlock>(&monitor, 1000, 5);
+    auto outputBlockShell = std::make_unique<OutputAqlItemBlockShell>(
+        itemBlockManager, std::move(block), infos.getOutputRegisters(),
+        infos.registersToKeep());
+    auto input = VPackParser::fromJson("[ [1, 2, 3, [] ] ]");
+
+    WHEN("the producer does wait") {
+      SingleRowFetcherHelper fetcher(input->steal(), true);
+      EnumerateListExecutor testee(fetcher, infos);
+      // Use this instead of std::ignore, so the tests will be noticed and
+      // updated when someone changes the stats type in the return value of
+      // EnumerateListExecutor::produceRow().
+      NoStats stats{};
+
+      THEN("the executor should return DONE with nullptr") {
+        OutputAqlItemRow result(std::move(outputBlockShell));
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::WAITING);
+        REQUIRE(!result.produced());
+
+        std::tie(state, stats) = testee.produceRow(result);
+        REQUIRE(state == ExecutionState::DONE);
+        REQUIRE(!result.produced());
+
+        block = result.stealBlock();
+        REQUIRE(block == nullptr);
       }
     }
   }
@@ -214,8 +280,6 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
         REQUIRE(state == ExecutionState::HASMORE);
         REQUIRE(result.produced());
 
-        //result.advanceRow();
-
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::WAITING);
         REQUIRE(result.produced());
@@ -243,6 +307,66 @@ SCENARIO("EnumerateListExecutor", "[AQL][EXECUTOR]") {
         std::tie(state, stats) = testee.produceRow(result);
         REQUIRE(state == ExecutionState::DONE);
         REQUIRE(!result.produced());
+
+        block = result.stealBlock();
+        bool mustDestroy = false;
+
+        // first row
+        AqlValue v = block->getValue(0, 0);
+        REQUIRE(v.isNumber());
+        int64_t number = v.toInt64();
+        REQUIRE(number == 1);
+
+        v = block->getValue(1, 0);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 1);
+
+        v = block->getValue(1, 1);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 2);
+
+        v = block->getValue(1, 2);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 3);
+
+        v = block->getValue(1, 3);
+        REQUIRE(v.isArray());
+        REQUIRE(v.at(0, mustDestroy, false).toBoolean() == true);
+        REQUIRE(v.at(1, mustDestroy, false).toBoolean() == true);
+        REQUIRE(v.at(2, mustDestroy, false).toBoolean() == true);
+
+        v = block->getValue(1, 4);
+        REQUIRE(v.isBoolean());
+        REQUIRE(v.toBoolean() == true);
+
+        // second row
+        v = block->getValue(2, 0);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 1);
+
+        v = block->getValue(2, 1);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 2);
+
+        v = block->getValue(2, 2);
+        REQUIRE(v.isNumber());
+        number = v.toInt64();
+        REQUIRE(number == 3);
+
+        v = block->getValue(2, 3);
+        REQUIRE(v.isArray());
+        REQUIRE(v.at(0, mustDestroy, false).toBoolean() == true);
+        REQUIRE(v.at(1, mustDestroy, false).toBoolean() == true);
+        REQUIRE(v.at(2, mustDestroy, false).toBoolean() == true);
+
+        v = block->getValue(2, 4);
+        REQUIRE(v.isBoolean());
+        REQUIRE(v.toBoolean() == true);
       }
     }
   }
