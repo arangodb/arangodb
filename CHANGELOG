@@ -1,6 +1,14 @@
 v3.2.17 (XXXX-XX-XX)
 --------------------
 
+* added missing virtual destructor for MMFiles transaction data context object
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fixed undefined behavior is cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
 * cluster nodes should retry registering in agency until successful
 
 * fixed issue #5354: updated the ui json editor, improved usability
