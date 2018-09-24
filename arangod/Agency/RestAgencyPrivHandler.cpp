@@ -165,19 +165,14 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         
-        auto const leaderID = _agent->leaderID();
-        if (_agent->ready() && leaderID != _agent->id()) { 
-          redirectRequest(leaderID);
-          return RestStatus::DONE;
-        } else {              // We're still trying to figure, what's going on
-          query_t query = _request->toVelocyPackBuilderPtr();
-          try {
-            query_t ret = _agent->gossip(query);
-            for (auto const& obj : VPackObjectIterator(ret->slice())) {
-              result.add(obj.key.copyString(), obj.value);
-            }
-          } catch (std::exception const& e) {
-            return reportBadQuery(e.what());
+        query_t query = _request->toVelocyPackBuilderPtr();
+        try {
+          query_t ret = _agent->gossip(query);
+          if (ret.hasKey(StaticStrings::Error)) {
+            ///////////
+          }
+          for (auto const& obj : VPackObjectIterator(ret->slice())) {
+            result.add(obj.key.copyString(), obj.value);
           }
         }
       } else if (suffixes[0] == "activeAgents") {

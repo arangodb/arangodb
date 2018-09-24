@@ -503,6 +503,15 @@ std::string config_t::startup() const {
 
 
 /// @brief findIdInPool
+bool config_t::matchPeer(
+  std::string const& id, std::string const& endpoint) const {
+  READ_LOCKER(readLocker, _lock);
+  auto const& it = _pool.find(id);
+  return (it == _pool.end()) ? false : it->second == endpoint;
+}
+
+
+/// @brief findIdInPool
 bool config_t::findInPool(std::string const& id) const {
   READ_LOCKER(readLocker, _lock);
   return _pool.find(id) != _pool.end();

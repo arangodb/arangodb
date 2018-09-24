@@ -128,7 +128,10 @@ public:
   bool waitForSync() const;
 
   /// @brief find id in pool
-  bool findInPool() const;
+  bool findInPool(std::string const&) const;
+
+  /// @brief match id and endpoint with pool
+  bool matchPeer(std::string const& id, std::string const& endpoint) const;
 
   /**
    * @brief           Verify other agent's pool against our own:

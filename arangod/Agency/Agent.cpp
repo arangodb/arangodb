@@ -1700,14 +1700,14 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   std::string id = slice.get("id").copyString();
 
   // If pool is complete and id not in our pool reject under all circumstances
-  if (_config.poolComplete() && _config.findInPool()) {
+  if (_config.poolComplete() && _config.findInPool(id)) {
     query_t ret = std::make_shared<VPackBuilder>();
     VPackObjectBuilder o(ret.get());
-    out->add(StaticStrings::Code, VPackValue(403));
-    out->add(StaticStrings::Error, VPackValue(true));
-    out->add(StaticStrings::ErrorMessage,
+    ret->add(StaticStrings::Code, VPackValue(403));
+    ret->add(StaticStrings::Error, VPackValue(true));
+    ret->add(StaticStrings::ErrorMessage,
              VPackValue("This agents is not member of this pool"));
-    out->add(StaticStrings::ErrorNum, VPackValue(403));
+    ret->add(StaticStrings::ErrorNum, VPackValue(403));
     return ret;
   }
 
@@ -1719,15 +1719,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
   if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
-  }
-
-  // If pool complete but knabe is not member => reject at all times
-  if (_config.poolComplete()) {
-    auto pool = _config.pool();
-    if (pool.find(id) == pool.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        20003, "Gossip message from new peer while my pool is complete.");
-    }
   }
 
   LOG_TOPIC(TRACE, Logger::AGENCY)
@@ -1751,9 +1742,9 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
 
   query_t out = std::make_shared<Builder>();
 
-  {
+  if (!isCallback) {
     VPackObjectBuilder b(out.get());
-
+    
     std::unordered_set<std::string> gossipPeers = _config.gossipPeers();
     if (!gossipPeers.empty()) {
       try {
@@ -1763,13 +1754,34 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           << __FILE__ << ":" << __LINE__ << " " << e.what();
       }
     }
-
+    
     std::string err;
     
-    /// Only leaders can update pool through RAFT
-    if (_config.poolComplete() && term() >= 1) {
+    /// Pool incomplete or the other guy is in my pool: I'll gossip.
+    if (!_config.poolComplete() || _config.matchPeer(id, endpoint)) {
+      
+      if (!_config.upsertPool(pslice, id)) {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
+        FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
+      }
+      
+      auto pool = _config.pool();
+      auto active = _config.active();
+      
+      // Wrapped in envelope in RestAgencyPrivHandler
+      out->add(VPackValue("pool"));
+      { VPackObjectBuilder bb(out.get());
+        for (auto const& i : pool) {
+          out->add(i.first, VPackValue(i.second));
+        }}
+      
+    } else {  // Pool complete & id's endpoint not matching.
 
-      if (!challengeLeadership()) {
+      // Not leader: redirect / 503     
+      if (challengeLeadership()) {
+        out->add("redirect", VPackValue(true));
+        out->add("endpoint", leaderID);
+      } else { // leader magic
         auto tmp = _config;
         tmp.upsertPool(pslice, id);
         auto query = std::make_shared<VPackBuilder>();
@@ -1813,10 +1825,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       }
       
     } else {
-      if (!_config.upsertPool(pslice, id)) {
-        LOG_TOPIC(FATAL, Logger::AGENCY) << "Discrepancy in agent pool!";
-        FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
-      }
     }
 
     if (!err.empty()) {
@@ -1824,22 +1832,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       out->add(StaticStrings::Error, VPackValue(true));
       out->add(StaticStrings::ErrorMessage, VPackValue(err));
       out->add(StaticStrings::ErrorNum, VPackValue(500));
-    } else {
-      
-      if (!isCallback) { // no gain in callback to a callback.
-        auto pool = _config.pool();
-        auto active = _config.active();
-
-        // Wrapped in envelope in RestAgencyPrivHandler
-        out->add(VPackValue("pool"));
-        {
-          VPackObjectBuilder bb(out.get());
-          for (auto const& i : pool) {
-            out->add(i.first, VPackValue(i.second));
-          }
-        }
-      }
-    }
+    } 
   }
 
   if (!isCallback) {
