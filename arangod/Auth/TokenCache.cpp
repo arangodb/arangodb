@@ -313,10 +313,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   auth::TokenCache::Entry authResult("", false, 0);
   if (bodySlice.hasKey("preferred_username")) {
     VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-    if (!usernameSlice.isString()) {
+    if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
       return auth::TokenCache::Entry::Unauthenticated();
     }
     authResult._username = usernameSlice.copyString();
+    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
   } else {
