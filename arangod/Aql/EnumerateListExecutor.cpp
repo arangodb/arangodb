@@ -121,7 +121,9 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      output.setValue(_infos.getOutputRegister(), _currentRow, innerValue);
+      output.setValue(
+          _infos.getOutputRegister(), _currentRow,
+          std::move(innerValue));  // NOLINT(performance-move-const-arg)
       // The output row (respectively the AqlItemBlock underneath) is now
       // responsible for the memory.
       guard.steal();
