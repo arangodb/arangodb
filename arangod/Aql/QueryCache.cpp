@@ -563,7 +563,7 @@ std::string QueryCache::modeString(QueryCacheMode mode) {
   return "off";
 }
 
-/// @brief return a string version of the mode
+/// @brief return the internal type for a mode string
 QueryCacheMode QueryCache::modeString(std::string const& mode) {
   if (mode == "on") {
     return CACHE_ALWAYS_ON;
