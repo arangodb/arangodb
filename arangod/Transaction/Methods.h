@@ -115,7 +115,6 @@ class Methods {
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
 
-  using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
   /// @brief transaction::Methods
@@ -253,9 +252,6 @@ class Methods {
   bool isEdgeCollection(std::string const& collectionName) const;
   bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
-
-  /// @brief return the name of a collection
-  std::string collectionName(TRI_voc_cid_t cid);
 
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
