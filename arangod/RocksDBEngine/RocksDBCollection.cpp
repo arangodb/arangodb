@@ -1847,6 +1847,7 @@ RocksDBCollection::serializeIndexEstimates(
     output.clear();
     RocksDBIndex* cindex = static_cast<RocksDBIndex*>(index.get());
     TRI_ASSERT(cindex != nullptr);
+    
     if (cindex->needToPersistEstimate()) {
       LOG_TOPIC(TRACE, Logger::ENGINES)
         << "beginning estimate serialization for index '"
@@ -1922,6 +1923,12 @@ void RocksDBCollection::recalculateIndexEstimates(
 
 arangodb::Result RocksDBCollection::serializeKeyGenerator(
     rocksdb::Transaction* rtrx) const {
+  if (!_logicalCollection.keyGenerator()->hasDynamicState()) {
+    // the key generator will not produce any dynamic data,
+    // so it does not need to be serialized (nor recovered)
+    return Result();
+  }
+
   VPackBuilder builder;
 
   builder.openObject();
