@@ -795,8 +795,6 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
 
   std::unordered_set<std::string> failedServers;
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "Snapshot: " << snapshot;
-
   // Search for failed server
   //  Could also use `Target/FailedServers`
   auto const& health = snapshot.hasAsChildren(healthPrefix);
@@ -804,15 +802,16 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
     return ;
   }
 
-  LOG_TOPIC(ERR, Logger::FIXME) << "called cleanupLostCollections()";
-
   for (auto const& server : health.first) {
     HealthRecord record(*server.second.get());
 
     if (record.status == Supervision::HEALTH_STATUS_FAILED) {
       failedServers.insert(server.first);
-      LOG_TOPIC(ERR, Logger::FIXME) << "Found failed server: " << server.first;
     }
+  }
+
+  if (failedServers.size() == 0) {
+    return ;
   }
 
   // Now iterate over all shards and look for failed leaders.
@@ -825,17 +824,14 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
   {VPackArrayBuilder trxs(builder.get());
 
     for (auto const& database : collections.first) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Checking DB: " << database.first;
       auto const& dbname = database.first;
 
       auto const& collections = database.second->children();
 
       for (auto const& collection : collections) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Checking collection: " << collection.first;
         auto const& colname = collection.first;
 
         for (auto const& shard : collection.second->children()) {
-          LOG_TOPIC(ERR, Logger::FIXME) << "Checking shard: " << shard.first;
 
           auto const& servers = shard.second->hasAsArray("servers").first;
 
@@ -850,9 +846,9 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
               LOG_TOPIC(ERR, Logger::FIXME) << "Found a lost shard: " << shard.first;
               auto const& shardname = shard.first;
 
-              auto const& planurl = "/Plan/Collections/" + dbname + "/" + colname + "/shards/" + shardname;
-              auto const& currenturl = "/Current/Collections/" + dbname + "/" + colname + "/" + shardname;
-              auto const& healthurl = "/Supervision/Health/" + servername + "/Status";
+              auto const& planurl = "/arango/Plan/Collections/" + dbname + "/" + colname + "/shards/" + shardname;
+              auto const& currenturl = "/arango/Current/Collections/" + dbname + "/" + colname + "/" + shardname;
+              auto const& healthurl = "/arango/Supervision/Health/" + servername + "/Status";
               // check if it exists in Plan
               if (snapshot.has(planurl)) {
                 continue ;
@@ -866,7 +862,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
                     builder->add("op", VPackValue("delete"));
                   }
                   // add a job done entry to "Target/Finished"
-                  builder->add(VPackValue("/Target/Finished"));
+                  builder->add(VPackValue("/arango/Target/Finished"));
                   {VPackObjectBuilder op(builder.get());
                     builder->add("op", VPackValue("push"));
                     builder->add(VPackValue("new"));
@@ -911,7 +907,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
   LOG_TOPIC(ERR, Logger::FIXME) << "Trx: " << trx.toJson();
 
   if(trx.length() > 0) {
-    // do it! fire and forget?
+    // do it! fire and forget!
     agent->write(builder);
   }
 }
