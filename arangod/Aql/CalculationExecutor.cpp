@@ -118,10 +118,23 @@ void doEvaluation(CalculationExecutorInfos& info, InputAqlItemRow& input, Output
   if (info._isReference) {
     auto const& inRegs = info._expInRegs;
     TRI_ASSERT(inRegs.size() == 1);
-    output.setValue(info._outputRegister, input, input.getValue(inRegs[0]));
+
+    // AqlValue a = input.getValue(inRegs[0]);
+    // AqlValueGuard guard(a, true);
+
+    TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    // output.setValue(info._outputRegister, input, a);
+    // guard.steal(); // itemblock has taken over now
+
+    output.setValue(info._outputRegister, input, input.getValue(inRegs[0])); //.clone());
+
     if (info._query->killed()){
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
+
     return;
   }
 
