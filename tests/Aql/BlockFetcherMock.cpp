@@ -39,14 +39,15 @@ using namespace arangodb::aql;
 // Note that _itemBlockManager gets passed first to the parent constructor,
 // and only then gets instantiated. That is okay, however, because the
 // constructor will not access it.
-BlockFetcherMock::BlockFetcherMock(RegisterId nrRegisters)
+BlockFetcherMock::BlockFetcherMock(arangodb::aql::ResourceMonitor& monitor,
+                                   ::arangodb::aql::RegisterId nrRegisters)
     : BlockFetcher({}, _itemBlockManager,
                    std::shared_ptr<std::unordered_set<RegisterId>>(),
                    nrRegisters),
       _itemsToReturn(),
       _fetchedBlocks(),
       _numFetchBlockCalls(0),
-      _monitor(),
+      _monitor(monitor),
       _itemBlockManager(&_monitor) {}
 
 std::pair<ExecutionState, std::shared_ptr<InputAqlItemBlockShell>>
