@@ -47,6 +47,18 @@ OutputAqlItemRow::OutputAqlItemRow(
 void OutputAqlItemRow::setValue(RegisterId registerId,
                                 InputAqlItemRow const& sourceRow,
                                 AqlValue const& value) {
+  bool mustDestroy = true;
+  AqlValue clonedValue = value.clone();
+  AqlValueGuard guard{clonedValue, mustDestroy};
+  // Use copy-implementation of setValue()
+  // NOLINTNEXTLINE(performance-move-const-arg)
+  setValue(registerId, sourceRow, std::move(clonedValue));
+  guard.steal();
+}
+
+void OutputAqlItemRow::setValue(RegisterId registerId,
+                                InputAqlItemRow const& sourceRow,
+                                AqlValue&& value) {
   if (!isOutputRegister(registerId)) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_IN_WRONG_REGISTER);
@@ -62,7 +74,7 @@ void OutputAqlItemRow::setValue(RegisterId registerId,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE);
   }
 
-  block().emplaceValue(_baseIndex, registerId, value);
+  block().setValue(_baseIndex, registerId, value);
   _numValuesWritten++;
   // allValuesWritten() must be called only *after* _numValuesWritten was
   // increased.
