@@ -152,8 +152,8 @@ UID        PID  PPID  C STIME TTY          TIME CMD
 max      29075  8072  0 13:50 pts/2    00:00:42 arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address=tcp://127.0.0.1:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true --log.file a1 --javascript.app-path /tmp --database.directory agent1
 max      29208  8072  2 13:51 pts/2    00:02:08 arangod --server.endpoint tcp://0.0.0.0:5002 --agency.my-address=tcp://127.0.0.1:5002 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true --log.file a2 --javascript.app-path /tmp --database.directory agent2
 max      29329 16224  0 13:51 pts/3    00:00:42 arangod --server.endpoint tcp://0.0.0.0:5003 --agency.my-address=tcp://127.0.0.1:5003 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true --log.file a3 --javascript.app-path /tmp --database.directory agent3
-max      29824 16224  1 13:55 pts/3    00:01:53 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:7001 --cluster.my-address tcp://127.0.0.1:7001 --cluster.my-role SINGLE --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file c1 --javascript.app-path /tmp --database.directory coordinator1
-max      29938 16224  2 13:56 pts/3    00:02:13 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:7002 --cluster.my-address tcp://127.0.0.1:7002 --cluster.my-role SINGLE --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file c2 --javascript.app-path /tmp --database.directory coordinator2
+max      29824 16224  1 13:55 pts/3    00:01:53 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:7001 --cluster.my-address tcp://127.0.0.1:7001 --cluster.my-role SINGLE --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file c1 --javascript.app-path /tmp --database.directory single1
+max      29938 16224  2 13:56 pts/3    00:02:13 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:7002 --cluster.my-address tcp://127.0.0.1:7002 --cluster.my-role SINGLE --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file c2 --javascript.app-path /tmp --database.directory single2
 ```
 
 #### Upgrade a _Active Failover_ node
@@ -195,7 +195,7 @@ been used before (without the additional option).
 ##### Stop the _Single Server_
 
 ```
-kill -15 <pid-of-dbserver>
+kill -15 <pid-of-single>
 ```
 
 ##### Upgrade the _Single Server_
@@ -211,7 +211,7 @@ The  _Single Server_ will stop automatically after the upgrade.
 
 ##### Restart the  _Single Server_
 
-The _arangod_ process of the _DBServer_ has to be restarted using the same command that has
+The _arangod_ process of the _Single Server_ has to be restarted using the same command that has
 been used before (without the additional option).
 
 ##### Final words
