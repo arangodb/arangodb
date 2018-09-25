@@ -675,11 +675,13 @@ function analyzeServerCrash (arangod, options, checkStr) {
 // //////////////////////////////////////////////////////////////////////////////
 function checkArangoAlive (arangod, options) {
   const res = statusExternal(arangod.pid, false);
-  const ret = res.status === 'RUNNING';
+  const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, res);
 
   if (!ret) {
     print('ArangoD with PID ' + arangod.pid + ' gone:');
-    arangod.exitStatus = res;
+    if (!arangod.hasOwnProperty('exitStatus')) {
+      arangod.exitStatus = res;
+    }
     print(arangod);
 
     if (res.hasOwnProperty('signal') &&
@@ -893,6 +895,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         arangod.exitStatus = statusExternal(arangod.pid, false);
+        crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus);
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         let localTimeout = timeout;
@@ -921,7 +924,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         if (arangod.role !== 'agent') {
           nonAgenciesCount --;
         }
-        if (arangod.exitStatus.hasOwnProperty('signal')) {
+        if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
           serverCrashed = true;
         }
@@ -1201,10 +1204,14 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   }
   instanceInfo.role = role;
 
-  if (platform.substr(0, 3) === 'win') {
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     const procdumpArgs = [
       '-accepteula',
+      '-64',
       '-e',
+      '1',
+      '-f',
+      'bad_cast',
       '-ma',
       instanceInfo.pid,
       fs.join(rootDir, 'core.dmp')
@@ -1435,4 +1442,4 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
 Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
-Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashed});
+Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashed, set: () => serverCrashed});

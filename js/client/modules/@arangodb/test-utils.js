@@ -214,40 +214,48 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           }
         }
 
-        continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (pu.arangod.check.instanceAlive(instanceInfo, options)) {
+          continueTesting = true; 
 
-        // Check whether some collections were left behind, and if mark test as failed.
-        let collectionsAfter = [];
-        db._collections().forEach(collection => {
-          collectionsAfter.push(collection._name);
-        });
-        let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
-          return (name[0] !== '_'); // exclude system collections from the comparison
-        });
-
-        if (delta.length !== 0) {
-          results[te] = {
-            status: false,
-            message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
-          };
-          collectionsBefore = [];
+          // Check whether some collections were left behind, and if mark test as failed.
+          let collectionsAfter = [];
           db._collections().forEach(collection => {
-            collectionsBefore.push(collection._name);
+            collectionsAfter.push(collection._name);
           });
-        }
+          let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+            return (name[0] !== '_'); // exclude system collections from the comparison
+          });
 
-        let graphs = db._collection('_graphs');
-        if (graphs && graphs.count() !== graphCount) {
+          if (delta.length !== 0) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
+            };
+            collectionsBefore = [];
+            db._collections().forEach(collection => {
+              collectionsBefore.push(collection._name);
+            });
+          }
+
+          let graphs = db._collection('_graphs');
+          if (graphs && graphs.count() !== graphCount) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+                JSON.stringify(graphs.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+            graphCount = graphs.count();
+          }
+        } else {
+          continueTesting = false;
           results[te] = {
             status: false,
-            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-              JSON.stringify(graphs.toArray()) +
-              ' ] - Original test status: ' +
-              JSON.stringify(results[te])
+            message: 'server is dead.'
           };
-          graphCount = graphs.count();
         }
-
+        
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
           customInstanceInfos['alive'] = startStopHandlers.alive(options,
                                                                  serverOptions,

@@ -84,6 +84,7 @@ let optionsDocumentation = [
   '   - `writeXmlReport`:  Write junit xml report files',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
+  '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
   '   - `rr`: if set to true arangod instances are run with rr',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
@@ -162,7 +163,8 @@ const optionsDefaults = {
   'walFlushTimeout': 30000,
   'writeXmlReport': true,
   'testFailureText': 'testfailures.txt',
-  'testCase': undefined
+  'testCase': undefined,
+  'disableMonitor': false
 };
 
 const _ = require('lodash');

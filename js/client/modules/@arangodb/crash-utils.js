@@ -27,16 +27,20 @@
 
 const fs = require('fs');
 const yaml = require('js-yaml');
-const executeExternalAndWait = require('internal').executeExternalAndWait;
-const statusExternal = require('internal').statusExternal;
-const sleep = require('internal').sleep;
+const internal = require('internal');
+const executeExternalAndWait = internal.executeExternalAndWait;
+const statusExternal = internal.statusExternal;
+const killExternal = internal.killExternal;
+const sleep = internal.sleep;
+const pu = require('@arangodb/process-utils');
 
 let GDB_OUTPUT = '';
+const abortSignal = 6;
 
-const platform = require('internal').platform;
+const platform = internal.platform;
 
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief analyzes a core dump using gdb (Unix)
@@ -155,7 +159,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
   const args = [
     '-z',
     coreFN,
-    '-list',
+    '-lines',
     '-c',
     dbgCmds.join('; ')
   ];
@@ -165,6 +169,32 @@ function analyzeCoreDumpWindows (instanceInfo) {
   executeExternalAndWait('cdb', args);
 
   return 'cdb ' + args.join(' ');
+}
+
+function checkMonitorAlive (binary, arangod, options, res) {
+  if (arangod.hasOwnProperty('monitor') ) {
+    // Windows: wait for procdump to do its job...
+    if (!arangod.monitor.hasOwnProperty('status')) {
+      let rc = statusExternal(arangod.monitor.pid, false);
+      if (rc.status !== 'RUNNING') {
+        arangod.monitor = rc;
+        if (arangod.monitor.exit !== 0) {
+          // ok, procdump exited with a failure,
+          // this means it wrote an exception dump.
+          arangod.monitor.monitorExited = true;
+          arangod.monitor.pid = null;
+          pu.serverCrashed = true;
+          arangod['exitStatus'] = {};
+          analyzeCrash(binary, arangod, options, "the process monitor commanded error");
+          Object.assign(arangod.exitStatus,
+                        killExternal(arangod.pid, abortSignal));
+          return false;
+        }
+      }
+    }
+    else return arangod.monitor.exitStatus;
+  }
+  return true;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -185,7 +215,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
     var corePattern = fs.readBuffer(cpf);
     var cp = corePattern.asciiSlice(0, corePattern.length);
 
-    if (matchApport.exec(cp) != null) {
+    if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
       return;
     }
@@ -221,8 +251,9 @@ function analyzeCrash (binary, arangod, options, checkStr) {
 
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
-    // Windows: wait for procdump to do its job...
-    statusExternal(arangod.monitor, true);
+    if (arangod.monitor.pid !== null) {
+      arangod.monitor = statusExternal(arangod.monitor.pid, true);
+    }
     hint = analyzeCoreDumpWindows(arangod);
   } else if (platform === 'darwin') {
     // fs.copyFile(binary, storeArangodPath);
@@ -235,5 +266,6 @@ function analyzeCrash (binary, arangod, options, checkStr) {
 
 }
 
+exports.checkMonitorAlive = checkMonitorAlive;
 exports.analyzeCrash = analyzeCrash;
 Object.defineProperty(exports, 'GDB_OUTPUT', {get: () => GDB_OUTPUT});
