@@ -63,6 +63,7 @@ struct QueryOptions {
   ProfileLevel profile;
   bool allPlans;
   bool verbosePlans;
+  bool stream;
   bool silent;
   bool failOnWarning;
   bool cache;

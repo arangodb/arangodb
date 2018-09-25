@@ -1,7 +1,7 @@
-/* global AQL_QUERY_CACHE_PROPERTIES, AQL_QUERY_CACHE_INVALIDATE */
+/* global AQL_QUERY_CACHE_INVALIDATE, AQL_QUERY_CACHE_QUERIES, AQL_QUERY_CACHE_PROPERTIES */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief AQL query cache management
+// / @brief AQL query management
 // /
 // / @file
 // /
@@ -27,20 +27,14 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief invalidates the query cache
-// //////////////////////////////////////////////////////////////////////////////
-
+// / @brief clears the query cache
 exports.clear = function () {
   'use strict';
 
   AQL_QUERY_CACHE_INVALIDATE();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief fetches or sets the properties of the query cache
-// //////////////////////////////////////////////////////////////////////////////
-
+// / @brief fetches or sets the query cache properties
 exports.properties = function (properties) {
   'use strict';
 
@@ -48,4 +42,11 @@ exports.properties = function (properties) {
     return AQL_QUERY_CACHE_PROPERTIES(properties);
   }
   return AQL_QUERY_CACHE_PROPERTIES();
+};
+
+// / @brief returns the current queries
+exports.toArray = function () {
+  'use strict';
+
+  return AQL_QUERY_CACHE_QUERIES();
 };

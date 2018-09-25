@@ -30,10 +30,7 @@
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief clears the query cache
-// //////////////////////////////////////////////////////////////////////////////
-
 exports.clear = function () {
   var db = internal.db;
 
@@ -43,10 +40,7 @@ exports.clear = function () {
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief fetches or sets the query cache properties
-// //////////////////////////////////////////////////////////////////////////////
-
 exports.properties = function (properties) {
   var db = internal.db;
   var requestResult;
@@ -56,6 +50,19 @@ exports.properties = function (properties) {
   } else {
     requestResult = db._connection.GET('/_api/query-cache/properties');
   }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fetches the list of cached queries from the cache
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.toArray = function (properties) {
+  var db = internal.db;
+  var requestResult = db._connection.GET('/_api/query-cache/entries');
 
   arangosh.checkRequestResult(requestResult);
 

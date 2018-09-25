@@ -146,6 +146,7 @@ struct MasterInfo {
   int majorVersion{0};
   int minorVersion{0};
   TRI_voc_tick_t lastLogTick{0};
+  TRI_voc_tick_t lastUncommittedLogTick{0};
   bool active{false};
 
   explicit MasterInfo(ReplicationApplierConfiguration const& applierConfig);
