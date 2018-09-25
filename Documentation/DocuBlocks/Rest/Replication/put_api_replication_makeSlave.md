@@ -160,9 +160,6 @@ attributes:
     configuration. So the reported value may exaggerate the reality a bit for
     some scenarios. 
 
-  - *inSync*: this attribute will be present only if the applier is currently
-    running, and will be *true* if the value of *ticksBehind* is zero.
-
   - *time*: the time on the applier server.
 
   - *totalRequests*: the total number of requests the applier has made to the

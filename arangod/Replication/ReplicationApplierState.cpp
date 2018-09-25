@@ -152,7 +152,6 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     if (isTailing()) {
       TRI_voc_tick_t ticksBehind = _lastAvailableContinuousTick - std::max(_lastAppliedContinuousTick, _lastProcessedContinuousTick);
       result.add("ticksBehind", VPackValue(ticksBehind));
-      result.add("inSync", VPackValue(ticksBehind == 0));
     }
 
     // progress
