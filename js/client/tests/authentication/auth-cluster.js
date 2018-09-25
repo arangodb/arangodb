@@ -84,7 +84,7 @@ function AuthSuite() {
       // might take a little bit to appear in health
       let coordinators = getServersWithRole("CRDN");
       let maxTries = 100;
-      while (coordinators.length == 0 && maxTries-- > 0) {
+      while (coordinators.length === 0 && maxTries-- > 0) {
         coordinators = getServersWithRole("CRDN");
         wait(0.5);
       }
