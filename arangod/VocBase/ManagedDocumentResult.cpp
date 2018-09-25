@@ -44,12 +44,6 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack, LocalDocumentId con
   _managed = true;
 }
 
-void ManagedDocumentResult::setManagedAfterStringUsage(LocalDocumentId const& documentId) {
-  _vpack = nullptr;
-  _localDocumentId = documentId;
-  _managed = true;
-}
-
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
   uint8_t const* vpack;
   if (_managed) {

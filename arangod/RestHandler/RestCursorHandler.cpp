@@ -152,7 +152,6 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   TRI_ASSERT(_options != nullptr);
   VPackSlice opts = _options->slice();
 
-
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
   size_t batchSize =
       VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);

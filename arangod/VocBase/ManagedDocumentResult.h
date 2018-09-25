@@ -64,8 +64,14 @@ class ManagedDocumentResult {
 
   void setManaged(uint8_t const* vpack, LocalDocumentId const& documentId);
   
-  void setManagedAfterStringUsage(LocalDocumentId const& documentId);
-
+  std::string* setManaged(LocalDocumentId const& documentId) {
+    _string.clear();
+    _vpack = nullptr;
+    _localDocumentId = documentId;
+    _managed = true;
+    return &_string; 
+  }
+  
   inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
   
   void clear() noexcept {
@@ -73,10 +79,6 @@ class ManagedDocumentResult {
     _vpack = nullptr;
     _localDocumentId.clear();
     _managed = false;
-  }
-  
-  std::string* string() {
-    return &_string; 
   }
   
   inline uint8_t const* vpack() const {

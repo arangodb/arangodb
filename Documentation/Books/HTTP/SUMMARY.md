@@ -26,7 +26,7 @@
   * [Query Results](AqlQueryCursor/QueryResults.md)
   * [Accessing Cursors](AqlQueryCursor/AccessingCursors.md)
 * [AQL Queries](AqlQuery/README.md)
-* [AQL Query Cache](AqlQueryCache/README.md)
+* [AQL Query Results Cache](AqlQueryCache/README.md)
 * [AQL User Functions Management](AqlUserFunctions/README.md)
 * [Simple Queries](SimpleQuery/README.md)
 * [Async Result Handling](AsyncResultsManagement/README.md)

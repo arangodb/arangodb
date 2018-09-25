@@ -292,7 +292,7 @@ bool RestAqlHandler::registerSnippets(
     query->setTransactionContext(ctx);
 
     try {
-      query->prepare(_queryRegistry, 0);
+      query->prepare(_queryRegistry);
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)
           << "failed to instantiate the query: " << ex.what();
@@ -427,7 +427,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   );
 
   try {
-    query->prepare(_queryRegistry, 0);
+    query->prepare(_queryRegistry);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed to instantiate the query: " << ex.what();
@@ -510,6 +510,13 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 // special API.
 RestStatus RestAqlHandler::useQuery(std::string const& operation,
                                     std::string const& idString) {
+  
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
+    return RestStatus::DONE;
+  }
+  
   // the PUT verb
   Query* query = nullptr;
   if (findQuery(idString, query)) {
@@ -517,14 +524,8 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   }
 
   TRI_ASSERT(_qId > 0);
+  TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->engine() != nullptr);
-  TRI_DEFER(try { _queryRegistry->close(&_vocbase, _qId); } catch (...) { /* ignore errors */ });
-
-  bool success = false;
-  VPackSlice querySlice = this->parseVPackBody(success);
-  if (!success) {
-    return RestStatus::DONE;
-  }
 
   try {
     return handleUseQuery(operation, query, querySlice);
@@ -675,9 +676,14 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                           VPackSlice const querySlice) {
+  
+  auto closeGuard = scopeGuard([this] {
+    _queryRegistry->close(&_vocbase, _qId);
+  });
+  
   auto self = shared_from_this();
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler([this, self, ss]() {
+  ss->setContinueHandler([this, self = std::move(self), ss]() {
     continueHandlerExecution();
   });
 
@@ -813,6 +819,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
 
         // return the query to the registry
         _queryRegistry->close(&_vocbase, _qId);
+        closeGuard.cancel();
 
         // delete the query from the registry
         _queryRegistry->destroy(&_vocbase, _qId, errorCode);
