@@ -82,6 +82,7 @@ $ update-rc.d -f arangodb3 remove
 **Important**: Maintenance mode is supported from versions 3.3.8/3.2.14.
 
 You have two main choices when performing an upgrade of the Active-Failover setup: 
+
 - Upgrade while incurring a leader to follower switch (with reduced down-time) 
 - An upgrade with no leader follower switch. 
 
