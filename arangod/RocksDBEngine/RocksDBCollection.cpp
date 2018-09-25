@@ -857,8 +857,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   resultMarkerTick = 0;
 
   LocalDocumentId const documentId = LocalDocumentId::create();
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   Result res(newObjectForInsert(trx, slice, isEdgeCollection,
