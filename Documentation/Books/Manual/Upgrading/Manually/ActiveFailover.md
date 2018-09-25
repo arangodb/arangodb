@@ -4,7 +4,7 @@ Manually Upgrading an _Active Failover_ Deployment
 This page will guide you through the process of a manual upgrade of a [_Active Failover_](../../Architecture/DeploymentModes/ActiveFailover/README.md)
 setup. The different nodes can be upgraded one at a time without
 incurring a _prolonged_ downtime of the entire system. The downtimes of the individual nodes
-should also stay fairly.
+should also stay fairly low.
 
 The manual upgrade procedure described in this _Section_ can be used to upgrade
 to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
