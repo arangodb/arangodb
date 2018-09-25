@@ -290,11 +290,6 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
 
-
-
-  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
-  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
-
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
 
@@ -307,6 +302,9 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
+  
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
+  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
   return IndexResult(status.errorNumber(), this);

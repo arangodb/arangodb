@@ -1,7 +1,7 @@
-'use strict';
+/* global AQL_QUERY_CACHE_INVALIDATE, AQL_QUERY_CACHE_QUERIES, AQL_QUERY_CACHE_PROPERTIES */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief AQL query cache management
+// / @brief AQL query management
 // /
 // / @file
 // /
@@ -27,44 +27,26 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
-
 // / @brief clears the query cache
 exports.clear = function () {
-  var db = internal.db;
+  'use strict';
 
-  var requestResult = db._connection.DELETE('/_api/query-cache');
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
+  AQL_QUERY_CACHE_INVALIDATE();
 };
 
 // / @brief fetches or sets the query cache properties
 exports.properties = function (properties) {
-  var db = internal.db;
-  var requestResult;
+  'use strict';
 
   if (properties !== undefined) {
-    requestResult = db._connection.PUT('/_api/query-cache/properties', properties);
-  } else {
-    requestResult = db._connection.GET('/_api/query-cache/properties');
+    return AQL_QUERY_CACHE_PROPERTIES(properties);
   }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
+  return AQL_QUERY_CACHE_PROPERTIES();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief fetches the list of cached queries from the cache
-// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the current queries
+exports.toArray = function () {
+  'use strict';
 
-exports.toArray = function (properties) {
-  var db = internal.db;
-  var requestResult = db._connection.GET('/_api/query-cache/entries');
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
+  return AQL_QUERY_CACHE_QUERIES();
 };

@@ -41,6 +41,7 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
+  TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     context.installHup();

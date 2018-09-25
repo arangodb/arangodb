@@ -500,8 +500,9 @@ Result syncChunkRocksDB(
                                       resultTick, false, revisionId);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) { // WTF ?!!
+              res.errorMessage() > keySlice.copyString()) { 
             // remove conflict and retry
+            // errorMessage() is this case contains the conflicting key
             auto inner = removeConflict(res.errorMessage());
             if (inner.fail()) {
               return res;
@@ -525,8 +526,9 @@ Result syncChunkRocksDB(
                                        false, prevRev, previous);
         if (res.fail()) {
           if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) { // WTF!?
+              res.errorMessage() > keySlice.copyString()) { 
             // remove conflict and retry
+            // errorMessage() is this case contains the conflicting key
             auto inner = removeConflict(res.errorMessage());
             if (inner.fail()) {
               return res;

@@ -48,7 +48,7 @@ function CollectionBinaryDocumentSuite () {
   return {
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn);
     },
 
     tearDown : function () {
@@ -61,7 +61,11 @@ function CollectionBinaryDocumentSuite () {
     },
 
     testBinaryDocument : function () {
-      const filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
+      let filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
+      if (!fs.exists(filename1)) {
+        // look for version-specific file
+        filename1 = path.resolve('js/' + db._version().replace(/-.*$/, '') + '/apps/system/_admin/aardvark/APP/frontend/img/arangodb_logo_letter.png'.split('/').join(path.sep));
+      }
       const content = fs.readFileSync(filename1);
 
       const d1 = collection._binaryInsert({_key: "test", meta: "hallo"}, filename1);

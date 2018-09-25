@@ -66,7 +66,7 @@ arangodb::Result handleMasterStateResponse(
   }
 
   // state."lastLogTick"
-  Slice const tick = state.get("lastLogTick");
+  Slice tick = state.get("lastLogTick");
   if (!tick.isString()) {
     return Result(
         TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -78,6 +78,14 @@ arangodb::Result handleMasterStateResponse(
   if (lastLogTick == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("lastLogTick is 0 in response") + endpointString);
+  }
+  
+  // state."lastUncommittedLogTick"
+  TRI_voc_tick_t lastUncommittedLogTick = lastLogTick;
+  tick = state.get("lastUncommittedLogTick");
+  if (tick.isString()) {
+    lastUncommittedLogTick =
+        arangodb::basics::VelocyPackHelper::stringUInt64(tick);
   }
 
   // state."running"
@@ -152,13 +160,16 @@ arangodb::Result handleMasterStateResponse(
   master.minorVersion = minor;
   master.serverId = masterId;
   master.lastLogTick = lastLogTick;
+  master.lastUncommittedLogTick = lastUncommittedLogTick;
   master.active = running;
   master.engine = engineString;
 
   LOG_TOPIC(INFO, arangodb::Logger::REPLICATION)
       << "connected to master at " << master.endpoint << ", id "
       << master.serverId << ", version " << master.majorVersion << "."
-      << master.minorVersion << ", last log tick " << master.lastLogTick << ", engine " 
+      << master.minorVersion << ", last log tick " 
+      << master.lastLogTick << ", last uncommitted log tick " 
+      << master.lastUncommittedLogTick << ", engine " 
       << master.engine;
 
   return Result();

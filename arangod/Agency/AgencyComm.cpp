@@ -1762,7 +1762,6 @@ bool AgencyComm::tryInitializeStructure() {
       VPackObjectBuilder c(&builder);
       builder.add("LatestID", VPackValue(1));
       builder.add("UserVersion", VPackValue(1));
-      addEmptyVPackObject("ServerStates", builder);
       builder.add("HeartbeatIntervalMs", VPackValue(1000));
     }
 
