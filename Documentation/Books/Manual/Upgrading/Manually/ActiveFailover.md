@@ -81,13 +81,16 @@ $ update-rc.d -f arangodb3 remove
 
 **Important**: Maintenance mode is supported from versions 3.3.8/3.2.14.
 
-You have to main choices when performing an upgrade of the Active-Failover setup: Upgrade while incurring
-a leader to follower switch (with reduced down-time) or an upgrade with no leader follower switch. 
-Turning the maintenance mode _on_ will enable the latter case. You might have a short amount of downtime during the leader upgrade,
-but there will be no potential loss of _acknowledged_ operations. 
+You have two main choices when performing an upgrade of the Active-Failover setup: 
+- Upgrade while incurring a leader to follower switch (with reduced down-time) 
+- An upgrade with no leader follower switch. 
 
-To enable the maintenance mode means to essentially disable the Agency supervision for a limited amount of time during
-the upgrade procedure. The following API calls will activate and de-activate the Maintenance mode of the Supervision job:
+Turning the maintenance mode _on_ will enable the latter case. You might have a short amount of 
+downtime during the leader upgrade, but there will be no potential loss of _acknowledged_ operations. 
+
+To enable the maintenance mode means to essentially disable the Agency supervision for a limited amount 
+of time during the upgrade procedure. The following API calls will 
+activate and de-activate the Maintenance mode of the Supervision job:
 
 You might use _curl_ to send the API call.
 
