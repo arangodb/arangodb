@@ -27,8 +27,32 @@ The response is a JSON object with the following attributes:
     until the applier encounters the *transaction commit* log event for the
     transaction.
 
-  - *lastAvailableContinuousTick*: the last tick value the logger server can
-    provide.
+  - *lastAvailableContinuousTick*: the last tick value the remote server can
+    provide, for all databases.
+
+  - *ticksBehind*: this attribute will be present only if the applier is currently
+    running. It will provide the number of log ticks between what the applier
+    has applied/seen and the last log tick value provided by the remote server.
+    If this value is zero, then both servers are in sync. If this is non-zero,
+    then the remote server has additional data that the applier has not yet
+    fetched and processed, or the remote server may have more data that is not
+    applicable to the applier.
+
+    Client applications can use it to determine approximately how far the applier
+    is behind the remote server, and can periodically check if the value is 
+    increasing (applier is falling behind) or decreasing (applier is catching up).
+    
+    Please note that as the remote server will only keep one last log tick value 
+    for all of its databases, but replication may be restricted to just certain 
+    databases on the applier, this value is more meaningful when the global applier 
+    is used.
+    Additionally, the last log tick provided by the remote server may increase
+    due to writes into system collections that are not replicated due to replication
+    configuration. So the reported value may exaggerate the reality a bit for
+    some scenarios. 
+
+  - *inSync*: this attribute will be present only if the applier is currently
+    running, and will be *true* if the value of *ticksBehind* is zero.
 
   - *time*: the time on the applier server.
 
