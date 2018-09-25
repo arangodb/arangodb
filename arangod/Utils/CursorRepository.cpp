@@ -310,6 +310,7 @@ bool CursorRepository::garbageCollect(bool force) {
       }
 
       if (force || cursor->expires() < now) {
+        cursor->kill();
         cursor->deleted();
       }
 

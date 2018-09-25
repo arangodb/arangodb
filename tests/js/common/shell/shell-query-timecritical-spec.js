@@ -140,6 +140,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
       expect(queries[0]).to.have.property('state', 'executing');
+      expect(queries[0]).to.have.property('stream', false);
     });
     
     it('should have proper running query descriptions, without bind vars', function () {
@@ -156,6 +157,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
       expect(queries[0]).to.have.property('state', 'executing');
+      expect(queries[0]).to.have.property('stream', false);
     });
 
     it('should not track queries if turned off', function () {
@@ -206,6 +208,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
       expect(queries[0]).to.have.property('state', 'finished');
+      expect(queries[0]).to.have.property('stream', false);
     });
 
     it('should be able to clear the list of slow queries', function () {
