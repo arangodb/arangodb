@@ -1,56 +1,18 @@
 HTTP Interface for Agency feature
 =================================
 
-### Configuration
+The Agency is the ArangoDB component which manages the entire ArangoDB cluster. ArangoDB itself mainly uses the Agency as a central place to store the configuration and the cluster nodes health management. It implements the Raft concensus protocol to act as the single-source of truth for the entire cluster. You may know other software providing similar functionality e.g. Apache Zookeeper, etcd or Consul.
 
-At all times, i.e. regardless of the state of the agents and the current health of the RAFT consensus, one can invoke the configuration API:
+To an end-user the Agency is essentially a fault-tolerant Key-Value Store with a simple REST-API. It is possible to use the Agency API for a variety of use-cases, for example:
 
-    curl http://$SERVER:$PORT/_api/agency/config
+Centralized configuration repository
+Service discovery registry
+Distributed synchronization service
+Distributed Lock-Manager
 
-Here, and in all subsequent calls, we assume that `$SERVER` is
-replaced by the server name and `$PORT` is replaced by the port
-number. We use `curl` throughout for the examples, but any client
-library performing HTTP requests should do.
-The output might look somewhat like this
+Note 1: To access the Agency API with authentication enabled, you need to include an authorization header with every request. The authorization header must contain a superuser JWT Token; For more information see the authentication section.
 
-```js
-{
-  "term": 1,
-  "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
-  "lastCommitted": 1,
-  "lastAcked": {
-    "ac129027-b440-4c4f-84e9-75c042942171": 0.21,
-    "c54dbb8a-723d-4c82-98de-8c841a14a112": 0.21,
-    "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": 0
-  },
-  "configuration": {
-    "pool": {
-      "ac129027-b440-4c4f-84e9-75c042942171": "tcp://localhost:8531",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112": "tcp://localhost:8530",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": "tcp://localhost:8529"
-    },
-    "active": [
-      "ac129027-b440-4c4f-84e9-75c042942171",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98"
-    ],
-    "id": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
-    "agency size": 3,
-    "pool size": 3,
-    "endpoint": "tcp://localhost:8529",
-    "min ping": 0.5,
-    "max ping": 2.5,
-    "supervision": false,
-    "supervision frequency": 5,
-    "compaction step size": 1000,
-    "supervision grace period": 120
-  }
-}
-```
-
-This is the actual output of a healthy agency. The configuration of the agency is found in the `configuration` section as you might have guessed. It is populated by static information on the startup parameters like `agency size`, the once generated `unique id` etc. It holds information on the invariants of the RAFT algorithm and data compaction.
-
-The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environemnt, while often increasing term numbers indicate, that the network environemnt and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
+Note 2: The key-prefix /arango contains ArangoDBs internal configuration. You should never change any values below the arango key.
 
 ### Key-Value store APIs
 
@@ -381,3 +343,54 @@ The notifying POST requests are submitted immediately with any complete array of
     "/constants/euler" : {"op": "create", "new": 2.718281828459046 },
     "/constants/pi": { "op": "delete" } } }
 ```
+
+### Configuration
+
+At all times, i.e. regardless of the state of the agents and the current health of the RAFT consensus, one can invoke the configuration API:
+
+curl http://$SERVER:$PORT/_api/agency/config
+
+Here, and in all subsequent calls, we assume that `$SERVER` is
+replaced by the server name and `$PORT` is replaced by the port
+number. We use `curl` throughout for the examples, but any client
+library performing HTTP requests should do.
+The output might look somewhat like this
+
+```js
+{
+  "term": 1,
+  "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
+  "lastCommitted": 1,
+  "lastAcked": {
+    "ac129027-b440-4c4f-84e9-75c042942171": 0.21,
+    "c54dbb8a-723d-4c82-98de-8c841a14a112": 0.21,
+    "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": 0
+  },
+  "configuration": {
+    "pool": {
+      "ac129027-b440-4c4f-84e9-75c042942171": "tcp://localhost:8531",
+      "c54dbb8a-723d-4c82-98de-8c841a14a112": "tcp://localhost:8530",
+      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": "tcp://localhost:8529"
+    },
+    "active": [
+      "ac129027-b440-4c4f-84e9-75c042942171",
+      "c54dbb8a-723d-4c82-98de-8c841a14a112",
+      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98"
+    ],
+    "id": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
+    "agency size": 3,
+    "pool size": 3,
+    "endpoint": "tcp://localhost:8529",
+    "min ping": 0.5,
+    "max ping": 2.5,
+    "supervision": false,
+    "supervision frequency": 5,
+    "compaction step size": 1000,
+    "supervision grace period": 120
+  }
+}
+```
+
+This is the actual output of a healthy agency. The configuration of the agency is found in the `configuration` section as you might have guessed. It is populated by static information on the startup parameters like `agency size`, the once generated `unique id` etc. It holds information on the invariants of the RAFT algorithm and data compaction.
+
+The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environemnt, while often increasing term numbers indicate, that the network environemnt and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.

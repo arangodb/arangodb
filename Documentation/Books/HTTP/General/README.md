@@ -160,7 +160,22 @@ built-in dialog.
 
 ### Authentication via JWT
 
-To authenticate via JWT you must first obtain a JWT. To do so send a POST request to
+ArangoDB uses a standard JWT based authentication method. 
+To authenticate via JWT you must first obtain a JWT token with a signature generated via HMAC with SHA-256. 
+The secret may either be set using `--server.jwt-secret` or will be randomly generated upon server startup.
+
+For more information on JWT please consult RFC7519 and https://jwt.io
+
+
+#### User JWT-Token
+
+To authenticate with a specific user you need to supply a JWT token containing
+the _preferred_username_ field with the username. 
+You can either let ArangoDB generate this token for you via an API call
+or you can generate it yourself (only if you know the JWT secret).
+
+ArangoDB offers a REST API to generate user tokens for you if you know the username and password. 
+To do so send a POST request to
 
 */_open/auth*
 
@@ -181,12 +196,46 @@ This JWT should then be used within the Authorization HTTP header in subsequent 
 Authorization: bearer eyJhbGciOiJIUzI1NiI..x6EfI
 ```
 
-Please note that the JWT will expire after 1 month and needs to be updated.
+Please note that the JWT will expire after 1 month and needs to be updated. We encode the expiration
+date of the JWT token in the _exp_ field in unix time.
+Please note that all JWT tokens must contain the _iss_ field with string value `arangodb`.
+As an example the decoded JWT body would look like this:
 
-ArangoDB uses a standard JWT authentication. The secret may either be set using
-`--server.jwt-secret` or will be randomly generated upon server startup.
+```json
+{
+"exp": 1540381557,
+"iat": 1537789.55727901,
+"iss": "arangodb",
+"preferred_username": "root"
+}
+```
 
-For more information on JWT please consult RFC7519 and https://jwt.io
+#### Superuser JWT-Token
+
+To access specific internal APIs as well as Agency and DBServer instances a token generated via `/open/auth` is not 
+good enough. For these special APIs you will need to generate a special JWT token which grants superuser access.
+Note that using superuser access for normal database operations is **NOT advised**.
+
+_Note_: It is only possible to generate this JWT token with the knowledge of the JWT secret.
+
+Should you whish to generate the JWT token yourself with a tool of your choice, you need to include the correct body.
+The body must contain the _iss_ field with string value `arangodb` and the `server_id` field with an arbirtrary string identifier:
+
+```json
+{
+"exp": 1537900279,
+"iat": 1537800279,
+"iss": "arangodb",
+"server_id": "myclient"
+}
+```
+
+For example to generate a token via the [jwtgen tool](https://www.npmjs.com/package/jwtgen) (note the lifetime of one hour):
+
+```
+jwtgen -s <my-secret> -e 3600 -v -a "HS256" -c 'iss=arangodb' -c 'server_id=myclient'
+curl -v -H "Authorization: bearer $(jwtgen -s <my-secret> -e 3600 -a "HS256" -c 'iss=arangodb' -c 'server_id=myclient')" http://<database-ip>:8529/_api/version
+```
 
 Error Handling
 --------------
