@@ -1,6 +1,8 @@
 v3.4.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* added more AQL query results cache inspection and control functionality
+
 * the query editor within the web ui is now catching http 501 responses
   propertly.
 

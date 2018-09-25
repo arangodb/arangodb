@@ -4353,8 +4353,7 @@ SECTION("IResearchViewNode::createBlock") {
       nullptr, arangodb::velocypack::Parser::fromJson("{}"),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
-
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
     arangodb::aql::Variable const outVariable("variable", 0);
 
     arangodb::iresearch::IResearchViewNode node(
