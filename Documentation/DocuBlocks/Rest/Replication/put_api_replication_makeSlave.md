@@ -205,6 +205,10 @@ attributes:
 - *database*: the name of the database the applier is connected to (if applier is
   active) or will connect to (if applier is currently inactive)
 
+Please note that all "tick" values returned do not have a specific unit. Tick
+values are only meaningful when compared to each other. Higher tick values mean
+"later in time" than lower tick values.
+
 WARNING: calling this method will sychronize data from the collections found
 on the remote master to the local ArangoDB database. All data in the local
 collections will be purged and replaced with data from the master.
