@@ -1512,7 +1512,7 @@ int IResearchView::insert(
     auto doc = store->_writer->documents().insert();
     insertDocument(doc, body, cid, documentId.id());
 
-    if (!doc.valid()) {
+    if (doc.valid()) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1584,24 +1584,27 @@ int IResearchView::insert(
 
   auto begin = batch.begin();
   auto const end = batch.end();
-  auto segment = store->_writer->documents();
 
   try {
-    for (FieldIterator body; begin != end; ++begin) {
-      body.reset(begin->second, meta);
+    {
+      auto segment = store->_writer->documents();
 
-      if (!body.valid()) {
-        // find first valid document
-        continue;
-      }
+      for (FieldIterator body; begin != end; ++begin) {
+        body.reset(begin->second, meta);
 
-      auto doc = segment.insert();
-      insertDocument(doc, body, cid, begin->first.id());
+        if (!body.valid()) {
+          // find first valid document
+          continue;
+        }
 
-      if (!doc.valid()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
-        return TRI_ERROR_INTERNAL;
+        auto doc = segment.insert();
+        insertDocument(doc, body, cid, begin->first.id());
+
+        if (!doc.valid()) {
+          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
+          return TRI_ERROR_INTERNAL;
+        }
       }
     }
 
@@ -1728,6 +1731,17 @@ void IResearchView::open() {
     auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
 
     if (format) {
+      if (!_storePersisted._path.mkdir()) {
+        // check errno
+        TRI_SYSTEM_ERROR();
+
+        throw std::runtime_error(
+          std::string("failed to create data directory for iResearch view '") + name()
+            + "' at: '" + _storePersisted._path.utf8()
+            + "' error: '" + std::to_string(errno) + "'"
+        );
+      }
+
       _storePersisted._directory =
         irs::directory::make<irs::mmap_directory>(_storePersisted._path.utf8());
 
