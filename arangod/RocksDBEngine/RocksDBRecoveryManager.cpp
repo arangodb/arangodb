@@ -416,8 +416,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                 const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
-    // drop and truncate may use this, but we do not look at these ourselves
-    // TODO: need to clear counts and index estimates?
+    // drop and truncate can use this, truncate is handled via a Log marker
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
@@ -443,10 +442,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBLogValue::objectId(blob);
         auto const& it = deltas.find(objectId);
         
-        LOG_DEVEL << "found truncate at " << currentSeqNum;
         if (it != deltas.end() &&
             it->second.startSequenceNumber <= currentSeqNum) {
-          LOG_DEVEL << "applying it";
           it->second.removed = 0;
           it->second.added = 0;
           it->second.mustTruncate = true;
@@ -455,8 +452,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             // We track estimates for this index
             est->bufferTruncate(currentSeqNum + 1);
           }
-        } else if (it != deltas.end()) {
-          LOG_DEVEL << "skipping it, supposedly already buffered" << it->second.startSequenceNumber;
         }
         _lastRemovedDocRid = 0; // reset in any other case
         break;

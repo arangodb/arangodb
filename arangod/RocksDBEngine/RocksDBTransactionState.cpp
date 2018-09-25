@@ -503,15 +503,12 @@ Result RocksDBTransactionState::addOperation(
   tcoll->addOperation(operationType, revisionId);
 
   // clear the query cache for this collection
-  if (arangodb::aql::QueryCache::instance()->mayBeActive()) {
-    arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, tcoll->collectionName()
-    );
+  auto queryCache = arangodb::aql::QueryCache::instance();
+  if (queryCache->mayBeActive()) {
+    queryCache->invalidate(&_vocbase,tcoll->collectionName());
   }
 
   switch (operationType) {
-    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-      break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       ++_numInserts;
       break;
@@ -521,6 +518,8 @@ Result RocksDBTransactionState::addOperation(
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       ++_numRemoves;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
   }
 

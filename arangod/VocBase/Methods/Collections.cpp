@@ -510,7 +510,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
+  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 300.0);
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
