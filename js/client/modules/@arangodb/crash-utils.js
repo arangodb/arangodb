@@ -251,6 +251,11 @@ function analyzeCrash (binary, arangod, options, checkStr) {
 
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
+    if (!arangod.hasOwnProperty['montior']) {
+      print("your process wasn't monitored by procdump, won't have a coredump!")
+      arangod.exitStatus['gdbHint'] = "coredump unavailable";
+      return;
+    }
     if (arangod.monitor.pid !== null) {
       arangod.monitor = statusExternal(arangod.monitor.pid, true);
     }
