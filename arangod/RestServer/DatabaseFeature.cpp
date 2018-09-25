@@ -633,16 +633,21 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 namespace {
 Result dropAllViews(TRI_vocbase_t& vocbase){
   Result rv;
+  Result tmprv;
   if (::arangodb::ServerState::instance()->isCoordinator()) {
     auto views = ClusterInfo::instance()->getViews(vocbase.name());
     for (auto const& v : views) {
-      rv = v->drop(); // should just prepare drop
-      if (rv.fail()) { break; }
+      tmprv = v->drop(); // should just prepare drop
+      if (tmprv.fail() && rv.ok()) {
+        rv = tmprv;
+      }
     }
   } else {
     for (auto& v: vocbase.views()) {
-      rv = v->drop(); // should just prepare drop
-      if (rv.fail()) { break; }
+      tmprv = v->drop(); // should just prepare drop
+      if (tmprv.fail() && rv.ok()) {
+        rv = tmprv;
+      }
     }
   }
   return rv;
@@ -698,7 +703,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     TRI_ASSERT(!vocbase->isSystem());
 
     #if USE_IRESEARCH
-      dropAllViews(*vocbase);
+    auto rv = dropAllViews(*vocbase);
+    TRI_ASSERT(rv.ok()); // TODO - How should a fail here impact
+                         //        subsequent code?
     #endif
 
     bool result = vocbase->markAsDropped();
