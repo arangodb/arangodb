@@ -1544,7 +1544,7 @@ SECTION("test_cid_rid_encoding") {
       CHECK((doc.insert(irs::action::index, field)));
       arangodb::iresearch::DocumentPrimaryKey const primaryKey(cid, rid);
       CHECK(doc.insert(irs::action::store, primaryKey));
-      CHECK(doc.valid());
+      CHECK(doc);
     }
     writer->commit();
 
@@ -1652,7 +1652,7 @@ SECTION("test_appendKnownCollections") {
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
-      CHECK(doc.valid());
+      CHECK(doc);
     }
     writer->commit();
 
@@ -1681,7 +1681,7 @@ SECTION("test_appendKnownCollections") {
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
-      CHECK(doc.valid());
+      CHECK(doc);
     }
     writer->commit();
 
@@ -1737,7 +1737,7 @@ SECTION("test_visitReaderCollections") {
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
-      CHECK(doc.valid());
+      CHECK(doc);
     }
     writer->commit();
 
@@ -1767,7 +1767,7 @@ SECTION("test_visitReaderCollections") {
     {
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::index, field));
-      CHECK(doc.valid());
+      CHECK(doc);
     }
     writer->commit();
 

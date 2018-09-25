@@ -903,12 +903,12 @@ void postings_writer::end() {
   format_utils::write_footer(*doc.out);
   doc.out.reset(); // ensure stream is closed
 
-  if (pos_) {
+  if (pos_ && pos_->out) { // check both for the case where the writer is reused
     format_utils::write_footer(*pos_->out);
     pos_->out.reset(); // ensure stream is closed
   }
 
-  if (pay_) {
+  if (pay_ && pay_->out) { // check both for the case where the writer is reused
     format_utils::write_footer(*pay_->out);
     pay_->out.reset(); // ensure stream is closed
   }

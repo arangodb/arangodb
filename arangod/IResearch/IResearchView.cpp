@@ -1512,7 +1512,7 @@ int IResearchView::insert(
     auto doc = store->_writer->documents().insert();
     insertDocument(doc, body, cid, documentId.id());
 
-    if (doc.valid()) {
+    if (doc) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1600,7 +1600,7 @@ int IResearchView::insert(
         auto doc = segment.insert();
         insertDocument(doc, body, cid, begin->first.id());
 
-        if (!doc.valid()) {
+        if (!doc) {
           LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
             << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
           return TRI_ERROR_INTERNAL;

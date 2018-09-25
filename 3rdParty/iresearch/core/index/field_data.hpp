@@ -123,6 +123,14 @@ class IRESEARCH_API fields_data: util::noncopyable {
   fields_data();
 
   field_data& get(const hashed_string_ref& name);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return approximate amount of memory size occupied by this instance
+  //////////////////////////////////////////////////////////////////////////////
+  size_t memory() const NOEXCEPT {
+    return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
+  }
+
   size_t size() const { return fields_.size(); }
   fields_data& operator+=(const flags& features) {
     features_ |= features;

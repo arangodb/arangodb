@@ -41,6 +41,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -54,6 +55,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -67,6 +69,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -80,6 +83,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -123,6 +127,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -136,6 +141,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -149,6 +155,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -162,6 +169,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -175,6 +183,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -188,6 +197,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
@@ -205,6 +215,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -217,6 +228,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -229,6 +241,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -241,6 +254,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -253,6 +267,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -265,6 +280,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -281,6 +297,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -293,6 +310,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -305,6 +323,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -317,6 +336,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -329,6 +349,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -341,6 +362,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - CXX_STANDARD=11
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -358,6 +380,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - CXX_STANDARD=14
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -371,6 +394,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - CXX_STANDARD=14
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -384,6 +408,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - CXX_STANDARD=14
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -397,6 +422,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - CXX_STANDARD=14
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -410,6 +436,8 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - CXX_STANDARD=14
+        - CXX_STANDARD=14
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -423,6 +451,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - CXX_STANDARD=14
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -440,6 +469,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CXX_STANDARD=17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -453,6 +483,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -466,6 +497,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -479,6 +511,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CXX_STANDARD=17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -492,6 +525,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CXX_STANDARD=17
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -505,6 +539,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CXX_STANDARD=17
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -707,7 +742,7 @@ before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
   ############################################################################
-  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
+  - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_CXX_STANDARD=${CXX_STANDARD} -DUSE_TESTS=On" ${BUILD_PYRESEARCH}
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
 

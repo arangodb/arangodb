@@ -30,6 +30,12 @@ set(IResearchTests_INCLUDE_DIR
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  set(IReSearch_tests_optimized_sources
+    ./store/store_utils_optimized_tests.cpp
+  )
+endif()
+
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
@@ -195,7 +201,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-  ${ATOMIC_LIBRARY}
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
@@ -203,7 +208,6 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-static
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
-  ${ATOMIC_LIBRARY}
 )
 
 # setup CRT

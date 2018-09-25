@@ -12,6 +12,12 @@ if (NOT IResearch_version_patch)
   set(IResearch_version_patch "0")
 endif()
 
+# set libatomic library 
+# (not available on Windows and Mac)
+if (NOT MSVC AND NOT APPLE)
+  set(ATOMIC_LIBRARY atomic)
+endif()
+
 # set required standard version
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -69,6 +75,12 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  set(IResearch_core_optimized_sources
+    ./store/store_utils_optimized.cpp
+  )
+endif()
+
 set(IResearch_core_sources
   ./utils/string.cpp 
   ./analysis/analyzer.cpp
@@ -125,7 +137,6 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp 
   ./store/store_utils.cpp 
-  ./store/store_utils_optimized.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp 
   ./utils/bit_packing.cpp 
@@ -149,6 +160,7 @@ set(IResearch_core_sources
   ./utils/cpuinfo.cpp
   ./utils/numeric_utils.cpp
   ${IResearch_core_os_specific_sources}
+  ${IResearch_core_optimized_sources}
 )
 
 set(IResearch_core_headers
@@ -463,6 +475,11 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
+if (USE_OPTIMIZE_FOR_ARCHITECTURE)
+  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+  set(SIMD_LIBRARY_STATIC "simdcomp-static")
+endif()
+
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${BFD_SHARED_LIBS}
@@ -473,7 +490,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
-  simdcomp-shared
+  ${SIMD_LIBRARY_SHARED}
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -489,7 +506,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
-  simdcomp-static
+  ${SIMD_LIBRARY_STATIC}
 )
 
 # setup CRT
@@ -1005,6 +1022,7 @@ target_link_libraries(${shared_format_library_name}
 
 target_link_libraries(${static_format_library_name}
   ${IResearch_TARGET_NAME}-static
+  ${ATOMIC_LIBRARY}
   ${FORMAT_10_EXTRA_LIBS_STATIC}
 )
 

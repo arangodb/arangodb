@@ -197,7 +197,6 @@ bool add_document_mask_modified_records(
 /// @brief mask documents created by updates which did not have any matches
 /// @return if any new records were added (modification_queries_ modified)
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T> // required to access private struct segment_context
 bool add_document_mask_unused_updates(
     irs::index_writer::segment_context& segment, // where to apply document removals to
     irs::doc_id_t min_doc_id // staring doc_id in 'segment_writer::doc_contexts' that should be considered in the range [min_doc_id, uncomitted_document_contexts_)
@@ -210,7 +209,6 @@ bool add_document_mask_unused_updates(
   assert(segment.writer_);
   auto& writer = *(segment.writer_);
 
-  assert(min_doc_id < writer.docs_cached());
   assert(min_doc_id <= segment.uncomitted_doc_ids_);
   assert(segment.uncomitted_doc_ids_ <= writer.docs_cached());
 
@@ -420,8 +418,12 @@ index_writer::documents_context::document::document(
   assert(ctx);
   assert(segment_);
   assert(segment_->writer_);
+  assert(segment->uncomitted_doc_ids_ <= segment_->writer_->docs_cached());
   segment_->busy_ = true; // guarded by flush_context::flush_mutex_
-  segment_->writer_->begin(update);
+  segment_->writer_->begin(
+    update,
+    segment_->writer_->docs_cached() - segment->uncomitted_doc_ids_ // ensure reset() will be noexcept
+  );
   segment_->buffered_docs.store(segment_->writer_->docs_cached());
 }
 
@@ -443,7 +445,7 @@ index_writer::documents_context::document::~document() {
     segment_->writer_->rollback();
   }
 
-  if (!valid() && update_id_ != NON_UPDATE_RECORD) {
+  if (!*this && update_id_ != NON_UPDATE_RECORD) {
     segment_->modification_queries_[update_id_].filter = nullptr; // mark invalid
   }
 
@@ -460,8 +462,34 @@ index_writer::documents_context::~documents_context() {
   }
 }
 
-void index_writer::documents_context::reset() {
-  // FIXME TODO implement full rollback
+void index_writer::documents_context::reset() NOEXCEPT {
+  for (auto& segment: segments_) {
+    auto& ctx = segment.ctx();
+
+    if (!ctx || !ctx->writer_) {
+      continue; // nothing to reset
+    }
+
+    auto& writer = *(ctx->writer_);
+
+    assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
+
+    // rollback document insertions
+    for (auto i = ctx->uncomitted_doc_ids_,
+         count = doc_id_t(writer.docs_cached());
+         i < count;
+         ++i) {
+      writer.remove(i); // expects 0-based doc_id
+    }
+
+    // rollback modification queries
+    for (auto i = ctx->uncomitted_modification_queries_,
+         count = ctx->modification_queries_.size();
+         i < count;
+         ++i) {
+      ctx->modification_queries_[i].filter = nullptr; // mark invalid
+    }
+  }
 }
 
 index_writer::flush_context_ptr index_writer::documents_context::update_segment() {
@@ -478,7 +506,6 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   }
 
   auto& segment = segments_.back();
-
   // FIXME TODO when flushing segment, flush to repository, track meta to be added to to imported segments, then reuse same writer
   if (!segment.ctx() // no segment (lazy initialized)
       || segment.ctx()->dirty_
@@ -1509,9 +1536,8 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       if (!segment
           || !segment->writer_
-          || !segment->writer_->initialized()
-          || !segment->writer_->docs_cached()) {
-        continue; // skip empty segments
+          || !segment->writer_->initialized()) {
+        continue; // skip empty segments (segmnets  without live docs will be removed in the next section)
       }
 
       segment_ctxs.emplace_back(pending_segment_context);
@@ -1521,10 +1547,15 @@ index_writer::pending_context_t index_writer::flush_all() {
 
       segment->flushed_meta_ = segment_meta(writer.name(), codec_); // prepare new meta for flush
 
+      // flush segment, even for empty segments since this will clear internal segment_writer state
       if (!writer.flush(pending_ctx.filename_, segment->flushed_meta_)) {
         return pending_context_t();
       }
       // flush document_mask after regular flush() so remove_query can traverse
+
+      if (!segment->writer_->docs_cached()) {
+        continue; // a segment reader cannot be opened if there are no documents in the segment
+      }
 
       // mask documents matching filters from all flushed segment_contexts (i.e. from new operations)
       for (auto& modifications: ctx->pending_segment_contexts_) {
@@ -1551,7 +1582,7 @@ index_writer::pending_context_t index_writer::flush_all() {
       auto& writer = *(segment.writer_);
 
       // if have a writer with potential update-replacement records then check if they were seen
-      add_document_mask_unused_updates<int>(segment, pending_ctx.doc_id_begin_);
+      add_document_mask_unused_updates(segment, pending_ctx.doc_id_begin_);
 
       auto& docs_mask = writer.docs_mask();
 

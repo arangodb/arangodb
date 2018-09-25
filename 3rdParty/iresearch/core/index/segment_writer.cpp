@@ -65,7 +65,11 @@ segment_writer::ptr segment_writer::make(directory& dir) {
 }
 
 size_t segment_writer::memory() const NOEXCEPT {
-  return 0; // FIXME TODO implement pool *2 + update_constexts + doc_removals
+  return sizeof(segment_writer)
+    + (sizeof(update_contexts::value_type) * docs_context_.size())
+    + (sizeof(document_mask::value_type) * docs_mask_.size())
+    + fields_.memory()
+    ;
 }
 
 segment_writer::segment_writer(directory& dir) NOEXCEPT
@@ -168,7 +172,7 @@ bool segment_writer::flush(std::string& filename, segment_meta& meta) {
   }
 
   // flush fields metadata & inverted data
-  {
+  if (docs_cached()) {
     flush_state state;
     state.dir = &dir_;
     state.doc_count = docs_cached();

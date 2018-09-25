@@ -104,7 +104,7 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     /// @note if the object is in an invalid state all further operations will
     ///       not take any effect
     ////////////////////////////////////////////////////////////////////////////
-    bool valid() const NOEXCEPT { return writer_.valid(); }
+    explicit operator bool() const NOEXCEPT { return writer_.valid(); }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief inserts the specified field into the document according to the
@@ -142,11 +142,11 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     ////////////////////////////////////////////////////////////////////////////
     template<typename Action, typename Iterator>
     bool insert(Action action, Iterator begin, Iterator end) const {
-      for (; valid() && begin != end; ++begin) {
+      for (; writer_.valid() && begin != end; ++begin) {
         insert(action, *begin);
       }
 
-      return valid();
+      return writer_.valid();
     }
 
    private:

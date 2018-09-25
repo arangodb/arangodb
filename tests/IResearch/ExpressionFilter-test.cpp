@@ -373,7 +373,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
 
       auto doc = writer->documents().insert();
       CHECK(doc.insert(irs::action::store, storedField));
-      CHECK(doc.valid());
+      CHECK(doc);
     }
 
     writer->commit();

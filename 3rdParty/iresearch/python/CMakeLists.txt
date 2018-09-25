@@ -9,7 +9,6 @@ target_include_directories(iresearch-python
 
 target_link_libraries(iresearch-python
   ${IResearch_TARGET_NAME}-shared
-  ${ATOMIC_LIBRARY}
 )
 
 add_subdirectory(swig)

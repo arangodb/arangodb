@@ -576,7 +576,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     element_type* operator->() const NOEXCEPT { return get(); }
     element_type* get() const NOEXCEPT { return value_.get(); }
     operator bool() const NOEXCEPT {
-      return static_cast<bool>(owner_);
+      return static_cast<bool>(value_);
     }
 
    private:

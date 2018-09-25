@@ -65,12 +65,6 @@ if (NOT MSVC)
   set(PTHREAD_LIBRARY pthread)
 endif()
 
-# set libatomic library 
-# (not available on Windows and Mac)
-if (NOT MSVC AND NOT APPLE)
-  set(ATOMIC_LIBRARY atomic)
-endif()
-
 # set gcov library
 if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
