@@ -1780,7 +1780,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       // Not leader: redirect / 503     
       if (challengeLeadership()) {
         out->add("redirect", VPackValue(true));
-        out->add("endpoint", leaderID);
+        out->add("endpoint", VPackValue(leaderID()));
       } else { // leader magic
         auto tmp = _config;
         tmp.upsertPool(pslice, id);
@@ -1819,14 +1819,9 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           err = std::string("failed to write new agency to RAFT") + e.what();
           LOG_TOPIC(ERR, Logger::AGENCY) << err;
         }
-      
-      } else {
-        err = std::string("lost leadership in the meantime, please try again");
+        
       }
-      
-    } else {
-    }
-
+    }      
     if (!err.empty()) {
       out->add(StaticStrings::Code, VPackValue(500));
       out->add(StaticStrings::Error, VPackValue(true));

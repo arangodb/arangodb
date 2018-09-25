@@ -168,12 +168,14 @@ RestStatus RestAgencyPrivHandler::execute() {
         query_t query = _request->toVelocyPackBuilderPtr();
         try {
           query_t ret = _agent->gossip(query);
-          if (ret.hasKey(StaticStrings::Error)) {
-            ///////////
+          if (ret->hasKey(StaticStrings::Error)) {
+            
           }
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);
           }
+        } catch(std::exception const& e ) {
+          LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
         }
       } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
