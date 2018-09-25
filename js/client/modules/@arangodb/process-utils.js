@@ -424,7 +424,30 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     };
   }
 
-  const res = executeExternalAndWait(cmd, args);
+  if (platform.substr(0, 3) === 'win') {
+    const res = executeExternal(cmd, args);
+    const procdumpArgs = [
+      '-accepteula',
+      '-64',
+      '-e',
+      '1',
+      '-f',
+      'bad_cast',
+      '-ma',
+      res.pid,
+      fs.join(rootDir, 'core.dmp')
+    ];
+
+    try {
+      res.monitor = executeExternal('procdump', procdumpArgs);
+    } catch (x) {
+      print('failed to start procdump - is it installed?');
+      // throw x;
+    }
+    res.exitStatus = statusExternal(res.pid, true);
+  } else {
+    const res = executeExternalAndWait(cmd, args);
+  }
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
