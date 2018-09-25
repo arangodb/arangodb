@@ -161,7 +161,7 @@ built-in dialog.
 
 ### Authentication via JWT
 
-ArangoDB uses a standard JWT authentication. 
+ArangoDB uses a standard JWT based authentication method. 
 To authenticate via JWT you must first obtain a JWT token with a signature generated via HMAC with SHA-256. 
 The secret may either be set using `--server.jwt-secret` or will be randomly generated upon server startup.
 
