@@ -683,7 +683,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   
   auto self = shared_from_this();
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler([this, self, ss]() {
+  ss->setContinueHandler([this, self = std::move(self), ss]() {
     continueHandlerExecution();
   });
 
