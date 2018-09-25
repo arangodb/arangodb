@@ -35,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
@@ -50,15 +51,16 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Events.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/Events.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -628,6 +630,33 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   return res;
 }
 
+namespace {
+Result dropAllViews(TRI_vocbase_t& vocbase){
+  static const bool isCoordinator = ::arangodb::ServerState::instance()->isCoordinator();
+  Result rv;
+
+  auto dropView = [](LogicalView* view, Result& rv){
+      auto tmprv = view->drop();
+      if (tmprv.fail() && rv.ok()) {
+        rv = tmprv;
+      }
+  };
+
+  if (isCoordinator) {
+    auto views = ClusterInfo::instance()->getViews(vocbase.name());
+    for (auto const& view : views) {
+      dropView(view.get(), rv);
+    }
+  } else {
+    for (auto& view: vocbase.views()) {
+      dropView(view.get(), rv);
+    }
+  }
+
+  return rv;
+}
+}
+
 /// @brief drop database
 int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
                                   bool removeAppsDirectory) {
@@ -675,6 +704,13 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     delete oldLists;
 
     TRI_ASSERT(!vocbase->isSystem());
+
+    auto viewRv = dropAllViews(*vocbase);
+    if (viewRv.fail()){
+      LOG_TOPIC(ERR, Logger::ENGINES) << viewRv.errorMessage();
+      TRI_ASSERT(false);
+    }
+
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
@@ -704,7 +740,6 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 
   return res;
 }
-
 /// @brief drops an existing database
 int DatabaseFeature::dropDatabase(TRI_voc_tick_t id, bool waitForDeletion,
                                   bool removeAppsDirectory) {
