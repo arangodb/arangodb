@@ -276,9 +276,22 @@ std::string write_segment_meta(
     const segment_meta& meta
 ) {
   assert(meta.codec);
+  assert(!meta.size); // assume segment size will be calculated in a single place, here
+  auto segment = meta;
+
+  // estimate meta segment size
+  for (auto& filename: meta.files) {
+    size_t size;
+
+    if (dir.length(size, filename)) {
+      segment.size += size;
+    }
+  }
+
   auto writer = meta.codec->get_segment_meta_writer();
 
-  writer->write(dir, meta);
+  writer->write(dir, segment);
+
   return writer->filename(meta);
 }
 

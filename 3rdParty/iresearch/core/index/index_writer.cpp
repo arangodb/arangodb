@@ -884,6 +884,8 @@ index_writer::ptr index_writer::make(
 
 index_writer::~index_writer() {
   close();
+  flush_context_ = nullptr;
+  flush_context_pool_.clear(); // ensue all tracked segment_contexts are released before segment_writer_pool_ is deallocated
 }
 
 void index_writer::close() {

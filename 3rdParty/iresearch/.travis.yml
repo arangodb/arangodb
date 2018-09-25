@@ -24,6 +24,7 @@ env:
   global:
     - MAKEFLAGS="-j 8"
     - BOOST_VERSION=default
+    - CMAKE_VERSION=default
 
 matrix:
   include:
@@ -381,6 +382,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -395,6 +397,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -409,6 +412,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -423,6 +427,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -437,7 +442,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
-        - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
     ############################################################################
@@ -452,6 +457,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
+        - CMAKE_VERSION=3.2.3 # supports c++14
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
@@ -469,6 +475,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -483,6 +490,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
@@ -497,6 +505,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
@@ -511,6 +520,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
@@ -525,6 +535,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
 
@@ -539,6 +550,7 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-8 valgrind
       env:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
         - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
@@ -637,6 +649,24 @@ install:
   - eval "${SET_ENV}"
   - which bison
   - bison --version
+
+  ############################################################################
+  # Travis machines have 2 cores
+  ############################################################################
+  - JOBS=4
+
+  ############################################################################
+  # Install a recent CMake (unless already installed on OS X)
+  ############################################################################
+  - if [[ "${CMAKE_VERSION}" == "default" ]]; then CMAKE_VERSION=3.2.2; fi
+  - |
+    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+      CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+      mkdir -p cmake && travis_retry wget --no-check-certificate -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
+      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+    else
+      brew install cmake || brew upgrade cmake
+    fi
   - which cmake
   - cmake --version
 
@@ -767,12 +797,12 @@ script:
           exit 1
         fi
       else
-        make iresearch-tests${BUILD_TYPE_SUFFIX}
+        make -j${JOBS} iresearch-tests${BUILD_TYPE_SUFFIX}
       fi
       # build utils
       if [[ "${STATIC_LIB}" == "true" ]]; then
-        make iresearch-index-util
-        make iresearch-benchmarks
+        make -j${JOBS} iresearch-index-util
+        make -j${JOBS} iresearch-benchmarks
       fi
       # execute tests
       ulimit -n 1024 # required for MacOS
