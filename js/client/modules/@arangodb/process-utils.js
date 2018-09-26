@@ -432,8 +432,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       '-64',
       '-e',
       '1',
+      /*
       '-f',
       'bad_cast',
+*/
       '-ma',
       res.pid,
       fs.join(rootDir, 'core.dmp')
@@ -445,7 +447,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       print('failed to start procdump - is it installed?');
       // throw x;
     }
-    res.exitStatus = statusExternal(res.pid, true);
+    Object.assign(res, 
+                  statusExternal(res.pid, true));
   } else {
     res = executeExternalAndWait(cmd, args);
   }
