@@ -106,29 +106,76 @@ SECTION("clean up a lost collection when the leader is failed") {
 
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
     INFO(q->slice().toJson());
-    /*auto expectedJobKey = "/arango/Target/Finish/" + jobId;
-    REQUIRE(std::string(q->slice().typeName()) == "array" );
-    REQUIRE(q->slice().length() == 1);
-    REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
-    REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
-    REQUIRE(q->slice()[0][0].length() == 1); // should ONLY do an entry in todo
-    REQUIRE(std::string(q->slice()[0][0].get(expectedJobKey).typeName()) == "object");
 
-    auto job = q->slice()[0][0].get(expectedJobKey);
-    REQUIRE(std::string(job.get("creator").typeName()) == "string");
-    REQUIRE(std::string(job.get("type").typeName()) == "string");
-    CHECK(job.get("type").copyString() == "failedFollower");
-    REQUIRE(std::string(job.get("database").typeName()) == "string");
-    CHECK(job.get("database").copyString() == DATABASE);
-    REQUIRE(std::string(job.get("collection").typeName()) == "string");
-    CHECK(job.get("collection").copyString() == COLLECTION);
-    REQUIRE(std::string(job.get("shard").typeName()) == "string");
-    CHECK(job.get("shard").copyString() == SHARD);
-    REQUIRE(std::string(job.get("fromServer").typeName()) == "string");
-    CHECK(job.get("fromServer").copyString() == SHARD_FOLLOWER1);
-    CHECK(std::string(job.get("jobId").typeName()) == "string");
-    CHECK(std::string(job.get("timeCreated").typeName()) == "string");*/
+    // What do we expect here:
+    // We expect two transactions:
+    //  1. Transaction:
+    //    - Operation:
+    //        delete /arango/Current/Collections/database/collection/s99
+    //        push {
+    //            "creator": "supervision",
+    //            "jobId": "1",
+    //            "server": "s99",
+    //            "timeCreated": "2018-09-26T09:25:33Z",
+    //            "type": "cleanUpLostCollection"
+    //            }
+    //    - Preconditions:
+    //        not empty: /arango/Current/Collections/database/collection/s99
+    //        empty: /arango/Plan/Collections/database/collection/shards/s99
+    //        old: /arango/Supervision/Health/leader/Status == "FAILED"
+    //  2. Transaction:
+    //    - Operation:
+    //        delete /arango/Current/Collections/database/collection/s16
+    //        push {
+    //            "creator": "supervision",
+    //            "jobId": "1",
+    //            "server": "s99",
+    //            "timeCreated": "2018-09-26T09:25:33Z",
+    //            "type": "cleanUpLostCollection"
+    //            }
+    //    - Preconditions:
+    //        not empty: /arango/Current/Collections/database/collection/s16
+    //        empty: /arango/Plan/Collections/database/collection/shards/s16
+    //        old: /arango/Supervision/Health/failed/Status == "FAILED"
+
+    auto const& trxs = q->slice();
+    REQUIRE(trxs.length() == 2);
+
+    auto const& trx1 = trxs[0];
+    REQUIRE(trx1.length() == 2); // Operation and Precondition
+    auto const& op1   = trx1[0];
+    auto const& pre1  = trx1[1];
+    REQUIRE(op1.isObject());
+    REQUIRE(op1.hasKey("/arango/Current/Collections/database/collection/s99"));
+    auto const& op1delete = op1.get("/arango/Current/Collections/database/collection/s99");
+
+    REQUIRE(op1delete.isObject());
+    REQUIRE(op1delete.hasKey("op"));
+    REQUIRE(op1delete.get("op").isEqualString("delete"));
+
+    REQUIRE(op1.hasKey("/arango/Target/Finished"));
+    auto const& op1push = op1.get("/arango/Target/Finished");
+    REQUIRE(op1push.hasKey("new"));
+    auto const& op1new = op1push.get("new");
+    REQUIRE(op1new.get("creator").isEqualString("supervision"));
+    REQUIRE(op1new.get("jobId").isEqualString("1"));
+    REQUIRE(op1new.get("server").isEqualString("s99"));
+    REQUIRE(op1new.get("timeCreated").isString());
+    REQUIRE(op1new.get("type").isEqualString("cleanUpLostCollection"));
+
+    REQUIRE(op1push.hasKey("op"));
+    REQUIRE(op1push.get("op").isEqualString("push"));
+
+    REQUIRE(pre1.hasKey("/arango/Current/Collections/database/collection/s99"));
+    REQUIRE(pre1.hasKey("/arango/Plan/Collections/database/collection/shards/s99"));
+    REQUIRE(pre1.hasKey("/arango/Supervision/Health/leader/Status"));
+
+    REQUIRE(pre1.get("/arango/Current/Collections/database/collection/s99")
+      .get("oldEmpty").isFalse());
+    REQUIRE(pre1.get("/arango/Plan/Collections/database/collection/shards/s99")
+      .get("oldEmpty").isTrue());
+    REQUIRE(pre1.get("/arango/Supervision/Health/leader/Status")
+      .get("old").isEqualString("FAILED"));
 
     return fakeWriteResult;
   });
