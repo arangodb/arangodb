@@ -95,7 +95,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/c"]]'
 ]
 ```
 
-Note that the above results are identical, meaning that results obtained from the agencyare always return with full path.
+Note that the above results are identical, meaning that results obtained from the agency are always return with full path.
 
 The second outer array brackets in read operations correspond to transactions, meaning that the result is guaranteed to have been acquired without a write transaction in between:
 
@@ -121,7 +121,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/e"],["/d","/a/b"]]'
 ]
 ```
 
-While the first transaction consists of a single read access to the key-value-store thus strechting the meaning of the word transaction, the second bracket actually hold two disjunct read accesses, which have been joined within zero-time, i.e. without a write access in between. That is to say that `"/d"` cannot have changed before `"/a/b"` had been acquired.
+While the first transaction consists of a single read access to the key-value-store thus stretching the meaning of the word transaction, the second bracket actually hold two disjunct read accesses, which have been joined within zero-time, i.e. without a write access in between. That is to say that `"/d"` cannot have changed before `"/a/b"` had been acquired.
 
 Let's try to fetch a value from the key-value-store, which does not exist:
 
