@@ -71,22 +71,22 @@ CreateCollection::CreateCollection(
   }
   TRI_ASSERT(desc.has(SHARD));
 
-  if (!desc.has(LEADER)) {
+  if (!desc.has(THE_LEADER)) {
     error << "shard leader must be specified. ";
   }
-  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(desc.has(THE_LEADER));
 
   if (!desc.has(SERVER_ID)) {
     error << "own server id must be specified. ";
   }
   TRI_ASSERT(desc.has(SERVER_ID));
 
-  if (!properties().hasKey(TYPE) || !properties().get(TYPE).isNumber()) {
+  if (!properties().hasKey(StaticStrings::DataSourceType) || !properties().get(StaticStrings::DataSourceType).isNumber()) {
     error << "properties slice must specify collection type. ";
   }
-  TRI_ASSERT(properties().hasKey(TYPE) && properties().get(TYPE).isNumber());
+  TRI_ASSERT(properties().hasKey(StaticStrings::DataSourceType) && properties().get(StaticStrings::DataSourceType).isNumber());
 
-  uint32_t const type = properties().get(TYPE).getNumber<uint32_t>();
+  uint32_t const type = properties().get(StaticStrings::DataSourceType).getNumber<uint32_t>();
   if (type != TRI_COL_TYPE_DOCUMENT && type != TRI_COL_TYPE_EDGE) {
     error << "invalid collection type number. " << type;
   }
@@ -97,7 +97,7 @@ CreateCollection::CreateCollection(
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
-
+  
 }
 
 
@@ -109,7 +109,7 @@ bool CreateCollection::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
-  auto const& leader = _description.get(LEADER);
+  auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -135,7 +135,7 @@ bool CreateCollection::first() {
        props.get(ENF_REPL_FACT).isBool()) ?
       props.get(ENF_REPL_FACT).getBool() : true;
 
-    TRI_col_type_e type = static_cast<TRI_col_type_e>(props.get(TYPE).getNumber<uint32_t>());
+    TRI_col_type_e type = static_cast<TRI_col_type_e>(props.get(StaticStrings::DataSourceType).getNumber<uint32_t>());
 
     VPackBuilder docket;
     { VPackObjectBuilder d(&docket);
@@ -155,12 +155,14 @@ bool CreateCollection::first() {
 
     _result = Collections::create(
       vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
-      [=](LogicalCollection& col) {
+      [=](std::shared_ptr<LogicalCollection> const& col)->void {
+        TRI_ASSERT(col);
         LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
         << "/" << shard << " successfully created";
-        col.followers()->setTheLeader(leader);
+        col->followers()->setTheLeader(leader);
+
         if (leader.empty()) {
-          col.followers()->clear();
+          col->followers()->clear();
         }
       });
 
@@ -176,6 +178,7 @@ bool CreateCollection::first() {
 
   } catch (std::exception const& e) {
     std::stringstream error;
+
     error << "action " << _description << " failed with exception " << e.what();
     LOG_TOPIC(WARN, Logger::MAINTENANCE) << error.str();
     _result.reset(TRI_ERROR_FAILED, error.str());
@@ -183,11 +186,23 @@ bool CreateCollection::first() {
   }
 
   if (_result.fail()) {
-    _feature.storeShardError(database, collection, shard,
-        _description.get(SERVER_ID), _result);
+    _feature.storeShardError(
+      database, collection, shard, _description.get(SERVER_ID), _result);
   }
 
   notify();
-  return false;
 
+  return false;
+}
+
+
+void CreateCollection::setState(ActionState state) {
+  
+  if ((COMPLETE==state || FAILED==state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
+  
+  ActionBase::setState(state);
+  
 }

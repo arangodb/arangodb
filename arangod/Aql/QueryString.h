@@ -60,14 +60,14 @@ class QueryString {
   size_t length() const { return _queryString.size(); }
   bool empty() const { return (_queryString.empty() || _queryString[0] == '\0'); }
   void append(std::string& out) const;
-  uint64_t hash();
+  uint64_t hash() const;
   std::string extract(size_t maxLength) const;
   std::string extractRegion(int line, int column) const;
 
  private:
-  std::string _queryString;
-  uint64_t _hash;
-  bool _hashed;
+  std::string const _queryString;
+  mutable uint64_t _hash;
+  mutable bool _hashed;
 };
 
 std::ostream& operator<<(std::ostream&, QueryString const&);

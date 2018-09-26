@@ -986,6 +986,7 @@ static void JS_QueriesCurrentAql(
       obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"),
                v8::Number::New(isolate, q.runTime));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "state"), TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
       result->Set(i++, obj);
     }
 
@@ -1037,6 +1038,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       obj->Set(TRI_V8_ASCII_STRING(isolate, "runTime"),
                v8::Number::New(isolate, q.runTime));
       obj->Set(TRI_V8_ASCII_STRING(isolate, "state"), TRI_V8_STD_STRING(isolate, aql::QueryExecutionState::toString(q.state)));
+      obj->Set(TRI_V8_ASCII_STRING(isolate, "stream"), v8::Boolean::New(isolate, q.stream));
       result->Set(i++, obj);
     }
 
@@ -1107,33 +1109,41 @@ static void JS_QueryCachePropertiesAql(
   }
 
   auto queryCache = arangodb::aql::QueryCache::instance();
+  VPackBuilder builder;
 
   if (args.Length() == 1) {
     // called with options
-    auto obj = args[0]->ToObject();
+    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
-    std::pair<std::string, size_t> cacheProperties;
-    // fetch current configuration
-    queryCache->properties(cacheProperties);
-
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "mode"))) {
-      cacheProperties.first =
-          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "mode")));
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
-    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxResults"))) {
-      cacheProperties.second = static_cast<size_t>(
-          TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING(isolate, "maxResults"))));
-    }
-
-    // set mode and max elements
-    queryCache->setProperties(cacheProperties);
+    queryCache->properties(builder.slice());
   }
 
-  auto properties = queryCache->properties();
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, properties.slice()));
+  builder.clear();
+  queryCache->toVelocyPack(builder);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
 
   // fetch current configuration and return it
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_QueryCacheQueriesAql(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_CACHE_QUERIES()");
+  }
+  
+  auto& vocbase = GetContextVocBase(isolate);
+
+  VPackBuilder builder;
+  arangodb::aql::QueryCache::instance()->queriesToVelocyPack(&vocbase, builder);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1329,29 +1339,26 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject = globals->Get(_DbCacheKey)->ToObject();
   }
 
-  arangodb::LogicalCollection* collection = nullptr;
-
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
         cacheObject->GetRealNamedProperty(cacheName)->ToObject();
-
-    collection = TRI_UnwrapClass<arangodb::LogicalCollection>(
-        value, WRP_VOCBASE_COL_TYPE);
+    auto* collection = UnwrapCollection(value);
 
     // check if the collection is from the same database
-    if (collection != nullptr && &(collection->vocbase()) == &vocbase) {
+    if (collection && &(collection->vocbase()) == &vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
       // caller may have already acquired the collection's status lock
       // with that transaction. if we now lock again, we may deadlock!
-      TRI_vocbase_col_status_e status = collection->status();
-      TRI_voc_cid_t cid = collection->id();
-      uint32_t internalVersion = collection->internalVersion();
+      auto status = collection->status();
+      auto cid = collection->id();
+      auto internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
-          collection->isLocal()) {
+      if (status != TRI_VOC_COL_STATUS_DELETED
+          && cid > 0
+          && collection->isLocal()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (value->Has(_IdKey)) {
@@ -1381,15 +1388,16 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
     cacheObject->Delete(cacheName);
   }
 
+  std::shared_ptr<arangodb::LogicalCollection> collection;
+
   try {
     if (ServerState::instance()->isCoordinator()) {
-      auto ci = ClusterInfo::instance()->getCollection(
-        vocbase.name(), std::string(key)
-      );
-      auto colCopy = ci->clone();
-      collection = colCopy.release();  // will be delete on garbage collection
+      auto* ci = arangodb::ClusterInfo::instance();
+
+      collection = ci
+        ? ci->getCollection(vocbase.name(), std::string(key)) : nullptr;
     } else {
-      collection = vocbase.lookupCollection(std::string(key)).get();
+      collection = vocbase.lookupCollection(std::string(key));
     }
   } catch (...) {
     // do not propagate exception from here
@@ -1407,10 +1415,6 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
 
   if (result.IsEmpty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      // TODO Do we need this?
-      delete collection;
-    }
     TRI_V8_RETURN_UNDEFINED();
   }
 
@@ -2088,6 +2092,9 @@ void TRI_InitV8VocBridge(
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_PROPERTIES"),
       JS_QueryCachePropertiesAql, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_QUERIES"),
+      JS_QueryCacheQueriesAql, true);
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);

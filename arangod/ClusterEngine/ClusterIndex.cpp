@@ -117,7 +117,7 @@ bool ClusterIndex::hasSelectivityEstimate() const {
 }
 
 /// @brief default implementation for selectivityEstimate
-double ClusterIndex::selectivityEstimate(StringRef const* extra) const {
+double ClusterIndex::selectivityEstimate(StringRef const&) const {
   TRI_ASSERT(hasSelectivityEstimate());
   if (_unique) {
     return 1.0;
@@ -198,6 +198,7 @@ bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 bool ClusterIndex::supportsFilterCondition(
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
@@ -216,7 +217,7 @@ bool ClusterIndex::supportsFilterCondition(
 #endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
-      return Index::supportsFilterCondition(node, reference, itemsInIndex,
+      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex,
                                             estimatedItems, estimatedCost);
     }
     case TRI_IDX_TYPE_HASH_INDEX:{
@@ -225,7 +226,7 @@ bool ClusterIndex::supportsFilterCondition(
         return matcher.matchAll(this, node, reference, itemsInIndex, estimatedItems,
                                 estimatedCost);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+        return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                         estimatedItems, estimatedCost);
       }
       break;
@@ -239,17 +240,17 @@ bool ClusterIndex::supportsFilterCondition(
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
-        return SkiplistIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+        return SkiplistIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                       estimatedItems, estimatedCost);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+        return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                         estimatedItems, estimatedCost);
       }
       break;
     }
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       // same for both engines
-      return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+      return PersistentIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex,
                                                                       estimatedItems, estimatedCost);
     }
 

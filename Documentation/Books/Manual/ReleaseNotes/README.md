@@ -7,6 +7,7 @@ What's New
 For a high level list of changes, please refer to one of the following sections:
 
 - What's New in 3.x:
+  [3.5](NewFeatures35.md),
   [3.4](NewFeatures34.md),
   [3.3](NewFeatures33.md),
   [3.2](NewFeatures32.md),

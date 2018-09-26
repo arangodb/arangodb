@@ -94,7 +94,6 @@ function endpoints (options) {
         }, testName);
 
         if (instanceInfo === false) {
-          result.failed += 1;
           return {
             failed: 1,
             status: false,

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///// ///////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -46,8 +46,12 @@ inline void pop_heap(Iterator first, Iterator last, Pred comp) {
       #if _MSC_FULL_VER < 190024000
         std::_Pop_heap(std::_Unchecked(first), std::_Unchecked(last), comp);
       #else
-        std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
-      #endif
+        #if _MSC_FULL_VER >= 191526726
+          std::_Pop_heap_unchecked(&*first, &*last, comp);
+        #else
+          std::_Pop_heap_unchecked(std::_Unchecked(first), std::_Unchecked(last), comp);
+        #endif        
+      #endif      
     }
   #else
     std::pop_heap(first, last, comp);

@@ -114,11 +114,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   if (_nestingLevel == 0) {
-
     // register a protector (intentionally empty)
-    auto data = std::make_unique<RocksDBTransactionData>();
-    TransactionManagerFeature::manager()->registerTransaction(_id,
-                                                              std::move(data));
+    TransactionManagerFeature::manager()->registerTransaction(_id, std::unique_ptr<RocksDBTransactionData>());
 
     TRI_ASSERT(_rocksTransaction == nullptr);
     TRI_ASSERT(_cacheTx == nullptr);
@@ -505,15 +502,12 @@ Result RocksDBTransactionState::addOperation(
   collection->addOperation(operationType, revisionId);
 
   // clear the query cache for this collection
-  if (arangodb::aql::QueryCache::instance()->mayBeActive()) {
-    arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, collection->collectionName()
-    );
+  auto queryCache = arangodb::aql::QueryCache::instance();
+  if (queryCache->mayBeActive()) {
+    queryCache->invalidate(&_vocbase, collection->collectionName());
   }
 
   switch (operationType) {
-    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-      break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       ++_numInserts;
       break;
@@ -523,6 +517,8 @@ Result RocksDBTransactionState::addOperation(
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       ++_numRemoves;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
   }
 

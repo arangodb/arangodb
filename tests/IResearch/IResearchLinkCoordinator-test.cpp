@@ -147,7 +147,6 @@ struct IResearchLinkCoordinatorSetup {
     // setup required application features
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
     buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
-    buildFeatureEntry(new arangodb::QueryRegistryFeature(server), false);
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature); // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);

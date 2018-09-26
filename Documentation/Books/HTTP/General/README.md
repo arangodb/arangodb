@@ -113,7 +113,8 @@ Client authentication can be achieved by using the *Authorization* HTTP header i
 client requests. ArangoDB supports authentication via HTTP Basic or JWT.
 
 Authentication is turned on by default for all internal database APIs but turned off for custom Foxx apps.
-To toggle authentication for incoming requests to the internal database APIs, use the option [--server.authentication](../../Manual/Administration/Configuration/GeneralArangod.html).
+To toggle authentication for incoming requests to the internal database APIs, use the option
+[--server.authentication](../../Manual/Programs/Arangod/Server.html#enabledisable-authentication).
 This option is turned on by default so authentication is required for the database APIs.
 
 Please note that requests using the HTTP OPTIONS method will be answered by
@@ -123,7 +124,7 @@ requests (see [Cross Origin Resource Sharing requests](#cross-origin-resource-sh
 The response to an HTTP OPTIONS request will be generic and not expose any private data.
 
 There is an additional option to control authentication for custom Foxx apps. The option
-[--server.authentication-system-only](../../Manual/Administration/Configuration/GeneralArangod.html)
+[--server.authentication-system-only](../../Manual/Programs/Arangod/Server.html#enabledisable-authentication-for-system-api-requests-only)
 controls whether authentication is required only for requests to the internal database APIs and the admin interface.
 It is turned on by default, meaning that other APIs (this includes custom Foxx apps) do not require authentication.
 

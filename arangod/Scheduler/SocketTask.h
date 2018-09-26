@@ -55,6 +55,9 @@ class SocketTask : virtual public Task {
 
  public:
   bool start();
+  
+  // whether or not this task can mix sync and async I/O
+  virtual bool canUseMixedIO() const = 0;
 
  protected:
   // caller will hold the _lock
@@ -144,11 +147,10 @@ class SocketTask : virtual public Task {
   // method returns true. Used for VST upgrade
   bool abandon() { return !(_abandoned.exchange(true)); }
 
-  /// lease a string buffer from pool
+  // lease a string buffer from pool
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
 
- protected:
   bool processAll();
   void triggerProcessAll();
 

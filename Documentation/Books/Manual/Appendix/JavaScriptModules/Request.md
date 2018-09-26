@@ -62,7 +62,7 @@ The request function takes the following options:
 * *json*: if `true`, *body* will be serialized to a JSON string and the *Content-Type* header will be set to `"application/json"`. Additionally the response body will also be parsed as JSON (unless *encoding* is set to `null`). Default: `false`.
 * *form* (optional): when set to a string or object and no *body* has been set, *body* will be set to a querystring representation of that value and the *Content-Type* header will be set to `"application/x-www-form-urlencoded"`. Also see *useQuerystring*.
 * *auth* (optional): an object with the properties *username* and *password* for HTTP Basic authentication or the property *bearer* for HTTP Bearer token authentication.
-* *sslProtocol* (optional): which tls version should be used to connect to the url. The default is `4` which is TLS 1.0. See [ssl protocol](../../Administration/Configuration/SSL.md#ssl-protocol) for more opitions.
+* *sslProtocol* (optional): which tls version should be used to connect to the url. The default is `4` which is TLS 1.0. See [SSL protocol](../../Programs/Arangod/Ssl.md#ssl-protocol) for more opitions.
 * *followRedirect*: whether HTTP 3xx redirects should be followed. Default: `true`.
 * *maxRedirects*: the maximum number of redirects to follow. Default: `10`.
 * *encoding*: encoding to be used for the response body. If set to `null`, the response body will be returned as a `Buffer`. Default: `"utf-8"`.

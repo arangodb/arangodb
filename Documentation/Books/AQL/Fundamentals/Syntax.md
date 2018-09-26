@@ -170,7 +170,7 @@ FOR f IN ´filter´
 Collection names can be used in queries as they are. If a collection happens to
 have the same name as a keyword, the name must be enclosed in backticks.
 
-Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionNames.html)
+Please refer to the [Naming Conventions in ArangoDB](../../Manual/DataModeling/NamingConventions/CollectionAndViewNames.html)
 about collection naming conventions.
 
 AQL currently has a limit of up to 256 collections used in one AQL query.

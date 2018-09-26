@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -51,10 +50,14 @@ struct Aggregator {
   /// @brief creates an aggregator from a name string
   static std::unique_ptr<Aggregator> fromTypeString(transaction::Methods*,
                                                     std::string const& type);
-
+  
   /// @brief creates an aggregator from a velocypack slice
   static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
                                                arangodb::velocypack::Slice const&, char const* nameAttribute);
+  
+  /// @brief return a pointer to an aggregator factory for an aggregator type
+  /// throws if the aggregator cannot be found
+  static std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const* factoryFromTypeString(std::string const& type);
 
   /// @brief translates an alias to an actual aggregator name
   /// returns the original value if the name was not an alias
@@ -87,8 +90,6 @@ struct Aggregator {
 
  protected:
   transaction::Methods* trx;
-
-  arangodb::velocypack::Builder builder;
 };
 
 }  // namespace arangodb::aql

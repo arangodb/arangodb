@@ -140,10 +140,10 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool isBusy();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Check whether the cache has begin the process of shutting down.
+  /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  bool isShutdown() const {
-    return _shutdown;
+  inline bool isShutdown() const {
+    return _shutdown.load();
   }
 
  protected:
@@ -153,8 +153,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  protected:
   basics::ReadWriteSpinLock _taskLock;
-
-  bool _shutdown;
+  std::atomic<bool> _shutdown;
 
   static uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
@@ -170,7 +169,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   // manage the actual table
   std::shared_ptr<Table> _tableShrdPtr;
   /// keep a pointer to the current table, which can be atomically set
-  Table* _table;
+  std::atomic<Table*> _table;
   
   Table::BucketClearer _bucketClearer;
   size_t _slotsPerBucket;
@@ -184,8 +183,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
                                                          // inserts, migrate
 
   // times to wait until requesting is allowed again
-  Manager::time_point _migrateRequestTime;
-  Manager::time_point _resizeRequestTime;
+  std::atomic<Manager::time_point::rep> _migrateRequestTime;
+  std::atomic<Manager::time_point::rep> _resizeRequestTime;
 
   // friend class manager and tasks
   friend class FreeMemoryTask;

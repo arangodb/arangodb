@@ -18,7 +18,7 @@ if the value contains whitespace. Extra whitespace around `=` is allowed:
 
     arangod --database.directory = "/path with spaces/to/datadir"
 
-See [Configuration](../../Administration/Configuration/README.md#configuration-files)
+See [Configuration](../../Administration/Configuration.md)
 if you want to translate startup parameters to configuration files.
 
 @startDocuBlock program_options_arangod

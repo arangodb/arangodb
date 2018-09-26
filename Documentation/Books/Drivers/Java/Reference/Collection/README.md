@@ -26,7 +26,7 @@ Checks whether the collection exists
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 
 boolean exists = collection.exists();
 ```
@@ -44,7 +44,7 @@ Returns information about the collection.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 
 CollectionEntity info = collection.getInfo();
 ```
@@ -62,7 +62,7 @@ Reads the properties of the specified collection.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 
 CollectionPropertiesEntity properties = collection.getProperties();
 ```
@@ -80,7 +80,7 @@ Retrieve the collections revision.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 
 CollectionRevisionEntity revision = collection.getRevision();
 ```
@@ -98,7 +98,7 @@ Fetches a list of all indexes on this collection.
 ```Java
 ArangoDB arango = new ArangoDB.Builder().build();
 ArangoDatabase db = arango.db("myDB");
-ArangoCollection collection = db.collection("potatos");
+ArangoCollection collection = db.collection("potatoes");
 
 Collection<IndexEntity> indexes = collection.getIndexes();
 ```

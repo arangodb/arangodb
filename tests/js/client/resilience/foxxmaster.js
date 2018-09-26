@@ -85,6 +85,7 @@ queue.push({mount: '/queuetest', name: 'queuetest', 'repeatTimes': -1, 'repeatDe
 function serverTeardown() {
   const serverCode = `
 const queues = require('@arangodb/foxx/queues');
+queues.delete('q');
 `;
   executeOnServer(serverCode);
   foxxManager.uninstall('/queuetest');

@@ -713,16 +713,18 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           }
         }
 
-        int res = vocbase->renameCollection(collection, name, true);
+        auto res = vocbase->renameCollection(collection->id(), name, true);
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (!res.ok()) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "cannot rename collection " << collectionId << " in database "
               << databaseId << " to '" << name
-              << "': " << TRI_errno_string(res);
+              << "': " << res.errorMessage();
           ++state->errorCount;
+
           return state->canContinue();
         }
+
         break;
       }
 
@@ -833,12 +835,14 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // turn off sync temporarily if the database or collection are going to
         // be dropped later
         bool const forceSync = state->willViewBeDropped(databaseId, viewId);
-        
+
         VPackSlice nameSlice = payloadSlice.get("name");
+
         if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
           std::string name = nameSlice.copyString();
           // check if other view exists with target name
           std::shared_ptr<arangodb::LogicalView> other = vocbase->lookupView(name);
+
           if (other != nullptr) {
             if (other->id() == view->id()) {
               LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
@@ -848,13 +852,16 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             }
             vocbase->dropView(other->id(), true);
           }
-          int res = vocbase->renameView(view, name);
-          if (res != TRI_ERROR_NO_ERROR) {
+
+          auto res = vocbase->renameView(view->id(), name);
+
+          if (!res.ok()) {
             LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
             << "cannot rename view " << viewId << " in database "
             << databaseId << " to '" << name
-            << "': " << TRI_errno_string(res);
+            << "': " << res.errorMessage();
             ++state->errorCount;
+
             return state->canContinue();
           }
         }
@@ -1058,12 +1065,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // restore the old behavior afterwards
             TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
 
-            collection =
-                vocbase->createCollection(b2.slice());
+            collection = vocbase->createCollection(b2.slice()).get();
           } else {
             // collection will be kept
-            collection =
-                vocbase->createCollection(b2.slice());
+            collection = vocbase->createCollection(b2.slice()).get();
           }
           TRI_ASSERT(collection != nullptr);
         } catch (basics::Exception const& ex) {

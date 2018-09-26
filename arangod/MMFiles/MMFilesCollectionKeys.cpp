@@ -35,6 +35,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -110,13 +111,13 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    ManagedDocumentResult mmdr;
-    MMFilesCollection *mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+    ManagedDocumentResult mdr;
+    MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
 
     trx.invokeOnAllElements(
-        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](LocalDocumentId const& token) {
-          if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {
-            _vpack.emplace_back(mmdr.vpack());
+        _collection->name(), [this, &trx, &maxTick, &mdr, &mmColl](LocalDocumentId const& token) {
+          if (mmColl->readDocumentConditional(&trx, token, maxTick, mdr)) {
+            _vpack.emplace_back(mdr.vpack());
           }
           return true;
         });

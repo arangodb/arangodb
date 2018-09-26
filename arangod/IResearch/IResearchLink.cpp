@@ -358,7 +358,10 @@ bool IResearchLink::json(arangodb::velocypack::Builder& builder) const {
     return false;
   }
 
-  builder.add("id", VPackValue(std::to_string(_id)));
+  builder.add(
+    arangodb::StaticStrings::IndexId,
+    arangodb::velocypack::Value(std::to_string(_id))
+  );
   builder.add(
     arangodb::StaticStrings::IndexType,
     arangodb::velocypack::Value(IResearchLinkHelper::type())

@@ -36,7 +36,7 @@ struct MultipartMessage {
       : boundary(boundary),
         boundaryLength(boundaryLength),
         messageStart(messageStart),
-        messageEnd(messageEnd) {} 
+        messageEnd(messageEnd) {}
   MultipartMessage() : MultipartMessage("", 0, "", "") {}
 
   char const* boundary;
@@ -85,7 +85,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
  private:
   bool executeNextHandler();
-  void processSubHandlerResult(std::shared_ptr<RestHandler> const& handler);
+  void processSubHandlerResult(RestHandler const& handler);
 
   MultipartMessage _multipartMessage;
   SearchHelper _helper;

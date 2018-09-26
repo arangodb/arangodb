@@ -1733,7 +1733,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
         auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
         bool unique = basics::VelocyPackHelper::getBooleanValue(
-          it, StaticStrings::IndexUnique.c_str(), false
+          it, StaticStrings::IndexUnique, false
         );
         
         RocksDBKeyBounds bounds =
@@ -1865,7 +1865,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
 
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
       }
 
       StorageEngine::registerView(*vocbase, view);

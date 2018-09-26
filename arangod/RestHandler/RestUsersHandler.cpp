@@ -237,13 +237,11 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
 
           methods::Collections::enumerate(
             &vocbase,
-            [&](LogicalCollection& c)->void {
+            [&](std::shared_ptr<LogicalCollection> const& c)->void {
+              TRI_ASSERT(c);
               lvl =
-                user.configuredCollectionAuthLevel(vocbase.name(), c.name());
-                data.add(
-                  c.name(),
-                  velocypack::Value(convertFromAuthLevel(lvl))
-                );
+                user.configuredCollectionAuthLevel(vocbase.name(), c->name());
+              data.add(c->name(), velocypack::Value(convertFromAuthLevel(lvl)));
             }
           );
           lvl = user.configuredCollectionAuthLevel(vocbase.name(), "*");

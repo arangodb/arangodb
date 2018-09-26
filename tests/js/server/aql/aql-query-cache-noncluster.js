@@ -70,6 +70,25 @@ function ahuacatlQueryCacheTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test fullCount
+////////////////////////////////////////////////////////////////////////////////
+
+    testFullCount : function () {
+      let query = "FOR i IN 1..10000 LIMIT 10, 7 RETURN i";
+
+      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      let result = AQL_EXECUTE(query, null, { fullCount: true });
+      assertFalse(result.cached);
+      assertEqual([ 11, 12, 13, 14, 15, 16, 17 ], result.json);
+      assertEqual(10000, result.stats.fullCount);
+
+      result = AQL_EXECUTE(query, null, { fullCount: true });
+      assertTrue(result.cached);
+      assertEqual([ 11, 12, 13, 14, 15, 16, 17 ], result.json);
+      assertEqual(10000, result.stats.fullCount);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test setting modes
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -971,12 +971,12 @@ function arrayIndexNonArraySuite () {
 
       col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 }); // b: 1 a: 1,2,3 c: null
       inserted += 3;
-      insertedB += 3;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       col.save({ a: [1, 2, 3, 3, 2, 1], b: 1, c: 1 });
       inserted += 3;
-      insertedB += 3;
+      insertedB += 1;
       checkElementsInIndex(inserted); // 1, 2, 3 :: 1 :: 1
 
       col.save({_key: "null1", a: [null, "a", "b", "c", "b", "a", null] });
@@ -985,12 +985,12 @@ function arrayIndexNonArraySuite () {
 
       col.save({_key: "null2", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
       inserted += 4;
-      insertedB += 4;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       col.save({_key: "null3", a: [null, "a", "b", "c", "b", "a", null], b: 1, c: 1});
       inserted += 4;
-      insertedB += 4;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
@@ -1005,7 +1005,7 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual.length, insertedB);
       const query3 = `FOR x IN ${cName} FILTER null == x.b RETURN x._key`;
       actual = AQL_EXECUTE(query3).json;
-      assertEqual(actual.length, inserted - insertedB);
+      assertEqual(actual.length, col.count() - insertedB);
     },
 
     testSkiplistMultipleAttributeMiddleArraySub : function () {
@@ -1077,12 +1077,12 @@ function arrayIndexNonArraySuite () {
 
       col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1 });
       inserted += 3; // We index b: 1 and 3 values for a[*].d
-      insertedB += 3;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1, c: 1 });
       inserted += 3; // We index b: 1, c: 1 and 3 values for a[*].d
-      insertedB += 3;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       col.save({_key: "null3", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}] });
@@ -1091,12 +1091,12 @@ function arrayIndexNonArraySuite () {
 
       col.save({_key: "null4", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1 });
       inserted += 4;
-      insertedB += 4;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       col.save({_key: "null5", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1, c: 1 });
       inserted += 4;
-      insertedB += 4;
+      insertedB += 1;
       checkElementsInIndex(inserted);
 
       const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b SORT x._key RETURN x._key`;
@@ -1114,7 +1114,7 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual.length, insertedB);
       const query3 = `FOR x IN ${cName} FILTER null == x.b RETURN x._key`;
       actual = AQL_EXECUTE(query3).json;
-      assertEqual(actual.length, inserted - insertedB);
+      assertEqual(actual.length, col.count() - insertedB);
     },
 
     testSkiplistIndexSubAttributeArray : function () {

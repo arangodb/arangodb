@@ -30,6 +30,9 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Aql/Ast.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -57,8 +60,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #include "IResearch/VelocyPackHelper.h"
@@ -139,7 +140,7 @@ struct IResearchQueryStringTermSetup {
         // fake non-deterministic
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -154,7 +155,7 @@ struct IResearchQueryStringTermSetup {
         arangodb::aql::Function::Flags::Cacheable,
         arangodb::aql::Function::Flags::CanRunOnDBServer
       ),
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+      [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
@@ -225,8 +226,8 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  arangodb::LogicalCollection* logicalCollection1{};
-  arangodb::LogicalCollection* logicalCollection2{};
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
   // add collection_1
   {
@@ -299,7 +300,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
       size_t i = 0;
 
-      arangodb::LogicalCollection* collections[] {
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
         logicalCollection1, logicalCollection2
       };
 

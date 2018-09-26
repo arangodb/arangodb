@@ -97,7 +97,8 @@ from the master's write-ahead log to get informed about most recent data changes
 This removes the need to store data-modification operations in the *_replication*
 collection altogether. 
 
-For the configuration of the write-ahead log, please refer to [Write-ahead log options](../Administration/Configuration/Wal.md).
+For the configuration of the write-ahead log, please refer to
+[Write-ahead log options](../Programs/Arangod/Wal.md).
 
 The introduction of the write-ahead log also removes the need to configure and
 start the replication logger on a master. Though the replication logger object

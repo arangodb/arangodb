@@ -2,7 +2,7 @@
 
 HTTP/1.1 undefined
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 131107
+x-arango-async-id: 131180
 x-content-type-options: nosniff
 
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/all</span>

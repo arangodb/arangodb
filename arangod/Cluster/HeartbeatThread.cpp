@@ -73,6 +73,115 @@ static std::chrono::system_clock::time_point deadThreadsPosted;  // defaults to 
 
 static arangodb::Mutex deadThreadsMutex;
 
+namespace arangodb {
+
+
+class HeartbeatBackgroundJobThread : public Thread {
+
+public:
+  HeartbeatBackgroundJobThread(HeartbeatThread *heartbeatThread) :
+    Thread("Maintenance"),
+    _heartbeatThread(heartbeatThread),
+    _stop(false),
+    _sleeping(false),
+    _backgroundJobsLaunched(0)
+  {}
+
+  ~HeartbeatBackgroundJobThread() { shutdown(); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief asks the thread to stop, but does not wait.
+  //////////////////////////////////////////////////////////////////////////////
+  void stop() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _stop = true;
+    _condition.notify_one();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief notifies the background thread: when the thread is sleeping, wakes
+  /// it up. Otherwise sets a flag to start another round.
+  //////////////////////////////////////////////////////////////////////////////
+  void notify() {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _anotherRun.store(true, std::memory_order_release);
+    if (_sleeping.load(std::memory_order_acquire)) {
+      _condition.notify_one();
+    }
+  }
+
+protected:
+  void run() override {
+
+    while (!_stop) {
+
+      {
+        std::unique_lock<std::mutex> guard(_mutex);
+
+        if (!_anotherRun.load(std::memory_order_acquire)) {
+          _sleeping.store(true, std::memory_order_release);
+
+          while (true) {
+            _condition.wait(guard);
+
+            if (_stop) {
+              return ;
+            } else if (_anotherRun) {
+              break ;
+            } // otherwise spurious wakeup
+          }
+
+          _sleeping.store(false, std::memory_order_release);
+        }
+
+        _anotherRun.store(false, std::memory_order_release);
+      }
+
+      // execute schmutz here
+      uint64_t jobNr = ++_backgroundJobsLaunched;
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
+      {
+        DBServerAgencySync job(_heartbeatThread);
+        job.work();
+      }
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
+
+    }
+  }
+
+private:
+  HeartbeatThread *_heartbeatThread;
+
+  std::mutex _mutex;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief used to wake up the background thread
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
+  std::condition_variable _condition;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Set by the HeartbeatThread when the BackgroundThread should stop
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
+  std::atomic<bool> _stop;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wether the background thread sleeps or not
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
+  std::atomic<bool> _sleeping;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief when awake, the background thread will execute another round of
+  /// phase 1 and phase 2, after resetting this to false
+  /// guarded via _mutex.
+  //////////////////////////////////////////////////////////////////////////////
+  std::atomic<bool> _anotherRun;
+
+  uint64_t _backgroundJobsLaunched;
+};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
@@ -97,107 +206,34 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
       _backgroundJobsPosted(0),
-      _backgroundJobsLaunched(0),
-      _backgroundJobScheduledOrRunning(false),
-      _launchAnotherBackgroundJob(false),
-      _lastSyncTime(0) {
+      _lastSyncTime(0),
+      _maintenanceThread(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::~HeartbeatThread() { shutdown(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief running of heartbeat background jobs (in JavaScript), we run
-/// these by instantiating an object in class HeartbeatBackgroundJob,
-/// which is a std::function<void()> and holds a shared_ptr to the
-/// HeartbeatThread singleton itself. This instance is then posted to
-/// the io_service for execution in the thread pool. Should the heartbeat
-/// thread itself terminate during shutdown, then the HeartbeatThread
-/// singleton itself is still kept alive by the shared_ptr in the instance
-/// of HeartbeatBackgroundJob. The operator() method simply calls the
-/// runBackgroundJob() method of the heartbeat thread. Should this have
-/// to schedule another background job, then it can simply create a new
-/// HeartbeatBackgroundJob instance, again using shared_from_this() to
-/// create a new shared_ptr keeping the HeartbeatThread object alive.
-////////////////////////////////////////////////////////////////////////////////
-
-class HeartbeatBackgroundJob {
-  std::shared_ptr<HeartbeatThread> _heartbeatThread;
-  double _startTime;
-  std::string _schedulerInfo;
- public:
-  explicit HeartbeatBackgroundJob(std::shared_ptr<HeartbeatThread> hbt,
-                                  double startTime)
-    : _heartbeatThread(hbt), _startTime(startTime),_schedulerInfo(SchedulerFeature::SCHEDULER->infoStatus()) {
+HeartbeatThread::~HeartbeatThread() {
+  if (_maintenanceThread) {
+    _maintenanceThread->stop();
   }
-
-  void operator()() {
-    // first tell the scheduler that this thread is working:
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.work();
-
-    double now = TRI_microtime();
-    if (now > _startTime + 5.0) {
-      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "ALARM: Scheduling background job "
-        "took " << now - _startTime
-        << " seconds, scheduler info at schedule time: " << _schedulerInfo
-        << ", scheduler info now: "
-        << SchedulerFeature::SCHEDULER->infoStatus();
-    }
-    _heartbeatThread->runBackgroundJob();
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief method runBackgroundJob()
-////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::runBackgroundJob() {
-  uint64_t jobNr = ++_backgroundJobsLaunched;
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback started " << jobNr;
-  {
-    DBServerAgencySync job(this);
-    job.work();
-  }
-  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sync callback ended " << jobNr;
-
-  {
-    MUTEX_LOCKER(mutexLocker, *_statusLock);
-    TRI_ASSERT(_backgroundJobScheduledOrRunning);
-
-    if (_launchAnotherBackgroundJob) {
-      jobNr = ++_backgroundJobsPosted;
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync tail " << jobNr;
-      _launchAnotherBackgroundJob = false;
-
-      // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      _lastSyncTime = TRI_microtime();
-      SchedulerFeature::SCHEDULER->post(
-          HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
-    } else {
-      _backgroundJobScheduledOrRunning = false;
-      _launchAnotherBackgroundJob = false;
-    }
-  }
+  shutdown();
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
 /// the heartbeat thread constantly reports the current server status to the
 /// agency. it does so by sending the current state string to the key
 /// "Sync/ServerStates/" + my-id.
-/// after transferring the current state to the agency, the heartbeat thread
-/// will wait for changes on the "Sync/Commands/" + my-id key. If no changes
-/// occur,
 /// then the request it aborted and the heartbeat thread will go on with
 /// reporting its state to the agency again. If it notices a change when
 /// watching the command key, it will wake up and apply the change locally.
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run() {
+
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   // mop: the heartbeat thread itself is now ready
@@ -247,6 +283,12 @@ void HeartbeatThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
+
+  _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(this);
+  if (!_maintenanceThread->start()) {
+    // WHAT TO DO NOW?
+    LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to start dedicated thread for maintenance";
+  }
 
   std::function<bool(VPackSlice const& result)> updatePlan =
     [=](VPackSlice const& result) {
@@ -362,14 +404,11 @@ void HeartbeatThread::runDBServer() {
       if (--currentCount == 0) {
         currentCount = currentCountStart;
 
-        // send an initial GET request to Sync/Commands/my-id
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
-
+        // DBServers disregard the ReadOnly flag, otherwise (without authentication and JWT)
+        // we are not able to identify valid requests from other cluster servers
         AgencyReadTransaction trx(
           std::vector<std::string>({
               AgencyCommManager::path("Shutdown"),
-              AgencyCommManager::path("Readonly"),
               AgencyCommManager::path("Current/Version"),
               "/.agency"}));
 
@@ -418,10 +457,6 @@ void HeartbeatThread::runDBServer() {
               syncDBServerStatusQuo();
             }
           }
-
-          auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
-            {AgencyCommManager::path(), "Readonly"}));
-          updateServerMode(readOnlySlice);
         }
       }
 
@@ -612,7 +647,7 @@ void HeartbeatThread::runSingleServer() {
           continue; // try again next time
         }
       }
-      
+
       TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
       auto sendTransient = [&]() {
         VPackBuilder builder;
@@ -631,7 +666,7 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         lastTick = EngineSelectorFeature::ENGINE->currentTick();
-        
+
         // put the leader in optional read-only mode
         auto readOnlySlice = response.get(std::vector<std::string>(
                                           {AgencyCommManager::path(), "Readonly"}));
@@ -654,7 +689,7 @@ void HeartbeatThread::runSingleServer() {
 
       ServerState::instance()->setFoxxmaster(leaderStr); // leader is foxxmater
       ServerState::instance()->setReadOnly(true); // Disable writes with dirty-read header
-      
+
       std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
@@ -666,8 +701,7 @@ void HeartbeatThread::runSingleServer() {
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
         // on this server may prevent us from being a proper follower. We wait for
-        // all ongoing ops to stop, and make sure nothing is committed:
-        // setting server mode to REDIRECT stops DDL ops and write transactions
+        // all ongoing ops to stop, and make sure nothing is committed
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
         TRI_ASSERT(!applier->isActive());
         applier->forget(); // make sure applier is doing a resync
@@ -716,7 +750,10 @@ void HeartbeatThread::runSingleServer() {
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
+          } else if (error.isNot(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_MASTER_CHANGE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_LOOP) &&
+                     error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
             VPackBuilder debug;
@@ -748,7 +785,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   if (readOnlySlice.isBoolean()) {
     readOnly = readOnlySlice.getBool();
   }
-  
+
   ServerState::instance()->setReadOnly(readOnly);
 }
 
@@ -919,13 +956,12 @@ void HeartbeatThread::runCoordinator() {
                 {AgencyCommManager::path(), "Target", "FailedServers"}));
 
         if (failedServersSlice.isObject()) {
-          std::vector<std::string> failedServers = {};
+          std::vector<ServerID> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
             if (server.value.isArray() && server.value.length() == 0) {
               failedServers.push_back(server.key.copyString());
             }
           }
-          // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
 
           pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
@@ -933,7 +969,7 @@ void HeartbeatThread::runCoordinator() {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr != nullptr) {
               try {
-                mngr->updatedFailedServers();
+                mngr->updatedFailedServers(failedServers);
               } catch (std::exception const& e) {
                 LOG_TOPIC(ERR, Logger::HEARTBEAT)
                 << "Got an exception in coordinator heartbeat: " << e.what();
@@ -1086,7 +1122,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
       std::string const name = options.value.get("name").copyString();
       TRI_ASSERT(!name.empty());
-      
+
       VPackSlice const idSlice = options.value.get("id");
       if (!idSlice.isString()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Missing id in agency database plan";
@@ -1168,7 +1204,7 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   MUTEX_LOCKER(mutexLocker, *_statusLock);
   bool shouldUpdate = false;
-    
+
   if (_desiredVersions->plan > _currentVersions.plan) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
       << "Plan version " << _currentVersions.plan
@@ -1181,18 +1217,18 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
       << " is lower than desired version " << _desiredVersions->current;
     shouldUpdate = true;
   }
-    
+
   // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
   //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
   if (now > _lastSyncTime + 7.4 || asyncPush) {
     shouldUpdate = true;
   }
-    
+
   if (!shouldUpdate) {
     return;
   }
-    
+
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
   if (_desiredVersions->plan > ci->getPlanVersion()) {
@@ -1201,22 +1237,15 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
-    
-  if (_backgroundJobScheduledOrRunning) {
-    _launchAnotherBackgroundJob = true;
-    return;
-  }
-    
+
   // schedule a job for the change:
   uint64_t jobNr = ++_backgroundJobsPosted;
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
-  _backgroundJobScheduledOrRunning = true;
-    
-  // the JobGuard is in the operator() of HeartbeatBackgroundJob
+
   _lastSyncTime = TRI_microtime();
-  SchedulerFeature::SCHEDULER->post(
-    HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime), false);
-  
+  TRI_ASSERT(_maintenanceThread != nullptr);
+  _maintenanceThread->notify();
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1289,7 +1318,7 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
-    
+
     for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 

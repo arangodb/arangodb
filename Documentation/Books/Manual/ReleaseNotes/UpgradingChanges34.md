@@ -273,6 +273,14 @@ APIs:
 
 The following APIs have been added or augmented:
 
+- additional `stream` attribute in queries HTTP API
+
+  The REST APIs for retrieving the list of currently running and slow queries
+  at `GET /_api/query/current` and `GET /_api/query/slow` are now returning an
+  additional attribute `stream` for each query.
+  
+  This attribute indicates whether the query was started using a streaming cursor. 
+
 - `POST /_api/document/{collection}` now supports repsert (replace-insert). 
   
   This can be achieved by using the URL parameter `overwrite=true`. When set to 
@@ -340,6 +348,12 @@ The following APIs have been added or augmented:
 
   In single-server mode, the *shardingStrategy* attribute is meaningless and
   will be ignored.
+
+- a new API for inspecting the contents of the AQL query results cache has been added
+  to endpoint `GET /_api/query/cache/entries`
+
+  This API returns the current contents of the AQL query results cache of the 
+  currently selected database.
 
 - APIs for view management have been added at endpoint `/_api/view`.
 
@@ -485,6 +499,12 @@ instead of error 1582 (`ERROR_QUERY_FUNCTION_NOT_FOUND`) in some situations.
   that when explaining an execution plan, the "number of documents" estimated for
   a collection is using a cached stale value, and that the estimates change slightly
   over time even if the underlying collection is not modified.
+
+- AQL query results that are served from the AQL query results cache can now return
+  the *fullCount* attribute as part of the query statistics. Alongside the *fullCount*
+  attribute, other query statistics will be returned. However, these statistics will
+  reflect figures generated during the initial query execution, so especially a
+  query's *executionTime* figure may be misleading for a cached query result.
   
 
 Usage of V8

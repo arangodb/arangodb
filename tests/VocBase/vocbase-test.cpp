@@ -287,7 +287,7 @@ SECTION("test_lookupDataSource") {
     CHECK((true == !vocbase.lookupView("testViewGUID")));
   }
 
-  auto* collection = vocbase.createCollection(collectionJson->slice());
+  auto collection = vocbase.createCollection(collectionJson->slice());
   auto view = vocbase.createView(viewJson->slice());
 
   CHECK((false == collection->deleted()));

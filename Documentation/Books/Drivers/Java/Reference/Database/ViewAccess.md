@@ -32,7 +32,7 @@ ArangoView view = db.view("myView");
 ArangoDatabase.arangoSearch(String name) : ArangoSearch
 ```
 
-Returns a _ArangoSearch_ instance for the given ArangoSearch view name.
+Returns a _ArangoSearch_ instance for the given ArangoSearch View name.
 
 **Arguments**
 
