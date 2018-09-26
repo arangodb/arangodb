@@ -28,6 +28,7 @@
 #include <Shlwapi.h>
 #include <chrono>
 #include <thread>
+#include <unicode/locid.h>
 #endif
 
 #include <algorithm>
@@ -164,14 +165,10 @@ static void ListTreeRecursively(char const* full, char const* path,
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string LocateConfigDirectoryEnv() {
-  char const* v = getenv("ARANGODB_CONFIG_PATH");
-
-  if (v == nullptr) {
+  std::string r;
+  if (!TRI_GETENV("ARANGODB_CONFIG_PATH", r)) {
     return std::string();
   }
-
-  std::string r(v);
-
   NormalizePath(r);
   while (!r.empty() && IsDirSeparatorChar(r[r.size() - 1])) {
     r.pop_back();
@@ -328,7 +325,8 @@ bool TRI_ExistsFile(char const* path) {
 int TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
-  res = _chmod(path, static_cast<int>(mode));
+  UnicodeString wpath(path);
+  res = _wchmod(wpath.getTerminatedBuffer(), static_cast<int>(mode));
 #else
   res = chmod(path, mode);
 #endif
@@ -655,18 +653,26 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
   std::string filter(path);
   filter.append("\\*");
 
-  struct _finddata_t fd;
-  intptr_t handle = _findfirst(filter.c_str(), &fd);
+  struct _wfinddata_t fd;
+
+  UnicodeString wfilter(filter.c_str());
+  
+  intptr_t handle = _wfindfirst(wfilter.getTerminatedBuffer(), &fd);
 
   if (handle == -1) {
     return result;
   }
 
+  std::string ufn;
+  UnicodeString fn;
   do {
-    if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
-      result.emplace_back(fd.name);
+    if (wcscmp(fd.name, L".") != 0 && wcscmp(fd.name, L"..") != 0) {
+      ufn.clear();
+      fn = fd.name;
+      fn.toUTF8String<std::string>(ufn);
+      result.emplace_back(ufn);
     }
-  } while (_findnext(handle, &fd) != -1);
+  } while (_wfindnext(handle, &fd) != -1);
 
   _findclose(handle);
 
@@ -724,7 +730,11 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
   TRI_ERRORBUF;
 #ifdef _WIN32
   BOOL moveResult = 0;
-  moveResult = MoveFileExA(old, filename,
+
+  UnicodeString oldf(old);
+  UnicodeString newf(filename);
+
+  moveResult = MoveFileExW(oldf.getTerminatedBuffer(), newf.getTerminatedBuffer(),
                            MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (!moveResult) {
@@ -956,8 +966,9 @@ int TRI_CreateLockFile(char const* filename) {
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
-  HANDLE fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+
+  UnicodeString fn(filename);
+  HANDLE fd = CreateFileW(fn.getTerminatedBuffer(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
                          FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
@@ -1467,13 +1478,13 @@ std::string TRI_BinaryName(char const* argv0) {
 
 std::string TRI_LocateBinaryPath(char const* argv0) {
 #if _WIN32
-  char buff[4096];
-  int res = GetModuleFileName(NULL, buff, sizeof(buff));
+  wchar_t buff[4096];
+  int res = GetModuleFileNameW(NULL, buff, sizeof(buff));
 
   if (res != 0) {
     buff[4095] = '\0';
 
-    char* q = buff + res;
+    wchar_t* q = buff + res;
 
     while (buff < q) {
       if (*q == '\\' || *q == '/') {
@@ -1484,7 +1495,13 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
       --q;
     }
 
-    return std::string(buff);
+    size_t len = q - buff;
+
+    UnicodeString fn(buff, static_cast<int32_t>(len));
+    std::string ufn;
+    fn.toUTF8String<std::string>(ufn);
+    
+    return ufn;
   }
 
   return std::string();
@@ -1506,10 +1523,9 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
 
   // check PATH variable
   else {
-    p = getenv("PATH");
-
-    if (p != nullptr) {
-      std::vector<std::string> files = basics::StringUtils::split(std::string(p), ':', '\0');
+    std::string pv;
+    if (TRI_GETENV("PATH", pv)) {
+      std::vector<std::string> files = basics::StringUtils::split(pv, ':', '\0');
 
       for (auto const& prefix : files) {
         std::string full;
@@ -1659,7 +1675,11 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst,
                   std::string& error) {
 #ifdef _WIN32
   TRI_ERRORBUF;
-  bool rc = CopyFile(src.c_str(), dst.c_str(), true) != 0;
+
+  UnicodeString s(src.c_str());
+  UnicodeString d(dst.c_str());
+
+  bool rc = CopyFileW(s.getTerminatedBuffer(), d.getTerminatedBuffer(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
@@ -1789,14 +1809,15 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 #ifdef _WIN32
 
 std::string TRI_HomeDirectory() {
-  char const* drive = getenv("HOMEDRIVE");
-  char const* path = getenv("HOMEPATH");
+  std::string drive;
+  std::string path;
 
-  if (drive == nullptr || path == nullptr) {
+  if (! TRI_GETENV("HOMEDRIVE", drive) ||
+      ! TRI_GETENV("HOMEPATH", path)) {
     return std::string();
   }
   
-  return std::string(drive) + std::string(path);
+  return drive + path;
 }
 
 #else
@@ -1833,7 +1854,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  fin = fopen(path, "rb");
+  fin = TRI_FOPEN(path, "rb");
 
   if (fin == nullptr) {
     TRI_Free(buffer);
@@ -1901,7 +1922,7 @@ static std::string getTempPath() {
   // ..........................................................................
 
 #define LOCAL_MAX_PATH_BUFFER 2049
-  TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
+  wchar_t tempPathName[LOCAL_MAX_PATH_BUFFER];
   DWORD dwReturnValue = 0;
   // ..........................................................................
   // Attempt to locate the path where the users temporary files are stored
@@ -1918,15 +1939,17 @@ static std::string getTempPath() {
      The path specified by the USERPROFILE environment variable.
      The Windows directory.
   */
-  dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
+  dwReturnValue = GetTempPathW(LOCAL_MAX_PATH_BUFFER, tempPathName);
 
   if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
     // something wrong
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER="
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathW failed: LOCAL_MAX_PATH_BUFFER="
                                               << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
   }
 
-  std::string result(tempPathName);
+  UnicodeString tmpPathW(tempPathName, dwReturnValue);
+  std::string result;
+  tmpPathW.toUTF8String<std::string>(result);
   // ...........................................................................
   // Whether or not UNICODE is defined, we assume that the temporary file name
   // fits in the ascii set of characters. This is a small compromise so that
@@ -1947,8 +1970,14 @@ static std::string getTempPath() {
 }
 
 static int mkDTemp(char* s, size_t bufferSize) {
-  auto rc = _mktemp_s(s, bufferSize);
+  std::string out;
+  UnicodeString sw(s);
+  // this will overwrite the _XXX part of the string:
+  auto rc = _wmktemp_s((wchar_t*)sw.getTerminatedBuffer(), bufferSize);
   if (rc == 0) {
+    // if it worked out, we need to return the utf8 version:
+    sw.toUTF8String<std::string>(out);
+    memcpy(s, out.c_str(), bufferSize);
     rc = TRI_MKDIR(s, 0700);
   }
   return rc;
@@ -2118,7 +2147,7 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
       errorMessage = std::string("Tempfile already exists! ") + filename;
     } else {
       if (createFile) {
-        FILE* fd = fopen(filename.c_str(), "wb");
+        FILE* fd = TRI_FOPEN(filename.c_str(), "wb");
 
         if (fd != nullptr) {
           fclose(fd);
@@ -2313,7 +2342,8 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 
 bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
-  return !PathIsRelative(path.c_str());
+  UnicodeString upath(path.c_str(), (uint16_t) path.length());
+  return !PathIsRelativeW(upath.getTerminatedBuffer());
 #else  
   return (!path.empty()) && path.c_str()[0] == '/';
 #endif
@@ -2334,3 +2364,27 @@ void TRI_InitializeFiles() {
 
 void TRI_ShutdownFiles() {}
 
+
+bool TRI_GETENV(char const* which, std::string &value) {
+#ifdef _WIN32
+  UnicodeString uwhich(which);
+  wchar_t const *v = _wgetenv(uwhich.getTerminatedBuffer());
+
+  if (v == nullptr) {
+    return false;
+  }
+  value.clear();
+  UnicodeString vu(v);
+  vu.toUTF8String<std::string>(value);
+  return true;
+#else
+  char const* v = getenv(which);
+
+  if (v == nullptr) {
+    return false;
+  }
+  value.clear();
+  value = v;
+  return true;
+#endif
+}

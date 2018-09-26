@@ -292,7 +292,7 @@ bool RestAqlHandler::registerSnippets(
     query->setTransactionContext(ctx);
 
     try {
-      query->prepare(_queryRegistry, 0);
+      query->prepare(_queryRegistry);
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)
           << "failed to instantiate the query: " << ex.what();
@@ -427,7 +427,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   );
 
   try {
-    query->prepare(_queryRegistry, 0);
+    query->prepare(_queryRegistry);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed to instantiate the query: " << ex.what();
@@ -683,7 +683,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   
   auto self = shared_from_this();
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler([this, self, ss]() {
+  ss->setContinueHandler([this, self = std::move(self), ss]() {
     continueHandlerExecution();
   });
 
