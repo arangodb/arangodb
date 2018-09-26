@@ -37,7 +37,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "DatabasePath"),
+    : ApplicationFeature(server, DatabasePathFeature::name()),
       _requiredDirectoryState("any") {
   setOptional(false);
   requiresElevatedPrivileges(false);

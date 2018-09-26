@@ -32,6 +32,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
@@ -62,6 +63,8 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),
+      _copyInstallation(false),
+      _removeCopyInstallation(false),
       _gcInterval(50),
       _name(name),
       _isolate(nullptr),
@@ -72,6 +75,7 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
   startsAfter("Logger");
   startsAfter("Console");
   startsAfter("V8Platform");
+  startsAfter("Random");
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -84,6 +88,11 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--javascript.client-module",
                            "client module to use at startup",
                            new StringParameter(&_clientModule));
+  
+  options->addOption("--javascript.copy-directory",
+                     "target directory to copy files from 'javascript.startup-directory' into "
+                     "(only used when `--javascript.copy-installation` is enabled)",
+                     new StringParameter(&_copyDirectory));
 
   options->addHiddenOption(
       "--javascript.module-directory",
@@ -93,10 +102,14 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
                      new BooleanParameter(&_currentModuleDirectory));
+  
+  options->addOption("--javascript.copy-installation",
+                     "copy contents of 'javascript.startup-directory'",
+                     new BooleanParameter(&_copyInstallation));
 
   options->addOption(
       "--javascript.gc-interval",
-      "request-based garbage collection interval (each n.th commands)",
+      "request-based garbage collection interval (each n.th command)",
       new UInt64Parameter(&_gcInterval));
 }
 
@@ -107,10 +120,7 @@ void V8ShellFeature::validateOptions(
         << "no 'javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
-
-  LOG_TOPIC(DEBUG, Logger::V8)
-      << "using Javascript startup files at '" << _startupDirectory << "'";
-
+  
   if (!_moduleDirectory.empty()) {
     LOG_TOPIC(DEBUG, Logger::V8)
         << "using Javascript modules at '"
@@ -125,6 +135,13 @@ void V8ShellFeature::start() {
   auto platform =
       application_features::ApplicationServer::getFeature<V8PlatformFeature>(
           "V8Platform");
+  
+  if (_copyInstallation) {
+    copyInstallationFiles(); // will exit process on error
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::V8)
+  << "using Javascript startup files at '" << _startupDirectory << "'";
 
   _isolate = platform->createIsolate();
 
@@ -200,6 +217,50 @@ void V8ShellFeature::unprepare() {
 
   // turn on memory allocation failures again
   TRI_AllowMemoryFailures();
+}
+
+void V8ShellFeature::stop() {
+  if (_removeCopyInstallation && !_copyDirectory.empty()) {
+    int res = TRI_RemoveDirectory(_copyDirectory.c_str());
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(DEBUG, Logger::V8) << "could not cleanup installation file copy in path '" << _copyDirectory << "': " << TRI_errno_string(res);
+    }
+  }
+}
+
+void V8ShellFeature::copyInstallationFiles() {
+  if (_copyDirectory.empty()) {
+    uint64_t r = RandomGenerator::interval(UINT64_MAX);
+    char buf[sizeof(uint64_t) * 2 + 1];
+    auto len = TRI_StringUInt64HexInPlace(r, buf);
+    std::string name("arangosh-js-");
+    name.append(buf, len);
+    _copyDirectory = FileUtils::buildFilename(TRI_GetTempPath(), name);
+    _removeCopyInstallation = true;
+  }
+  
+  LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files to '" << _copyDirectory << "'";
+  int res = TRI_ERROR_NO_ERROR;
+  if (FileUtils::exists(_copyDirectory)) {
+    res = TRI_RemoveDirectory(_copyDirectory.c_str());
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
+      << "': " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
+    }
+  }
+  if (!FileUtils::createDirectory(_copyDirectory, &res)) {
+    LOG_TOPIC(FATAL, Logger::V8) << "Error creating JS installation path '" << _copyDirectory
+    << "': " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+  std::string error;
+  if (!FileUtils::copyRecursive(_startupDirectory, _copyDirectory, error)) {
+    LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << _copyDirectory
+    << "': " << error;
+    FATAL_ERROR_EXIT();
+  }
+  _startupDirectory = _copyDirectory;
 }
 
 bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {

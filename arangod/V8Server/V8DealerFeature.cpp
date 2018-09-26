@@ -40,6 +40,7 @@
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
@@ -95,6 +96,7 @@ V8DealerFeature::V8DealerFeature(
       _gcFrequency(30.0),
       _gcInterval(1000),
       _maxContextAge(60.0),
+      _copyInstallation(false),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
@@ -141,6 +143,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
       new VectorParameter<StringParameter>(&_moduleDirectory));
+  
+  options->addOption(
+       "--javascript.copy-installation",
+       "copy contents of 'javascript.startup-directory' on first start",
+       new BooleanParameter(&_copyInstallation));
 
   options->addOption(
       "--javascript.v8-contexts",
@@ -187,9 +194,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
   ctx->normalizePath(_moduleDirectory, "javascript.module-directory", false);
 
-  _startupLoader.setDirectory(_startupDirectory);
-  ServerState::instance()->setJavaScriptPath(_startupDirectory);
-
   // check whether app-path was specified
   if (_appPath.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8) << "no value has been specified for --javascript.app-path";
@@ -207,6 +211,15 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::start() {
+  if (_copyInstallation) {
+    copyInstallationFiles(); // will exit process if it fails
+  }
+  LOG_TOPIC(DEBUG, Logger::V8) << "effective startup-directory is '" << _startupDirectory <<
+  "', effective module-directory is " << _moduleDirectory;
+  
+  _startupLoader.setDirectory(_startupDirectory);
+  ServerState::instance()->setJavaScriptPath(_startupDirectory);
+  
   // dump paths
   {
     std::vector<std::string> paths;
@@ -305,6 +318,69 @@ void V8DealerFeature::start() {
   loadJavaScriptFileInAllContexts(database->systemDatabase(), "server/initialize.js", nullptr);
 
   startGarbageCollection();
+}
+
+void V8DealerFeature::copyInstallationFiles() {
+  // get base path from DatabasePathFeature
+  auto dbPathFeature = application_features::ApplicationServer::getFeature<DatabasePathFeature>(DatabasePathFeature::name());
+  const std::string copyJSPath = FileUtils::buildFilename(dbPathFeature->directory(), "js");
+  if (copyJSPath == _startupDirectory) {
+    LOG_TOPIC(FATAL, arangodb::Logger::V8)
+    << "'javascript.startup-directory' cannot be inside 'database.directory'";
+    FATAL_ERROR_EXIT();
+  }
+  TRI_ASSERT(!copyJSPath.empty());
+  
+  const std::string checksumFile = FileUtils::buildFilename(_startupDirectory, StaticStrings::checksumFileJs);
+  const std::string copyChecksumFile = FileUtils::buildFilename(copyJSPath, StaticStrings::checksumFileJs);
+  
+  bool overwriteCopy = false;
+  if (!FileUtils::exists(copyJSPath) ||
+      !FileUtils::exists(checksumFile) ||
+      !FileUtils::exists(copyChecksumFile)) {
+    overwriteCopy = true;
+  } else {
+    try {
+      overwriteCopy = (FileUtils::slurp(copyChecksumFile) != FileUtils::slurp(checksumFile));
+    } catch(basics::Exception const& e) {
+      LOG_TOPIC(ERR, Logger::V8) << "Error reading '" << StaticStrings::checksumFileJs <<
+      "' from disk: " << e.what();
+      overwriteCopy = true;
+    }
+  }
+  
+  if (overwriteCopy) {
+    // sanity check before removing an existing directory:
+    // check if for some reason we will be trying to remove the entire database directory...
+    if (FileUtils::exists(FileUtils::buildFilename(copyJSPath, "ENGINE"))) {
+      LOG_TOPIC(FATAL, Logger::V8) << "JS installation path '" << copyJSPath
+      << "' seems to be invalid";
+      FATAL_ERROR_EXIT();
+    }
+    
+    LOG_TOPIC(DEBUG, Logger::V8) << "Copying JS installation files to '" << copyJSPath << "'";
+    int res = TRI_ERROR_NO_ERROR;
+    if (FileUtils::exists(copyJSPath)) {
+      res = TRI_RemoveDirectory(copyJSPath.c_str());
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC(FATAL, Logger::V8) << "Error cleaning JS installation path '" << copyJSPath
+        << "': " << TRI_errno_string(res);
+        FATAL_ERROR_EXIT();
+      }
+    }
+    if (!FileUtils::createDirectory(copyJSPath, &res)) {
+      LOG_TOPIC(FATAL, Logger::V8) << "Error creating JS installation path '" << copyJSPath
+      << "': " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
+    }
+    std::string error;
+    if (!FileUtils::copyRecursive(_startupDirectory, copyJSPath, error)) {
+      LOG_TOPIC(FATAL, Logger::V8) << "Error copying JS installation files to '" << copyJSPath
+      << "': " << error;
+      FATAL_ERROR_EXIT();
+    }
+  }
+  _startupDirectory = copyJSPath;
 }
 
 V8Context* V8DealerFeature::addContext() {
