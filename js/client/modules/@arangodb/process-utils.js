@@ -424,9 +424,15 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     };
   }
 
-  let res = {};
+  let instanceInfo = {
+    rootDir: rootDir,
+    pid: 0,
+    exitStatus: {}
+  };
   if (platform.substr(0, 3) === 'win') {
-    res = executeExternal(cmd, args);
+    let res = executeExternal(cmd, args);
+    instanceInfo.pid = res.pid;
+    instanceInfo.exitStatus = res;
     const procdumpArgs = [
       '-accepteula',
       '-64',
@@ -442,34 +448,31 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     ];
 
     try {
-      res.monitor = executeExternal('procdump', procdumpArgs);
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
     } catch (x) {
       print('failed to start procdump - is it installed?');
       // throw x;
     }
-    Object.assign(res, 
+    Object.assign(instanceInfo.exitStatus, 
                   statusExternal(res.pid, true));
   } else {
-    res = executeExternalAndWait(cmd, args);
+    let res = executeExternalAndWait(cmd, args);
+    instanceInfo.pid = res.pid;
+    instanceInfo.exitStatus = res;
   }
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
 
   if (coreCheck &&
-      res.hasOwnProperty('signal') &&
-      ((res.signal === 11) ||
-       (res.signal === 6) ||
+      instanceInfo.exitStatus.hasOwnProperty('signal') &&
+      ((instanceInfo.exitStatus.signal === 11) ||
+       (instanceInfo.exitStatus.signal === 6) ||
        // Windows sometimes has random numbers in signal...
        (platform.substr(0, 3) === 'win')
       )
      ) {
     print(res);
-    let instanceInfo = {
-      rootDir: rootDir,
-      pid: res.pid,
-      exitStatus: res
-    };
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
@@ -480,14 +483,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     serverCrashed = true;
   }
 
-  if (res.status === 'TERMINATED') {
-    const color = (res.exit === 0 ? GREEN : RED);
+  if (instanceInfo.exitStatus.status === 'TERMINATED') {
+    const color = (instanceInfo.exitStatus.exit === 0 ? GREEN : RED);
 
     print(color + 'Finished: ' + res.status +
-      ' exit code: ' + res.exit +
+      ' exit code: ' + instanceInfo.exitStatus.exit +
       ' Time elapsed: ' + deltaTime + RESET);
 
-    if (res.exit === 0) {
+    if (instanceInfo.exitStatus.exit === 0) {
       return {
         status: true,
         message: '',
@@ -496,38 +499,38 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     } else {
       return {
         status: false,
-        message: 'exit code was ' + res.exit,
+        message: 'exit code was ' + instanceInfo.exitStatus.exit,
         duration: deltaTime
       };
     }
-  } else if (res.status === 'ABORTED') {
-    if (typeof (res.errorMessage) !== 'undefined') {
-      errorMessage += res.errorMessage;
+  } else if (instanceInfo.exitStatus.status === 'ABORTED') {
+    if (typeof (instanceInfo.exitStatus.errorMessage) !== 'undefined') {
+      errorMessage += instanceInfo.exitStatus.errorMessage;
     }
 
-    print('Finished: ' + res.status +
-      ' Signal: ' + res.signal +
+    print('Finished: ' + instanceInfo.exitStatus.status +
+      ' Signal: ' + instanceInfo.exitStatus.signal +
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
       status: false,
-      message: 'irregular termination: ' + res.status +
-        ' exit signal: ' + res.signal + errorMessage,
+      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
+        ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
       duration: deltaTime
     };
   } else {
-    if (typeof (res.errorMessage) !== 'undefined') {
-      errorMessage += res.errorMessage;
+    if (typeof (instanceInfo.exitStatus.errorMessage) !== 'undefined') {
+      errorMessage += instanceInfo.exitStatus.errorMessage;
     }
 
-    print('Finished: ' + res.status +
-      ' exit code: ' + res.signal +
+    print('Finished: ' + instanceInfo.exitStatus.status +
+      ' exit code: ' + instanceInfo.exitStatus.signal +
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
       status: false,
-      message: 'irregular termination: ' + res.status +
-        ' exit code: ' + res.exit + errorMessage,
+      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
+        ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
       duration: deltaTime
     };
   }
