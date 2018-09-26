@@ -30,7 +30,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
 class Transaction;
@@ -118,7 +117,7 @@ class RocksDBCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions&) override;
 
   void deferDropCollection(
     std::function<bool(LogicalCollection&)> const& callback

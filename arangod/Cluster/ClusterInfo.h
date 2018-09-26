@@ -477,6 +477,14 @@ class ClusterInfo {
   std::string getServerEndpoint(ServerID const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the advertised endpoint of a server from its ID.
+  /// If it is not found in the cache, the cache is reloaded once, if
+  /// it is still not there an empty string is returned as an error.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getServerAdvertisedEndpoint(ServerID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief find the server ID for an endpoint.
   /// If it is not found in the cache, the cache is reloaded once, if
   /// it is still not there an empty string is returned as an error.
@@ -541,18 +549,6 @@ class ClusterInfo {
   ServerID getCoordinatorByShortID(ServerShortID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full dbserver ID by short ID
-  //////////////////////////////////////////////////////////////////////////////
-
-  ServerID getDBServerByShortID(ServerShortID);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full server ID by short name
-  //////////////////////////////////////////////////////////////////////////////
-
-  ServerID getServerByShortName(ServerShortName const&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate planned
   //////////////////////////////////////////////////////////////////////////////
 
@@ -587,14 +583,16 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<VPackBuilder> getCurrent();
-
+  
   std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
   std::unordered_map<ServerID, std::string> getServers();
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
-  
+
+  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -690,6 +688,8 @@ class ClusterInfo {
       _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string>
       _serverAliases;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string>
+      _serverAdvertisedEndpoints;  // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:
@@ -703,8 +703,6 @@ class ClusterInfo {
 
   // Mappings between short names/IDs and full server IDs
   std::unordered_map<ServerShortID, ServerID> _coordinatorIdMap;
-  std::unordered_map<ServerShortID, ServerID> _dbserverIdMap;
-  std::unordered_map<ServerShortName, ServerID> _nameMap;
   ProtectionData _mappingsProt;
 
   std::shared_ptr<VPackBuilder> _plan;

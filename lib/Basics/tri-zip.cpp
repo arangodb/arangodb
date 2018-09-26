@@ -26,6 +26,7 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Common.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 
@@ -147,7 +148,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
     }
 
     // try to write the outfile
-    fout = fopen(fullPath.c_str(), "wb");
+    fout = TRI_FOPEN(fullPath.c_str(), "wb");
 
     // cannot write to outfile. this may be due to the target directory missing
     if (fout == nullptr && !skipPaths &&
@@ -166,7 +167,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       *(filenameWithoutPath - 1) = c;
 
       // try again
-      fout = fopen(fullPath.c_str(), "wb");
+      fout = TRI_FOPEN(fullPath.c_str(), "wb");
     } else if (fout == nullptr) {
       // try to create the target directory recursively
       // strip filename so we only have the directory name
@@ -178,7 +179,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       }
 
       // try again
-      fout = fopen(fullPath.c_str(), "wb");
+      fout = TRI_FOPEN(fullPath.c_str(), "wb");
     }
 
     if (fout == nullptr) {
@@ -340,7 +341,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
       break;
     }
 
-    FILE* fin = fopen(fullfile.c_str(), "rb");
+    FILE* fin = TRI_FOPEN(fullfile.c_str(), "rb");
 
     if (fin == nullptr) {
       break;
@@ -394,7 +395,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
   }
   TRI_DEFER(TRI_CLOSE(fd));
 
-  struct TRI_STAT statbuf;
+  TRI_stat_t statbuf;
   int res = TRI_FSTAT(fd, &statbuf);
   if (res < 0) {
     TRI_ERRORBUF;

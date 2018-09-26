@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -107,6 +108,10 @@ bool DropCollection::first() {
     return false;
   }
 
+  // We're removing the shard version from MaintenanceFeature before notifying
+  // for new Maintenance run. This should make sure that the next round does not
+  // get rejected.
+  _feature.delShardVersion(collection);
   notify();
 
   return false;

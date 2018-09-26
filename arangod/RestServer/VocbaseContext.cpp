@@ -102,12 +102,14 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
 
 void VocbaseContext::forceSuperuser() {
   TRI_ASSERT(_type != ExecContext::Type::Internal || _user.empty());
-  if (ServerState::readOnly()) {
-    return; // ignore force
-  }
   _type = ExecContext::Type::Internal;
-  _systemDbAuthLevel = auth::Level::RW;
-  _databaseAuthLevel = auth::Level::RW;
+  if (ServerState::readOnly()) {
+    _systemDbAuthLevel = auth::Level::RO;
+    _databaseAuthLevel = auth::Level::RO;
+  } else {
+    _systemDbAuthLevel = auth::Level::RW;
+    _databaseAuthLevel = auth::Level::RW;
+  }
 }
 
 void VocbaseContext::forceReadOnly() {

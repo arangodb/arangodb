@@ -29,15 +29,15 @@ Query eligibility
 -----------------
 
 The query results cache will consider two queries identical if they have exactly the
-same query string. Any deviation in terms of whitespace, capitalization etc.
-will be considered a difference. The query string will be hashed and used as
-the cache lookup key. If a query uses bind parameters, these will also be hashed
+same query string and the same bind variables. Any deviation in terms of whitespace, 
+capitalization etc. will be considered a difference. The query string will be hashed 
+and used as the cache lookup key. If a query uses bind parameters, these will also be hashed
 and used as part of the cache lookup key.
 
 That means even if the query strings of two queries are identical, the query results
 cache will treat them as different queries if they have different bind parameter
 values. Other components that will become part of a query's cache key are the
-`count` and `fullCount` attributes.
+`count`, `fullCount` and `optimizer` attributes.
 
 If the cache is turned on, the cache will check at the very start of execution
 whether it has a result ready for this particular query. If that is the case,
@@ -55,7 +55,11 @@ A query is eligible for caching only if all of the following conditions are met:
 * the query string is at least 8 characters long 
 * the query is a read-only query and does not modify data in any collection
 * no warnings were produced while executing the query
-* the query is deterministic and only uses deterministic functions
+* the query is deterministic and only uses deterministic functions whose results
+  are marked as cacheable
+* the size of the query result does not exceed the cache's configured maximal
+  size for individual cache results or cumulated results
+* the query is not executed using a streaming cursor
 
 The usage of non-deterministic functions leads to a query not being cachable. 
 This is intentional to avoid caching of function results which should rather
@@ -136,15 +140,31 @@ require("@arangodb/aql/cache").properties({ mode: "on" });
 ```
 
 The maximum number of cached results in the cache for each database can be configured
-at server start using the configuration parameter `--query.cache-entries`.
-This parameter can be used to put an upper bound on the number of query results in 
-each database's query cache and thus restrict the cache's memory consumption.
+at server start using the following configuration parameters:
 
-The value can also be adjusted at runtime as follows:
+* `--query.cache-entries`: maximum number of results in query result cache per database
+* `--query.cache-entries-max-size`: maximum cumulated size of results in query result cache per database
+* `--query.cache-entry-max-size`: maximum size of an invidiual result entry in query result cache
+* `--query.cache-include-system-collections`: whether or not to include system collection queries in the query result cache
+
+These parameters can be used to put an upper bound on the number and size of query 
+results in each database's query cache and thus restrict the cache's memory consumption.
+
+These value can also be adjusted at runtime as follows:
 
 ```
-require("@arangodb/aql/cache").properties({ maxResults: 200 }); 
+require("@arangodb/aql/cache").properties({ 
+  maxResults: 200,
+  maxResultsSize: 8 * 1024 * 1024,
+  maxEntrySize: 1024 * 1024,
+  includeSystem: false 
+}); 
 ```
+
+The above will limit the number of cached results in the query results cache to 200
+results per database, and to 8 MB cumulated query result size per database. The maximum
+size of each query cache entry is restricted to 8MB. Queries that involve system
+collections are excluded from caching.
 
 
 Per-query configuration
@@ -168,7 +188,7 @@ var stmt = db._createStatement({
 stmt.execute();
 ```
 
-When using the `db._query()` function, the `cache` attribute can be set as allows:
+When using the `db._query()` function, the `cache` attribute can be set as follows:
 
 ```
 db._query({ 
@@ -184,6 +204,27 @@ if the result was retrieved from the query cache, and `false` otherwise. Clients
 this attribute to check if a specific query was served from the cache or not.
 
 
+Query results cache inspection
+------------------------------
+
+The contents of the query results cache can be checked at runtime using the cache's
+`toArray()` function:
+
+```
+require("@arangodb/aql/cache").toArray();
+```
+
+This will return a list of all query results stored in the current database's query
+results cache.
+
+The query results cache for the current database can be cleared at runtime using the
+cache's `clear` function:
+
+```
+require("@arangodb/aql/cache").clear();
+```
+
+
 Restrictions
 ------------
 
@@ -191,3 +232,4 @@ Query results that are returned from the query results cache may contain executi
 stemming from the initial, uncached query execution. This means for a cached query results,
 the *extra.stats* attribute may contain stale data, especially in terms of the *executionTime*
 and *profile* attribute values.
+

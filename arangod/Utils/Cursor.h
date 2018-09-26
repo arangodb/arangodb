@@ -93,6 +93,8 @@ class Cursor {
   }
 
   virtual CursorType type() const = 0;
+  
+  virtual void kill() {}
 
   virtual size_t count() const = 0;
 

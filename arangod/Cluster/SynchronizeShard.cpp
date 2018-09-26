@@ -107,6 +107,11 @@ SynchronizeShard::SynchronizeShard(
   }
   TRI_ASSERT(desc.has(THE_LEADER));
 
+  if (!desc.has(SHARD_VERSION)) {
+    error << "local shard version must be specified. ";
+  }
+  TRI_ASSERT(desc.has(SHARD_VERSION));
+
   if (!error.str().empty()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -123,6 +128,8 @@ public:
   }
 };
 
+SynchronizeShard::~SynchronizeShard() {}
+
 
 arangodb::Result getReadLockId (
   std::string const& endpoint, std::string const& database,
@@ -137,7 +144,7 @@ arangodb::Result getReadLockId (
   }
 
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::GET,
+    TRI_NewTickServer(), endpoint, rest::RequestType::GET,
     DB + database + REPL_HOLD_READ_LOCK, std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -165,7 +172,7 @@ arangodb::Result getReadLockId (
 }
 
 
-arangodb::Result count(
+arangodb::Result collectionCount(
   std::shared_ptr<arangodb::LogicalCollection> const& col, uint64_t& c) {
 
   std::string collectionName(col->name());
@@ -195,7 +202,6 @@ arangodb::Result count(
   c = s.getNumber<uint64_t>();
 
   return opResult.result;
-
 }
 
 arangodb::Result addShardFollower (
@@ -225,19 +231,25 @@ arangodb::Result addShardFollower (
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
-    uint64_t c;
-    count(collection, c);
+    uint64_t docCount;
+    Result res = collectionCount(collection, docCount);
+    if (res.fail()) {
+      return res;
+    }
     VPackBuilder body;
     { VPackObjectBuilder b(&body);
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
       body.add(SHARD, VPackValue(shard));
-      body.add("checksum", VPackValue(std::to_string(c)));
+      body.add("checksum", VPackValue(std::to_string(docCount)));
       if (lockJobId != 0) {
-        body.add("readLockId", VPackValue(lockJobId));
-      }}
+        body.add("readLockId", VPackValue(std::to_string(lockJobId)));
+      } else {
+        TRI_ASSERT(docCount == 0);
+      }
+    }
 
     auto comres = cc->syncRequest(
-      clientId, 1, endpoint, rest::RequestType::PUT,
+      TRI_NewTickServer(), endpoint, rest::RequestType::PUT,
       DB + database + REPL_ADD_FOLLOWER, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
 
@@ -293,7 +305,7 @@ arangodb::Result removeShardFollower (
   // database might be gone already on the leader and we need to cancel
   // the read lock under all circumstances.
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::PUT,
+    TRI_NewTickServer(), endpoint, rest::RequestType::PUT,
     DB + database + REPL_REM_FOLLOWER, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -331,7 +343,7 @@ arangodb::Result cancelReadLockOnLeader (
   // database might be gone already on the leader and we need to cancel
   // the read lock under all circumstances.
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
+    TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ,
     DB + StaticStrings::SystemDatabase + REPL_HOLD_READ_LOCK, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -367,7 +379,7 @@ arangodb::Result cancelBarrier(
   }
 
   auto comres = cc->syncRequest(
-    clientId, 1, endpoint, rest::RequestType::DELETE_REQ,
+    TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ,
     DB + database + REPL_BARRIER_API + std::to_string(barrierId), std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
 
@@ -413,7 +425,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   auto url = DB + database + REPL_HOLD_READ_LOCK;
 
   cc->asyncRequest(
-    clientId, 2, endpoint, rest::RequestType::POST, url,
+    TRI_NewTickServer(), endpoint, rest::RequestType::POST, url,
     std::make_shared<std::string>(body.toJson()),
     std::unordered_map<std::string, std::string>(),
     std::make_shared<SynchronizeShardCallback>(this), timeout, true, timeout);
@@ -427,7 +439,7 @@ arangodb::Result SynchronizeShard::getReadLock(
 
     // Now check that we hold the read lock:
     auto putres = cc->syncRequest(
-      clientId, 1, endpoint, rest::RequestType::PUT, url, body.toJson(),
+      TRI_NewTickServer(), endpoint, rest::RequestType::PUT, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
 
     auto result = putres->result;
@@ -454,7 +466,7 @@ arangodb::Result SynchronizeShard::getReadLock(
 
   try {
     auto r = cc->syncRequest(
-      clientId, 1, endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
+      TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ, url, body.toJson(),
       std::unordered_map<std::string, std::string>(), timeout);
     if (r->result == nullptr && r->result->getHttpReturnCode() != 200) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE)
@@ -721,8 +733,8 @@ bool SynchronizeShard::first() {
     }
 
     auto ep = clusterInfo->getServerEndpoint(leader);
-    uint64_t c;
-    if (!count(collection, c).ok()) {
+    uint64_t docCount;
+    if (!collectionCount(collection, docCount).ok()) {
       std::stringstream error;
       error << "failed to get a count on leader " << shard;
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << "SynchronizeShard " << error.str();
@@ -730,7 +742,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    if (c == 0) {
+    if (docCount == 0) {
       // We have a short cut:
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) <<
         "synchronizeOneShard: trying short cut to synchronize local shard '" <<
@@ -951,4 +963,17 @@ bool SynchronizeShard::first() {
 
 }
 
-SynchronizeShard::~SynchronizeShard() {}
+
+void SynchronizeShard::setState(ActionState state) {
+  
+  if ((COMPLETE==state || FAILED==state) && _state != state) {
+    TRI_ASSERT(_description.has("shard"));
+    _feature.incShardVersion(_description.get("shard"));
+  }
+  
+  ActionBase::setState(state);
+  
+}
+
+
+

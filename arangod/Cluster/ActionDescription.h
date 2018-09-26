@@ -67,10 +67,10 @@ public:
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  supp  Non discriminatory properties
    */
-  ActionDescription(
+  explicit ActionDescription(
     std::map<std::string, std::string> const& desc,
-    std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
-
+    std::shared_ptr<VPackBuilder> const& suppl = std::make_shared<VPackBuilder>());
+  
   /**
    * @brief Clean up
    */
@@ -97,7 +97,7 @@ public:
    * @param  key   Key to lookup
    * @return       true if key is found
    */
-  bool has(std::string const& keu) const;
+  bool has(std::string const& key) const;
 
   /**
    * @brief Get a string value from description
@@ -158,8 +158,6 @@ public:
   std::shared_ptr<VPackBuilder> const properties() const;
 
 private:
-
-  /// Note: members are const. No thread safety guards needed.
 
   /** @brief discriminatory properties */
   std::map<std::string, std::string> const _description;

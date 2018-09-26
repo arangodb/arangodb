@@ -47,7 +47,7 @@ namespace rest {
 class GeneralCommTask;
 class SocketTask;
 
-class Scheduler {
+class Scheduler : public std::enable_shared_from_this<Scheduler> {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
@@ -95,9 +95,9 @@ class Scheduler {
     uint64_t _queuedV8;
   };
 
-  void post(std::function<void()> const callback, bool isV8,
-            uint64_t timeout = 0);
-  void post(asio_ns::io_context::strand&, std::function<void()> const callback);
+  void post(std::function<void()> const&, bool isV8,
+                      uint64_t timeout = 0);
+  void post(asio_ns::io_context::strand&, std::function<void()> const&);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();

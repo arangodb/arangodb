@@ -69,6 +69,7 @@ class FlushFeature final
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
   static std::atomic<bool> _isRunning;
+  basics::ReadWriteLock _threadLock;
 
   basics::ReadWriteLock _callbacksLock;
   std::unordered_map<void*, FlushCallback> _callbacks;

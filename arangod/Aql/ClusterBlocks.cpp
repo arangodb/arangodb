@@ -837,7 +837,6 @@ Result RemoteBlock::sendAsyncRequest(
   }
 
   // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
   CoordTransactionID const coordTransactionId = TRI_NewTickServer();
   std::unordered_map<std::string, std::string> headers;
   if (!_ownName.empty()) {
@@ -853,39 +852,11 @@ Result RemoteBlock::sendAsyncRequest(
       std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
 
   // TODO Returns OperationID do we need it in any way?
-  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+  cc->asyncRequest(coordTransactionId, _server, type,
                    std::move(url), body, headers, callback, defaultTimeOut,
                    true);
 
   return {TRI_ERROR_NO_ERROR};
-}
-
-/// @brief local helper to send a request
-std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
-    arangodb::rest::RequestType type, std::string const& urlPart,
-    std::string const& body) const {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens on controlled shutdown
-    return std::make_unique<ClusterCommResult>();
-  }
-
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
-  }
-
-  std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-    urlPart + _queryId;
-
-  ++_engine->_stats.requests;
-
-  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                         std::move(url), body, headers, defaultTimeOut);
 }
 
 /// @brief initializeCursor, could be called multiple times
@@ -956,7 +927,7 @@ bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
     _lastResponse = result->result;
   }
   return true;
-};
+}
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> RemoteBlock::shutdown(int errorCode) {

@@ -137,11 +137,9 @@ int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
   return TRI_ERROR_NO_ERROR;
 }
 
-void RecoveryManager::updatedFailedServers() {
+void RecoveryManager::updatedFailedServers(std::vector<ServerID> const& failed) {
   MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
 
-  std::vector<std::string> const failed =
-      ClusterInfo::instance()->getFailedServers();
   for (auto const& pair : _primaryServers) {
     auto const& it = std::find(failed.begin(), failed.end(), pair.second);
     if (it != failed.end()) {

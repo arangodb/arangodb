@@ -349,7 +349,7 @@ void Query::registerWarning(int code, char const* details) {
   }
 }
 
-void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
+void Query::prepare(QueryRegistry* registry) {
   TRI_ASSERT(registry != nullptr);
 
   init();
@@ -359,12 +359,12 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
 
 #if USE_PLAN_CACHE
   if (!_queryString.empty() &&
-      queryHash != DontCache &&
+      hashQuery() != DontCache &&
       _part == PART_MAIN) {
-    // LOG_TOPIC(INFO, Logger::FIXME) << "trying to find query in execution plan cache: '" << _queryString << "', hash: " << queryHash;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "trying to find query in execution plan cache: '" << _queryString << "', hash: " << hashQuery();
 
     // store & lookup velocypack plans!!
-    std::shared_ptr<PlanCacheEntry> planCacheEntry = PlanCache::instance()->lookup(_vocbase, queryHash, queryString);
+    std::shared_ptr<PlanCacheEntry> planCacheEntry = PlanCache::instance()->lookup(_vocbase, hashQuery(), queryString);
     if (planCacheEntry != nullptr) {
       // LOG_TOPIC(INFO, Logger::FIXME) << "query found in execution plan cache: '" << _queryString << "'";
 
@@ -410,12 +410,12 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
 
 #if USE_PLAN_CACHE
     if (!_queryString.empty() &&
-        queryHash != DontCache &&
+        hashQuery() != DontCache &&
         _part == PART_MAIN &&
         _warnings.empty() &&
         _ast->root()->isCacheable()) {
-      // LOG_TOPIC(INFO, Logger::FIXME) << "storing query in execution plan cache '" << _queryString << "', hash: " << queryHash;
-      PlanCache::instance()->store(_vocbase, queryHash, _queryString, plan.get());
+      // LOG_TOPIC(INFO, Logger::FIXME) << "storing query in execution plan cache '" << _queryString << "', hash: " << hashQuery();
+      PlanCache::instance()->store(_vocbase, hashQuery(), _queryString, plan.get());
     }
 #endif
   }
@@ -570,16 +570,15 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 
   try {
     bool useQueryCache = canUseQueryCache();
-    uint64_t queryHash = hash();
+    
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-            &_vocbase, queryHash, _queryString
+            &_vocbase, hash(), _queryString, bindParameters() 
           );
-          arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
-
+          
           if (cacheEntry != nullptr) {
             bool hasPermissions = true;
 
@@ -599,11 +598,6 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
               // we don't have yet a transaction when we're here, so let's create
               // a mimimal context to build the result
               queryResult.context = transaction::StandaloneContext::Create(_vocbase);
-              queryResult.extra = std::make_shared<VPackBuilder>();
-              {
-                VPackObjectBuilder guard(queryResult.extra.get(), true);
-                addWarningsToVelocyPack(*queryResult.extra);
-              }
               TRI_ASSERT(cacheEntry->_queryResult != nullptr);
               queryResult.result = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
@@ -616,7 +610,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         }
 
         // will throw if it fails
-        prepare(registry, queryHash);
+        prepare(registry);
 
         log();
 
@@ -695,7 +689,12 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         if (useQueryCache && _warnings.empty()) {
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-            queryHash, _queryString, _resultBuilder, _trx->state()->collectionNames(_views));
+              hash(),
+              _queryString, 
+              _resultBuilder, 
+              bindParameters(), 
+              _trx->state()->collectionNames(_views)
+          );
         }
 
         queryResult.result = std::move(_resultBuilder);
@@ -777,14 +776,12 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
 
   try {
     bool useQueryCache = canUseQueryCache();
-    uint64_t queryHash = hash();
 
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-        &_vocbase, queryHash, _queryString
+        &_vocbase, hash(), _queryString, bindParameters()
       );
-      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
         bool hasPermissions = true;
@@ -820,7 +817,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     }
 
     // will throw if it fails
-    prepare(registry, queryHash);
+    prepare(registry);
 
     log();
 
@@ -908,7 +905,12 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, Q
     if (useQueryCache && _warnings.empty()) {
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-        queryHash, _queryString, builder, _trx->state()->collectionNames(_views));
+          hash(), 
+          _queryString, 
+          builder, 
+          bindParameters(), 
+          _trx->state()->collectionNames(_views)
+      );
     }
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
@@ -974,11 +976,6 @@ ExecutionState Query::finalize(QueryResult& result) {
     return state;
   }
 
-  if (_cacheEntry != nullptr) {
-    _cacheEntry->_stats = result.extra;
-    QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
-  }
-
   addWarningsToVelocyPack(*result.extra);
   double now = TRI_microtime();
   if (_profile != nullptr && _queryOptions.profile >= PROFILE_LEVEL_BASIC) {
@@ -986,6 +983,11 @@ ExecutionState Query::finalize(QueryResult& result) {
     _profile->toVelocyPack(*(result.extra));
   }
   result.extra->close();
+
+  if (_cacheEntry != nullptr) {
+    _cacheEntry->_stats = result.extra;
+    QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
+  }
 
   // patch executionTime stats value in place
   // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
@@ -1267,6 +1269,15 @@ void Query::init() {
   TRI_ASSERT(_ast == nullptr);
   _ast.reset(new Ast(this));
 }
+  
+/// @brief calculate a hash for the query, once
+uint64_t Query::hash() const {
+  if (!_queryHashCalculated) {
+    _queryHash = calculateHash();
+    _queryHashCalculated = true;
+  }
+  return _queryHash;
+}
 
 /// @brief log a query
 void Query::log() {
@@ -1277,7 +1288,7 @@ void Query::log() {
 }
 
 /// @brief calculate a hash value for the query and bind parameters
-uint64_t Query::hash() {
+uint64_t Query::calculateHash() const {
   if (_queryString.empty()) {
     return DontCache;
   }

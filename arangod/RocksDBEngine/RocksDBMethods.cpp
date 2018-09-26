@@ -92,6 +92,12 @@ arangodb::Result RocksDBMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   return Get(cf, key.string(), val);
 }
 
+arangodb::Result RocksDBMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                     RocksDBKey const& key,
+                                     rocksdb::PinnableSlice* val) {
+  return Get(cf, key.string(), val);
+}
+
 rocksdb::SequenceNumber RocksDBMethods::sequenceNumber() {
   return _state->sequenceNumber();
 }
@@ -143,12 +149,17 @@ RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
 bool RocksDBReadOnlyMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
                                     RocksDBKey const& key) {
   TRI_ASSERT(cf != nullptr);
+  bool valueFound = false;
   std::string val;  // do not care about value
   bool mayExist = _db->KeyMayExist(_state->_rocksReadOptions, cf, key.string(),
-                                    &val, nullptr);
+                                    &val, &valueFound);
+  if (valueFound) {
+    return true;
+  }
   if (mayExist) {
+    rocksdb::PinnableSlice ps;
     rocksdb::Status s =
-        _db->Get(_state->_rocksReadOptions, cf, key.string(), &val);
+        _db->Get(_state->_rocksReadOptions, cf, key.string(), &ps);
     return !s.IsNotFound();
   }
   return false;
@@ -157,6 +168,16 @@ bool RocksDBReadOnlyMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 arangodb::Result RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                              rocksdb::Slice const& key,
                                              std::string* val) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  rocksdb::Status s = _db->Get(ro, cf, key, val);
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBReadOnlyMethods");
+}
+
+arangodb::Result RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                             rocksdb::Slice const& key,
+                                             rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
@@ -216,6 +237,20 @@ bool RocksDBTrxMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                         rocksdb::Slice const& key,
                                         std::string* val) {
+  arangodb::Result rv;
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
+  if (!s.ok()) {
+    rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
+  }
+  return rv;
+}
+
+arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                        rocksdb::Slice const& key,
+                                        rocksdb::PinnableSlice* val) {
   arangodb::Result rv;
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
@@ -309,6 +344,15 @@ bool RocksDBBatchedMethods::Exists(rocksdb::ColumnFamilyHandle* cf,
 arangodb::Result RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             std::string* val) {
+  TRI_ASSERT(cf != nullptr);
+  rocksdb::ReadOptions ro;
+  rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
+  return s.ok() ? arangodb::Result() : rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBBatchedMethods");
+}
+
+arangodb::Result RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
+                                            rocksdb::Slice const& key,
+                                            rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   rocksdb::Status s = _wb->GetFromBatchAndDB(_db, ro, cf, key, val);

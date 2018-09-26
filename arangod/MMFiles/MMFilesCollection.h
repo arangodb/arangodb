@@ -38,19 +38,17 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 struct MMFilesDatafile;
 struct MMFilesMarker;
 
 namespace arangodb {
-
-
 class LogicalCollection;
 class ManagedDocumentResult;
 struct MMFilesDocumentOperation;
 class MMFilesPrimaryIndex;
 class MMFilesWalMarker;
+struct OpenIteratorState;
 class Result;
 class TransactionState;
 
@@ -72,51 +70,7 @@ class MMFilesCollection final : public PhysicalCollection {
     TRI_ASSERT(phys != nullptr);
     return toMMFilesCollection(phys);
   }
-
-  /// @brief state during opening of a collection
-  struct OpenIteratorState {
-    LogicalCollection* _collection;
-    arangodb::MMFilesPrimaryIndex* _primaryIndex;
-    TRI_voc_tid_t _tid;
-    TRI_voc_fid_t _fid;
-    std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*>
-        _stats;
-    MMFilesDatafileStatisticsContainer* _dfi;
-    transaction::Methods* _trx;
-    ManagedDocumentResult _mmdr;
-    IndexLookupContext _context;
-    uint64_t _deletions;
-    uint64_t _documents;
-    uint64_t _operations;
-    int64_t _initialCount;
-
-    OpenIteratorState(LogicalCollection* collection, transaction::Methods* trx)
-        : _collection(collection),
-          _primaryIndex(
-              static_cast<MMFilesCollection*>(collection->getPhysical())
-                  ->primaryIndex()),
-          _tid(0),
-          _fid(0),
-          _stats(),
-          _dfi(nullptr),
-          _trx(trx),
-          _mmdr(),
-          _context(trx, collection, &_mmdr, 1),
-          _deletions(0),
-          _documents(0),
-          _operations(0),
-          _initialCount(-1) {
-      TRI_ASSERT(collection != nullptr);
-      TRI_ASSERT(trx != nullptr);
-    }
-
-    ~OpenIteratorState() {
-      for (auto& it : _stats) {
-        delete it.second;
-      }
-    }
-  };
-
+  
   struct DatafileDescription {
     MMFilesDatafile const* _data;
     TRI_voc_tick_t _dataMin;
@@ -329,7 +283,7 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  void truncate(transaction::Methods* trx, OperationOptions& options) override;
+  Result truncate(transaction::Methods* trx, OperationOptions&) override;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
