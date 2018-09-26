@@ -31,7 +31,8 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require("lodash");
-const wait = require("internal").wait;
+const internal = require("internal");
+const wait = internal.wait;
 const supervisionState = require("@arangodb/cluster").supervisionState;
 
 function getDBServers() {
@@ -468,6 +469,28 @@ function MovingShardsWithViewSuite (options) {
     return false;
   }
 
+  function waitForPlanEqualCurrent(collection) {
+    const iterations = 120;
+    const waitTime = 1.0;
+    const maxTime = iterations * waitTime;
+
+    for (let i = 0; i < iterations; i++) {
+      global.ArangoClusterInfo.flush();
+      const shardDist = internal.getCollectionShardDistribution(collection._id);
+      const Plan = shardDist[collection.name()].Plan;
+      const Current = shardDist[collection.name()].Current;
+
+      if (_.isObject(Plan) && _.isEqual(Plan, Current)) {
+        return true;
+      }
+
+      wait(waitTime);
+    }
+
+    console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime} sec`);
+    return false;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get DBServers for a shard view of collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,7 +587,8 @@ function MovingShardsWithViewSuite (options) {
       dbservers = getDBServers();
       assertTrue(waitForSynchronousReplication("_system"));
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -581,21 +605,24 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(_dbservers[4], true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
       assertTrue(shrinkCluster(3));
       assertTrue(testServerEmpty(_dbservers[3], true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
       assertTrue(shrinkCluster(2));
       assertTrue(testServerEmpty(_dbservers[2], true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -616,7 +643,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -637,7 +665,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -659,7 +688,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -681,7 +711,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -703,7 +734,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -725,7 +757,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -742,7 +775,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -759,7 +793,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -777,7 +812,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -795,7 +831,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -813,7 +850,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -831,7 +869,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(toClean, true));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
@@ -870,7 +909,8 @@ function MovingShardsWithViewSuite (options) {
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       c.forEach( c_v => {
-      assertEqual(getShardedViewServers("_system", c_v),
+        assertTrue(waitForPlanEqualCurrent(c_v));
+        assertEqual(getShardedViewServers("_system", c_v),
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
