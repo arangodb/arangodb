@@ -228,6 +228,7 @@ class Logger {
   static void setUseMicrotime(bool);
   static bool getUseMicrotime() {return _useMicrotime;};
   static void setKeepLogrotate(bool);
+  static void setLogFullUrl(bool);
 
   static std::string const& translateLogLevel(LogLevel);
 
@@ -243,6 +244,8 @@ class Logger {
                                    ? _level.load(std::memory_order_relaxed)
                                    : topic.level());
   }
+
+  static bool logFullUrl() { return _logFullUrl; }
 
  public:
   static void initialize(bool);
@@ -267,6 +270,7 @@ class Logger {
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;
+  static bool _logFullUrl;
   static char _role; // current server role to log
   static std::string _outputPrefix;
 
