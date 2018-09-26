@@ -1,6 +1,8 @@
 v3.3.17 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #6583: Agency node segfaults if sent an authenticated HTTP request is sent to its port
+
 * when cleaning out a leader it could happen that it became follower instead of 
   being removed completely
 
