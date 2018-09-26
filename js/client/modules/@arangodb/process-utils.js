@@ -424,8 +424,9 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     };
   }
 
+  let res = {};
   if (platform.substr(0, 3) === 'win') {
-    const res = executeExternal(cmd, args);
+    res = executeExternal(cmd, args);
     const procdumpArgs = [
       '-accepteula',
       '-64',
@@ -446,7 +447,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     }
     res.exitStatus = statusExternal(res.pid, true);
   } else {
-    const res = executeExternalAndWait(cmd, args);
+    res = executeExternalAndWait(cmd, args);
   }
   const deltaTime = time() - startTime;
 
