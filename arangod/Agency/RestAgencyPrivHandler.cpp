@@ -168,7 +168,9 @@ RestStatus RestAgencyPrivHandler::execute() {
         query_t query = _request->toVelocyPackBuilderPtr();
         try {
           query_t ret = _agent->gossip(query);
-          if (ret->hasKey(StaticStrings::Error)) {
+          auto slice = ret->slice();
+
+          if (slice.hasKey(StaticStrings::Error)) {
             
           }
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
