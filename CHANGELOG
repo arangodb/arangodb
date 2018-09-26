@@ -1,6 +1,9 @@
 v3.3.17 (XXXX-XX-XX)
 --------------------
 
+* added hidden option `--log.full-url`, that can be used to suppress the
+  url parameter and body during request logging
+
 * when cleaning out a leader it could happen that it became follower instead of 
   being removed completely
 
