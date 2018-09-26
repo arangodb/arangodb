@@ -8,7 +8,7 @@ GITAUTH="$1"
 
 for book in ${ALLBOOKS}; do 
 
-    repos=$(grep '^#' "../Books/${book}/SUMMARY.md" |grep git |sed 's;#  *;;')
+    repos=$(grep '^ *<!-- SYNC: ' "../Books/${book}/SUMMARY.md" |sed -r 's;^ *<!-- SYNC: (.+) -->$;\1;')
 
     for oneRepo in ${repos}; do
 
@@ -56,7 +56,7 @@ for book in ${ALLBOOKS}; do
             targetfile="${DSTDIR}/${NAME}"
             if [[ "$sourcefile" == *.md ]]; then
                 (
-                    echo "<!-- don't edit here, its from ${REPO} / ${SUBDIR}/${SRC} -->"
+                    echo "<!-- don't edit here, it's from ${REPO} / ${SUBDIR}/${SRC} -->"
                     sed "s;https://docs.arangodb.com/latest;../${TOPREF};g" "$sourcefile"
                 ) > "$targetfile"
             else
