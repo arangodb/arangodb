@@ -201,8 +201,8 @@ function checkMonitorAlive (binary, arangod, options, res) {
 // / @brief the bad has happened, tell it the user and try to gather more
 // /        information about the incident.
 // //////////////////////////////////////////////////////////////////////////////
-function analyzeCrash (binary, arangod, options, checkStr) {
-  if (!options.coreCheck || arangod.exitStatus.hasOwnProperty('gdbHint')) {
+function analyzeCrash (binary, instanceInfo, options, checkStr) {
+  if (!options.coreCheck || instanceInfo.exitStatus.hasOwnProperty('gdbHint')) {
     print(RESET);
     return;
   }
@@ -221,9 +221,9 @@ function analyzeCrash (binary, arangod, options, checkStr) {
     }
 
     if (matchSystemdCoredump.exec(cp) !== null) {
-      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + arangod.pid + '*';
+      options.coreDirectory = '/var/lib/systemd/coredump/*core*' + instanceInfo.pid + '*';
     } else if (matchVarTmp.exec(cp) !== null) {
-      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', arangod.pid);
+      options.coreDirectory = cp.replace('%e', '*').replace('%t', '*').replace('%p', instanceInfo.pid);
     } else {
       print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '"' + RESET);
       return;
@@ -235,7 +235,7 @@ function analyzeCrash (binary, arangod, options, checkStr) {
   if (pathParts.length > 0) {
     bareBinary = pathParts[pathParts.length - 1];
   }
-  const storeArangodPath = arangod.rootDir + '/' + bareBinary + '_' + arangod.pid;
+  const storeArangodPath = instanceInfo.rootDir + '/' + bareBinary + '_' + instanceInfo.pid;
 
   print(RED +
         'during: ' + checkStr + ': Core dump written; ' +
@@ -244,30 +244,30 @@ function analyzeCrash (binary, arangod, options, checkStr) {
         storeArangodPath + ' for later analysis.\n' +
         */
         'Process facts :\n' +
-        yaml.safeDump(arangod) +
+        yaml.safeDump(instanceInfo) +
         'marking build as crashy.' + RESET);
 
   sleep(5);
 
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
-    if (!arangod.hasOwnProperty['montior']) {
+    if (!instanceInfo.hasOwnProperty['monitor']) {
       print("your process wasn't monitored by procdump, won't have a coredump!")
-      arangod.exitStatus['gdbHint'] = "coredump unavailable";
+      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
     }
-    if (arangod.monitor.pid !== null) {
-      arangod.monitor = statusExternal(arangod.monitor.pid, true);
+    if (instanceInfo.monitor.pid !== null) {
+      instanceInfo.monitor = statusExternal(instanceInfo.monitor.pid, true);
     }
-    hint = analyzeCoreDumpWindows(arangod);
+    hint = analyzeCoreDumpWindows(instanceInfo);
   } else if (platform === 'darwin') {
     // fs.copyFile(binary, storeArangodPath);
-    hint = analyzeCoreDumpMac(arangod, options, binary, arangod.pid);
+    hint = analyzeCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid);
   } else {
     // fs.copyFile(binary, storeArangodPath);
-    hint = analyzeCoreDump(arangod, options, binary, arangod.pid);
+    hint = analyzeCoreDump(instanceInfo, options, binary, instanceInfo.pid);
   }
-  arangod.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
+  instanceInfo.exitStatus.gdbHint = 'Run debugger with "' + hint + '"';
 
 }
 
