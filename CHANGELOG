@@ -7,6 +7,8 @@ devel
 
 * added `aql.join` function
 
+* fixed issue #6601: Context cancelled (never ending query)
+
 * added more AQL query results cache inspection and control functionality
 
 * the query editor within the web ui is now catching HTTP 501 responses
