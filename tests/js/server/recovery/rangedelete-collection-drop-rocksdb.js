@@ -67,7 +67,7 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testDropRangeDeletion: function () {
+    testRangeDeleteCollectionDrop: function () {
       assertNull(db._collection('UnitTestsRecovery1'));
       assertNotNull(db._collection('UnitTestsRecovery2'));
     }
