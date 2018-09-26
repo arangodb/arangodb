@@ -84,6 +84,185 @@ function gatherBlockTestSuite () {
       c2 = null;
       c3 = null;
     },
+    
+    testMoreShardsThanDocumentsHeapSort : function () {
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards:40});
+      for (let i = 0; i < 39; ++i) {
+        c3.insert({ value : i });
+      }
+      
+      let query = "FOR doc IN " + cn3 + " SORT doc.value RETURN doc.value";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(39, result.length);
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length);
+      assertTrue(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must be a sorting GatherNode
+      assertEqual("heap", gatherNode.sortmode);
+    },
+    
+    testMoreShardsThanDocumentsMinElementSort : function () {
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards:4});
+      for (let i = 0; i < 3; ++i) {
+        c3.insert({ value : i });
+      }
+      
+      let query = "FOR doc IN " + cn3 + " SORT doc.value RETURN doc.value";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(3, result.length);
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length);
+      assertTrue(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must be a sorting GatherNode
+      assertEqual("minelement", gatherNode.sortmode);
+    },
+    
+    testMoreShardsThanDocumentsNoSort : function () {
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards:40});
+      for (let i = 0; i < 39; ++i) {
+        c3.insert({ value : i });
+      }
+      
+      let query = "FOR doc IN " + cn3 + " RETURN doc.value";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(39, result.length);
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must not have a sort, but a gather node
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(0, gatherNode.elements.length); // must be a non-sorting GatherNode
+      assertEqual("unset", gatherNode.sortmode);
+    },
+    
+    testMoreDocumentsThanShardsHeapSort : function () {
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards:10});
+      let docs = [];
+      for (let i = 0; i < 20000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 1000) {
+          c3.insert(docs);
+          docs = [];
+        }
+      }
+      
+      let query = "FOR doc IN " + cn3 + " SORT doc.value RETURN doc.value";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(20000, result.length);
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length);
+      assertTrue(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must be a sorting GatherNode
+      assertEqual("heap", gatherNode.sortmode);
+    },
+    
+    testMoreDocumentsThanShardsMinElementSort : function () {
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards:4});
+      let docs = [];
+      for (let i = 0; i < 20000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 1000) {
+          c3.insert(docs);
+          docs = [];
+        }
+      }
+      
+      let query = "FOR doc IN " + cn3 + " SORT doc.value RETURN doc.value";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(20000, result.length);
+      let last = -1;
+      result.forEach(function(value) {
+        assertTrue(value >= last);
+        last = value;
+      });
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must have a sort and gather node
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"));
+      let sortNode = nodes[nodeTypes.indexOf("SortNode")];
+      assertEqual(1, sortNode.elements.length);
+      assertTrue(sortNode.elements[0].ascending);
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(1, gatherNode.elements.length); // must be a sorting GatherNode
+      assertEqual("minelement", gatherNode.sortmode);
+    },
+    
+    testMoreDocumentsThanShardsNoSort : function () {
+      db._drop(cn3);
+      c3 = db._create(cn3, {numberOfShards:20});
+      let docs = [];
+      for (let i = 0; i < 20000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 1000) {
+          c3.insert(docs);
+          docs = [];
+        }
+      }
+      
+      let query = "FOR doc IN " + cn3 + " RETURN doc.value";
+      // check the return value
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(20000, result.length);
+      
+      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodeTypes = nodes.map(function(node) { return node.type; });
+      // must not have a sort, but a gather node
+      assertEqual(-1, nodeTypes.indexOf("SortNode"));
+      assertNotEqual(-1, nodeTypes.indexOf("GatherNode"));
+      let gatherNode = nodes[nodeTypes.indexOf("GatherNode")];
+      assertEqual(0, gatherNode.elements.length); // must be a non-sorting GatherNode
+      assertEqual("unset", gatherNode.sortmode);
+    },
 
     testSingleShard : function () {
       let query = "FOR doc IN " + cn2 + " SORT doc.Hallo RETURN doc.Hallo";
