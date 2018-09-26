@@ -1150,7 +1150,6 @@ int TRI_VerifyLockFile(char const* filename) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "found existing lockfile '" << filename << "' of previous process with pid " << pid << ", and that process seems to be still running";
   }
 
-#ifdef TRI_HAVE_SETLK
   struct flock lock;
   
   lock.l_start = 0;
@@ -1185,7 +1184,6 @@ int TRI_VerifyLockFile(char const* filename) {
               << "' failed: " << TRI_last_error()
               << ". a possible reason is that the filesystem does not support file-locking";
   }
-#endif
   
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
