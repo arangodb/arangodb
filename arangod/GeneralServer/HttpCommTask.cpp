@@ -159,10 +159,15 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   if (!buffer._buffer->empty()) {
     LOG_TOPIC(TRACE, Logger::REQUESTS)
-        << "\"http-request-response\",\"" << (void*)this << "\",\"" << _fullUrl
+        << "\"http-request-response\",\"" << (void*)this << "\",\"" 
+        << (Logger::logFullUrl() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\",\""
-        << StringUtils::escapeUnicode(
-               std::string(buffer._buffer->c_str(), buffer._buffer->length()))
+        << (Logger::logFullUrl()
+             ? StringUtils::escapeUnicode(
+                 std::string(buffer._buffer->c_str(), buffer._buffer->length()))
+	    : "--body--")
         << "\"";
   }
 
@@ -177,7 +182,10 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << HttpRequest::translateMethod(_requestType) << "\",\""
         << HttpRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response.responseCode()) << ","
-        << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+        << _originalBodyLength << "," << responseBodyLength << ",\"" 
+        << (Logger::logFullUrl() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\"," << stat->timingsCsv();
   }
   addWriteBuffer(std::move(buffer));
@@ -191,7 +199,10 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
       << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
-      << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
+      << _originalBodyLength << "," << responseBodyLength << ",\"" 
+      << (Logger::logFullUrl() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
       << "\"," << Logger::FIXED(totalTime, 6);
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
@@ -601,12 +612,16 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << _connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_requestType) << "\",\""
-        << HttpRequest::translateVersion(_protocolVersion) << "\",\"" << _fullUrl
+        << HttpRequest::translateVersion(_protocolVersion) << "\",\""
+        << (Logger::logFullUrl() 
+             ? _fullUrl 
+             : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
         << "\"";
 
     std::string const& body = request->body();
 
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)) {
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS)
+          && Logger::logFullUrl()) {
       LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";

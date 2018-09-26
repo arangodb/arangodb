@@ -1,3 +1,117 @@
+v3.3.17 (XXXX-XX-XX)
+--------------------
+
+* added hidden option `--log.full-url`, that can be used to suppress the
+  url parameter and body during request logging
+
+* when cleaning out a leader it could happen that it became follower instead of 
+  being removed completely
+
+* make synchronous replication detect more error cases when followers cannot
+  apply the changes from the leader
+
+* fix some TLS errors that occurred when combining HTTPS/TLS transport with the
+  VelocyStream protocol (VST)
+  
+  That combination could have led to spurious errors such as "TLS padding error"
+  or "Tag mismatch" and connections being closed 
+
+
+v3.3.16 (2018-09-19)
+--------------------
+
+* fix undefined behavior in AQL query result cache
+
+* the query editor within the web ui is now catching http 501 responses
+  properly
+
+* fixed issue #6495 (Document not found when removing records)
+
+* fixed undefined behavior is cluster plan-loading procedure that may have 
+  unintentionally modified a shared structure
+
+* reduce overhead of function initialization in AQL COLLECT aggregate functions,
+  for functions COUNT/LENGTH, SUM and AVG
+
+  this optimization will only be noticable when the COLLECT produces many groups
+  and the "hash" COLLECT variant is used
+
+* fixed potential out-of-bounds access in admin log REST handler /_admin/log,
+  which could have led to the server returning an HTTP 500 error
+
+* catch more exceptions in replication and handle them appropriately
+
+
+v3.3.15 (2018-09-10)
+--------------------
+
+* fixed an issue in the "sorted" AQL COLLECT variant, that may have led to producing
+  an incorrect number of results
+
+* upgraded arangodb starter version to 0.13.3
+
+* fixed issue #5941 if using breadth-first search in traversals uniqueness checks
+  on path (vertices and edges) have not been applied. In SmartGraphs the checks
+  have been executed properly.
+
+* added more detailed progress output to arangorestore, showing the percentage of
+  how much data is restored for bigger collections plus a set of overview statistics
+  after each processed collection
+
+* added option `--rocksdb.use-file-logging` to enable writing of RocksDB's own
+  informational LOG files into RocksDB's database directory.
+
+  This option is turned off by default, but can be enabled for debugging RocksDB
+  internals and performance.
+
+* improved error messages when managing Foxx services
+
+  Install/replace/upgrade will now provide additional information when an error
+  is encountered during setup. Errors encountered during a `require` call will
+  also include information about the underlying cause in the error message.
+
+* fixed some Foxx script names being displayed incorrectly in web UI and Foxx CLI
+
+* added startup option `--query.optimizer-max-plans value`
+
+  This option allows limiting the number of query execution plans created by the 
+  AQL optimizer for any incoming queries. The default value is `128`.
+
+  By adjusting this value it can be controlled how many different query execution 
+  plans the AQL query optimizer will generate at most for any given AQL query. 
+  Normally the AQL query optimizer will generate a single execution plan per AQL query, 
+  but there are some cases in which it creates multiple competing plans. More plans
+  can lead to better optimized queries, however, plan creation has its costs. The
+  more plans are created and shipped through the optimization pipeline, the more time 
+  will be spent in the optimizer.
+
+  Lowering this option's value will make the optimizer stop creating additional plans 
+  when it has already created enough plans.
+
+  Note that this setting controls the default maximum number of plans to create. The
+  value can still be adjusted on a per-query basis by setting the *maxNumberOfPlans*
+  attribute when running a query.
+
+  This change also lowers the default maximum number of query plans from 192 to 128.
+
+* bug fix: facilitate faster shutdown of coordinators and db servers
+
+* cluster nodes should retry registering in agency until successful
+
+* fixed some web ui action events related to Running Queries view and Slow
+  Queries History view
+
+* Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
+  on VMs with limited disk throughput
+
+* backport PR 6150: establish unique function to indicate when
+  application is terminating and therefore network retries should not occur
+
+* backport PR #5201: eliminate race scenario where handlePlanChange
+  could run infinite times after an execution exceeded 7.4 second time span
+
+
+>>>>>>> d4efd87... added hidden option
 v3.3.14 (2018-08-15)
 --------------------
 
