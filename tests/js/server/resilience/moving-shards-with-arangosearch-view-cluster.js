@@ -115,7 +115,7 @@ function MovingShardsWithViewSuite (options) {
     }
     return true;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get cleaned out servers
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,10 +127,10 @@ function MovingShardsWithViewSuite (options) {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    
+
     var res;
     try {
-      var envelope = 
+      var envelope =
           { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
       res = request(envelope);
     } catch (err) {
@@ -182,11 +182,11 @@ function MovingShardsWithViewSuite (options) {
           "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
       }
-      
+
     } else {
-    
+
       for (var i = fromCollNr; i <= toCollNr; ++i) {
-        
+
         while (--count > 0) {
           wait(1.0);
           global.ArangoClusterInfo.flush();
@@ -215,9 +215,9 @@ function MovingShardsWithViewSuite (options) {
         if (!ok) {
           return false;
         }
-        
+
       }
-      
+
     }
     return ok;
   }
@@ -255,7 +255,7 @@ function MovingShardsWithViewSuite (options) {
       }
       if (count-- < 0) {
         console.error(
-          "Timeout in waiting for cleanOutServer to complete: " 
+          "Timeout in waiting for cleanOutServer to complete: "
           + JSON.stringify(body));
         return false;
       }
@@ -346,7 +346,7 @@ function MovingShardsWithViewSuite (options) {
       }
       if (count-- < 0) {
         console.error(
-          "Timeout in waiting for moveShard to complete: " 
+          "Timeout in waiting for moveShard to complete: "
           + JSON.stringify(body));
         return false;
       }
@@ -367,7 +367,7 @@ function MovingShardsWithViewSuite (options) {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var req;
-    try {      
+    try {
       req = request({ method: "PUT",
                       url: url + "/_admin/cluster/maintenance",
                       body: JSON.stringify(mode) });
@@ -380,7 +380,7 @@ function MovingShardsWithViewSuite (options) {
     return true;
   }
 
-  
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
@@ -436,7 +436,7 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findServerNotOnList(list) {
-    var count = 0;    
+    var count = 0;
     while (list.indexOf(dbservers[count]) >= 0) {
       count += 1;
     }
@@ -511,7 +511,7 @@ function MovingShardsWithViewSuite (options) {
 
         var res;
         try {
-          var envelope = 
+          var envelope =
               { method: "GET", url: url + "/_api/view" };
           res = request(envelope);
         } catch (err) {
@@ -526,7 +526,7 @@ function MovingShardsWithViewSuite (options) {
         views.forEach(v => {
           var res;
           try {
-            var envelope = 
+            var envelope =
                 { method: "GET", url: url + "/_api/view/" + v.name + "/properties" };
             res = request(envelope);
           } catch (err) {
@@ -537,7 +537,7 @@ function MovingShardsWithViewSuite (options) {
           var body = res.body;
           if (typeof body === "string") {
             var links = JSON.parse(body).links;
-            if (links !== undefined 
+            if (links !== undefined
                 && links.hasOwnProperty(shard)
                 && links.shard !== {}) {
               sViewServers.push(serverId);
@@ -574,7 +574,7 @@ function MovingShardsWithViewSuite (options) {
         v[i].drop();
         c[i].drop();
       }
-      c = []; 
+      c = [];
       v = [];
       resetCleanedOutServers();
     },
@@ -596,7 +596,7 @@ function MovingShardsWithViewSuite (options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = servers;
@@ -626,7 +626,7 @@ function MovingShardsWithViewSuite (options) {
                   findCollectionShardServers("_system", c_v.name()));
       });
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a follower
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,7 +888,7 @@ function MovingShardsWithViewSuite (options) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(maintenanceMode("on"));      
+      assertTrue(maintenanceMode("on"));
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true));
       var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
           arango.Supervision.State, state;
