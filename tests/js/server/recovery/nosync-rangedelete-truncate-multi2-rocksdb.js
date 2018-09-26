@@ -82,11 +82,11 @@ function recoverySuite () {
       assertEqual(10000, c.count());
       assertNotNull(db._collection('UnitTestsRecovery2'));
   
-      assertEqual([], c.edges("test/1"));
+      assertEqual(10000, c.edges("test/1").length);
       let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
       
       for (let i = 0; i < 10000; i += 100) {
-        assertTrue(c.exists("key" + i));
+        assertTrue(c.exists("test" + i));
         assertEqual(1, db._query(query, { "@collection": c.name(), value: i }).toArray().length);
         assertEqual(1, c.inEdges("test/" + i).length);
       }
