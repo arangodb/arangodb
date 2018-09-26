@@ -94,6 +94,8 @@ class UserManager {
   Result updateUser(std::string const& user, UserCallback&&);
   /// Access user without modifying it
   Result accessUser(std::string const& user, ConstUserCallback&&);
+  /// @brief does this user exists in the db
+  bool userExists(std::string const& user);
 
   /// Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);

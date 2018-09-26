@@ -305,10 +305,13 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
 
   if (bodySlice.hasKey("preferred_username")) {
     VPackSlice const usernameSlice = bodySlice.get("preferred_username");
-    if (!usernameSlice.isString()) {
+    if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
       return authResult;  // unauthenticated
     }
     authResult._username = usernameSlice.copyString();
+    if (_userManager == nullptr || !_userManager->userExists(authResult._username)) {
+      return authResult;  // unauthenticated
+    }
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
     // authResult._username = "root";

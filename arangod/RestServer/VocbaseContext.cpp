@@ -68,7 +68,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t* vocba
   
   auth::UserManager* um = auth->userManager();
   if (um == nullptr) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "Server does not support users";
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "users are not supported on this server";
     return nullptr;
   }
   
