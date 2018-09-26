@@ -438,10 +438,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       '-64',
       '-e',
       '1',
-      /*
       '-f',
       'bad_cast',
-*/
       '-ma',
       res.pid,
       fs.join(rootDir, 'core.dmp')
