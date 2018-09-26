@@ -472,11 +472,11 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
        (platform.substr(0, 3) === 'win')
       )
      ) {
-    print(res);
+    print(instanceInfo);
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
-                            'execution of ' + cmd + ' - ' + res.signal);
+                            'execution of ' + cmd + ' - ' + instanceInfo.exitStatus.signal);
     if (options.coreCheck) {
       print(instanceInfo.exitStatus.gdbHint);
     }
@@ -486,7 +486,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   if (instanceInfo.exitStatus.status === 'TERMINATED') {
     const color = (instanceInfo.exitStatus.exit === 0 ? GREEN : RED);
 
-    print(color + 'Finished: ' + res.status +
+    print(color + 'Finished: ' + instanceInfo.exitStatus.status +
       ' exit code: ' + instanceInfo.exitStatus.exit +
       ' Time elapsed: ' + deltaTime + RESET);
 
