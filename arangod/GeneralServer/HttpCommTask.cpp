@@ -800,9 +800,12 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       ++auth;
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) <<
-        "\"authorization-header\",\"" << (void*)this << "\",\""
-        << authStr << "\"";
+    if (Logger::fullUrl()) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) <<
+          "\"authorization-header\",\"" << (void*)this << "\",\""
+          << authStr << "\"";
+    }
+
     try {
       // note that these methods may throw in case of an error
       AuthenticationMethod authMethod = AuthenticationMethod::NONE;
