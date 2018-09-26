@@ -25,16 +25,6 @@ separate from the ones in your _Active Failover_ configuration. Also, that you h
 modified the init script or systemd unit file for the standalone instance in a way
 that it would start or stop your  _Active Failover_ instance instead.
 
-<!--
-You can read about the details on how to deploy your _Active Failover_  setup indendently of the
-standalone instance in the [ _Active Failover_ deployment preliminary](../../Deployment/Cluster/PreliminaryInformation.md).
-
-In the following, we assume that you don't use the standalone instance from the
-package but only a manually started _cluster_ instance, and we will move the
-standalone instance out of the way if necessary so you have to make as little
-changes as possible to the running _cluster_.
--->
-
 ### Install the new ArangoDB version binary
 
 The first step is to install the new ArangoDB package. 
