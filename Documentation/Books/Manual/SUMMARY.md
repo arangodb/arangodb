@@ -63,7 +63,7 @@
     * [Examples](Programs/Arangosh/Examples.md)
     * [Details](Programs/Arangosh/Details.md)
     * [Options](Programs/Arangosh/Options.md)
-  <!-- SYNC: https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
+  <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
     * [Security](Programs/Starter/Security.md)
