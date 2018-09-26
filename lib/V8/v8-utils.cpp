@@ -312,7 +312,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder =
-      ApplicationServer::server->options({"server.password"});
+      ApplicationServer::server->options({"server.password", "ldap.bindpasswd"});
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
