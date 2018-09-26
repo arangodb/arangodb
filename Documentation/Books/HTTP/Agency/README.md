@@ -1,7 +1,7 @@
 HTTP Interface for Agency feature
 =================================
 
-The Agency is the ArangoDB component which manages the entire ArangoDB cluster. ArangoDB itself mainly uses the Agency as a central place to store the configuration and the cluster nodes health management. It implements the Raft concensus protocol to act as the single-source of truth for the entire cluster. You may know other software providing similar functionality e.g. Apache Zookeeper, etcd or Consul.
+The Agency is the ArangoDB component which manages the entire ArangoDB cluster. ArangoDB itself mainly uses the Agency as a central place to store the configuration and the cluster nodes health management. It implements the Raft consensus protocol to act as the single-source of truth for the entire cluster. You may know other software providing similar functionality e.g. Apache Zookeeper, etcd or Consul.
 
 To an end-user the Agency is essentially a fault-tolerant Key-Value Store with a simple REST-API. It is possible to use the Agency API for a variety of use-cases, for example:
 
@@ -18,7 +18,7 @@ Note 2: The key-prefix /arango contains ArangoDBs internal configuration. You sh
 
 Generally, all document IO to and from the key-value store consists of JSON arrays. The outer Array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
 
-Consider the following write operation into a prestine agency:
+Consider the following write operation into a pristine agency:
 
 
 ```
@@ -48,7 +48,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/"]]'
 ]
 ```
 
-In the first step we commited a single transaction that commits the JSON document inside the inner transaction array to the agency. The result is `[1]`, which is the replicated log index. Repeated invocation will yield growing log numbers 2, 3, 4, etc. 
+In the first step we committed a single transaction that commits the JSON document inside the inner transaction array to the agency. The result is `[1]`, which is the replicated log index. Repeated invocation will yield growing log numbers 2, 3, 4, etc. 
 
 The read access is a complete access to the key-value store indicated by access to it's root element and returns the result as an array corresponding to the outermost array in the read transaction.
 
@@ -56,7 +56,7 @@ Let's dig in some deeper.
 
 ### Read API
 
-Let's start with the above initialised key-value store in the following. Let us visit the following read operations:
+Let's start with the above initialized key-value store in the following. Let us visit the following read operations:
 
 ```
 curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b"]]'
@@ -90,7 +90,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/c"]]'
 ]
 ```
 
-Note that the above results are identical, meaning that results obtained from the agencyare always return with full path.
+Note that the above results are identical, meaning that results obtained from the agency are always return with full path.
 
 The second outer array brackets in read operations correspond to transactions, meaning that the result is guaranteed to have been acquired without a write transaction in between:
 
@@ -116,7 +116,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/e"],["/d","/a/b"]]'
 ]
 ```
 
-While the first transaction consists of a single read access to the key-value-store thus strechting the meaning of the word transaction, the second bracket actually hold two disjunct read accesses, which have been joined within zero-time, i.e. without a write access in between. That is to say that `"/d"` cannot have changed before `"/a/b"` had been acquired.
+While the first transaction consists of a single read access to the key-value-store thus stretching the meaning of the word transaction, the second bracket actually hold two disjunct read accesses, which have been joined within zero-time, i.e. without a write access in between. That is to say that `"/d"` cannot have changed before `"/a/b"` had been acquired.
 
 Let's try to fetch a value from the key-value-store, which does not exist:
 
@@ -182,7 +182,7 @@ is a precondition specifying that the previous value of the key `"/a/b/c"` key m
 { "/a/b/c": [1, 2, 3] }
 ```
 
-Consider the agency in initialised as above let's review the responses from the agency as follows:
+Consider the agency in initialized as above let's review the responses from the agency as follows:
 
 ```
 curl -L http://$SERVER:$PORT/_api/agency/write -d '[[{"/a/b/c":{"op":"set","new":[1,2,3,4]},"/a/b/pi":{"op":"set","new":"some text"}},{"/a/b/c":{"old":[1,2,3]}}]]'
@@ -393,4 +393,4 @@ The output might look somewhat like this
 
 This is the actual output of a healthy agency. The configuration of the agency is found in the `configuration` section as you might have guessed. It is populated by static information on the startup parameters like `agency size`, the once generated `unique id` etc. It holds information on the invariants of the RAFT algorithm and data compaction.
 
-The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environemnt, while often increasing term numbers indicate, that the network environemnt and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
+The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environment, while often increasing term numbers indicate, that the network environment and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
