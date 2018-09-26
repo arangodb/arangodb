@@ -1020,6 +1020,7 @@ void Supervision::shrinkCluster() {
   // Get servers from plan
   auto availServers = Job::availableServers(_snapshot);
 
+  // set by external service like Kubernetes / Starter / DCOS
   size_t targetNumDBServers;
   std::string const NDBServers ("/Target/NumberOfDBServers");
 
