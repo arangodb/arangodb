@@ -843,7 +843,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface *a
 
             if (failedServers.find(servername) != failedServers.end()) {
               // lost shard
-              LOG_TOPIC(ERR, Logger::FIXME) << "Found a lost shard: " << shard.first;
+              LOG_TOPIC(TRACE, Logger::SUPERVISION) << "Found a lost shard: " << shard.first;
               auto const& shardname = shard.first;
 
               auto const& planurl = "/arango/Plan/Collections/" + dbname + "/" + colname + "/shards/" + shardname;
