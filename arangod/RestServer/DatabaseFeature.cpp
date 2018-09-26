@@ -632,24 +632,27 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
 namespace {
 Result dropAllViews(TRI_vocbase_t& vocbase){
+  static const bool isCoordinator = ::arangodb::ServerState::instance()->isCoordinator();
   Result rv;
-  Result tmprv;
-  if (::arangodb::ServerState::instance()->isCoordinator()) {
-    auto views = ClusterInfo::instance()->getViews(vocbase.name());
-    for (auto const& v : views) {
-      tmprv = v->drop(); // should just prepare drop
+
+  auto dropView = [](LogicalView* view, Result& rv){
+      auto tmprv = view->drop();
       if (tmprv.fail() && rv.ok()) {
         rv = tmprv;
       }
+  };
+
+  if (isCoordinator) {
+    auto views = ClusterInfo::instance()->getViews(vocbase.name());
+    for (auto const& view : views) {
+      dropView(view.get(), rv);
     }
   } else {
-    for (auto& v: vocbase.views()) {
-      tmprv = v->drop(); // should just prepare drop
-      if (tmprv.fail() && rv.ok()) {
-        rv = tmprv;
-      }
+    for (auto& view: vocbase.views()) {
+      dropView(view.get(), rv);
     }
   }
+
   return rv;
 }
 }
@@ -702,11 +705,13 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 
     TRI_ASSERT(!vocbase->isSystem());
 
-    #if USE_IRESEARCH
-    auto rv = dropAllViews(*vocbase);
-    TRI_ASSERT(rv.ok()); // TODO - How should a fail here impact
-                         //        subsequent code?
-    #endif
+#if USE_IRESEARCH
+    auto viewRv = dropAllViews(*vocbase);
+    if (viewRv.fail()){
+      LOG_TOPIC(ERR, Logger::ENGINES) << viewRv.errorMessage();
+      TRI_ASSERT(false);
+    }
+#endif
 
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
