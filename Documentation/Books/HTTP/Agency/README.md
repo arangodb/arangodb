@@ -3,7 +3,7 @@ HTTP Interface for Agency feature
 
 The Agency is the ArangoDB component which manages the entire ArangoDB cluster. 
 ArangoDB itself mainly uses the Agency as a central place to store the configuration
-and the cluster nodes health management. It implements the Raft concensus protocol to act as
+and the cluster nodes health management. It implements the Raft consensus protocol to act as
 the single-source of truth for the entire cluster. You may know other software providing similar functionality e.g. _Apache Zookeeper_, _etcd_ or _Consul_.
 
 To an end-user the Agency is essentially a fault-tolerant Key-Value Store with a simple REST-API. 
@@ -15,7 +15,7 @@ It is possible to use the Agency API for a variety of use-cases, for example:
 - Distributed Lock-Manager
 
 *Note 1*: To access the Agency API with authentication enabled, you need to include an authorization header
-with every request. The authorization header _must_ contain a *superuser JWT Token*; For more information see the [authentication section](../General/README.md#Authentication).
+with every request. The authorization header _must_ contain a *superuser JWT Token*; For more information see the [authentication section](../General/README.md#authentication).
 
 *Note 2*: The key-prefix `/arango` contains ArangoDBs internal configuration. You should _never_ change any values below the _arango_ key.
 
@@ -23,7 +23,7 @@ with every request. The authorization header _must_ contain a *superuser JWT Tok
 
 Generally, all document IO to and from the key-value store consists of JSON arrays. The outer array is an envelope for multiple read or write transactions. The results are arrays are an envelope around the results corresponding to the order of the incoming transactions.
 
-Consider the following write operation into a prestine agency:
+Consider the following write operation into a pristine agency:
 
 
 ```
@@ -398,4 +398,4 @@ The output might look somewhat like this
 
 This is the actual output of a healthy agency. The configuration of the agency is found in the `configuration` section as you might have guessed. It is populated by static information on the startup parameters like `agency size`, the once generated `unique id` etc. It holds information on the invariants of the RAFT algorithm and data compaction.
 
-The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environemnt, while often increasing term numbers indicate, that the network environemnt and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
+The remaining data reflect the variant entities in RAFT, as `term` and `leaderId`, also some debug information on how long the last leadership vote was received from any particular agency member. Low term numbers on a healthy network are an indication of good operation environment, while often increasing term numbers indicate, that the network environment and stability suggest to raise the RAFT parameters `min ping` and 'max ping' accordingly.
