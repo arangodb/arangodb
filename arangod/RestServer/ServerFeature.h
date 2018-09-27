@@ -70,6 +70,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   int* _result;
   OperationMode _operationMode;
   bool _isStopping = false;
+  uint16_t _codePage;
 };
 
 }

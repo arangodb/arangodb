@@ -50,7 +50,6 @@ namespace arangodb {
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
-      _codePage(-1),
       _cygwinShell(false),
 #endif
       _quiet(false),
@@ -76,8 +75,6 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
   }
 
 #if _WIN32
-  _codePage = GetConsoleOutputCP();
-
   CONSOLE_SCREEN_BUFFER_INFO info;
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
 
@@ -117,11 +114,6 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--console.prompt", "prompt used in REPL. prompt components are: '%t': current time as timestamp, '%p': duration of last command in seconds, '%d': name of current database, '%e': current endpoint, '%E': current endpoint without protocol, '%u': current user",
                      new StringParameter(&_prompt));
-
-#if _WIN32
-  options->addHiddenOption("--console.code-page", "Windows code page to use",
-                           new UInt16Parameter(&_codePage));
-#endif
 }
 
 void ConsoleFeature::prepare() {
@@ -134,12 +126,6 @@ void ConsoleFeature::prepare() {
 
 void ConsoleFeature::start() {
   openLog();
-
-#if _WIN32
-  if (_codePage != -1) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
 }
 
 void ConsoleFeature::unprepare() {
