@@ -105,7 +105,7 @@ MMFilesAllIndexIterator::MMFilesAllIndexIterator(
 bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
-    
+
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
       --limit;
@@ -123,7 +123,7 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
   bool done = false;
   while (limit > 0) {
     MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
-    
+
     if (element) {
       _documentIds.emplace_back(std::make_pair(element.localDocumentId(), nullptr));
       --limit;
@@ -142,7 +142,7 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   while (count > 0) {
     MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
-    
+
     if (element) {
       ++skipped;
       --count;
@@ -167,14 +167,14 @@ bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   if (limit == 0) {
     return false;
   }
-  
+
   do {
     MMFilesSimpleIndexElement element =
         _index->findRandom(nullptr, _initial, _position, _step, _total);
     if (!element) {
       return false;
     }
-    
+
     cb(LocalDocumentId{element.localDocumentId()});
     --limit;
   } while (limit > 0);
@@ -246,7 +246,7 @@ Result MMFilesPrimaryIndex::insert(transaction::Methods*,
                                    LocalDocumentId const&,
                                    VPackSlice const&, OperationMode) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
       << "insert() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -257,7 +257,7 @@ Result MMFilesPrimaryIndex::remove(transaction::Methods*,
                                    LocalDocumentId const&,
                                    VPackSlice const&, OperationMode) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
       << "remove() called for primary index";
 #endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -385,8 +385,8 @@ Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
   IndexLookupContext context(trx, &_collection, &mmdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
-// TODO: we can pass in a special IndexLookupContext which has some more on the information 
-// about the to-be-inserted document. this way we can spare one lookup in 
+// TODO: we can pass in a special IndexLookupContext which has some more on the information
+// about the to-be-inserted document. this way we can spare one lookup in
 // IsEqualElementElementByKey
   int res = _primaryIndex->insert(&context, element);
 
@@ -511,7 +511,7 @@ arangodb::aql::AstNode* MMFilesPrimaryIndex::specializeCondition(
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* MMFilesPrimaryIndex::createInIterator(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?
@@ -620,7 +620,7 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
           // invalid planId
           return;
         }
-      } else 
+      } else
 #endif
       if (collection->planId() != _collection.planId()) {
         // only continue lookup if the id value is syntactically correct and

@@ -89,7 +89,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) || !AccessMode::isWriteOrExclusive(_type));
-  
+
   if (_nestingLevel == 0) {
     // set hints
     _hints = hints;
@@ -155,13 +155,13 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       } else {
         _rocksMethods.reset(new RocksDBTrxMethods(this));
       }
-  
+
       if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
         // do not track our own writes... we can only use this in very
         // specific scenarios, i.e. when we are sure that we will have a
         // single operation transaction or we are sure we are writing
         // unique keys
-    
+
         // we must check if there is a unique secondary index for any of the collections
         // we write into
         // in case it is, we must disable NO_INDEXING here, as it wouldn't be safe
@@ -256,7 +256,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
-  
+
   Result result;
   if (hasOperations()) {
     // we are actually going to attempt a commit
@@ -278,7 +278,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       TRI_ASSERT(x <= 1 && _numLogdata == x);
     } else {
       if (_numLogdata != (2 + _numRemoves)) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "_numInserts " << _numInserts << "  "
+        LOG_TOPIC(ERR, Logger::ENGINES) << "_numInserts " << _numInserts << "  "
         << "_numRemoves " << _numRemoves << "  "
         << "_numUpdates " << _numUpdates << "  "
         << "_numLogdata " << _numLogdata;
@@ -288,7 +288,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       TRI_ASSERT(_numLogdata == (2 + _numRemoves));
     }
 #endif
-    
+
     // prepare for commit on each collection, e.g. place blockers for estimators
     rocksdb::SequenceNumber preCommitSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
@@ -334,7 +334,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         collection->commitCounts(id(), latestSeq);
         committed = true;
       }
-    
+
 #ifndef _WIN32
       // wait for sync if required, for all other platforms but Windows
       if (waitForSync()) {
@@ -356,7 +356,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
                _rocksTransaction->GetNumPuts() == 0 &&
                _rocksTransaction->GetNumDeletes() == 0);
-    
+
     for (auto& trxCollection : _collections) {
       RocksDBTransactionCollection* collection =
           static_cast<RocksDBTransactionCollection*>(trxCollection);
@@ -439,7 +439,7 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
     switch (operationType) {
       case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
         break;
-        
+
       case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
@@ -574,7 +574,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "INTERMEDIATE COMMIT!";
+  LOG_TOPIC(DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
 
   Result res = internalCommit();

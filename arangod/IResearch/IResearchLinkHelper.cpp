@@ -367,6 +367,7 @@ namespace iresearch {
     // execute removals
     for (auto& state: linkModifications) {
       if (state._link) { // link removal or recreate request
+        LOG_TOPIC(DEBUG, Logger::VIEWS) << "removed link '" << state._link->id() << "'";
         modified.emplace(state._collection->id());
         state._valid = state._collection->dropIndex(state._link->id());
       }
@@ -380,6 +381,7 @@ namespace iresearch {
 
         modified.emplace(state._collection->id());
         state._valid = linkPtr && isNew;
+        LOG_TOPIC(DEBUG, Logger::VIEWS) << "added link '" << linkPtr->id() << "'";
       }
     }
 

@@ -220,7 +220,9 @@ class MMFilesWalLogfile {
         break;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "changing logfile status from " << statusText(_status) << " to " << statusText(status) << " for logfile " << id();
+    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+        << "changing logfile status from " << statusText(_status) << " to "
+        << statusText(status) << " for logfile " << id();
     _status = status;
   }
 

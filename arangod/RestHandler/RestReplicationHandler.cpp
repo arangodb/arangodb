@@ -82,7 +82,12 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection " << name << ". Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
+      LOG_TOPIC(WARN, arangodb::Logger::REPLICATION)
+          << "Restore ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+          << "restore ONLY this collection use 'arangorestore --force'. "
+          << "However this is not recommended and you should instead restore "
+          << "the EdgeCollection of the SmartGraph instead.";
       return true;
     }
   }
@@ -1012,8 +1017,9 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("unable to create collection '") + name + "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
     }
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreCollectionCoordinator "
-      << "could not drop collection: " << ex.what();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "processRestoreCollectionCoordinator "
+        << "could not drop collection: " << ex.what();
   } catch (...) {}
 
   // now re-create the collection
@@ -1567,8 +1573,9 @@ Result RestReplicationHandler::processRestoreIndexes(VPackSlice const& collectio
         if (value.isString()) {
           std::string const typeString = value.copyString();
           if ((typeString == "primary") ||(typeString == "edge")) {
-            LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreIndexes silently ignoring primary or edge index: " <<
-              idxDef.toJson();
+            LOG_TOPIC(DEBUG, Logger::REPLICATION)
+                << "processRestoreIndexes silently ignoring primary or edge "
+                << "index: " << idxDef.toJson();
             continue;
           }
         }
@@ -2074,7 +2081,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "did not find collection");
     return;
   }
-  
+
   const std::string followerId = followerIdSlice.copyString();
   // Short cut for the case that the collection is empty
   if (readLockIdSlice.isNone()) {
@@ -2117,7 +2124,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   // previous versions < 3.3x might not send the checksum, if mixed clusters
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
-  
+
   const std::string readLockId = readLockIdSlice.copyString();
   const std::string checksum = checksumSlice.copyString();
 
@@ -2147,7 +2154,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
     referenceChecksum = std::to_string(num);
   }
-  
+
   if (!checksumSlice.isEqualString(referenceChecksum)) {
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
@@ -2158,7 +2165,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   + ". Actual: " + checksum);
     return;
   }
-  
+
   col->followers()->add(followerId);
 
   VPackBuilder b;

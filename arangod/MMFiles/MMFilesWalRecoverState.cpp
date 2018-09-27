@@ -833,7 +833,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // turn off sync temporarily if the database or collection are going to
         // be dropped later
         bool const forceSync = state->willViewBeDropped(databaseId, viewId);
-        
+
         VPackSlice nameSlice = payloadSlice.get("name");
         if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
           std::string name = nameSlice.copyString();
@@ -1223,7 +1223,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (vocbase != nullptr) {
           TRI_voc_tick_t otherId = vocbase->id();
-          
+
           state->releaseDatabase(otherId);
           // TODO: how to signal a dropDatabase failure here?
           state->databaseFeature->dropDatabase(nameString, true, false);
@@ -1236,18 +1236,19 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                                          vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::ENGINES) << "cannot create database "
-                                                   << databaseId << ": "
-                                                   << TRI_errno_string(res);
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+              << "cannot create database " << databaseId << ": "
+              << TRI_errno_string(res);
           ++state->errorCount;
           return state->canContinue();
         }
 
         try {
-          basics::FileUtils::spit(versionFile, versionFileContent); 
+          basics::FileUtils::spit(versionFile, versionFileContent);
         } catch (...) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to store version file '" << versionFile << "' for database "
-                                                   << databaseId;
+          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+              << "unable to store version file '" << versionFile
+              << "' for database " << databaseId;
           ++state->errorCount;
           return state->canContinue();
         }

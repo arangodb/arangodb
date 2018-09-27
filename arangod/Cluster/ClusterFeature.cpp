@@ -136,8 +136,11 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (options->processingResult().touched("cluster.disable-dispatcher-kickstarter") ||
       options->processingResult().touched("cluster.disable-dispatcher-frontend")) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-      << "The dispatcher feature isn't available anymore. Use ArangoDBStarter for this now! See https://github.com/arangodb-helper/ArangoDBStarter/ for more details.";
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+      << "The dispatcher feature isn't available anymore. "
+      << "Use ArangoDBStarter for this now! See "
+      << "https://github.com/arangodb-helper/ArangoDBStarter/ "
+      << "for more details.";
     FATAL_ERROR_EXIT();
   }
 
@@ -156,7 +159,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       << "must at least specify one endpoint in --cluster.agency-endpoint";
     FATAL_ERROR_EXIT();
   }
-  
+
   // validate --cluster.my-address
   if (_myEndpoint.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine internal address for server '"
@@ -165,7 +168,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     "address for this server in the agency.";
     FATAL_ERROR_EXIT();
   }
-  
+
   // now we can validate --cluster.my-address
   if (Endpoint::unifiedForm(_myEndpoint).empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "invalid endpoint '" << _myEndpoint
@@ -434,7 +437,7 @@ void ClusterFeature::start() {
       break;
     } else {
       LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-        << "failed to register server in agency: http code: "	
+        << "failed to register server in agency: http code: "
         << result.httpCode() << ", body: '" << result.body() << "', retrying ...";
     }
 
@@ -569,5 +572,3 @@ void ClusterFeature::syncDBServerStatusQuo() {
     _heartbeatThread->syncDBServerStatusQuo(true);
   }
 }
-
-

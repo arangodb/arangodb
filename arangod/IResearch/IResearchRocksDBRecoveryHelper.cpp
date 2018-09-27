@@ -368,8 +368,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         doc,
         Index::OperationMode::internal
       );
-      // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // inserted: " << doc.toJson();
+      LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
+          << "recovery helper inserted: "
+          << doc.toJson(trx.transactionContext()->getVPackOptions());
     }
 
     trx.commit();

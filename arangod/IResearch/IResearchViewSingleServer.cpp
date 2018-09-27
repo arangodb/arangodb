@@ -105,10 +105,19 @@ namespace iresearch {
       }
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder object(&builder);
+      view->toVelocyPack(builder, true, true);
+    }
+    LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC) << "created view " << builder.slice().toJson();
+  }
+#endif
+
   return view;
 }
 
 }
 }
-
-

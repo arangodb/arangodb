@@ -63,8 +63,8 @@ static std::string hexValue(uint64_t value) {
 
 /// @brief calculate a CRC value the same way as ArangoDB 2.8 did
 static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
-  static TRI_voc_crc_t const CrcPolynomial = 0xEDB88320; 
-  unsigned char* current = (unsigned char*) data;   
+  static TRI_voc_crc_t const CrcPolynomial = 0xEDB88320;
+  unsigned char* current = (unsigned char*) data;
   while (length--) {
     crc ^= *current++;
 
@@ -72,23 +72,23 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
       if (crc & 1) {
         crc = (crc >> 1) ^ CrcPolynomial;
       } else {
-        crc = crc >> 1;         
+        crc = crc >> 1;
       }
     }
-  }   
+  }
   return crc;
 }
 
 /// @brief check if a marker appears to be created by ArangoDB 2.8
 static bool IsMarker28(void const* marker, size_t length) {
   struct Marker28 {
-    uint32_t       _size; 
-    TRI_voc_crc_t        _crc;     
-    uint32_t             _type;   
+    uint32_t       _size;
+    TRI_voc_crc_t        _crc;
+    uint32_t             _type;
 #ifdef TRI_PADDING_32
     char _padding_df_marker[4];
 #endif
-    TRI_voc_tick_t _tick;     
+    TRI_voc_tick_t _tick;
   };
 
   uint32_t zero = 0;
@@ -97,7 +97,7 @@ static bool IsMarker28(void const* marker, size_t length) {
 
   char const* ptr = static_cast<char const*>(marker);
   Marker28 const* m = static_cast<Marker28 const*>(marker);
-  
+
   if (m->_size < o + n || (m->_size - o - n > length)) {
     return false;
   }
@@ -318,7 +318,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
 }
 
 /// @brief creates either an anonymous or a physical datafile
-MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, 
+MMFilesDatafile* MMFilesDatafile::create(std::string const& filename,
                                          TRI_voc_fid_t fid,
                                          uint32_t maximalSize,
                                          bool withInitialMarkers) {
@@ -516,11 +516,11 @@ int MMFilesDatafile::reserveElement(uint32_t size, MMFilesMarker** position,
 
   TRI_ASSERT(*position != nullptr);
 
-  advanceWritePosition(size); 
+  advanceWritePosition(size);
 
   return TRI_ERROR_NO_ERROR;
 }
-  
+
 void MMFilesDatafile::sequentialAccess() {
   TRI_MMFileAdvise(_data, _initSize, TRI_MADVISE_SEQUENTIAL);
 }
@@ -598,12 +598,12 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker) {
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "logic error. writing out of bounds of datafile '" << getName() << "'";
     return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
-  
+
   memcpy(position, marker, static_cast<size_t>(marker->getSize()));
-  
+
   TRI_IF_FAILURE("BreakHeaderMarker") {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    if (marker->getType() == TRI_DF_MARKER_HEADER && getName().find("logfile-") == std::string::npos) { 
+    if (marker->getType() == TRI_DF_MARKER_HEADER && getName().find("logfile-") == std::string::npos) {
       // intentionally corrupt the marker
       reinterpret_cast<MMFilesMarker*>(position)->breakIt();
     }
@@ -658,7 +658,7 @@ int MMFilesDatafile::writeCrcElement(void* position, MMFilesMarker* marker) {
     crc = TRI_BlockCrc32(crc, (char const*)marker, marker->getSize());
     marker->setCrc(TRI_FinalCrc32(crc));
   }
-  
+
   return writeElement(position, marker);
 }
 
@@ -738,7 +738,7 @@ bool TRI_IterateDatafile(MMFilesDatafile* datafile,
     if (marker->getSize() == 0) {
       return true;
     }
-    
+
     TRI_voc_tick_t tick = marker->getTick();
     if (tick > maxTick) {
       maxTick = tick;
@@ -832,13 +832,13 @@ int MMFilesDatafile::seal() {
 
   // intentionally ignore return value of protection here because this call
   // would only restrict further file accesses (which is not required
-  // for ArangoDB to work) 
+  // for ArangoDB to work)
   readOnly();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return _lastError;
   }
-  
+
   // seal datafile
   _isSealed = true;
   _state = TRI_DF_STATE_READ;
@@ -944,7 +944,7 @@ static std::string DiagnoseMarker(MMFilesMarker const* marker,
   if (marker->getCrc() == crc) {
     return "crc checksum is correct";
   }
-   
+
   result << "crc checksum (hex " << std::hex << marker->getCrc()
          << ") is wrong. expecting (hex " << std::hex << crc << ")";
 
@@ -958,8 +958,8 @@ MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd, void* mmHa
           _state(TRI_DF_STATE_READ),
           _fd(fd),
           _mmHandle(mmHandle),
-          _initSize(maximalSize), 
-          _maximalSize(maximalSize), 
+          _initSize(maximalSize),
+          _maximalSize(maximalSize),
           _currentSize(currentSize),
           _footerSize(sizeof(MMFilesDatafileFooterMarker)),
           _full(false),
@@ -986,7 +986,7 @@ MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd, void* mmHa
   }
   dontDump();
 }
-  
+
 MMFilesDatafile::~MMFilesDatafile() {
   try {
     this->close();
@@ -1036,16 +1036,16 @@ int MMFilesDatafile::close() {
     _fd = -1;
 
     return TRI_ERROR_NO_ERROR;
-  } 
-  
+  }
+
   if (_state == TRI_DF_STATE_CLOSED) {
     TRI_ASSERT(_fd == -1);
     LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "closing an already closed datafile '" << getName() << "'";
     return TRI_ERROR_NO_ERROR;
-  } 
-        
+  }
+
   LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "attempting to close datafile with an invalid state";
-  
+
   return TRI_ERROR_ARANGO_ILLEGAL_STATE;
 }
 
@@ -1083,7 +1083,7 @@ int MMFilesDatafile::sync(char const* begin, char const* end) {
 
   return res;
 }
- 
+
 /// @brief truncates a datafile
 /// Create a truncated datafile, seal it and rename the old.
 int MMFilesDatafile::truncateAndSeal(uint32_t position) {
@@ -1214,14 +1214,18 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   res = TRI_RenameFile(_filename.c_str(), oldname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "unable to rename file '" << filename << "' to '" << oldname << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, Logger::DATAFILES)
+        << "unable to rename file '" << filename << "' to '" << oldname
+        << "': " << TRI_errno_string(res);
     return res;
   }
 
   res = TRI_RenameFile(filename.c_str(), _filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "unable to rename file '" << filename << "' to '" << _filename << "': " << TRI_errno_string(res);
+    LOG_TOPIC(ERR, Logger::DATAFILES)
+        << "unable to rename file '" << filename << "' to '" << _filename
+        << "': " << TRI_errno_string(res);
     return res;
   }
 
@@ -1279,7 +1283,7 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
       if (ignoreFailures) {
         return fix(currentSize);
       }
-       
+
       _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
       _currentSize = currentSize;
       _next = _data + _currentSize;
@@ -1295,7 +1299,7 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
       if (ignoreFailures) {
         return fix(currentSize);
       }
-       
+
       _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
       _currentSize = currentSize;
       _next = _data + _currentSize;
@@ -1320,7 +1324,7 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
         if (ignoreFailures) {
           return fix(currentSize);
         }
-         
+
         _lastError = TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
         _currentSize = currentSize;
         _next = _data + _currentSize;
@@ -1330,7 +1334,7 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
         if (lastGood != nullptr) {
           LOG_TOPIC(INFO, arangodb::Logger::DATAFILES) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
         }
-        printMarker(marker, size, _data, end); 
+        printMarker(marker, size, _data, end);
 
         return false;
       }
@@ -1371,7 +1375,7 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
                 // there is a next marker
                 auto nextMarker =
                     reinterpret_cast<MMFilesMarker const*>(next);
-                
+
                 if (nextMarker->getType() != 0 &&
                     nextMarker->getSize() >= sizeof(MMFilesMarker) &&
                     next + nextMarker->getSize() <= end &&
@@ -1397,14 +1401,14 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
           LOG_TOPIC(WARN, arangodb::Logger::DATAFILES) << "crc mismatch found in datafile '" << getName() << "' of size "
                     << _maximalSize << ", at position " << currentSize;
 
-          LOG_TOPIC(WARN, arangodb::Logger::DATAFILES) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker) 
+          LOG_TOPIC(WARN, arangodb::Logger::DATAFILES) << "crc mismatch found inside marker of type '" << TRI_NameMarkerDatafile(marker)
                     << "' and size " << size
                     << ". expected crc: " << CalculateCrcValue(marker) << ", actual crc: " << marker->getCrc();
 
           if (lastGood != nullptr) {
             LOG_TOPIC(INFO, arangodb::Logger::DATAFILES) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
           }
-          printMarker(marker, size, _data, end); 
+          printMarker(marker, size, _data, end);
 
           if (nextMarkerOk) {
             LOG_TOPIC(INFO, arangodb::Logger::DATAFILES) << "data directly following this marker looks ok so repairing the marker manually may recover it...";
@@ -1415,8 +1419,8 @@ bool MMFilesDatafile::check(bool ignoreFailures, bool autoSeal) {
 
           return false;
         }
-       
-        // ignore failures...   
+
+        // ignore failures...
         // truncate
         return fix(currentSize);
       }
@@ -1805,8 +1809,8 @@ MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreF
       LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "unable to change memory protection for memory backed by datafile '" << datafile->getName() << "'. please check file permissions and mount options.";
       return nullptr;
     }
-    datafile->setState(TRI_DF_STATE_WRITE); 
-  } 
+    datafile->setState(TRI_DF_STATE_WRITE);
+  }
 
   // Advise on sequential use:
   datafile->sequentialAccess();
@@ -1863,7 +1867,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
 
   // read header from file
   char buffer[128];
-  memset(&buffer[0], 0, sizeof(buffer)); 
+  memset(&buffer[0], 0, sizeof(buffer));
 
   size_t const len = sizeof(MMFilesDatafileHeaderMarker);
 
@@ -1900,7 +1904,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
     LOG_TOPIC(ERR, arangodb::Logger::DATAFILES) << "corrupted datafile header read from '" << filename << "'";
-    
+
     printMarker(reinterpret_cast<MMFilesMarker const*>(ptr), len, &buffer[0], end);
 
     if (!ignoreErrors) {
@@ -1963,8 +1967,8 @@ DatafileScan MMFilesDatafile::scan(std::string const& path) {
 
   if (datafile != nullptr) {
     return datafile->scanHelper();
-  } 
-    
+  }
+
   DatafileScan scan;
   scan.currentSize = 0;
   scan.maximalSize = 0;

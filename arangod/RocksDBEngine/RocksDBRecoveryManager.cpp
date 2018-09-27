@@ -303,6 +303,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
+
     updateMaxTick(column_family_id, key, value);
     if (column_family_id == RocksDBColumnFamily::documents()->GetID() &&
         shouldHandleDocument(key)) {
@@ -344,8 +346,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteCF(uint32_t column_family_id,
                            const rocksdb::Slice& key) override {
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering DELETE " << RocksDBKey(key);
+
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      
+
       if (shouldHandleDocument(key)) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto const& it = deltas.find(objectId);
@@ -388,6 +392,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
                                  const rocksdb::Slice& key) override {
+    LOG_TOPIC(TRACE, Logger::ENGINES) << "recovering SINGLE DELETE " << RocksDBKey(key);
+
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto helper : engine->recoveryHelpers()) {
