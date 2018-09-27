@@ -357,7 +357,7 @@ RestStatus RestReplicationHandler::execute() {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
-      
+
       handleCommandRestoreView();
     } else if (command == "sync") {
       if (type != rest::RequestType::PUT) {
@@ -608,7 +608,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     }
 
     // Send a synchronous request to that shard using ClusterComm:
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -616,7 +616,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   } else {
     // do we need to handle multiple payloads here - TODO
     // here we switch from vst to http?!
-    res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+    res = cc->syncRequest(TRI_NewTickServer(), "server:" + DBserver,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
@@ -680,7 +680,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci->getCollections(dbName);
-  auto views = ci->getViews(dbName);
+  auto views = _vocbase.views(); // ci does not store links in the view objects
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
@@ -711,7 +711,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("views", VPackValue(VPackValueType::Array));
   for (auto const& view : views) {
     resultBuilder.openObject();
-    view->toVelocyPack(resultBuilder, /*details*/false, /*forPersistence*/true);
+    view->toVelocyPack(resultBuilder, /*details*/true, /*forPersistence*/false);
+    resultBuilder.add(StaticStrings::DataSourceGuid, VPackValue(view->guid()));
     resultBuilder.close();
   }
   resultBuilder.close();  // views
@@ -1137,7 +1138,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 
   grantTemporaryRights();
 
-  if (colName == "_users") {
+  if (colName == TRI_COL_NAME_USERS) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   }
@@ -1295,7 +1296,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
   TRI_ASSERT(queryRegistry != nullptr);
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
@@ -1371,8 +1372,9 @@ Result RestReplicationHandler::processRestoreDataBatch(
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
-  bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator() && collectionName == "_users");
+
+  bool const isUsersOnCoordinator = (ServerState::instance()->isCoordinator()
+                                     && collectionName == TRI_COL_NAME_USERS);
 
   // Now try to insert all keys for which the last marker was a document
   // marker, note that these could still be replace markers!
@@ -1421,6 +1423,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
     options.ignoreRevs = true;
     options.isRestore = true;
     options.waitForSync = false;
+    options.overwrite = true;
     opRes = trx.insert(collectionName, requestSlice, options);
     if (opRes.fail()) {
       return opRes.result;
@@ -1728,7 +1731,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-  
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "restoring view: "
     << nameSlice.copyString();
   auto view = _vocbase.lookupView(nameSlice.copyString());
@@ -2053,26 +2056,29 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const followerId = body.get("followerId");
-  VPackSlice const readLockId = body.get("readLockId");
-  VPackSlice const shard = body.get("shard");
-  if (!followerId.isString() || !shard.isString()) {
+  VPackSlice const followerIdSlice = body.get("followerId");
+  VPackSlice const readLockIdSlice = body.get("readLockId");
+  VPackSlice const shardSlice = body.get("shard");
+  VPackSlice const checksumSlice = body.get("checksum");
+  if (!followerIdSlice.isString() ||
+      !shardSlice.isString() ||
+      !checksumSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'followerId' and 'shard' attributes must be strings");
+                  "'followerId', 'shard' and 'checksum' attributes must be strings");
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.copyString());
-
+  auto col = _vocbase.lookupCollection(shardSlice.copyString());
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
-
-  if (readLockId.isNone()) {
-    // Short cut for the case that the collection is empty
+  
+  const std::string followerId = followerIdSlice.copyString();
+  // Short cut for the case that the collection is empty
+  if (readLockIdSlice.isNone()) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, *col, AccessMode::Type::EXCLUSIVE);
     auto res = trx.begin();
@@ -2083,9 +2089,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
-
-        if (nr == 0) {
-          col->followers()->add(followerId.copyString());
+        if (nr == 0 && checksumSlice.isEqualString("0")) {
+          col->followers()->add(followerId);
 
           VPackBuilder b;
           {
@@ -2105,55 +2110,57 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  VPackSlice const checksum = body.get("checksum");
-  // optional while introducing this bugfix. should definitely be required with
-  // 3.4
-  // and throw a 400 then when no checksum is provided
-  if (checksum.isString() && readLockId.isString()) {
-    std::string referenceChecksum;
-    {
-      CONDITION_LOCKER(locker, _condVar);
-      auto it = _holdReadLockJobs.find(readLockId.copyString());
-      if (it == _holdReadLockJobs.end()) {
-        // Entry has been removed since, so we cancel the whole thing
-        // right away and generate an error:
-        generateError(rest::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_TRANSACTION_INTERNAL,
-                      "read transaction was cancelled");
-        return;
-      }
+  if (!readLockIdSlice.isString() || readLockIdSlice.getStringLength() == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "'readLockId' is not a string or empty");
+    return;
+  }
+  // previous versions < 3.3x might not send the checksum, if mixed clusters
+  // get into trouble here we may need to be more lenient
+  TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
+  
+  const std::string readLockId = readLockIdSlice.copyString();
+  const std::string checksum = checksumSlice.copyString();
 
-      auto trx = it->second;
-      if (!trx) {
-        generateError(rest::ResponseCode::SERVER_ERROR,
-                      TRI_ERROR_TRANSACTION_INTERNAL,
-                      "Read lock not yet acquired!");
-        return;
-      }
-
-      // referenceChecksum is the stringified number of documents in the
-      // collection
-      uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
-      referenceChecksum = std::to_string(num);
-    }
-
-    auto result = col->compareChecksums(checksum, referenceChecksum);
-
-    if (result.fail()) {
-      auto errorNumber = result.errorNumber();
-      rest::ResponseCode code;
-      if (errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM ||
-          errorNumber == TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT) {
-        code = rest::ResponseCode::BAD;
-      } else {
-        code = rest::ResponseCode::SERVER_ERROR;
-      }
-      generateError(code, errorNumber, result.errorMessage());
+  std::string referenceChecksum;
+  {
+    CONDITION_LOCKER(locker, _condVar);
+    auto it = _holdReadLockJobs.find(readLockId);
+    if (it == _holdReadLockJobs.end()) {
+      // Entry has been removed since, so we cancel the whole thing
+      // right away and generate an error:
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_TRANSACTION_INTERNAL,
+                    "read transaction was cancelled");
       return;
     }
-  }
 
-  col->followers()->add(followerId.copyString());
+    auto trx = it->second;
+    if (!trx) {
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_TRANSACTION_INTERNAL,
+                    "Read lock not yet acquired!");
+      return;
+    }
+
+    // referenceChecksum is the stringified number of documents in the
+    // collection
+    uint64_t num = col->numberDocuments(trx.get(), transaction::CountType::Normal);
+    referenceChecksum = std::to_string(num);
+  }
+  
+  if (!checksumSlice.isEqualString(referenceChecksum)) {
+    const std::string checksum = checksumSlice.copyString();
+    LOG_TOPIC(WARN, Logger::REPLICATION) << "Cannot add follower, mismatching checksums. "
+     << "Expected: " << referenceChecksum << " Actual: " << checksum;
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
+                  "'checksum' is wrong. Expected: "
+                  + referenceChecksum
+                  + ". Actual: " + checksum);
+    return;
+  }
+  
+  col->followers()->add(followerId);
 
   VPackBuilder b;
   {
@@ -2170,7 +2177,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
-  
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {

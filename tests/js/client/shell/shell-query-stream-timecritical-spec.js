@@ -145,6 +145,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0].bindVars).to.eql({ value: 1 });
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
+      expect(queries[0]).to.have.property('stream', true);
       expect(queries[0]).to.have.property('state', 'executing');
     });
     
@@ -161,6 +162,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0].bindVars).to.eql({ });
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
+      expect(queries[0]).to.have.property('stream', true);
       expect(queries[0]).to.have.property('state', 'executing');
     });
 
@@ -210,6 +212,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0].bindVars).to.eql({ value: 1 });
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
+      expect(queries[0]).to.have.property('stream', true);
       expect(queries[0]).to.have.property('state', 'finished');
     });
 

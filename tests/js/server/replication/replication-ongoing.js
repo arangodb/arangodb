@@ -140,7 +140,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
       console.log("slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
       break;
     }
-      
+
     if (!printed) {
       console.log("waiting for slave to catch up");
       printed = true;
@@ -160,7 +160,7 @@ function BaseTestConfig() {
   'use strict';
 
   return {
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test duplicate _key issue and replacement
     ////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +192,7 @@ function BaseTestConfig() {
         }
       );
     },
-    
+
     testSecondaryKeyConflict: function() {
       connectToMaster();
 
@@ -223,7 +223,7 @@ function BaseTestConfig() {
         }
       );
     },
-   
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation
     ////////////////////////////////////////////////////////////////////////////////
@@ -705,7 +705,7 @@ function BaseTestConfig() {
             db._create(cn);
             let view = db._createView("UnitTestsSyncView", "arangosearch", {});
             let links = {};
-            links[cn] =  { 
+            links[cn] =  {
               includeAllFields: true,
               fields: {
                 text: { analyzers: [ "text_en" ] }
@@ -720,7 +720,43 @@ function BaseTestConfig() {
           if (!state.arangoSearchEnabled) {
             return;
           }
-    
+
+          let view = db._view("UnitTestsSyncView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+
+    testViewCreateWithLinks: function() {
+      connectToMaster();
+
+      compare(
+        function() {},
+        function(state) {
+          try {
+            db._create(cn);
+            let links = {};
+            links[cn] =  {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: [ "text_en" ] }
+              }
+            };
+            let view = db._createView("UnitTestsSyncView", "arangosearch", {"links": links});
+            state.arangoSearchEnabled = true;
+          } catch (err) { }
+        },
+        function() {},
+        function(state) {
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+
           let view = db._view("UnitTestsSyncView");
           assertTrue(view !== null);
           let props = view.properties();
@@ -741,7 +777,7 @@ function BaseTestConfig() {
             db._create(cn);
             let view = db._createView("UnitTestsSyncView", "arangosearch", {});
             let links = {};
-            links[cn] =  { 
+            links[cn] =  {
               includeAllFields: true,
               fields: {
                 text: { analyzers: [ "text_en" ] }
@@ -770,7 +806,7 @@ function BaseTestConfig() {
           if (!state.arangoSearchEnabled) {
             return;
           }
-    
+
           let view = db._view("UnitTestsSyncViewRenamed");
           assertTrue(view !== null);
           let props = view.properties();
@@ -805,7 +841,7 @@ function BaseTestConfig() {
           if (!state.arangoSearchEnabled) {
             return;
           }
-    
+
           let view = db._view("UnitTestsSyncView");
           assertTrue(view === null);
         },
@@ -903,7 +939,7 @@ function ReplicationOtherDBSuite() {
       db._dropDatabase(dbName);
     } catch (e) {
     }
-    
+
     db._createDatabase(dbName);
 
     connectToMaster();
@@ -931,7 +967,7 @@ function ReplicationOtherDBSuite() {
       replication.applier.forget();
     } catch (e) {
     }
-    
+
     db._useDatabase("_system");
     try {
       db._dropDatabase(dbName);
@@ -1051,9 +1087,9 @@ function ReplicationOtherDBSuite() {
     // Collection should be empty
     assertEqual(0, collectionCount(cn));
 
-    // now test if the replication is actually 
+    // now test if the replication is actually
     // switched off
- 
+
     // Section - Master
     connectToMaster();
     // Insert some documents
@@ -1061,7 +1097,7 @@ function ReplicationOtherDBSuite() {
     // Flush wal to trigger replication
     internal.wal.flush(true, true);
 
-    const lastLogTick = replication.logger.state().state.lastLogTick;    
+    const lastLogTick = replication.logger.state().state.lastLogTick;
 
     // Section - Slave
     connectToSlave();
@@ -1130,7 +1166,7 @@ function ReplicationOtherDBSuite() {
     }
 
     // Now test if the Slave did replicate the new database directly...
-    assertEqual(50, collectionCount(cn), 
+    assertEqual(50, collectionCount(cn),
     "The slave inserted the new collection data into the old one, it skipped the drop.");
   };
 

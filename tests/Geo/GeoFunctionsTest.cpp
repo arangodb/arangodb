@@ -29,6 +29,7 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/SmallVector.h"
@@ -58,8 +59,8 @@ auto clearVector = [](SmallVector<AqlValue>& v) {
 namespace geo_equals_point {
 SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -84,13 +85,13 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       foo.close();
       paramsA.emplace_back(foo.slice().at(0));
       paramsA.emplace_back(foo.slice().at(1));
-      AqlValue pointA = Functions::GeoPoint(&query, &trx, paramsA);
+      AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
 
       paramsC.emplace_back(pointA.clone());
       paramsC.emplace_back(pointA.clone());
       pointA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -103,7 +104,7 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       foo.close();
       paramsA.emplace_back(foo.slice().at(0));
       paramsA.emplace_back(foo.slice().at(1));
-      AqlValue pointA = Functions::GeoPoint(&query, &trx, paramsA);
+      AqlValue pointA = Functions::GeoPoint(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(pointA.clone());
       pointA.destroy();
       
@@ -114,11 +115,11 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       bar.close();
       paramsB.emplace_back(bar.slice().at(0));
       paramsB.emplace_back(bar.slice().at(1));
-      AqlValue pointB = Functions::GeoPoint(&query, &trx, paramsB);
+      AqlValue pointB = Functions::GeoPoint(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(pointB.clone());
       pointB.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -129,8 +130,8 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
 namespace geo_equals_multipoint {
 SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -156,12 +157,12 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoMultiPoint(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA.clone());
       paramsC.emplace_back(resA.clone());
       resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -180,12 +181,12 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoMultiPoint(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoMultiPoint(&query, &trx, paramsB);
+      AqlValue resB = Functions::GeoMultiPoint(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -196,8 +197,8 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
 namespace geo_equals_polygon {
 SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -223,12 +224,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA.clone());
       paramsC.emplace_back(resA.clone());
       resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       resC.destroy();
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
@@ -243,12 +244,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA.clone());
       paramsC.emplace_back(resA.clone());
       resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -267,12 +268,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
+      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -286,12 +287,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA.clone());
       paramsC.emplace_back(resA.clone());
       resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -310,12 +311,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
+      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -334,12 +335,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
+      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -358,12 +359,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
+      AqlValue resB = Functions::GeoPolygon(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -382,7 +383,7 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
     });
 
     WHEN("checking only one polygon - first parameter") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -399,16 +400,16 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
       paramsC.emplace_back(jsonB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isNull());
     }
 
     WHEN("checking only one polygon - second parameter") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -425,11 +426,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(jsonB);
       paramsC.emplace_back(resA);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isNull());
     }
   }
@@ -440,8 +441,8 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 namespace geo_equals_linestring {
 SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -467,13 +468,13 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoLinestring(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
 
       paramsC.emplace_back(resA.clone());
       paramsC.emplace_back(resA.clone());
       resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -492,13 +493,13 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoLinestring(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoLinestring(&query, &trx, paramsB);
+      AqlValue resA = Functions::GeoLinestring(&expressionContext, &trx, paramsA);
+      AqlValue resB = Functions::GeoLinestring(&expressionContext, &trx, paramsB);
 
       paramsC.emplace_back(resA);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -509,8 +510,8 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
 namespace geo_equals_multilinestring {
 SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINESTRING]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -536,12 +537,12 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
 
       paramsA.emplace_back(jsonA);
 
-      AqlValue resA = Functions::GeoMultiLinestring(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA.clone());
       paramsC.emplace_back(resA.clone());
       resA.destroy();
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -560,13 +561,13 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoMultiLinestring(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoMultiLinestring(&query, &trx, paramsB);
+      AqlValue resA = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsA);
+      AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
 
       paramsC.emplace_back(resA);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
@@ -577,8 +578,8 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
 namespace geo_equals_mixings {
 SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
 
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
+  fakeit::Mock<ExpressionContext> expressionContextMock;
+  ExpressionContext& expressionContext = expressionContextMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
@@ -596,7 +597,7 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
     });
 
     WHEN("checking polygon with multilinestring") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -613,19 +614,19 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoMultiLinestring(&query, &trx, paramsB);
+      AqlValue resA = Functions::GeoPolygon(&expressionContext, &trx, paramsA);
+      AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
 
       paramsC.emplace_back(resA);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }
 
     WHEN("checking multipoint with multilinestring") {
-      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+      fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -642,12 +643,12 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
       paramsA.emplace_back(jsonA);
       paramsB.emplace_back(jsonB);
 
-      AqlValue resA = Functions::GeoMultiPoint(&query, &trx, paramsA);
+      AqlValue resA = Functions::GeoMultiPoint(&expressionContext, &trx, paramsA);
       paramsC.emplace_back(resA);
-      AqlValue resB = Functions::GeoMultiLinestring(&query, &trx, paramsB);
+      AqlValue resB = Functions::GeoMultiLinestring(&expressionContext, &trx, paramsB);
       paramsC.emplace_back(resB);
 
-      AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == false);
     }

@@ -431,7 +431,7 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
+  traceSkipSomeBegin(atMost);
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   auto res = getOrSkipSome(atMost, true, result, skipped);

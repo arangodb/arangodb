@@ -28,11 +28,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/Result.h"
-#include "Utils/OperationResult.h"
+#include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
@@ -114,7 +115,6 @@ class Methods {
     std::shared_ptr<arangodb::Index> getIndex() const;
   };
 
-  using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
   /// @brief transaction::Methods
@@ -252,9 +252,6 @@ class Methods {
   bool isEdgeCollection(std::string const& collectionName) const;
   bool isDocumentCollection(std::string const& collectionName) const;
   TRI_col_type_e getCollectionType(std::string const& collectionName) const;
-
-  /// @brief return the name of a collection
-  std::string collectionName(TRI_voc_cid_t cid);
 
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
@@ -551,8 +548,15 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
+  /// @brief replicates operations from leader to follower(s)
+  Result replicateOperations(LogicalCollection* collection,
+                             arangodb::velocypack::Slice const& inputValue,
+                             arangodb::velocypack::Builder const& resultBuilder,
+                             std::shared_ptr<std::vector<std::string> const>& followers,
+                             arangodb::rest::RequestType requestType,
+                             std::string const& pathAppendix);
 
-/// @brief Helper create a Cluster Communication document
+  /// @brief Helper create a Cluster Communication document
   OperationResult clusterResultDocument(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,

@@ -508,7 +508,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
+  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 300.0);
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
@@ -628,7 +628,7 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
                                std::make_shared<VPackBuilder>(),
                                arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY.load();
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 

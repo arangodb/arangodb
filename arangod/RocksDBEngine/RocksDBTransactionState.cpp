@@ -475,6 +475,32 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
   }
 }
 
+/// @brief undo the effects of the previous prepareOperation call
+void RocksDBTransactionState::rollbackOperation(TRI_voc_document_operation_e operationType) {
+  bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  if (singleOp) {
+    switch (operationType) {
+      case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        --_numLogdata;
+#endif
+        break;
+      default: {
+        break;
+      }
+    }
+  } else {
+    if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      --_numLogdata;
+#endif
+    }
+  }
+}
+
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
@@ -502,15 +528,12 @@ Result RocksDBTransactionState::addOperation(
   collection->addOperation(operationType, revisionId);
 
   // clear the query cache for this collection
-  if (arangodb::aql::QueryCache::instance()->mayBeActive()) {
-    arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, collection->collectionName()
-    );
+  auto queryCache = arangodb::aql::QueryCache::instance();
+  if (queryCache->mayBeActive()) {
+    queryCache->invalidate(&_vocbase, collection->collectionName());
   }
 
   switch (operationType) {
-    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-      break;
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       ++_numInserts;
       break;
@@ -520,6 +543,8 @@ Result RocksDBTransactionState::addOperation(
       break;
     case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
       ++_numRemoves;
+      break;
+    case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
       break;
   }
 
