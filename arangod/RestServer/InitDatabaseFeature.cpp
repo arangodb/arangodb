@@ -22,6 +22,13 @@
 
 #include "InitDatabaseFeature.h"
 
+#ifdef _WIN32
+#include <tchar.h>
+#include <unicode/locid.h>
+#include <string.h>
+#include <locale.h>
+#endif
+
 #include <chrono>
 #include <iostream>
 #include <thread>
