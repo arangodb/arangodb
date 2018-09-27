@@ -99,6 +99,29 @@ void RestAgencyPrivHandler::redirectRequest(std::string const& leaderId) {
   }
 }
 
+RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << error.toJson();
+  rest::ResponseCode code;
+  try {
+    code = rest::ResponseCode(error.get(StaticStrings::Code).getNumber<int>());
+    generateResult(code, error);
+  } catch (std::exception const& e) {
+    std::string errstr("Failure reporting error ");
+    errstr += error.toJson() + " " + e.what();
+    VPackBuilder builder;
+    { VPackObjectBuilder o(&builder);
+      builder.add(StaticStrings::Error, VPackValue(true));
+      builder.add(StaticStrings::Code, VPackValue(500));
+      builder.add(StaticStrings::ErrorNum, VPackValue(500));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(errstr)); }
+    LOG_TOPIC(ERR, Logger::AGENCY) << errstr;
+    generateResult(rest::ResponseCode::SERVER_ERROR, builder.slice());
+  }
+  return RestStatus::DONE;
+}
+
+
+
 RestStatus RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
@@ -169,14 +192,15 @@ RestStatus RestAgencyPrivHandler::execute() {
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
-          LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Responding to gossip request " << query->toJson() << " with "
+            << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {
-            return reportMessage(
-              rest::ResponseCode(slice.get(StaticStrings::Code).getNumber<int>()),
-              slice.get(StaticStrings::ErrorMessage).copyString());
+            return reportError(slice);
           }
           if (slice.hasKey("redirect")) {
             redirectRequest(slice.get("id").copyString());
+            return RestStatus::DONE;
           }
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);

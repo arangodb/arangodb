@@ -1689,8 +1689,16 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
 
   if (slice.hasKey(StaticStrings::Error)) {
-      query_t out = std::make_shared<Builder>();
-      return out;
+    if (slice.get(StaticStrings::Code).getNumber<int>() == 403) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "Gossip peer does not have us in their pool " << slice.toJson();
+      FATAL_ERROR_EXIT(); /// We don't belong here
+    } else {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Received gossip error. We'll retry " << slice.toJson();
+    }
+    query_t out = std::make_shared<Builder>();
+    return out;
   }
   
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
@@ -1764,7 +1772,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       FATAL_ERROR_EXIT();      /// disagreement over pool membership are fatal!
     }
     auto pool = _config.pool();
-    auto active = _config.active();
       
     // Wrapped in envelope in RestAgencyPrivHandler
     out->add(VPackValue("pool"));
@@ -1809,6 +1816,13 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           auto result = waitFor(max_index);
           if (result != Agent::raft_commit_t::OK) {
             err = "failed to retrieve RAFT index for updated agency endpoints";
+          } else {
+            auto pool = _config.pool();
+            out->add(VPackValue("pool"));
+            { VPackObjectBuilder bb(out.get());
+              for (auto const& i : pool) {
+                out->add(i.first, VPackValue(i.second));
+              }}
           }
         } else {
           err = "failed to retrieve RAFT index for updated agency endpoints";
