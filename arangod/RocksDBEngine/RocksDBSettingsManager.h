@@ -77,12 +77,13 @@ class RocksDBSettingsManager {
     /// ArangoDB transaction ID
     rocksdb::SequenceNumber _sequenceNum;
     /// used for number of documents
-    uint64_t _count;
+    uint64_t _added;
+    uint64_t _removed;
     /// used for revision id
     TRI_voc_rid_t _revisionId;
 
-    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
-        : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
+    CMValue(rocksdb::SequenceNumber sq, uint64_t added, uint64_t removed, TRI_voc_rid_t rid)
+        : _sequenceNum(sq), _added(added), _removed(removed), _revisionId(rid) {}
     explicit CMValue(arangodb::velocypack::Slice const&);
     void serialize(arangodb::velocypack::Builder&) const;
   };

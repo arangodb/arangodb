@@ -201,7 +201,7 @@ writeIndexEstimatorsAndKeyGenerator(
 namespace arangodb {
 
 RocksDBSettingsManager::CMValue::CMValue(VPackSlice const& slice)
-    : _sequenceNum(0), _count(0), _revisionId(0) {
+    : _sequenceNum(0), _added(0), _removed(0), _revisionId(0) {
   if (!slice.isArray()) {
     // got a somewhat invalid slice. probably old data from before the key
     // structure changes
@@ -211,16 +211,23 @@ RocksDBSettingsManager::CMValue::CMValue(VPackSlice const& slice)
   velocypack::ArrayIterator array(slice);
   if (array.valid()) {
     this->_sequenceNum = (*array).getUInt();
-    this->_count = (*(++array)).getUInt();
+    // versions pre 3.4 stored only a single "count" value
+    // 3.4 and higher store "added" and "removed" seperately
+    this->_added = (*(++array)).getUInt();
+    if (array.size() > 3) {
+      TRI_ASSERT(array.size() == 4);
+      this->_removed = (*(++array)).getUInt();
+    }
     this->_revisionId = (*(++array)).getUInt();
   }
 }
 
 void RocksDBSettingsManager::CMValue::serialize(VPackBuilder& b) const {
   b.openArray();
-  b.add(VPackValue(this->_sequenceNum));
-  b.add(VPackValue(this->_count));
-  b.add(VPackValue(this->_revisionId));
+  b.add(VPackValue(_sequenceNum));
+  b.add(VPackValue(_added));
+  b.add(VPackValue(_removed));
+  b.add(VPackValue(_revisionId));
   b.close();
 }
 
@@ -246,7 +253,9 @@ RocksDBSettingsManager::CounterAdjustment RocksDBSettingsManager::loadCounter(
   READ_LOCKER(guard, _rwLock);
   auto const& it = _counters.find(objectId);
   if (it != _counters.end()) {
-    return CounterAdjustment(it->second._sequenceNum, it->second._count, 0,
+    return CounterAdjustment(it->second._sequenceNum, 
+                             it->second._added, 
+                             it->second._removed,
                              it->second._revisionId);
   }
   return CounterAdjustment();  // do not create
@@ -263,9 +272,8 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
 
     auto it = _counters.find(objectId);
     if (it != _counters.end()) {
-      TRI_ASSERT(it->second._count + update.added() >= update.removed());
-      it->second._count += update.added();
-      it->second._count -= update.removed();
+      it->second._added += update.added();
+      it->second._removed += update.removed();
       // just use the latest trx info
       if (update.sequenceNumber() > it->second._sequenceNum) {
         it->second._sequenceNum = update.sequenceNumber();
@@ -275,10 +283,9 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
       }
     } else {
       // insert new counter
-      TRI_ASSERT(update.added() >= update.removed());
       _counters.emplace(std::make_pair(
           objectId,
-          CMValue(update.sequenceNumber(), update.added() - update.removed(),
+          CMValue(update.sequenceNumber(), update.added(), update.removed(),
                   update.revisionId())));
       needsSync = true;  // only count values from WAL if they are in the DB
     }
@@ -296,7 +303,8 @@ arangodb::Result RocksDBSettingsManager::setAbsoluteCounter(uint64_t objectId,
   auto it = _counters.find(objectId);
   if (it != _counters.end()) {
     it->second._sequenceNum = std::max(seq, it->second._sequenceNum);
-    it->second._count = value;
+    it->second._added = value;
+    it->second._removed = 0;
   } else {
     // nothing to do as the counter has never been written it can not be set to
     // a value that would require correction. but we use the return value to
@@ -573,8 +581,7 @@ uint64_t RocksDBSettingsManager::stealKeyGenerator(uint64_t objectId) {
 
 void RocksDBSettingsManager::clearIndexEstimators() {
   // We call this to remove all index estimators that have been stored but are
-  // no longer read
-  // by recovery.
+  // no longer read by recovery.
 
   // TODO REMOVE RocksDB Keys of all not stolen values?
   WRITE_LOCKER(guard, _rwLock);
@@ -606,8 +613,8 @@ void RocksDBSettingsManager::loadCounterValues() {
       _syncedSeqNums[objectId] = it.first->second._sequenceNum;
       LOG_TOPIC(TRACE, Logger::ENGINES)
           << "found count marker for objectId '" << objectId
-          << "' last synced at " << it.first->first << " with count "
-          << it.first->second._count;
+          << "' last synced at " << it.first->first << " with added "
+          << it.first->second._added << ", removed " << it.first->second._removed;
     }
 
     iter->Next();

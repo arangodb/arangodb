@@ -278,7 +278,6 @@ void RocksDBCollection::open(bool /*ignoreErrors*/) {
   RocksDBEngine* engine =
       static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   TRI_ASSERT(engine != nullptr);
-  TRI_ASSERT(!engine->inRecovery());
   auto counterValue = engine->settingsManager()->loadCounter(_objectId);
   _numberDocuments = counterValue.added() - counterValue.removed();
   _revisionId = counterValue.revisionId();
@@ -1970,7 +1969,6 @@ void RocksDBCollection::deserializeKeyGenerator(RocksDBSettingsManager* mgr) {
 
   if (value > 0) {
     std::string k(basics::StringUtils::itoa(value));
-
     _logicalCollection.keyGenerator()->track(k.data(), k.size());
   }
 }
