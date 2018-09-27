@@ -112,7 +112,7 @@ for small adjustments, you can put local overrides into a file
 To list the configuration options of a running `arangod` instance, you can
 connect with an [ArangoShell](../Programs/Arangosh/README.md) and invoke a
 [Transaction](../Transactions/README.md) providing a description
-to the _db._executeTransaction_ JavaScript function:
+to the `db._executeTransaction()` JavaScript function:
 
     @startDocuBlockInline listCurrentConfigOpts
     @EXAMPLE_ARANGOSH_OUTPUT{listCurrentConfigOpts}
