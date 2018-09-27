@@ -731,8 +731,9 @@ static VPackBuilder assembleLocalCollectionInfo(
         // planServers may be `none` in the case that the shard is not contained
         // in Plan, but in local.
         if (planServers.isArray()) {
-          auto current = *(collection->followers()->get());
-          for (auto const& server : current) {
+          std::shared_ptr<std::vector<std::string>> current
+            = collection->followers()->get();
+          for (auto const& server : *current) {
             ret.add(VPackValue(server));
           }
         }
