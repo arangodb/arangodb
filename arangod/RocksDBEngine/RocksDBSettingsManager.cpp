@@ -263,6 +263,7 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
 
     auto it = _counters.find(objectId);
     if (it != _counters.end()) {
+      TRI_ASSERT(it->second._count + update.added() >= update.removed());
       it->second._count += update.added();
       it->second._count -= update.removed();
       // just use the latest trx info
@@ -274,6 +275,7 @@ void RocksDBSettingsManager::updateCounter(uint64_t objectId,
       }
     } else {
       // insert new counter
+      TRI_ASSERT(update.added() >= update.removed());
       _counters.emplace(std::make_pair(
           objectId,
           CMValue(update.sequenceNumber(), update.added() - update.removed(),
@@ -414,7 +416,6 @@ Result RocksDBSettingsManager::sync(bool force) {
 }
 
 void RocksDBSettingsManager::loadSettings() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
 
@@ -430,6 +431,7 @@ void RocksDBSettingsManager::loadSettings() {
         << "read initial settings: " << slice.toJson();
 
     if (!result.empty()) {
+      WRITE_LOCKER(guard, _rwLock);
       try {
         if (slice.hasKey("tick")) {
           uint64_t lastTick =
@@ -468,7 +470,6 @@ void RocksDBSettingsManager::loadSettings() {
 }
 
 void RocksDBSettingsManager::loadIndexEstimates() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEstimateValues();
 
   auto cf = RocksDBColumnFamily::definitions();
@@ -485,6 +486,8 @@ void RocksDBSettingsManager::loadIndexEstimates() {
 
     StringRef estimateSerialisation(iter->value().data() + sizeof(uint64_t),
                                     iter->value().size() - sizeof(uint64_t));
+    
+    WRITE_LOCKER(guard, _rwLock);
     // If this hits we have two estimates for the same index
     TRI_ASSERT(_estimators.find(objectId) == _estimators.end());
     try {
@@ -510,7 +513,6 @@ void RocksDBSettingsManager::loadIndexEstimates() {
 }
 
 void RocksDBSettingsManager::loadKeyGenerators() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
 
   auto cf = RocksDBColumnFamily::definitions();
@@ -528,6 +530,7 @@ void RocksDBSettingsManager::loadKeyGenerators() {
     if (!s.isNone()) { 
       uint64_t lastValue = properties.get(StaticStrings::LastValue).getUInt();
 
+      WRITE_LOCKER(guard, _rwLock);
       // If this hits we have two generators for the same collection
       TRI_ASSERT(_generators.find(objectId) == _generators.end());
       try {
@@ -585,7 +588,6 @@ void RocksDBSettingsManager::clearKeyGenerators() {
 
 /// Parse counter values from rocksdb
 void RocksDBSettingsManager::loadCounterValues() {
-  WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
 
   auto cf = RocksDBColumnFamily::definitions();
@@ -596,13 +598,17 @@ void RocksDBSettingsManager::loadCounterValues() {
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {
     uint64_t objectId = RocksDBKey::definitionsObjectId(iter->key());
-    auto const& it =
-        _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
-    _syncedSeqNums[objectId] = it.first->second._sequenceNum;
-    LOG_TOPIC(TRACE, Logger::ENGINES)
-        << "found count marker for objectId '" << objectId
-        << "' last synced at " << it.first->first << " with count "
-        << it.first->second._count;
+    
+    {
+      WRITE_LOCKER(guard, _rwLock);
+      auto const& it =
+          _counters.emplace(objectId, CMValue(VPackSlice(iter->value().data())));
+      _syncedSeqNums[objectId] = it.first->second._sequenceNum;
+      LOG_TOPIC(TRACE, Logger::ENGINES)
+          << "found count marker for objectId '" << objectId
+          << "' last synced at " << it.first->first << " with count "
+          << it.first->second._count;
+    }
 
     iter->Next();
   }
