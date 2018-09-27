@@ -732,7 +732,7 @@ static VPackBuilder assembleLocalCollectionInfo(
         // in Plan, but in local.
         if (planServers.isArray()) {
           std::shared_ptr<std::vector<std::string>> current
-            = collection->followers()->get();
+            = collection->followers();
           for (auto const& server : *current) {
             ret.add(VPackValue(server));
           }
