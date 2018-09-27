@@ -52,7 +52,8 @@ ServerFeature::ServerFeature(
     : ApplicationFeature(server, "Server"),
       _vstMaxSize(1024 * 30),
       _result(res),
-      _operationMode(OperationMode::MODE_SERVER) {
+      _operationMode(OperationMode::MODE_SERVER),
+      _codePage(65002) { // default to UTF8
   setOptional(true);
 
   startsAfter("AQLPhase");
@@ -84,6 +85,10 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--vst.maxsize",
                      "maximal size (in bytes) for a VelocyPack chunk",
                      new UInt32Parameter(&_vstMaxSize));
+#if _WIN32
+  options->addHiddenOption("--console.code-page", "Windows code page to use; defaults to UTF8",
+                           new UInt16Parameter(&_codePage));
+#endif
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -152,6 +157,10 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ServerFeature::start() {
+#if _WIN32
+  SetConsoleOutputCP(_codePage);
+#endif
+
   waitForHeartbeat();
 
   *_result = EXIT_SUCCESS;

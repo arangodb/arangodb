@@ -121,6 +121,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
+  uint16_t _codePage;
 };
 
 }  // namespace arangodb
