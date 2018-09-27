@@ -38,6 +38,9 @@ struct ReadOptions;
 }  // namespace rocksdb
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 
 class RocksDBKey;
 class RocksDBMethods;
@@ -45,7 +48,7 @@ class RocksDBTransactionState;
 
 class RocksDBSavePoint {
  public:
-  RocksDBSavePoint(RocksDBMethods* trx, bool handled);
+  RocksDBSavePoint(transaction::Methods* trx, TRI_voc_document_operation_e operationType);
   ~RocksDBSavePoint();
 
   /// @brief acknowledges the current savepoint, so there
@@ -58,7 +61,8 @@ class RocksDBSavePoint {
   void rollback();
 
  private:
-  RocksDBMethods* _trx;
+  transaction::Methods* _trx;
+  TRI_voc_document_operation_e const _operationType;
   bool _handled;
 };
 
