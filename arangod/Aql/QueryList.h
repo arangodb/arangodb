@@ -45,10 +45,11 @@ class Query;
 struct QueryEntryCopy {
   QueryEntryCopy (TRI_voc_tick_t id,
                   std::string&& queryString,
-                  std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
+                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
                   double started,
                   double runTime,
-                  QueryExecutionState::ValueType state);
+                  QueryExecutionState::ValueType state,
+                  bool stream);
 
   TRI_voc_tick_t const id;
   std::string const queryString;
@@ -56,6 +57,7 @@ struct QueryEntryCopy {
   double const started;
   double const runTime;
   QueryExecutionState::ValueType const state;
+  bool stream;
 };
 
 class QueryList {

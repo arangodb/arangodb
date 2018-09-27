@@ -133,7 +133,7 @@ bool IResearchViewCoordinator::emplace(
   auto& properties = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  bool hasLinks = properties.hasKey("links");
+  bool hasLinks = properties.hasKey(StaticStrings::LinksField);
 
   auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)

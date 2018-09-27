@@ -328,11 +328,6 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     }
 
     operation.handled();
-
-    arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, collection->name()
-    );
-
     physical->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
@@ -355,10 +350,11 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     copy.release();
     operation.swapped();
     _hasOperations = true;
-
-    arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, collection->name()
-    );
+  }
+  
+  auto queryCache = arangodb::aql::QueryCache::instance();
+  if (queryCache->mayBeActive()) {
+    queryCache->invalidate(&_vocbase, collection->name());
   }
 
   physical->setRevision(revisionId, false);

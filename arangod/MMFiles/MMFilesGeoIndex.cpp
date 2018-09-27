@@ -61,8 +61,8 @@ struct NearIterator final : public IndexIterator {
   char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
-  inline bool nextToken(
-      std::function<bool(geo_index::Document const& gdoc)>&& cb, size_t limit) {
+  template<typename F>
+  inline bool nextToken(F&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -71,7 +71,7 @@ struct NearIterator final : public IndexIterator {
 
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest())) {
+        if (std::forward<F>(cb)(_near.nearest())) {
           limit--;
         }
         _near.popNearest();

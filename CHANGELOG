@@ -1,9 +1,24 @@
 devel
 -----
 
+* added nesting support for `aql` template strings
+
+* added support for `undefined` and AQL literals to `aql.literal`
+
+* added `aql.join` function
+
+* fixed issue #6601: Context cancelled (never ending query)
+
+* added more AQL query results cache inspection and control functionality
+
+* the query editor within the web ui is now catching HTTP 501 responses
+  properly
+
 * upgraded JEMalloc version to 5.1.0
 
 * use `-std=c++14` for ArangoDB compilation
+
+* added startup parameter advertised-endpoints
 
 
 v3.4.0-rc.2 (XXXX-XX-XX)

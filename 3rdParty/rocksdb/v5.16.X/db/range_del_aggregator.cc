@@ -171,7 +171,9 @@ class CollapsedRangeDelMap : public RangeDelMap {
   const Comparator* ucmp_;
 
  public:
-  CollapsedRangeDelMap(const Comparator* ucmp) : ucmp_(ucmp) {
+  CollapsedRangeDelMap(const Comparator* ucmp) 
+    : rep_(stl_wrappers::LessOfComparator(ucmp)), 
+      ucmp_(ucmp) {
     InvalidatePosition();
   }
 
@@ -493,7 +495,8 @@ Status RangeDelAggregator::AddTombstones(
         tombstone.end_key_ = largest->user_key();
       }
     }
-    GetRangeDelMap(tombstone.seq_).AddTombstone(std::move(tombstone));
+    auto seq = tombstone.seq_;
+    GetRangeDelMap(seq).AddTombstone(std::move(tombstone));
     input->Next();
   }
   if (!first_iter) {

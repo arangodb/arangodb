@@ -227,9 +227,6 @@ HeartbeatThread::~HeartbeatThread() {
 /// the heartbeat thread constantly reports the current server status to the
 /// agency. it does so by sending the current state string to the key
 /// "Sync/ServerStates/" + my-id.
-/// after transferring the current state to the agency, the heartbeat thread
-/// will wait for changes on the "Sync/Commands/" + my-id key. If no changes
-/// occur,
 /// then the request it aborted and the heartbeat thread will go on with
 /// reporting its state to the agency again. If it notices a change when
 /// watching the command key, it will wake up and apply the change locally.
@@ -407,14 +404,11 @@ void HeartbeatThread::runDBServer() {
       if (--currentCount == 0) {
         currentCount = currentCountStart;
 
-        // send an initial GET request to Sync/Commands/my-id
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
-
+        // DBServers disregard the ReadOnly flag, otherwise (without authentication and JWT)
+        // we are not able to identify valid requests from other cluster servers
         AgencyReadTransaction trx(
           std::vector<std::string>({
               AgencyCommManager::path("Shutdown"),
-              AgencyCommManager::path("Readonly"),
               AgencyCommManager::path("Current/Version"),
               "/.agency"}));
 
@@ -463,10 +457,6 @@ void HeartbeatThread::runDBServer() {
               syncDBServerStatusQuo();
             }
           }
-
-          auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
-            {AgencyCommManager::path(), "Readonly"}));
-          updateServerMode(readOnlySlice);
         }
       }
 
@@ -711,8 +701,7 @@ void HeartbeatThread::runSingleServer() {
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
         // on this server may prevent us from being a proper follower. We wait for
-        // all ongoing ops to stop, and make sure nothing is committed:
-        // setting server mode to REDIRECT stops DDL ops and write transactions
+        // all ongoing ops to stop, and make sure nothing is committed
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
         TRI_ASSERT(!applier->isActive());
         applier->forget(); // make sure applier is doing a resync
@@ -761,7 +750,10 @@ void HeartbeatThread::runSingleServer() {
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
+          } else if (error.isNot(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_MASTER_CHANGE) &&
+                     error.isNot(TRI_ERROR_REPLICATION_LOOP) &&
+                     error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
             VPackBuilder debug;
@@ -964,13 +956,12 @@ void HeartbeatThread::runCoordinator() {
                 {AgencyCommManager::path(), "Target", "FailedServers"}));
 
         if (failedServersSlice.isObject()) {
-          std::vector<std::string> failedServers = {};
+          std::vector<ServerID> failedServers = {};
           for (auto const& server : VPackObjectIterator(failedServersSlice)) {
             if (server.value.isArray() && server.value.length() == 0) {
               failedServers.push_back(server.key.copyString());
             }
           }
-          // calling pregel code
           ClusterInfo::instance()->setFailedServers(failedServers);
 
           pregel::PregelFeature *prgl = pregel::PregelFeature::instance();
@@ -978,7 +969,7 @@ void HeartbeatThread::runCoordinator() {
             pregel::RecoveryManager* mngr = prgl->recoveryManager();
             if (mngr != nullptr) {
               try {
-                mngr->updatedFailedServers();
+                mngr->updatedFailedServers(failedServers);
               } catch (std::exception const& e) {
                 LOG_TOPIC(ERR, Logger::HEARTBEAT)
                 << "Got an exception in coordinator heartbeat: " << e.what();

@@ -26,8 +26,10 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
 #define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
 
-#include "Aql/AstNode.h"
 #include "Basics/Common.h"
+#include "Aql/AstNode.h"
+#include "Basics/SmallVector.h"
+#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -115,6 +117,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   
   bool nextCovering(DocumentCallback const& cb, size_t limit) override;
+  
+  void skip(uint64_t count, uint64_t& skipped) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -152,7 +156,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   bool needToPersistEstimate() const override;
@@ -182,7 +186,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   IndexIterator* lookup(transaction::Methods*,
                         arangodb::velocypack::Slice const, bool reverse) const;
 
-  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                               arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&) const override;
 
@@ -238,8 +243,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief helper function to insert a document into any index type
   int fillElement(velocypack::Builder& leased,
                   LocalDocumentId const& documentId, VPackSlice const& doc,
-                  std::vector<RocksDBKey>& elements,
-                  std::vector<uint64_t>& hashes);
+                  SmallVector<RocksDBKey>& elements,
+                  SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
@@ -247,9 +252,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void addIndexValue(velocypack::Builder& leased,
                      LocalDocumentId const& documentId,
                      VPackSlice const& document,
-                     std::vector<RocksDBKey>& elements,
-                     std::vector<VPackSlice>& sliceStack,
-                     std::vector<uint64_t>& hashes);
+                     SmallVector<RocksDBKey>& elements,
+                     SmallVector<uint64_t>& hashes,
+                     SmallVector<VPackSlice>& sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
@@ -259,9 +264,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void buildIndexValues(velocypack::Builder& leased,
                         LocalDocumentId const& documentId,
                         VPackSlice const document, size_t level,
-                        std::vector<RocksDBKey>& elements,
-                        std::vector<VPackSlice>& sliceStack,
-                        std::vector<uint64_t>& hashes);
+                        SmallVector<RocksDBKey>& elements,
+                        SmallVector<uint64_t>& hashes,
+                        SmallVector<VPackSlice>& sliceStack);
 
  private:
   /// @brief the attribute paths

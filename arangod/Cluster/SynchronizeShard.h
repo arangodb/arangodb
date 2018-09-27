@@ -31,9 +31,6 @@
 #include <chrono>
 
 namespace arangodb {
-
-class MaintenanceAction;
-
 namespace maintenance {
 
 class SynchronizeShard : public ActionBase {
@@ -44,7 +41,9 @@ public:
 
   virtual ~SynchronizeShard();
 
-  virtual bool first() override;
+  virtual bool first() override final;
+
+  virtual void setState(ActionState state) override final;
 
 private:
   arangodb::Result getReadLock(
