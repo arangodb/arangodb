@@ -39,6 +39,6 @@ Deployment Administration
 Other Topics
 ------------
 
-- [Backup & Restore](BackupRestore.md)
+- [Backup & Restore](../BackupRestore/README.md)
 - [Import & Export](ImportExport.md)
 - [User Management](ManagingUsers/README.md)
