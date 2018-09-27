@@ -95,22 +95,22 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
 
 EdgeConditionBuilderContainer::EdgeConditionBuilderContainer() :
   EdgeConditionBuilder(nullptr) {
-    auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
-    _astNodes.emplace_back(node.get());
-    _modCondition = node.release();
+  auto node = std::make_unique<AstNode>(NODE_TYPE_OPERATOR_NARY_AND);
+  _astNodes.emplace_back(node.get());
+  _modCondition = node.release();
 
-    auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
-    comp->setValueType(VALUE_TYPE_STRING);
-    comp->setStringValue("", 0);
-    _astNodes.emplace_back(comp.get());
-    _compareNode = comp.release();
+  auto comp = std::make_unique<AstNode>(NODE_TYPE_VALUE);
+  comp->setValueType(VALUE_TYPE_STRING);
+  comp->setStringValue("", 0);
+  _astNodes.emplace_back(comp.get());
+  _compareNode = comp.release();
 
-    _var = _varGen.createTemporaryVariable();
+  _var = _varGen.createTemporaryVariable();
 
-    auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
-    varNode->setData(_var);
-    _astNodes.emplace_back(varNode.get());
-    _varNode = varNode.release();
+  auto varNode = std::make_unique<AstNode>(NODE_TYPE_REFERENCE);
+  varNode->setData(_var);
+  _astNodes.emplace_back(varNode.get());
+  _varNode = varNode.release();
 }
 
 EdgeConditionBuilderContainer::~EdgeConditionBuilderContainer() {

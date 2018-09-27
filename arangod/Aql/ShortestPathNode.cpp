@@ -53,7 +53,7 @@ static void parseNodeInput(AstNode const* node, std::string& id,
       id = "";
       break;
     case NODE_TYPE_VALUE:
-      if (node->value.type != VALUE_TYPE_STRING) {
+      if (!node->isStringValue()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                        "invalid start vertex. Must either be "
                                        "an _id string or an object with _id.");

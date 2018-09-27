@@ -62,9 +62,11 @@ void Aqlerror(YYLTYPE* locp,
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
 
+namespace {
+
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-static Variable const* CheckIntoVariables(AstNode const* collectVars,
+static Variable const* checkIntoVariables(AstNode const* collectVars,
                                           std::unordered_set<Variable const*> const& vars) {
   if (collectVars == nullptr || collectVars->type != NODE_TYPE_ARRAY) {
     return nullptr;
@@ -87,7 +89,7 @@ static Variable const* CheckIntoVariables(AstNode const* collectVars,
 }
 
 /// @brief register variables in the scope
-static void RegisterAssignVariables(arangodb::aql::Scopes* scopes, AstNode const* vars) { 
+static void registerAssignVariables(arangodb::aql::Scopes* scopes, AstNode const* vars) { 
   size_t const n = vars->numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = vars->getMember(i);
@@ -101,7 +103,7 @@ static void RegisterAssignVariables(arangodb::aql::Scopes* scopes, AstNode const
 }
 
 /// @brief validate the aggregate variables expressions
-static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
+static bool validateAggregates(Parser* parser, AstNode const* aggregates) {
   size_t const n = aggregates->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -134,10 +136,14 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
   return true;
 }
 
-static void DestructureArray(Parser* parser, std::string const& sourceVariable, 
-                             std::vector<size_t>& depths, AstNode const* array) {
-  depths.push_back(0);
+static void destructureObject(Parser* parser, std::string const& sourceVariable, 
+                              std::vector<AstNode const*>& paths, AstNode const* array);
+static void destructureArray(Parser* parser, std::string const& sourceVariable, 
+                             std::vector<AstNode const*>& paths, AstNode const* array);
 
+static void destructureArray(Parser* parser, std::string const& sourceVariable, 
+                             std::vector<AstNode const*>& paths, AstNode const* array) {
+  int64_t index = 0;
   size_t const n = array->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -145,45 +151,61 @@ static void DestructureArray(Parser* parser, std::string const& sourceVariable,
     
     if (member->type == NODE_TYPE_ARRAY) {
       // array value => recurse
-      DestructureArray(parser, sourceVariable, depths, member);
-    } else if (member->type == NODE_TYPE_VALUE) {
-      // null value => skip over unnamed element
+      AstNode* indexNode = parser->ast()->createNodeValueInt(index, false);
+      paths.emplace_back(indexNode);
+  
+      int64_t tag = member->getIntValue(true);
+      if (tag == 1) {
+        destructureArray(parser, sourceVariable, paths, member);
+      } else {
+        destructureObject(parser, sourceVariable, paths, member);
+      }
+
+      paths.pop_back();
     } else if (member->type == NODE_TYPE_VARIABLE) {
       // an actual variable assignment. we need to do something!
-      auto accessor = parser->ast()->createNodeReference(sourceVariable.c_str(), sourceVariable.size());
-      for (auto const& it : depths) {
-        accessor = parser->ast()->createNodeIndexedAccess(accessor, parser->ast()->createNodeValueInt(it));
+      AstNode* indexNode = parser->ast()->createNodeValueInt(index, false);
+      paths.emplace_back(indexNode);
+
+      AstNode const* accessor = parser->ast()->createNodeReference(sourceVariable.data(), sourceVariable.size());
+      for (auto const& it : paths) {
+        accessor = parser->ast()->createNodeIndexedAccess(accessor, it);
       }
-      auto node = parser->ast()->createNodeLet(member, accessor);
+      AstNode* node = parser->ast()->createNodeLet(member, accessor);
       parser->ast()->addOperation(node);
+      
+      paths.pop_back();
     }
 
-    ++(depths.back());
+    ++index;
   }
-
-  depths.pop_back();
 }
 
-static void DestructureObject(Parser* parser, std::string const& sourceVariable, 
-                              std::vector<std::pair<char const*, size_t>>& paths, AstNode const* array) {
+static void destructureObject(Parser* parser, std::string const& sourceVariable, 
+                              std::vector<AstNode const*>& paths, AstNode const* array) {
   size_t const n = array->numMembers();
-
+  
   for (size_t i = 0; i < n; i += 2) {
     auto member = array->getMember(i);
     
-    if (member->type == NODE_TYPE_VALUE && member->value.type == VALUE_TYPE_STRING) {
-      auto assigned = array->getMember(i + 1);
+    if (member->isStringValue()) {
+      AstNode const* assigned = array->getMember(i + 1);
       
-      paths.emplace_back(member->getStringValue(), member->getStringLength());
+      paths.emplace_back(member);
       if (assigned->type == NODE_TYPE_ARRAY) {
         // need to recurse
-        DestructureObject(parser, sourceVariable, paths, assigned);
-      } else if (assigned->type == NODE_TYPE_VARIABLE) {
-        auto accessor = parser->ast()->createNodeReference(sourceVariable.c_str(), sourceVariable.size());
-        for (auto const& it : paths) {
-          accessor = parser->ast()->createNodeAttributeAccess(accessor, it.first, it.second);
+        int64_t tag = assigned->getIntValue(true);
+        if (tag == 1) {
+          destructureArray(parser, sourceVariable, paths, assigned);
+        } else {
+          destructureObject(parser, sourceVariable, paths, assigned);
         }
-        auto node = parser->ast()->createNodeLet(assigned, accessor);
+      } else if (assigned->type == NODE_TYPE_VARIABLE) {
+        AstNode* accessor = parser->ast()->createNodeReference(sourceVariable.data(), sourceVariable.size());
+        for (auto const& it : paths) {
+          accessor = parser->ast()->createNodeIndexedAccess(accessor, it);
+        }
+        AstNode* node = parser->ast()->createNodeLet(assigned, accessor);
         parser->ast()->addOperation(node);
       }
       paths.pop_back();
@@ -192,7 +214,7 @@ static void DestructureObject(Parser* parser, std::string const& sourceVariable,
 }
 
 /// @brief start a new scope for the collect
-static bool StartCollectScope(arangodb::aql::Scopes* scopes) { 
+static bool startCollectScope(arangodb::aql::Scopes* scopes) { 
   // check if we are in the main scope
   if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN) {
     return false;
@@ -206,7 +228,7 @@ static bool StartCollectScope(arangodb::aql::Scopes* scopes) {
 }
 
 /// @brief get the INTO variable stored in a node (may not exist)
-static AstNode const* GetIntoVariable(Parser* parser, AstNode const* node) {
+static AstNode const* getIntoVariable(Parser* parser, AstNode const* node) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -226,7 +248,7 @@ static AstNode const* GetIntoVariable(Parser* parser, AstNode const* node) {
 }
 
 /// @brief get the INTO variable = expression stored in a node (may not exist)
-static AstNode const* GetIntoExpression(AstNode const* node) {
+static AstNode const* getIntoExpression(AstNode const* node) {
   if (node == nullptr || node->type == NODE_TYPE_VALUE) {
     return nullptr;
   }
@@ -237,6 +259,8 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 
   return node->getMember(1);
 }
+
+} // namespace
 
 %}
 
@@ -640,22 +664,23 @@ let_element:
       auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
       parser->ast()->addOperation(node);
 
-      std::vector<size_t> depths;
-      DestructureArray(parser, nextName, depths, $1);
+      std::vector<AstNode const*> paths;
+      ::destructureArray(parser, nextName, paths, $1);
     }
   | object_destructuring T_ASSIGN expression {
       std::string const nextName = parser->ast()->variables()->nextName();
       auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
       parser->ast()->addOperation(node);
 
-      std::vector<std::pair<char const*, size_t>> paths;
-      DestructureObject(parser, nextName, paths, $1);
+      std::vector<AstNode const*> paths;
+      ::destructureObject(parser, nextName, paths, $1);
     }
   ;
 
 array_destructuring:
     T_ARRAY_OPEN {
-      auto node = parser->ast()->createNodeArray();
+      AstNode* node = parser->ast()->createNodeArray();
+      node->setIntValue(1);
       parser->pushStack(node);
     } array_destructuring_element T_ARRAY_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
@@ -671,20 +696,28 @@ array_destructuring_element:
   | array_destructuring {
       parser->pushArrayElement($1);
     }
+  | object_destructuring {
+      parser->pushArrayElement($1);
+    }
   | array_destructuring_element T_COMMA array_destructuring_element {
     }
   ;
 
 object_destructuring:
     T_OBJECT_OPEN {
-      auto node = parser->ast()->createNodeArray();
+      AstNode* node = parser->ast()->createNodeArray();
+      node->setIntValue(2);
       parser->pushStack(node);
     } object_destructuring_element T_OBJECT_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
     }
 
 object_destructuring_element:
-    variable_name {
+    /* empty */ {
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+    }
+  | variable_name {
       parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
       parser->pushArrayElement(parser->ast()->createNodeVariable($1.value, $1.length, true));
     }
@@ -693,6 +726,10 @@ object_destructuring_element:
       parser->pushArrayElement(parser->ast()->createNodeVariable($3.value, $3.length, true));
     }
   | variable_name T_COLON object_destructuring {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement($3);
+    }
+  | variable_name T_COLON array_destructuring {
       parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
       parser->pushArrayElement($3);
     }
@@ -729,7 +766,7 @@ collect_statement:
       /* COLLECT WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      StartCollectScope(scopes);
+      ::startCollectScope(scopes);
 
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
@@ -738,8 +775,8 @@ collect_statement:
       /* COLLECT var = expr WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(scopes, $1);
       }
 
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
@@ -749,12 +786,12 @@ collect_statement:
       /* AGGREGATE var = expr OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $2);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(scopes, $2);
       }
 
       // validate aggregates
-      if (! ValidateAggregates(parser, $2)) {
+      if (!::validateAggregates(parser, $2)) {
         YYABORT;
       }
 
@@ -762,15 +799,15 @@ collect_statement:
         std::unordered_set<Variable const*> vars;
         Ast::getReferencedVariables($3->getMember(1), vars);
 
-        Variable const* used = CheckIntoVariables($2, vars);
+        Variable const* used = ::checkIntoVariables($2, vars);
         if (used != nullptr) {
           std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
         }
       }
 
-      AstNode const* into = GetIntoVariable(parser, $3);
-      AstNode const* intoExpression = GetIntoExpression($3);
+      AstNode const* into = ::getIntoVariable(parser, $3);
+      AstNode const* intoExpression = ::getIntoExpression($3);
 
       auto node = parser->ast()->createNodeCollect(parser->ast()->createNodeArray(), $2, into, intoExpression, nullptr, $3);
       parser->ast()->addOperation(node);
@@ -779,12 +816,12 @@ collect_statement:
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
-        RegisterAssignVariables(scopes, $2);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(scopes, $1);
+        ::registerAssignVariables(scopes, $2);
       }
 
-      if (! ValidateAggregates(parser, $2)) {
+      if (!::validateAggregates(parser, $2)) {
         YYABORT;
       }
 
@@ -792,12 +829,12 @@ collect_statement:
         std::unordered_set<Variable const*> vars;
         Ast::getReferencedVariables($3->getMember(1), vars);
 
-        Variable const* used = CheckIntoVariables($1, vars);
+        Variable const* used = ::checkIntoVariables($1, vars);
         if (used != nullptr) {
           std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
         }
-        used = CheckIntoVariables($2, vars);
+        used = ::checkIntoVariables($2, vars);
         if (used != nullptr) {
           std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
@@ -836,8 +873,8 @@ collect_statement:
         }
       }
 
-      AstNode const* into = GetIntoVariable(parser, $3);
-      AstNode const* intoExpression = GetIntoExpression($3);
+      AstNode const* into = ::getIntoVariable(parser, $3);
+      AstNode const* intoExpression = ::getIntoExpression($3);
 
       auto node = parser->ast()->createNodeCollect($1, $2, into, intoExpression, nullptr, $4);
       parser->ast()->addOperation(node);
@@ -846,23 +883,23 @@ collect_statement:
       /* COLLECT var = expr INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(scopes, $1);
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
         std::unordered_set<Variable const*> vars;
         Ast::getReferencedVariables($2->getMember(1), vars);
 
-        Variable const* used = CheckIntoVariables($1, vars);
+        Variable const* used = ::checkIntoVariables($1, vars);
         if (used != nullptr) {
           std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
         }
       }
 
-      AstNode const* into = GetIntoVariable(parser, $2);
-      AstNode const* intoExpression = GetIntoExpression($2);
+      AstNode const* into = ::getIntoVariable(parser, $2);
+      AstNode const* intoExpression = ::getIntoExpression($2);
 
       auto node = parser->ast()->createNodeCollect($1, parser->ast()->createNodeArray(), into, intoExpression, nullptr, $3);
       parser->ast()->addOperation(node);
@@ -871,8 +908,8 @@ collect_statement:
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
-      if (StartCollectScope(scopes)) {
-        RegisterAssignVariables(scopes, $1);
+      if (::startCollectScope(scopes)) {
+        ::registerAssignVariables(scopes, $1);
       }
 
       if ($2 == nullptr &&
@@ -884,15 +921,15 @@ collect_statement:
         std::unordered_set<Variable const*> vars;
         Ast::getReferencedVariables($2->getMember(1), vars);
 
-        Variable const* used = CheckIntoVariables($1, vars);
+        Variable const* used = ::checkIntoVariables($1, vars);
         if (used != nullptr) {
           std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
         }
       }
 
-      AstNode const* into = GetIntoVariable(parser, $2);
-      AstNode const* intoExpression = GetIntoExpression($2);
+      AstNode const* into = ::getIntoVariable(parser, $2);
+      AstNode const* intoExpression = ::getIntoExpression($2);
 
       auto node = parser->ast()->createNodeCollect($1, parser->ast()->createNodeArray(), into, intoExpression, $3, $4);
       parser->ast()->addOperation(node);
@@ -1443,6 +1480,8 @@ optional_array_elements:
     }
   | array_elements_list {
     }
+  | array_elements_list T_COMMA {
+    }
   ;
 
 array_elements_list:
@@ -1533,6 +1572,8 @@ optional_object_elements:
     /* empty */ {
     }
   | object_elements_list {
+    }
+  | object_elements_list T_COMMA {
     }
   ;
 

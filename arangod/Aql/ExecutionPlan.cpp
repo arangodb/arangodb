@@ -1272,16 +1272,14 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // get sort order
       bool isAscending;
       bool handled = false;
-      if (ascending->type == NODE_TYPE_VALUE) {
-        if (ascending->value.type == VALUE_TYPE_STRING) {
-          // special treatment for string values ASC/DESC
-          if (ascending->stringEquals("ASC", true)) {
-            isAscending = true;
-            handled = true;
-          } else if (ascending->stringEquals("DESC", true)) {
-            isAscending = false;
-            handled = true;
-          }
+      if (ascending->isStringValue()) {
+        // special treatment for string values ASC/DESC
+        if (ascending->stringEquals("ASC", true)) {
+          isAscending = true;
+          handled = true;
+        } else if (ascending->stringEquals("DESC", true)) {
+          isAscending = false;
+          handled = true;
         }
       }
 

@@ -965,8 +965,8 @@ AstNode* Ast::createNodeValueBool(bool value) {
 }
 
 /// @brief create an AST int value node
-AstNode* Ast::createNodeValueInt(int64_t value) {
-  if (value == 0) {
+AstNode* Ast::createNodeValueInt(int64_t value, bool allowSharing) {
+  if (value == 0 && allowSharing) {
     // performance optimization:
     // return a pointer to the singleton zero node
     // note: these nodes are never registered nor freed
@@ -3330,8 +3330,7 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
 
   auto index = node->getMember(1);
 
-  if (index->isConstant() && index->type == NODE_TYPE_VALUE &&
-      index->value.type == VALUE_TYPE_STRING) {
+  if (index->isConstant() && index->isStringValue()) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later

@@ -314,7 +314,7 @@ class Ast {
   static AstNode* createNodeValueBool(bool);
 
   /// @brief create an AST int value node
-  AstNode* createNodeValueInt(int64_t);
+  AstNode* createNodeValueInt(int64_t value, bool allowSharing = true);
 
   /// @brief create an AST double value node
   AstNode* createNodeValueDouble(double);

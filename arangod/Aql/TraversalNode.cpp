@@ -126,7 +126,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
       _vertexId = "";
       break;
     case NODE_TYPE_VALUE:
-      if (start->value.type != VALUE_TYPE_STRING) {
+      if (!start->isStringValue()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                        "invalid start vertex. Must either be "
                                        "an _id string or an object with _id.");
