@@ -1279,10 +1279,18 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+#ifdef _WIN32
+  std::wstring wline;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, wline);
+
+  TRI_V8_RETURN_STD_WSTRING(wline);
+#else
   std::string line;
   getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
+#endif
   TRI_V8_TRY_CATCH_END
 }
 

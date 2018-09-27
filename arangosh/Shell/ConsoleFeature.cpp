@@ -20,6 +20,13 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _WIN32
+#include <tchar.h>
+#include <unicode/locid.h>
+#include <string.h>
+#include <locale.h>
+#endif
+
 #include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -69,7 +76,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("BasicsPhase");
-
+  startsAfter("Client");
   if (!_supportsColors) {
     _colors = false;
   }
@@ -295,7 +302,16 @@ std::string ConsoleFeature::readPassword() {
   TRI_DEFER(TRI_SetStdinVisibility(true));
 
   std::string password;
+
+#ifdef _WIN32
+  std::wstring wpassword;
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  std::getline(std::wcin, password);
+  UnicodeString pw(wpassword.c_str(), wpassword.length());
+  pw.toUTF8String<std::string>(password);
+#else
   std::getline(std::cin, password);
+#endif
   return password;
 }
 
