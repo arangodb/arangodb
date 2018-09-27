@@ -169,9 +169,14 @@ RestStatus RestAgencyPrivHandler::execute() {
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
-
+          LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {
-            
+            return reportMessage(
+              rest::ResponseCode(slice.get(StaticStrings::Code).getNumber<int>()),
+              slice.get(StaticStrings::ErrorMessage).copyString());
+          }
+          if (slice.hasKey("redirect")) {
+            redirectRequest(slice.get("id").copyString());
           }
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);

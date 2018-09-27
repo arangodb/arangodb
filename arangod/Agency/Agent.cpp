@@ -1778,7 +1778,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     // Not leader: redirect / 503     
     if (challengeLeadership()) {
       out->add("redirect", VPackValue(true));
-      out->add("endpoint", VPackValue(leaderID()));
+      out->add("id", VPackValue(leaderID()));
     } else { // leader magic
       auto tmp = _config;
       tmp.upsertPool(pslice, id);
