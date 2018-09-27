@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
 # Relations
 
 With the annotation `@Relations` applied on a collection or array field in a class annotated with `@Document` the nested objects are fetched from the database over a graph traversal with your current object as the starting point. The most relevant parameter is `edge`. With `edge` you define the edge collection - which should be used in the traversal - using the class type. With the parameter `depth` you can define the maximal depth for the traversal (default 1) and the parameter `direction` defines whether the traversal should follow outgoing or incoming edges (default Direction.ANY).

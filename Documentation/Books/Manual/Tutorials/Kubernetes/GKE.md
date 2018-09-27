@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Start ArangoDB on Google Kubernetes Engine in 5 minutes
 
 In this guide you'll learn how to run ArangoDB on Google Kubernetes Engine (GKE).

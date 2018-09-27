@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/spring-data.git / docs/Drivers/ -->
 # Auditing
 
 Since version 3.0.0 Spring Data ArangoDB provides basic auditing functionallity where you can track who made changes on your data and when.

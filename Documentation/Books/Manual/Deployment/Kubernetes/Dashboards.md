@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Operator Dashboards
 
 The ArangoDB Kubernetes Operator can create a dashboard for each type of

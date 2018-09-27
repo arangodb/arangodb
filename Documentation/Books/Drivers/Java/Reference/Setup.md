@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangodb-java-driver.git / docs/Drivers/ -->
 # Driver setup
 
 Setup with default configuration, this automatically loads a properties file arangodb.properties if exists in the classpath:

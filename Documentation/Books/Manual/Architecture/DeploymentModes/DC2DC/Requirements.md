@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
 # Requirements
 
 To use _datacenter to datacenter replication_ you need the following:

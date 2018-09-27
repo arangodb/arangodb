@@ -1,4 +1,4 @@
-<!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
+<!-- don't edit here, it's from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
 # Using the ArangoDB Kubernetes Operator with Helm
 
 [`Helm`](https://www.helm.sh/) is a package manager for Kubernetes, which enables
